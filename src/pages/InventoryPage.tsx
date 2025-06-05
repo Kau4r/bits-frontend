@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { type InventoryItem, type InventoryStatus, type InventoryType } from '@/types/inventory';
-import { MagnifyingGlassIcon, FunnelIcon, PlusIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+import { type InventoryItem } from '@/types/inventory';
+import { PlusIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import InventoryTable from '@/components/inventory/InventoryTable';
 
 const mockInventory: InventoryItem[] = [
@@ -10,13 +10,11 @@ const mockInventory: InventoryItem[] = [
   { id: '4', itemCode: 'RM-104', name: 'Quiet Room', description: 'Soundproof room for focused work', location: 'Floor 3', type: 'Equipment', status: 'Disposed', lastUpdated: '2023-05-28' },
 ];
 
-const statusOptions: InventoryStatus[] = ['Available', 'In Use', 'Maintenance', 'Disposed'];
-const typeOptions: InventoryType[] = ['Equipment', 'Consumable', 'Tool', 'Other'];
 
 const InventoryPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedType, setSelectedType] = useState('All Types');
-  const [selectedStatus, setSelectedStatus] = useState('All Status');
+  const [selectedType] = useState('All Types');
+  const [selectedStatus] = useState('All Status');
 
   const filteredInventory = mockInventory.filter(item =>
     (item.name + item.itemCode).toLowerCase().includes(searchTerm.toLowerCase()) &&
@@ -25,46 +23,50 @@ const InventoryPage = () => {
   );
 
   return (
-    <div className="w-full px-4 py-4 lg:py-12">
-      <div className="flex flex-col">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Inventory Management</h1>
-          <button className="py-2 px-3 flex items-center gap-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700">
-            <PlusIcon className="w-4 h-4" />
-            Add Item
-          </button>
+    <div className="px-6 sm:px-8 lg:px-10 py-4">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Inventory Management</h1>
+        <button
+          className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-indigo-700 dark:hover:bg-indigo-600"
+        >
+          <PlusIcon className="w-5 h-5 mr-2" />
+          Add Item
+        </button>
+      </div>
+
+      <div className="flex items-end justify-between gap-6 mb-8">
+        {/* Search input (left side) */}
+        <div className="flex-1">
+          <label htmlFor="search" className="block text-base font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Search
+          </label>
+          <input
+            type="text"
+            id="search"
+            className="w-full px-4 py-2.5 text-base border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            placeholder="Search..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-          <div className="relative flex-1">
-            <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-              <MagnifyingGlassIcon className="w-4 h-4 text-gray-400" />
-            </div>
-            <input
-              type="text"
-              className="w-full py-2 pl-11 pr-4 rounded-lg text-sm border border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-900 dark:border-gray-700 dark:text-gray-400"
-              placeholder="Search..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-
-          <button className="py-2 px-3 flex items-center gap-2 text-sm rounded-lg border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 dark:bg-slate-900 dark:border-gray-700 dark:text-white dark:hover:bg-gray-800">
+        {/* Filters (right side) */}
+        <div className="flex gap-3">
+          <button className="py-2.5 px-4 flex items-center gap-2 text-base rounded-lg border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 dark:bg-slate-900 dark:border-gray-700 dark:text-white dark:hover:bg-gray-800">
             Sort By
-            <ChevronDownIcon className="w-4 h-4" />
+            <ChevronDownIcon className="w-5 h-5" />
           </button>
-
-          <button className="py-2 px-3 flex items-center gap-2 text-sm rounded-lg border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 dark:bg-slate-900 dark:border-gray-700 dark:text-white dark:hover:bg-gray-800">
+          <button className="py-2.5 px-4 flex items-center gap-2 text-base rounded-lg border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 dark:bg-slate-900 dark:border-gray-700 dark:text-white dark:hover:bg-gray-800">
             {selectedType}
-            <ChevronDownIcon className="w-4 h-4" />
+            <ChevronDownIcon className="w-5 h-5" />
           </button>
-
-          <button className="py-2 px-3 flex items-center gap-2 text-sm rounded-lg border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 dark:bg-slate-900 dark:border-gray-700 dark:text-white dark:hover:bg-gray-800">
+          <button className="py-2.5 px-4 flex items-center gap-2 text-base rounded-lg border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 dark:bg-slate-900 dark:border-gray-700 dark:text-white dark:hover:bg-gray-800">
             {selectedStatus}
-            <FunnelIcon className="w-4 h-4" />
+            <ChevronDownIcon className="w-5 h-5" />
           </button>
         </div>
       </div>
+
 
       <InventoryTable
         items={filteredInventory}
