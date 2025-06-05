@@ -1,0 +1,28 @@
+@import "tailwindcss";
+@import "../node_modules/preline/variants.css";
+@plugin "@tailwindcss/forms";
+
+#root {
+    min-height: 100vh;
+    min-width: 100vw;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    background-color: #111827;
+}
+
+body,
+html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    overflow-x: hidden;
+}
+
+.card {
+    padding: 2em;
+}
