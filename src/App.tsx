@@ -2,9 +2,7 @@ import { Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { InventoryPage } from '@/pages';
 import Login from './pages/Login';
-import Register from './pages/Register';
-import ProtectedRoute from './components/auth/ProtectedRoute';
-import Navbar from './components/Navbar';
+import Navbar from './components/layout/Navbar';
 import '@/App.css';
 
 function App() {
@@ -14,13 +12,10 @@ function App() {
         <Navbar />
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
 
           {/* Protected Routes */}
-          <Route element={<ProtectedRoute />}>
-            <Route path="/inventory" element={<InventoryPage />} />
-            <Route path="/" element={<InventoryPage />} />
-          </Route>
+          <Route path="/inventory" element={<InventoryPage />} />
+          <Route path="/" element={<InventoryPage />} />
 
           {/* Redirect all other paths to login */}
           <Route path="*" element={<Login />} />
