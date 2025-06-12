@@ -1,28 +1,20 @@
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { Box } from 'lucide-react';
 
 export default function Navbar() {
-  const { user } = useAuth();
-
   return (
-    <nav className="bg-white dark:bg-gray-800 shadow-sm transition-colors duration-200 py-1.5">
-      <div className="flex justify-between items-center h-14 px-6 sm:px-8 lg:px-10">
-        <div className="flex items-center">
-          <div className="flex-shrink-0">
-            <Link to="/" className="text-2xl font-bold text-gray-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-              BITS
-            </Link>
-          </div>
-          {user && (
-            <div className="hidden sm:ml-6 sm:flex sm:space-x-6">
-              <Link
-                to="/inventory"
-                className="border-indigo-600 dark:border-indigo-400 text-gray-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 inline-flex items-center px-3 pt-1 border-b-2 text-base font-medium transition-colors"
-              >
-                Inventory
-              </Link>
-            </div>
-          )}
+    <nav className="bg-white dark:bg-gray-800 shadow-sm transition-colors duration-200 min-h-screen w-25">
+      <div className="flex flex-col justify-between h-full">
+        <div className="flex flex-col items-center space-y-4 p-4">
+          <Link to="/" className="text-2xl font-bold text-gray-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+            BITS
+          </Link>
+          <Link
+            to="/inventory"
+            className="border-indigo-600 dark:border-indigo-400 text-gray-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center justify-center h-10 w-full text-base font-medium transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 gap-2"
+          >
+            <Box className="w-5 h-5" />
+          </Link>
         </div>
       </div>
     </nav>

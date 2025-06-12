@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function Login() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { login } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -18,15 +18,14 @@ export default function Login() {
     }
 
     setIsLoading(true);
-    try {
-      await login(email, password);
-      // No need to navigate here, it's handled in the AuthContext
-    } catch (err) {
-      // Error is already handled by AuthContext
-      console.error('Login error:', err);
-    } finally {
-      setIsLoading(false);
-    }
+    navigate('/inventory');
+    // try {
+    //   await axios.post('/api/login', { email, password });
+    // } catch (err) {
+    //   console.error('Login error:', err);
+    // } finally {
+    //   setIsLoading(false);
+    // }
   };
 
   useEffect(() => {
@@ -41,11 +40,11 @@ export default function Login() {
       <div className="flex items-center justify-center min-h-[calc(100vh-6rem)] py-8 px-4 sm:px-6 lg:px-8">
         <div className="w-full max-w-md space-y-6 bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg">
           <div className="space-y-2 text-center">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-              BITS Login
+            <h2 className="text-4xl font-bold text-gray-900 dark:text-white">
+              BITS
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-300">
-              Sign in to access your account
+              Login to access your account
             </p>
           </div>
 
@@ -74,13 +73,13 @@ export default function Login() {
                 <input
                   id="email-address"
                   name="email"
-                  type="email"
+                  // type="email"
                   autoComplete="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-transparent transition duration-150 ease-in-out"
-                  placeholder="Email address"
+                  placeholder="Email"
                 />
               </div>
               <div>
