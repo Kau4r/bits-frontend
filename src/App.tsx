@@ -1,12 +1,14 @@
-import { Routes, Route } from 'react-router-dom';
-import { InventoryPage } from '@/pages';
-import Login from './pages/Login';
-import Navbar from './components/layout/Navbar';
-import '@/App.css';
+import { Routes, Route } from 'react-router-dom'
+import { InventoryPage } from '@/pages'
+import Login from './pages/Login'
+import UserDetails from './pages/UserDetails'
+import Navbar from './components/layout/Navbar'
+import SysAdDash from './pages/SysAdDash'
+import '@/App.css'
 
 function App() {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+    <div className="min-h-screen bg-gray-50 transition-colors duration-200 dark:bg-gray-900">
       <div className="flex">
         <Navbar />
         <div className="flex-1">
@@ -14,11 +16,13 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/inventory" element={<InventoryPage />} />
             <Route path="/" element={<InventoryPage />} />
+            <Route path="/SysDashboard" element={<SysAdDash />} />
+            <Route path="/user/:email" element={<UserDetails />} />
           </Routes>
         </div>
       </div>
     </div>
-  );
+  )
 }
 
-export default App;
+export default App

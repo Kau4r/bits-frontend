@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { type InventoryItem } from '@/types/inventory'
 import { PlusIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
-import InventoryTable from '@/components/inventory/InventoryTable'
+import Table from '@/components/Table'
 import ItemModal from '@/components/inventory/ItemModal'
+import Search from '@/components/Search'
 
 const mockInventory: InventoryItem[] = [
   {
@@ -74,23 +75,7 @@ const InventoryPage = () => {
   return (
     <div className="px-6 py-4 sm:px-8 lg:px-10">
       <div className="mb-8 flex items-end justify-between gap-6">
-        <div className="flex-1">
-          <label
-            htmlFor="search"
-            className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-          >
-            Search
-          </label>
-          <input
-            type="text"
-            id="search"
-            className="w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-            placeholder="Search..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-
+        <Search searchTerm={searchTerm} onChange={setSearchTerm} />
         <div className="flex gap-3">
           <button className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-base text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:bg-slate-900 dark:text-white dark:hover:bg-gray-800">
             Sort By
@@ -118,14 +103,57 @@ const InventoryPage = () => {
         </div>
       </div>
 
-      <InventoryTable
-        items={filteredInventory}
-        onRowClick={(item) => {
-          setSelectedItem(item)
-          setIsModalOpen(true)
-          setModalMode('view')
-        }}
-      />
+      <Table headers={['Asset Code', 'Brand', 'Item Type', 'Location', 'Status', 'Last Updated']}>
+        {filteredInventory.map((item) => (
+          <div
+            key={item.assetCode}
+            onClick={() => {
+              setSelectedItem(item)
+              setIsModalOpen(true)
+              setModalMode('view')
+            }}
+            className="grid cursor-pointer grid-cols-6 items-center gap-x-4 px-6 py-4 transition-colors duration-150 hover:bg-gray-50 dark:hover:bg-gray-700"
+          >
+            <div className="truncate text-base font-semibold text-gray-800 dark:text-white">
+              {item.assetCode}
+            </div>
+
+            <div className="text-sm text-gray-700 dark:text-gray-300">{item.brand}</div>
+
+            <div>
+              <span className="inline-flex items-center justify-center gap-1.5 rounded-full bg-blue-100 px-3 py-1.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                {item.itemType}
+              </span>
+            </div>
+
+            <div>
+              <span
+                className={`inline-flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${
+                  item.status === 'Available'
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                    : item.status === 'In Use'
+                      ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                      : item.status === 'Maintenance'
+                        ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                }`}
+              >
+                {item.status}
+              </span>
+            </div>
+
+            <div className="text-sm text-gray-700 dark:text-gray-300">{item.location}</div>
+
+            <div className="text-sm text-gray-700 dark:text-gray-300">
+              {new Date(item.lastUpdated).toLocaleDateString(undefined, {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+              })}
+            </div>
+          </div>
+        ))}
+      </Table>
       {isModalOpen && (
         <ItemModal
           mode={modalMode}
