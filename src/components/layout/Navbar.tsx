@@ -1,22 +1,31 @@
-import { Link } from 'react-router-dom';
-import { Box } from 'lucide-react';
+import { Link } from 'react-router-dom'
+import { Box, User } from 'lucide-react'
 
 export default function Navbar() {
   return (
-    <nav className="bg-white dark:bg-gray-800 shadow-sm transition-colors duration-200 min-h-screen w-25">
-      <div className="flex flex-col justify-between h-full">
+    <nav className="min-h-screen w-25 bg-white shadow-sm transition-colors duration-200 dark:bg-gray-800">
+      <div className="flex h-full flex-col justify-between">
         <div className="flex flex-col items-center space-y-4 p-4">
-          <Link to="/" className="text-2xl font-bold text-gray-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+          <Link
+            to="/"
+            className="text-2xl font-bold text-gray-900 transition-colors hover:text-indigo-600 dark:text-white dark:hover:text-indigo-400"
+          >
             BITS
           </Link>
           <Link
             to="/inventory"
-            className="border-indigo-600 dark:border-indigo-400 text-gray-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center justify-center h-10 w-full text-base font-medium transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 gap-2"
+            className="flex h-10 w-full items-center justify-center gap-2 rounded-lg border-indigo-600 text-base font-medium text-gray-900 transition-colors hover:bg-gray-100 hover:text-indigo-600 dark:border-indigo-400 dark:text-white dark:hover:bg-gray-700 dark:hover:text-indigo-400"
           >
-            <Box className="w-5 h-5" />
+            <Box className="h-5 w-5" />
+          </Link>
+          <Link
+            to="/SysDashboard"
+            className="flex h-10 w-full items-center justify-center gap-2 rounded-lg border-indigo-600 text-base font-medium text-gray-900 transition-colors hover:bg-gray-100 hover:text-indigo-600 dark:border-indigo-400 dark:text-white dark:hover:bg-gray-700 dark:hover:text-indigo-400"
+          >
+            <User className="h-5 w-5" />
           </Link>
         </div>
       </div>
     </nav>
-  );
+  )
 }
