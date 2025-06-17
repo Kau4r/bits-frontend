@@ -4,6 +4,7 @@ import Login from './pages/Login'
 import UserDetails from './pages/UserDetails'
 import Navbar from './components/layout/Navbar'
 import SysAdDash from './pages/SysAdDash'
+import RoomPage from './pages/RoomPage'
 import '@/App.css'
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/inventory" element={<InventoryPage />} />
+            <Route path="/room" element={<RoomPage />} />
             <Route path="/" element={<InventoryPage />} />
             <Route path="/SysDashboard" element={<SysAdDash />} />
             <Route path="/user/:email" element={<UserDetails />} />
