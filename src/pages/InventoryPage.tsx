@@ -75,7 +75,7 @@ const InventoryPage = () => {
   return (
     <div className="px-6 py-4 sm:px-8 lg:px-10">
       <div className="mb-8 flex items-end justify-between gap-6">
-        <Search searchTerm={searchTerm} onChange={setSearchTerm} />
+        <Search searchTerm={searchTerm} onChange={setSearchTerm} showLabel={false} />
         <div className="flex gap-3">
           <button className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-base text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:bg-slate-900 dark:text-white dark:hover:bg-gray-800">
             Sort By
