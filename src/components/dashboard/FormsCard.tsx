@@ -21,7 +21,7 @@ export default function FormsCard() {
                 <p className="text-xs text-white">{form.submissions} submissions</p>
               </div>
             </div>
-            <button className="text-sm font-medium600 hover:text-gray-400">
+            <button className="text-sm font-medium text-green-400 hover:text-green-300">
               View
             </button>
           </div>
