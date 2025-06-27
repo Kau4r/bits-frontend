@@ -3,8 +3,16 @@ import Search from '@/components/Search'
 import { useState } from 'react'
 import { PlusIcon } from '@heroicons/react/24/outline'
 import { useNavigate } from 'react-router-dom'
+import AddUserModal from '@/components/user/addusermodal'
 
-const mockUsers = [
+interface User {
+  name: string
+  email: string
+  role: string
+  status: string
+}
+
+const initialUsers: User[] = [
   {
     name: 'John Doe',
     email: 'john.doe@example.com',
@@ -22,10 +30,18 @@ const mockUsers = [
 export default function SysAdDash() {
   const [searchTerm, setSearchTerm] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [users, setUsers] = useState<User[]>(initialUsers)
   const navigate = useNavigate()
-  const filteredUsers = mockUsers.filter((user) =>
+
+  const filteredUsers = users.filter((user) =>
     user.name.toLowerCase().includes(searchTerm.toLowerCase())
   )
+
+  const handleAddUser = (newUser: User) => {
+    setUsers((prev) => [...prev, newUser])
+    setIsModalOpen(false)
+  }
+
   return (
     <div className="h-full w-full bg-white p-4 sm:px-8 lg:px-10 dark:bg-gray-900">
       <div className="mb-4 flex items-center justify-between gap-4">
@@ -33,14 +49,13 @@ export default function SysAdDash() {
         <Search searchTerm={searchTerm} onChange={setSearchTerm} showLabel={false} />
         <button
           className="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none dark:bg-indigo-700 dark:hover:bg-indigo-600"
-          onClick={() => {
-            setIsModalOpen(true)
-          }}
+          onClick={() => setIsModalOpen(true)}
         >
           <PlusIcon className="mr-2 h-5 w-5" />
           Add User
         </button>
       </div>
+
       <Table headers={['Name', 'Email', 'Role', 'Status']}>
         {filteredUsers.map((user) => (
           <div
@@ -61,18 +76,12 @@ export default function SysAdDash() {
                 {user.role}
               </span>
             </div>
-
             <div>
               <span
-                className={`inline-flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${
-                  user.status === 'Active'
+                className={`inline-flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${user.status === 'Active'
                     ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                    : user.status === 'In Use'
-                      ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                      : user.status === 'Maintenance'
-                        ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
-                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                }`}
+                    : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                  }`}
               >
                 {user.status}
               </span>
@@ -80,6 +89,13 @@ export default function SysAdDash() {
           </div>
         ))}
       </Table>
+
+      {isModalOpen && (
+        <AddUserModal
+          onClose={() => setIsModalOpen(false)}
+          onSubmit={handleAddUser}
+        />
+      )}
     </div>
   )
 }
