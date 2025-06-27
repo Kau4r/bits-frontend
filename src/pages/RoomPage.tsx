@@ -1,61 +1,39 @@
 import { useState } from 'react'
 import { PlusIcon } from '@heroicons/react/24/outline'
 import Search from '@/components/Search'
+import { type Room } from '@/types/Room'
 import RoomCard from '@/components/room/RoomCard'
+import RoomModal from '@/components/room/RoomModal'
 
-// Define the Room type if not globally available
-interface Room {
-  code: string
-  type: 'Consultation Room' | 'Conference Room' | 'Lecture Room'
-  status: 'Available' | 'In Use'
-  nextSchedule: string
-  instructor?: string
-}
-
-const rooms: Room[] = [
-  {
-    code: 'CTL 1',
-    type: 'Consultation Room',
-    status: 'Available',
-    nextSchedule: '12:00 - 13:30',
-  },
-  {
-    code: 'CTL 2',
-    type: 'Consultation Room',
-    status: 'Available',
-    nextSchedule: '13:30 - 15:00',
-  },
-  {
-    code: 'CNF 1',
-    type: 'Conference Room',
-    status: 'Available',
-    nextSchedule: '12:00 - 13:30',
-  },
-  {
-    code: 'LB 483',
-    type: 'Lecture Room',
-    status: 'In Use',
-    nextSchedule: '12:00 - 13:30',
-    instructor: 'Mr. Sabandal',
-  },
-  {
-    code: 'CNF 2',
-    type: 'Conference Room',
-    status: 'In Use',
-    nextSchedule: '14:00 - 15:30',
-    instructor: 'Ms. Delos Santos',
-  },
-  {
-    code: 'LB 101',
-    type: 'Lecture Room',
-    status: 'Available',
-    nextSchedule: '15:00 - 16:30',
-  },
+const mockRooms: Room[] = [
+  { code: 'CTL 1', type: 'Consultation Room', status: 'Available' },
+  { code: 'CTL 2', type: 'Consultation Room', status: 'Available' },
+  { code: 'CNF 1', type: 'Conference Room', status: 'Available' },
+  { code: 'LB 483', type: 'Lecture Room', status: 'In Use' },
+  { code: 'CNF 2', type: 'Conference Room', status: 'In Use' },
+  { code: 'LB 101', type: 'Lecture Room', status: 'Available' },
 ]
 
 export default function RoomPage() {
   const [searchTerm, setSearchTerm] = useState('')
+  const [rooms, setRooms] = useState<Room[]>(mockRooms)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [modalMode, setModalMode] = useState<'add' | 'edit' | 'view'>('view')
+  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null)
+
+  const handleRoomSubmit = (room: Room) => {
+    setRooms((prev) => {
+      const index = prev.findIndex((r) => r.code === room.code)
+      if (index !== -1) {
+        const updated = [...prev]
+        updated[index] = room
+        return updated
+      }
+      return [...prev, room]
+    })
+    setIsModalOpen(false)
+    setSelectedRoom(null)
+  }
 
   return (
     <div className="h-full w-full bg-white p-4 sm:px-8 lg:px-10 dark:bg-gray-900">
@@ -63,8 +41,12 @@ export default function RoomPage() {
         <h2 className="text-2xl font-semibold">Room Management</h2>
         <Search searchTerm={searchTerm} onChange={setSearchTerm} showLabel={false} />
         <button
-          className="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none dark:bg-indigo-700 dark:hover:bg-indigo-600"
-          onClick={() => setIsModalOpen(true)}
+          className="inline-flex items-center rounded-md bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none"
+          onClick={() => {
+            setSelectedRoom(null)
+            setModalMode('add')
+            setIsModalOpen(true)
+          }}
         >
           <PlusIcon className="mr-2 h-5 w-5" />
           Add Room
@@ -78,9 +60,28 @@ export default function RoomPage() {
               room.type.toLowerCase().includes(searchTerm.toLowerCase())
           )
           .map((room) => (
-            <RoomCard key={room.code} room={room} />
+            <RoomCard
+              key={room.code}
+              room={room}
+              onView={() => {
+                setSelectedRoom(room)
+                setModalMode('view')
+                setIsModalOpen(true)
+              }}
+            />
           ))}
       </div>
+      {isModalOpen && (
+        <RoomModal
+          mode={modalMode}
+          initialData={selectedRoom ?? undefined}
+          onClose={() => {
+            setIsModalOpen(false)
+            setSelectedRoom(null)
+          }}
+          onSubmit={handleRoomSubmit}
+        />
+      )}
     </div>
   )
 }
