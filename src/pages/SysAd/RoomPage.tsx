@@ -41,7 +41,7 @@ export default function RoomPage() {
         <h2 className="text-2xl font-semibold">Room Management</h2>
         <Search searchTerm={searchTerm} onChange={setSearchTerm} showLabel={false} />
         <button
-          className="inline-flex items-center rounded-md bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none"
+          className="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none dark:bg-indigo-700 dark:hover:bg-indigo-600"
           onClick={() => {
             setSelectedRoom(null)
             setModalMode('add')
