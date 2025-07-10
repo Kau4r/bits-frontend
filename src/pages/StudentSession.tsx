@@ -16,7 +16,10 @@ export default function StudentSession() {
                 </button>
             </div>
             <div className="px-4 sm:px-8 lg:px-10 pb-4">
-                <SessionBar />
+                <SessionBar 
+                  room="LB 467"
+                  pcNumber="14"
+                />
             </div>
             <div className="flex-1 overflow-auto p-4 sm:px-8 lg:px-10">
                 <Shortcuts />

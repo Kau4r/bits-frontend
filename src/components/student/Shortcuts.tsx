@@ -61,7 +61,7 @@ export default function Shortcuts() {
             </span>
           </div>
         ))}
-        {/* Add Shortcut Button */}
+        
         <div className="group flex flex-col items-center">
           <div 
             className="w-16 h-16 bg-slate-800 hover:bg-slate-700 rounded-xl flex items-center justify-center mb-2 
