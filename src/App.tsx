@@ -9,6 +9,9 @@ import LabtechDashboard from './pages/LabtechDashboard'
 import LabheadDashboard from './pages/LabheadDashboard'
 import LandingPage from './pages/LandingPage'
 import '@/App.css'
+import StudentSession from './pages/StudentSession'
+import StudentPCView from './pages/StudentPCView'
+import StudentRoomView from './pages/StudentRoomView'
 
 function App() {
   return (
@@ -26,6 +29,9 @@ function App() {
               <Route path="/labhead-dashboard" element={<LabheadDashboard />} />
               <Route path="/SysDashboard" element={<SysAdDash />} />
               <Route path="/user/:email" element={<UserDetails />} />
+              <Route path="/student-session" element={<StudentSession />} />
+              <Route path="/student-pc-view" element={<StudentPCView />} />
+              <Route path="/student-room-view" element={<StudentRoomView />} />
             </Routes>
           </div>
         </div>
