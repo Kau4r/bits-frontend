@@ -25,7 +25,7 @@ const roleRoutes = {
     { label: 'Inventory', path: '/inventory' },
   ],
   Student: [
-    { label: 'Borrow Computer', path: '/student/borrow' },
+    { label: 'Student', path: '/student-session' },
   ],
 } as const
 
@@ -36,7 +36,7 @@ export default function RoleNavbar() {
   const navItems = roleRoutes[currentRole]
 
   return (
-    <nav className="fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col bg-white shadow-sm dark:bg-gray-800">
+    <nav className="fixed inset-y-0 left-0 z-50 flex h-screen w-50 flex-col bg-white shadow-sm dark:bg-gray-800">
       {/* Header */}
       <div className="flex items-center justify-between border-b px-4 py-3 dark:border-gray-700">
         <span className="text-xl font-bold text-indigo-600">BITS</span>

@@ -3,7 +3,7 @@ import Search from '@/components/Search'
 import { useState } from 'react'
 import { PlusIcon } from '@heroicons/react/24/outline'
 import { useNavigate } from 'react-router-dom'
-import AddUserModal from '@/components/user/addusermodal'
+import AddUserModal from '@/components/SysAd/user/AddUserModal'
 
 interface User {
   name: string

@@ -9,10 +9,13 @@ import LabheadDashboard from './pages/LabheadDashboard'
 import LandingPage from './pages/LandingPage'
 import Layout from './components/layout/Layout'
 import '@/App.css'
+import StudentSession from './pages/Student/StudentSession'
+import StudentPCView from './pages/Student/StudentPCView'
+import StudentRoomView from './pages/Student/StudentRoomView'
 
 function App() {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route element={<Layout />}>
@@ -23,6 +26,9 @@ function App() {
           <Route path="/labhead-dashboard" element={<LabheadDashboard />} />
           <Route path="/SysDashboard" element={<SysAdDash />} />
           <Route path="/user/:email" element={<UserDetails />} />
+          <Route path="/student-session" element={<StudentSession />} />
+          <Route path="/student-pc-view" element={<StudentPCView />} />
+          <Route path="/student-room-view" element={<StudentRoomView />} />
         </Route>
       </Routes>
     </div>

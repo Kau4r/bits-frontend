@@ -1,14 +1,58 @@
 import Card from "./Card";
 
+interface BookingItem {
+  id: number;
+  title: string;
+  date: string;
+  time: string;
+  status: 'pending' | 'confirmed' | 'cancelled';
+}
+
+const bookings: BookingItem[] = [
+  {
+    id: 1,
+    title: 'Computer Lab 1',
+    date: '2023-06-25',
+    time: '10:00 AM - 12:00 PM',
+    status: 'confirmed'
+  },
+  {
+    id: 2,
+    title: 'Physics Lab 2',
+    date: '2023-06-26',
+    time: '02:00 PM - 04:00 PM',
+    status: 'pending'
+  },
+  {
+    id: 3,
+    title: 'Chemistry Lab',
+    date: '2023-06-27',
+    time: '09:00 AM - 11:00 AM',
+    status: 'cancelled'
+  }
+];
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'confirmed':
+      return 'text-green-500';
+    case 'pending':
+      return 'text-yellow-500';
+    case 'cancelled':
+      return 'text-red-500';
+    default:
+      return 'text-gray-400';
+  }
+};
+
 export default function BookingCard() {
     return (
         <Card title="Bookings" className="h-full">
             <div className="h-full flex flex-col">
                 <div className="flex-1 overflow-auto p-2">
-                    {/* These are temporary placeholders */}
                     <div className="space-y-2 mt-2">
-                        {[1, 2, 3].map((item) => (
-                            <div key={item} className="flex items-center justify-between p-3 bg-[#1A2236] rounded-lg">
+                        {bookings.map((booking) => (
+                            <div key={booking.id} className="flex items-center justify-between p-3 bg-[#1A2236] rounded-lg">
                                 <div className="flex items-center space-x-3">
                                     <div className="p-2 bg-green-100 rounded-md">
                                         <svg className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -16,8 +60,11 @@ export default function BookingCard() {
                                         </svg>
                                     </div>
                                     <div>
-                                        <div className="text-sm font-medium text-white">Booking {item}</div>
-                                        <div className="text-xs text-gray-300">Details about booking {item}</div>
+                                        <div className="text-sm font-medium text-white">{booking.title}</div>
+                                        <div className="text-xs text-gray-400">{booking.date} • {booking.time}</div>
+                                        <div className={`text-xs mt-1 ${getStatusColor(booking.status)}`}>
+                                            {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                                        </div>
                                     </div>
                                 </div>
                                 <button className="text-sm font-medium text-green-400 hover:text-green-300">

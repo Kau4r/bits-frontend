@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { PlusIcon } from '@heroicons/react/24/outline'
 import Search from '@/components/Search'
 import { type Room } from '@/types/Room'
-import RoomCard from '@/components/room/RoomCard'
-import RoomModal from '@/components/room/RoomModal'
+import RoomCard from '@/components/SysAd/room/RoomCard'
+import RoomModal from '@/components/SysAd/room/RoomModal'
 
 const mockRooms: Room[] = [
   { code: 'CTL 1', type: 'Consultation Room', status: 'Available' },
