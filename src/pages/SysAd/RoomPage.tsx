@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { PlusIcon } from '@heroicons/react/24/outline'
 import Search from '@/components/Search'
-import { type Room } from '@/types/Room'
+import { type Room } from '@/types/room'
 import RoomCard from '@/components/SysAd/room/RoomCard'
 import RoomModal from '@/components/SysAd/room/RoomModal'
 
