@@ -3,7 +3,7 @@ import Search from '@/components/Search'
 import { useState } from 'react'
 import { PlusIcon } from '@heroicons/react/24/outline'
 import { useNavigate } from 'react-router-dom'
-import AddUserModal from '@/components/user/addusermodal'
+import AddUserModal from '@/components/SysAd/user/AddUserModal'
 
 interface User {
   name: string
@@ -79,8 +79,8 @@ export default function SysAdDash() {
             <div>
               <span
                 className={`inline-flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${user.status === 'Active'
-                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                    : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                  : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
                   }`}
               >
                 {user.status}

@@ -1,64 +1,82 @@
+import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { Box, User, Package, LayoutDashboard } from 'lucide-react'
+import { User } from 'lucide-react'
 
-interface NavItemProps {
-  to: string
-  icon: React.ReactNode
-  label: string
-}
+const roleRoutes = {
+  'System Admin': [
+    { label: 'User', path: '/SysDashboard' },
+    { label: 'Room', path: '/room' },
+  ],
+  Faculty: [
+    { label: 'Schedule', path: '/faculty/schedule' },
+    { label: 'Report Issue', path: '/faculty/report' },
+    { label: 'Borrow Item', path: '/faculty/borrow' },
+  ],
+  'Lab Tech': [
+    { label: 'Tickets', path: '/labtech/tickets' },
+    { label: 'Borrow Requests', path: '/labtech/borrow-requests' },
+    { label: 'Inventory', path: '/inventory' },
+    { label: 'Room Queueing', path: '/labtech/queue-room' },
+  ],
+  'Lab Head': [
+    { label: 'Faculty Schedules', path: '/labhead/faculty-schedule' },
+    { label: 'Lab Tech Reports', path: '/labhead/reports' },
+    { label: 'Tickets', path: '/labtech/tickets' },
+    { label: 'Inventory', path: '/inventory' },
+  ],
+  Student: [
+    { label: 'Student', path: '/student-session' },
+  ],
+} as const
 
-const NavItem = ({ to, icon, label }: NavItemProps) => {
+const roles = Object.keys(roleRoutes) as (keyof typeof roleRoutes)[]
+
+export default function RoleNavbar() {
+  const [currentRole, setCurrentRole] = useState<keyof typeof roleRoutes>('System Admin')
+  const navItems = roleRoutes[currentRole]
+
   return (
-    <NavLink
-      to={to}
-      className={({ isActive }) =>
-        `flex h-10 w-full items-center justify-center gap-2 rounded-lg text-base font-medium transition-colors hover:bg-gray-100 hover:text-indigo-600 dark:text-white dark:hover:bg-gray-700 dark:hover:text-indigo-400 ${
-          isActive
-            ? 'bg-indigo-50 text-indigo-600 dark:bg-gray-700 dark:text-indigo-400'
-            : 'text-gray-900 dark:text-gray-400'
-        }`
-      }
-      title={label}
-    >
-      {icon}
-    </NavLink>
-  )
-}
-
-export default function Navbar() {
-  const navItems = [
-    { to: '/labtech-dashboard', icon: <LayoutDashboard className="h-5 w-5" />, label: 'Labtech Dashboard' },
-    { to: '/inventory', icon: <Package className="h-5 w-5" />, label: 'Inventory' },
-    { to: '/room', icon: <Box className="h-5 w-5" />, label: 'Rooms' },
-    { to: '/SysDashboard', icon: <User className="h-5 w-5" />, label: 'Admin' },
-  ]
-
-  return (
-    <nav className="fixed inset-y-0 left-0 z-50 w-20 bg-white shadow-sm transition-colors duration-200 dark:bg-gray-800 flex flex-col h-screen">
-      {/* Logo at the top */}
-      <div className="flex-shrink-0 p-4">
-        <NavLink
-          to="/"
-          className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-600 text-white mx-auto"
-          title="BITS"
+    <nav className="fixed inset-y-0 left-0 z-50 flex h-screen w-50 flex-col bg-white shadow-sm dark:bg-gray-800">
+      {/* Header */}
+      <div className="flex items-center justify-between border-b px-4 py-3 dark:border-gray-700">
+        <span className="text-xl font-bold text-indigo-600">BITS</span>
+        <select
+          value={currentRole}
+          onChange={(e) => setCurrentRole(e.target.value as keyof typeof roleRoutes)}
+          className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
         >
-          <span className="text-xl font-bold">B</span>
-        </NavLink>
-      </div>
-      
-      {/* Navigation items - will scroll if needed */}
-      <div className="flex-1 overflow-y-auto py-4 px-2">
-        <div className="space-y-2">
-          {navItems.map((item) => (
-            <NavItem key={item.to} to={item.to} icon={item.icon} label={item.label} />
+          {roles.map((role) => (
+            <option key={role} value={role}>{role}</option>
           ))}
-        </div>
+        </select>
       </div>
-      
-      {/* User profile at the bottom */}
-      <div className="flex-shrink-0 p-4">
-        <div className="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mx-auto">
+
+      {/* Navigation */}
+      <div className="flex-1 overflow-y-auto px-2 py-4">
+        <ul className="space-y-1">
+          {navItems.map((item) => (
+            <li key={item.path}>
+              <NavLink
+                to={item.path}
+                className={({ isActive }) =>
+                  `block rounded-md px-3 py-2 text-sm font-medium transition ${isActive
+                    ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-white'
+                    : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+                  }`
+                }
+              >
+                {item.label}
+              </NavLink>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* User Info */}
+      <div className="border-t px-4 py-3 dark:border-gray-700">
+        <div className="flex items-center space-x-3">
           <User className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+          <span className="text-sm font-medium text-gray-900 dark:text-white">{currentRole}</span>
         </div>
       </div>
     </nav>
