@@ -9,6 +9,7 @@ const LandingPage = () => {
     { path: '/SysDashboard', description: 'System Admin Dashboard' },
     { path: '/login', description: 'Login Page' },
     { path: '/user/:email', description: 'User Details (replace :email with actual email)' },
+    { path: '/student-session', description: 'Student Session Page' },
   ];
 
   return (
