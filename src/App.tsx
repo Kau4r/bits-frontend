@@ -13,6 +13,7 @@ import StudentSession from './pages/Student/StudentSession'
 import StudentPCView from './pages/Student/StudentPCView'
 import StudentRoomView from './pages/Student/StudentRoomView'
 import Tickets from './pages/Tickets'
+import Notification from './pages/Notification'
 
 function App() {
   return (
@@ -31,6 +32,7 @@ function App() {
           <Route path="/student-session" element={<StudentSession />} />
           <Route path="/student-pc-view" element={<StudentPCView />} />
           <Route path="/student-room-view" element={<StudentRoomView />} />
+          <Route path="/notification" element={<Notification />} />
         </Route>
       </Routes>
     </div>
