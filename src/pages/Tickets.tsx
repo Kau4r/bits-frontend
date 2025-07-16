@@ -3,7 +3,6 @@ import Table from "@/components/Table"
 import TableSearchInput from "@/components/Search"
 import TicketingModal from "@/components/Ticketing/TicketingModal"
 
-// Define the Ticket interface
 export interface Ticket {
   id: number;
   reportedBy: string;
@@ -17,7 +16,7 @@ export interface Ticket {
   technician?: string;
 }
 
-// Mock data with additional fields for the modal
+
 const mockTickets: Ticket[] = [
     {
         id: 1,
@@ -108,8 +107,16 @@ export default function Tickets() {
                         ))}
                     </select>
                 </div>
+                <button
+                    onClick={() => {
+                        setSelectedTicket(null)
+                        setIsModalOpen(true)
+                    }}
+                    className="w-full sm:w-auto rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:bg-indigo-700 dark:hover:bg-indigo-600"
+                >
+                    Report Issue
+                </button>
             </div>
-
             <div className="mt-4">
                 <Table
                     headers={['Reported By', 'Location', 'Type', 'Status', 'Actions']}
@@ -158,7 +165,7 @@ export default function Tickets() {
                 </Table>
             </div>
 
-            {selectedTicket && (
+            {isModalOpen && (
                 <TicketingModal
                     isOpen={isModalOpen}
                     onClose={() => {
@@ -167,6 +174,7 @@ export default function Tickets() {
                     }}
                     ticket={selectedTicket}
                     onUpdate={handleUpdateTicket}
+                    isCreating={selectedTicket === null}
                 />
             )}
         </div>
