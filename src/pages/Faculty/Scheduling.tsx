@@ -234,13 +234,11 @@ export default function Scheduling() {
             const statusLabel = {
               approved: 'Approved',
               pending: 'Pending',
-              denied: 'Denied',
             };
 
             const statusColor = {
               approved: 'bg-green-600 text-white',
               pending: 'bg-yellow-500 text-black',
-              denied: 'bg-red-600 text-white',
             };
 
             const timeText = event.start && event.end
