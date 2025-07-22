@@ -8,10 +8,13 @@ import LabtechDashboard from './pages/LabtechDashboard'
 import LabheadDashboard from './pages/LabheadDashboard'
 import LandingPage from './pages/LandingPage'
 import Layout from './components/layout/Layout'
-import '@/App.css'
 import StudentSession from './pages/Student/StudentSession'
 import StudentPCView from './pages/Student/StudentPCView'
 import StudentRoomView from './pages/Student/StudentRoomView'
+import Scheduling from './pages/Faculty/Scheduling'
+import '@/App.css'
+import './index.css';
+
 
 function App() {
   return (
@@ -29,6 +32,7 @@ function App() {
           <Route path="/student-session" element={<StudentSession />} />
           <Route path="/student-pc-view" element={<StudentPCView />} />
           <Route path="/student-room-view" element={<StudentRoomView />} />
+          <Route path="/faculty/scheduling" element={<Scheduling />} />
         </Route>
       </Routes>
     </div>

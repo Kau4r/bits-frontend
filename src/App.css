@@ -2,27 +2,188 @@
 @import "../node_modules/preline/variants.css";
 @plugin "@tailwindcss/forms";
 
+/* ---------------------------------- */
+/* Base Layout Styling                */
+/* ---------------------------------- */
+
 #root {
-    min-height: 100vh;
-    min-width: 100vw;
-    width: 100%;
-    height: 100%;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    background-color: #111827;
+  min-height: 100vh;
+  min-width: 100vw;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  background-color: #111827;
 }
 
 body,
 html {
-    margin: 0;
-    padding: 0;
-    height: 100%;
-    width: 100%;
-    overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 .card {
-    padding: 2em;
+  padding: 2em;
+}
+
+/* ---------------------------------- */
+/* React-Calendar (Dark Mode)         */
+/* ---------------------------------- */
+
+.dark .react-calendar {
+  background-color: #1e2939 !important;
+  color: #f9fafb !important;
+  border: none !important;
+}
+
+.dark .react-calendar__tile:hover,
+.dark .react-calendar__tile.react-calendar__month-view__days__day:hover {
+  background-color: #2657a5 !important;
+  color: #f9fafb !important;
+  border-radius: 0.375rem;
+}
+
+.dark .react-calendar__tile--now {
+    background-color: #5c9ddb !important; /* indigo-800 */
+    color: #f9fafb !important;            /* slate-50 / light text */
+    border-radius: 0.375rem;
+    font-weight: 600;
+  }
+  
+
+.dark .react-calendar__navigation__label:hover,
+.dark .react-calendar__navigation__arrow:hover,
+.dark .react-calendar__navigation__prev-button:hover,
+.dark .react-calendar__navigation__next-button:hover,
+.dark .react-calendar__navigation button:enabled:hover,
+.dark .react-calendar__navigation button:enabled:focus {
+  background-color: #1e293b !important;
+  color: #f9fafb !important;
+  border-radius: 0.375rem;
+}
+
+.dark .react-calendar__navigation__label:active,
+.dark .react-calendar__navigation__arrow:active,
+.dark .react-calendar__navigation__prev-button:active,
+.dark .react-calendar__navigation__next-button:active {
+  background-color: #1e293b !important;
+  color: #f9fafb !important;
+  border-radius: 0.375rem;
+}
+
+.dark .react-calendar__tile--active {
+  background-color: #1e40af !important;
+  color: #f9fafb !important;
+  border-radius: 0.375rem;
+}
+
+.dark .react-calendar__tile--active:hover {
+  background-color: #2a5eec !important;
+  color: #ffffff !important;
+}
+
+/* ---------------------------------- */
+/* FullCalendar Theming               */
+/* ---------------------------------- */
+
+:root {
+  --fc-border-color: #cbd5e1;
+  --fc-bg-color: #201c1c;
+  --fc-button-bg-color: #2563eb;
+  --fc-button-text-color: #ffffff;
+  --fc-toolbar-title-color: #1e293b;
+  --fc-today-bg-color: #e0f2fe;
+  --fc-header-bg-color: #1e293b;
+  --fc-header-text-color: #f3f4f6;
+  --fc-cell-bg-color: #ffffff;
+  --fc-cell-text-color: #1e293b;
+}
+
+.fc .fc-toolbar-title {
+  color: var(--fc-toolbar-title-color) !important;
+  font-weight: 600;
+}
+
+.fc .fc-scrollgrid-sync-inner {
+  background-color: #1f2937 !important;
+}
+
+.fc .fc-scrollgrid-sync-inner td,
+.fc .fc-scrollgrid tr td,
+.fc .fc-scrollgrid-section-header-cell {
+  border-color: var(--fc-border-color) !important;
+}
+
+.fc .fc-scrollgrid-section,
+.fc .fc-scrollgrid {
+  background-color: var(--fc-cell-bg-color) !important;
+}
+
+.fc .fc-scrollgrid-section td,
+.fc-scrollgrid td {
+  color: var(--fc-cell-text-color) !important;
+  text-align: left !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.025em !important;
+  text-transform: uppercase !important;
+}
+
+.fc-scrollgrid {
+  border-radius: 0.5rem !important;
+  border: 1px solid var(--fc-border-color) !important;
+  padding: 1rem !important;
+}
+
+.fc-scroller.fc-scroller-liquid,
+.fc-list-day-cushion.fc-cell-shaded {
+  background-color: #374151 !important;
+}
+
+.fc .fc-timegrid-axis,
+.fc .fc-timegrid-axis .fc-scrollgrid-sync-inner {
+  background-color: #1f2937 !important;
+  color: #f3f4f6 !important;
+  font-weight: 500;
+  padding-left: 0.75rem !important;
+}
+
+.fc .fc-day-today {
+  background-color: var(--fc-today-bg-color) !important;
+}
+
+.fc .fc-scrollgrid-section-header {
+  background-color: var(--fc-header-bg-color) !important;
+  color: var(--fc-header-text-color) !important;
+  font-weight: 600;
+}
+
+.fc-timegrid-event-harness-inset .fc-timegrid-event,
+.fc-timegrid-event.fc-event-mirror,
+.fc-timegrid-more-linkharness {
+  box-shadow: 0 0 0 1px #18212c !important;
+}
+
+/* ---------------------------------- */
+/* Dark Mode FullCalendar Overrides   */
+/* ---------------------------------- */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fc-border-color: #374151;
+    --fc-bg-color: #1f2937;
+    --fc-button-bg-color: #3b82f6;
+    --fc-button-text-color: #ffffff;
+    --fc-toolbar-title-color: #f3f4f6;
+    --fc-today-bg-color: #312e81;
+    --fc-header-bg-color: #1e2939;
+    --fc-header-text-color: #f3f4f6;
+    --fc-cell-bg-color: #1f2937;
+    --fc-cell-text-color: #f3f4f6;
+  }
 }
