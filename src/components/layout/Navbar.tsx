@@ -13,7 +13,8 @@ const roleRoutes = {
     { label: 'Borrow Item', path: '/faculty/borrow' },
   ],
   'Lab Tech': [
-    { label: 'Tickets', path: '/labtech/tickets' },
+    { label: 'Dashboard', path: '/labtech-dashboard' },
+    { label: 'Tickets', path: '/tickets' },
     { label: 'Borrow Requests', path: '/labtech/borrow-requests' },
     { label: 'Inventory', path: '/inventory' },
     { label: 'Room Queueing', path: '/labtech/queue-room' },
@@ -21,7 +22,7 @@ const roleRoutes = {
   'Lab Head': [
     { label: 'Faculty Schedules', path: '/labhead/faculty-schedule' },
     { label: 'Lab Tech Reports', path: '/labhead/reports' },
-    { label: 'Tickets', path: '/labtech/tickets' },
+    { label: 'Tickets', path: '/tickets' },
     { label: 'Inventory', path: '/inventory' },
   ],
   Student: [
