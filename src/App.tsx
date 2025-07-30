@@ -12,6 +12,7 @@ import StudentSession from './pages/Student/StudentSession'
 import StudentPCView from './pages/Student/StudentPCView'
 import StudentRoomView from './pages/Student/StudentRoomView'
 import Scheduling from './pages/Faculty/Scheduling'
+import Ticket from './pages/Labtech/Tickets'
 import '@/App.css'
 import './index.css';
 
@@ -33,6 +34,7 @@ function App() {
           <Route path="/student-pc-view" element={<StudentPCView />} />
           <Route path="/student-room-view" element={<StudentRoomView />} />
           <Route path="/faculty/scheduling" element={<Scheduling />} />
+          <Route path="/labtech/tickets" element={<Ticket />} />
         </Route>
       </Routes>
     </div>

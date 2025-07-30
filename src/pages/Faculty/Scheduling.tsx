@@ -10,6 +10,7 @@ import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 dayjs.extend(isSameOrBefore);
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
+import ReportIssueModal from '../../components/student/Modals/ReportIssue';
 
 const DAY_INDEX_TO_CODE = ['su', 'mo', 'tu', 'we', 'th', 'fr', 'sa'];
 
@@ -22,7 +23,9 @@ const INITIAL_FORM = {
   repeat: false,
   repeatDays: ['su', 'mo', 'tu', 'we', 'th', 'fr', 'sa'],
   endDate: '',
+  borrowedItems: [], // fixed key and initialised as array
 };
+
 
 export const MOCK_ROOMS = [
   { id: 'room_a', name: 'LB465' },
@@ -30,6 +33,13 @@ export const MOCK_ROOMS = [
   { id: 'room_c', name: 'LB467' },
   { id: 'room_d', name: 'LB468' },
 ];
+
+const MOCK_ITEMS = Object.freeze([
+  { id: 'item_a', name: 'Projector A' },
+  { id: 'item_b', name: 'Laptop B' },
+  { id: 'item_c', name: 'Microphone C' },
+]);
+
 
 export default function Scheduling() {
 
@@ -42,6 +52,24 @@ export default function Scheduling() {
     );
   };
 
+  const buildEvent = (start, end) => ({
+    title: formData.title,
+    start,
+    end,
+    color: '#306844',
+    extendedProps: {
+      description: formData.description,
+      roomId: activeRoom,
+      roomName: MOCK_ROOMS.find(r => r.id === activeRoom)?.name || 'Unknown',
+      borrowedItems: formData.borrowedItems.map(id => {
+        const item = MOCK_ITEMS.find(i => i.id === id);
+        return { id: item?.id || '', name: item?.name || '' };
+      }),
+      status: 'pending',
+      createdBy: userRole,
+    },
+  });
+
   const denyEvent = (event) => {
     setEvents(prev => prev.filter(e => e !== event));
   };
@@ -53,6 +81,59 @@ export default function Scheduling() {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState(INITIAL_FORM);
   const [activeRoom, setActiveRoom] = useState('room_a');
+  const [showReportIssueModal, setShowReportIssueModal] = useState(false);
+
+
+  function BorrowedItemSelect({ value, onChange, disabledItems }) {
+    return (
+      <div>
+        <label className="block text-sm mb-1 text-gray-700 dark:text-gray-300">Borrow Items</label>
+        <ul className="space-y-2">
+          {value.map((itemId, idx) => {
+            const item = MOCK_ITEMS.find(i => i.id === itemId);
+            return (
+              <li key={idx} className="flex justify-between items-center bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded">
+                <span>{item?.name || itemId}</span>
+                <button type="button" className="text-red-500" onClick={() => onChange(value.filter((_, i) => i !== idx))}>Remove</button>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    );
+  }
+
+  function BorrowedItemAddControl({ onAdd, disabledItems }) {
+    return (
+      <div>
+        <label className="block text-sm mb-1 text-gray-700 dark:text-gray-300 mt-3">Add Item to Borrow</label>
+        <div className="flex gap-2">
+          <select
+            className="flex-1 p-2 rounded border dark:bg-gray-700 dark:text-white"
+            id="borrow-item-select"
+          >
+            {MOCK_ITEMS.map((item) => (
+              <option key={item.id} value={item.id} disabled={disabledItems.includes(item.id)}>
+                {item.name} {disabledItems.includes(item.id) ? '(Unavailable)' : ''}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
+            onClick={() => {
+              const select = document.getElementById('borrow-item-select');
+              const val = select?.value;
+              if (val && !disabledItems.includes(val)) onAdd(val);
+            }}
+          >
+            Add
+          </button>
+        </div>
+      </div>
+    );
+  }
+
 
   const updateCurrentDate = () => {
     const date = calendarRef.current?.getApi()?.getDate();
@@ -131,22 +212,6 @@ export default function Scheduling() {
     setFormData(INITIAL_FORM);
   };
 
-
-  const buildEvent = (start, end) => ({
-    title: formData.title,
-    start,
-    end,
-    color: '#306844',
-    extendedProps: {
-      description: formData.description,
-      roomId: activeRoom,
-      roomName: MOCK_ROOMS.find(r => r.id === activeRoom)?.name || 'Unknown',
-      status: 'pending',
-      createdBy: userRole, // Add creator role/ID here
-    },
-  });
-
-
   const toggleRepeatDay = (day) => {
     setFormData((prev) => {
       const days = [...prev.repeatDays];
@@ -179,8 +244,17 @@ export default function Scheduling() {
   return (
     <div className="flex min-h-screen overflow-hidden bg-gray-100 dark:bg-gray-900">
       <div className="flex-grow p-6">
-        <div className="flex items-center justify-between mb-4 relative">
+        <div className="flex justify-between mb-4 relative">
+          <div className="flex items-center gap-3">
+            <button
+              className="px-3 py-1 rounded bg-red-600 text-white hover:bg-red-500 dark:bg-red-700 dark:hover:bg-red-600"
+              onClick={() => setShowReportIssueModal(true)}
+            >
+              Report Issue
+            </button>
+          </div>
           <div className="absolute left-1/2 transform -translate-x-1/2">
+
             <select
               className="p-2 pr-8 rounded bg-gray-800 text-white border border-gray-600"
               value={activeRoom}
@@ -193,7 +267,7 @@ export default function Scheduling() {
               ))}
             </select>
           </div>
-          <div className="ml-auto flex items-center gap-3">
+          <div className="flex items-center gap-3">
             <select
               className="p-2 rounded bg-gray-800 text-white border border-gray-600"
               value={calendarView}
@@ -206,7 +280,10 @@ export default function Scheduling() {
             <span className="text-white font-semibold">{currentDate}</span>
             <button onClick={goToPrev} className="px-3 py-1 rounded bg-gray-700 text-white hover:bg-gray-600">←</button>
             <button onClick={goToNext} className="px-3 py-1 rounded bg-gray-700 text-white hover:bg-gray-600">→</button>
+
+
           </div>
+
         </div>
 
         <FullCalendar
@@ -290,15 +367,45 @@ export default function Scheduling() {
           />
         </div>
 
+
         {showForm && (
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 border-t border-gray-300 dark:border-gray-700 flex flex-col gap-3">
             <Input label="Title" type="text" value={formData.title} onChange={(v) => setFormData({ ...formData, title: v })} required />
             <Input label="Description" isTextArea value={formData.description} onChange={(v) => setFormData({ ...formData, description: v })} />
+            <BorrowedItemSelect
+              value={formData.borrowedItems}
+              onChange={(v) => setFormData({ ...formData, borrowedItems: v })}
+              disabledItems={events.filter(e => e.extendedProps.status === 'approved' || e.extendedProps.status === 'pending')
+                .filter(e =>
+                  (formData.startDate === dayjs(e.start).format('YYYY-MM-DD')) &&
+                  (formData.startTime < dayjs(e.end).format('HH:mm')) &&
+                  (formData.endTime > dayjs(e.start).format('HH:mm'))
+                )
+                .flatMap(e => e.extendedProps.borrowedItems.map(b => b.id))
+              }
+            />
+            <BorrowedItemAddControl
+              onAdd={(id) => {
+                if (!formData.borrowedItems.includes(id)) {
+                  setFormData({ ...formData, borrowedItems: [...formData.borrowedItems, id] });
+                }
+              }}
+              disabledItems={events.filter(e => e.extendedProps.status === 'approved' || e.extendedProps.status === 'pending')
+                .filter(e =>
+                  (formData.startDate === dayjs(e.start).format('YYYY-MM-DD')) &&
+                  (formData.startTime < dayjs(e.end).format('HH:mm')) &&
+                  (formData.endTime > dayjs(e.start).format('HH:mm'))
+                )
+                .flatMap(e => e.extendedProps.borrowedItems.map(b => b.id))
+              }
+            />
             <DateTimeInputs formData={formData} setFormData={setFormData} />
             <RepeatInputs formData={formData} toggleRepeatDay={toggleRepeatDay} setFormData={setFormData} />
             <button type="submit" className="mt-2 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded">Add Booking</button>
           </form>
         )}
+
+
         {userRole === 'admin' && (
           <div className="mt-4 px-3 overflow-y-auto max-h-[300px]">
             <h2 className="font-bold text-lg mb-2 text-white">Pending Requests</h2>
@@ -336,8 +443,16 @@ export default function Scheduling() {
               ))}
           </div>
         )}
-
-
+        <ReportIssueModal
+          isOpen={showReportIssueModal}
+          onClose={() => setShowReportIssueModal(false)}
+          onSubmit={async (description, issueType, equipment) => {
+            // TODO: Implement actual submission logic here
+            console.log('Submitting issue:', { description, issueType, equipment });
+          }}
+          room={MOCK_ROOMS.find(r => r.id === activeRoom)?.name || ''}
+          pcNumber="N/A"
+        />
       </div>
     </div>
 
