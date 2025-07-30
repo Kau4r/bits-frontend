@@ -1,5 +1,4 @@
-import { statusColors } from "@/types/inventory"
-import type { Room } from "@/types/Room"
+import { statusColors, type Room } from "@/types/room"
 
 interface Props {
   room: Room

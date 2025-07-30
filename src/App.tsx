@@ -4,8 +4,8 @@ import UserDetails from './pages/SysAd/UserDetails'
 import InventoryPage from './pages/InventoryPage'
 import SysAdDash from './pages/SysAd/UserPage'
 import RoomPage from './pages/SysAd/RoomPage'
-import LabtechDashboard from './pages/LabtechDashboard'
-import LabheadDashboard from './pages/LabheadDashboard'
+import LabtechDashboard from './pages/LabTech/LabtechDashboard'
+import LabheadDashboard from './pages/LabHead/LabheadDashboard'
 import LandingPage from './pages/LandingPage'
 import Layout from './components/layout/Layout'
 import StudentSession from './pages/Student/StudentSession'
@@ -15,7 +15,6 @@ import Scheduling from './pages/Faculty/Scheduling'
 import Ticket from './pages/Labtech/Tickets'
 import '@/App.css'
 import './index.css';
-
 
 function App() {
   return (
@@ -27,6 +26,7 @@ function App() {
           <Route path="/room" element={<RoomPage />} />
           <Route path="/" element={<LandingPage />} />
           <Route path="/labtech-dashboard" element={<LabtechDashboard />} />
+          <Route path="/tickets" element={<Tickets />} />
           <Route path="/labhead-dashboard" element={<LabheadDashboard />} />
           <Route path="/SysDashboard" element={<SysAdDash />} />
           <Route path="/user/:email" element={<UserDetails />} />
