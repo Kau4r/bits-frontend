@@ -74,7 +74,7 @@ const InventoryPage = () => {
 
   return (
     <div className="px-6 py-4 sm:px-8 lg:px-10">
-      <div className="mb-8 flex items-end justify-between gap-6">
+      <div className="mb-4 flex items-end justify-between gap-6">
         <Search searchTerm={searchTerm} onChange={setSearchTerm} showLabel={false} />
         <div className="flex gap-3">
           <button className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-base text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:bg-slate-900 dark:text-white dark:hover:bg-gray-800">
@@ -128,15 +128,14 @@ const InventoryPage = () => {
 
             <div>
               <span
-                className={`inline-flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${
-                  item.status === 'Available'
-                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                    : item.status === 'In Use'
-                      ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                      : item.status === 'Maintenance'
-                        ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
-                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                }`}
+                className={`inline-flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${item.status === 'Available'
+                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                  : item.status === 'In Use'
+                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                    : item.status === 'Maintenance'
+                      ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+                      : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                  }`}
               >
                 {item.status}
               </span>

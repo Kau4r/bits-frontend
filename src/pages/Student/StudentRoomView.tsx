@@ -18,7 +18,7 @@ export default function StudentRoomView() {
                     Back to PC view →
                 </button>
             </div>
-            <div className="px-4 sm:px-8 lg:px-10 pb-4">
+            <div className="px-4 sm:px-8 lg:px-10">
                 <SessionBar 
                   room="LB 467"
                   pcNumber="14"
