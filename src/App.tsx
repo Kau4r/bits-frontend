@@ -15,7 +15,7 @@ import Scheduling from './pages/Faculty/Scheduling'
 import Tickets from './pages/Tickets'
 import '@/App.css'
 import './index.css';
-import LabtechTickets from './pages/LabTech/Tickets'
+import LabtechTickets from './pages/Tickets'
 
 
 function App() {
