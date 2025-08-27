@@ -25,14 +25,14 @@ export default function StudentRoomView() {
                 />
             </div>
             <div className="flex-1 overflow-auto p-4 sm:px-8 lg:px-10">
-                <h2 className="text-2xl font-bold text-white mb-6">Open Laboratories</h2>
+                <h2 className="text-2xl font-bold text-white mb-6">Opened Laboratories</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {laboratoryRooms.map((room) => (
                         <OpenedLabCard key={room.id} room={room} />
                     ))}
                 </div>
                 
-                <h2 className="text-2xl font-bold text-white mt-12 mb-6">Lecture Rooms</h2>
+                <h2 className="text-2xl font-bold text-white mt-12 mb-6 ">Lecture Rooms</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {lectureRooms.map((room) => (
                         <LectureCard key={room.id} room={room} />

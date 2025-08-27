@@ -7,44 +7,48 @@ interface OpenedLabCardProps {
 
 export default function OpenedLabCard({ room }: OpenedLabCardProps) {
   const Logo = room.type === 'MAC' ? FaApple : FaWindows;
-  const logoColor = room.type === 'MAC' ? 'text-gray-800' : 'text-blue-500';
-  
+  const logoColor = room.type === 'MAC' ? 'text-gray-200' : 'text-blue-400';
+
   return (
-    <div className="rounded-lg p-4 bg-slate-800 border border-slate-700">
+    <div className="rounded-2xl p-5 bg-slate-800 border border-slate-700 
+                    hover:border-blue-500 transition-colors min-h-48">
       <div className="flex items-start space-x-4">
-        {/* Logo */}
-        <div className={`p-3 rounded-lg bg-white ${room.type === 'MAC' ? 'bg-opacity-20' : 'bg-opacity-10'}`}>
+        
+        <div className="p-4 rounded-xl bg-slate-700/60 flex items-center justify-center">
           <Logo className={`w-8 h-8 ${logoColor}`} />
         </div>
-        
-        {/* Room Info */}
+      
         <div className="flex-1">
+
           <div className="flex justify-between items-start">
             <div>
-              <h3 className="text-lg font-semibold text-white">{room.name}</h3>
-              <p className="text-sm text-gray-400">Type: {room.type} Laboratory</p>
-              <p className="text-sm text-gray-400">Room: {room.roomCode}</p>
+              <h3 className="text-lg font-bold text-white">{room.name}</h3>
+              <p className="text-sm text-gray-400">Room: {room.name}</p>
             </div>
-            <div className="flex items-center space-x-2 bg-slate-700 px-2 py-1 rounded">
+
+            <div className="flex items-center space-x-2 bg-slate-700 px-3 py-1 rounded-full text-sm">
               <FaUserFriends className="text-gray-400" />
-              <span className="text-sm text-gray-300">{room.capacity}</span>
+              <span className="text-gray-200">{room.capacity}</span>
             </div>
           </div>
-          
-          {/* Schedule and Next Available */}
-          <div className="mt-3 space-y-2">
+        
+          <div className="mt-4 space-y-3">
             <div className="flex items-center text-sm text-gray-300">
-              <FaClock className="mr-2 text-gray-400 flex-shrink-0" />
-              <span>Schedule: {room.schedule}</span>
+              <FaClock className="mr-2 text-gray-400" />
+              <span>
+                Schedule: <span className="text-gray-200 font-medium">{room.schedule}</span>
+              </span>
             </div>
             
             <div className="flex items-center text-sm text-gray-300">
-              <FaDoorOpen className="mr-2 text-gray-400 flex-shrink-0" />
-              <span>Next Available: Room {room.nextAvailable}</span>
+              <FaDoorOpen className="mr-2 text-gray-400" />
+              <span>
+                Next Available: <span className="text-green-400 font-medium">{room.nextAvailable}</span>
+              </span>
             </div>
           </div>
         </div>
-      </div>
+      </div>  
     </div>
   );
 }

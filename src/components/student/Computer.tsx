@@ -22,13 +22,18 @@ export default function Computer({ pcNumber, status = 'available', isActive = fa
     };
 
     return (
-        <div className={`relative rounded-lg bg-slate-800 p-4 flex flex-col items-center justify-center h-32 transition-all duration-200 
-            ${isActive ? 'ring-2 ring-blue-500' : 'hover:bg-slate-700'}`}>
-            <div className="flex items-center gap-2 mb-2">
+        <div 
+            className={`relative rounded-lg bg-slate-800 p-4 flex flex-col items-center 
+            justify-center transition-all duration-200 min-h-[8rem] max-h-[8rem]
+            ${isActive ? 'ring-2 ring-blue-500' : 'hover:bg-slate-700'}`}
+        >
+            
+            <div className="absolute top-2 left-2 flex items-center gap-1">
                 <span className={`w-2 h-2 rounded-full ${statusStyles[status]}`}></span>
                 <span className="text-xs text-gray-400">{statusText[status]}</span>
             </div>
-            <div className="flex flex-col items-center">
+
+            <div className="flex flex-col items-center pt-4 justify-center">
                 <FaDesktop className={`w-8 h-8 ${statusStyles[status]}`} />
                 <span className="text-white font-medium mt-2">PC {pcNumber}</span>
             </div>
