@@ -20,7 +20,7 @@ const roleRoutes = {
   'Lab Head': [
     { label: 'Faculty Schedules', path: '/faculty/scheduling' },
     { label: 'Lab Tech Reports', path: '/labhead/reports' },
-    { label: 'Tickets', path: '/labtech/tickets' },
+    { label: 'Tickets', path: '/tickets' },
     { label: 'Inventory', path: '/inventory' },
   ],
   Student: [
