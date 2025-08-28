@@ -15,6 +15,8 @@ import Scheduling from './pages/Faculty/Scheduling'
 import Ticket from './pages/Labtech/Tickets'
 import '@/App.css'
 import './index.css';
+import Room from './pages/Labtech/Room'
+import Forms from './pages/Labtech/Forms'
 
 
 function App() {
@@ -35,6 +37,8 @@ function App() {
           <Route path="/student-room-view" element={<StudentRoomView />} />
           <Route path="/faculty/scheduling" element={<Scheduling />} />
           <Route path="/labtech/tickets" element={<Ticket />} />
+          <Route path="/labtech/room" element={<Room />} />
+          <Route path="/labtech/forms" element={<Forms />} />
         </Route>
       </Routes>
     </div>
