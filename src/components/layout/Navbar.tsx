@@ -14,7 +14,8 @@ const roleRoutes = {
     { label: 'Tickets', path: '/labtech/tickets' },
     { label: 'Scheduling', path: '/faculty/scheduling' },
     { label: 'Inventory', path: '/inventory' },
-    { label: 'Room Queueing', path: '/labtech/queue-room' },
+    { label: 'Room Queueing', path: '/labtech/room' },
+    { label: 'Forms', path: '/labtech/forms' },
   ],
   'Lab Head': [
     { label: 'Faculty Schedules', path: '/faculty/scheduling' },

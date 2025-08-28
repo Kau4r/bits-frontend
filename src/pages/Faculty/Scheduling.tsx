@@ -43,7 +43,7 @@ const MOCK_ITEMS = Object.freeze([
 
 export default function Scheduling() {
 
-  const [userRole, setUserRole] = useState('admin'); // mock for now
+  const [userRole, setUserRole] = useState('faculty'); // mock for now
   const approveEvent = (event) => {
     setEvents(prev =>
       prev.map(e =>
@@ -77,7 +77,52 @@ export default function Scheduling() {
   const calendarRef = useRef(null);
   const [calendarView, setCalendarView] = useState('timeGridWeek');
   const [currentDate, setCurrentDate] = useState(dayjs().format('MMMM YYYY'));
-  const [events, setEvents] = useState([]);
+  const [events, setEvents] = useState([
+    {
+      title: 'Class in LB483',
+      start: '2025-08-06T09:00',
+      end: '2025-08-06T11:00',
+      extendedProps: {
+        roomId: 'room_a',
+        roomName: 'LB483',
+        status: 'approved',
+        createdBy: userRole
+      }
+    },
+    {
+      title: 'Class in LB483',
+      start: '2025-08-06T13:00',
+      end: '2025-08-06T15:00',
+      extendedProps: {
+        roomId: 'room_a',
+        roomName: 'LB483',
+        status: 'approved',
+        createdBy: userRole
+      }
+    },
+    {
+      title: 'Class in CNF2',
+      start: '2025-08-06T08:00',
+      end: '2025-08-06T10:00',
+      extendedProps: {
+        roomId: 'room_b',
+        roomName: 'CNF2',
+        status: 'approved',
+        createdBy: userRole
+      }
+    },
+    {
+      title: 'Class in CTL1',
+      start: '2025-08-06T10:00',
+      end: '2025-08-06T12:00',
+      extendedProps: {
+        roomId: 'room_c',
+        roomName: 'CTL1',
+        status: 'approved',
+        createdBy: userRole
+      }
+    }
+  ]);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState(INITIAL_FORM);
   const [activeRoom, setActiveRoom] = useState('room_a');
