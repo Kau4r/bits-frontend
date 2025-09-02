@@ -12,7 +12,7 @@ import '@/App.css'
 import StudentSession from './pages/Student/StudentSession'
 import StudentPCView from './pages/Student/StudentPCView'
 import StudentRoomView from './pages/Student/StudentRoomView'
-import Tickets from './pages/Tickets'
+import Tickets from './pages/Tickets/Tickets'
 
 function App() {
   return (

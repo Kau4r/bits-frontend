@@ -12,6 +12,7 @@ export interface Ticket {
   status: 'Pending' | 'In Progress' | 'Resolved';
   details: string;
   technician?: string;
+  isArchived?: boolean;
 }
 
 interface TicketingModalProps {
@@ -53,31 +54,43 @@ export default function TicketingModal({ isOpen, onClose, ticket, onUpdate, isCr
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      const updatedTicket = isCreating
-        ? {
-            id: Date.now(),
-            reportedBy: 'Current User',
-            role: 'Lab Tech',
-            dateReported: new Date().toISOString(),
-            location: formData.location,
-            type: formData.type,
-            status: 'Pending',
-            details: formData.details,
-            assetCode: formData.assetCode,
-          }
-        : {
-            ...ticket!,
-            status,
-            technician: assignedTechnician || ticket?.technician,
-          };
+    const updatedTicket = isCreating
+      ? {
+          id: Date.now(),
+          reportedBy: 'Current User',
+          role: 'Lab Tech',
+          dateReported: new Date().toISOString(),
+          location: formData.location,
+          type: formData.type,
+          status: 'Pending',
+          details: formData.details,
+          assetCode: formData.assetCode,
+          isArchived: false
+        }
+      : {
+          ...ticket!,
+          status,
+          technician: assignedTechnician || ticket?.technician,
+        };
 
-      onUpdate(updatedTicket as Ticket);
-      setIsSubmitting(false);
-      onClose();
-    }, 500);
+    onUpdate(updatedTicket as Ticket);
+    
+    // Reset form if this was a new ticket
+    if (isCreating) {
+      setFormData({
+        location: '',
+        type: '',
+        assetCode: '',
+        details: ''
+      });
+    }
+    
+    setIsSubmitting(false);
+    onClose();
   };
 
   const formatDate = (dateString: string) => {
