@@ -8,7 +8,10 @@ const roleRoutes = {
     { label: 'Room', path: '/room' },
   ],
   Faculty: [
-    { label: 'Scheduling', path: '/faculty/scheduling' },
+    { label: 'Scheduling', path: '/faculty/FacultyScheduling' },
+  ],
+  Secretary: [
+    { label: 'Scheduling', path: '/secretary/SecretaryScheduling' },
   ],
   'Lab Tech': [
     { label: 'Tickets', path: '/labtech/tickets' },

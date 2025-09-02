@@ -11,12 +11,13 @@ import Layout from './components/layout/Layout'
 import StudentSession from './pages/Student/StudentSession'
 import StudentPCView from './pages/Student/StudentPCView'
 import StudentRoomView from './pages/Student/StudentRoomView'
-import Scheduling from './pages/Faculty/Scheduling'
 import Tickets from './pages/Tickets'
 import '@/App.css'
 import './index.css';
 import Room from './pages/LabTech/Room'
 import Forms from './pages/LabTech/Forms'
+import Secretary from './pages/Secretary/SecretaryScheduling'
+import FacultyScheduling from './pages/Faculty/FacultyScheduling'
 
 
 function App() {
@@ -36,10 +37,11 @@ function App() {
           <Route path="/student-session" element={<StudentSession />} />
           <Route path="/student-pc-view" element={<StudentPCView />} />
           <Route path="/student-room-view" element={<StudentRoomView />} />
-          <Route path="/faculty/scheduling" element={<Scheduling />} />
+          <Route path="/faculty/FacultyScheduling" element={<FacultyScheduling />} />
           <Route path="/labtech/tickets" element={<Tickets />} />
           <Route path="/labtech/room" element={<Room />} />
           <Route path="/labtech/forms" element={<Forms />} />
+          <Route path="secretary/SecretaryScheduling" element={<Secretary/>}/>
         </Route>
       </Routes>
     </div>
