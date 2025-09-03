@@ -17,7 +17,8 @@ const roleRoutes = {
     { label: 'Tickets', path: '/labtech/tickets' },
     { label: 'Scheduling', path: '/faculty/scheduling' },
     { label: 'Inventory', path: '/inventory' },
-    { label: 'Room Queueing', path: '/labtech/room' },
+    { label: 'Room Queueing', path: '/labtech/queue-room' },
+    { label: 'Notifications', path: '/notification' },
     { label: 'Forms', path: '/labtech/forms' },
   ],
   'Lab Head': [
@@ -25,6 +26,7 @@ const roleRoutes = {
     { label: 'Lab Tech Reports', path: '/labhead/reports' },
     { label: 'Tickets', path: '/tickets' },
     { label: 'Inventory', path: '/inventory' },
+    { label: 'Notifications', path: '/notification' },
   ],
   Student: [
     { label: 'Student', path: '/student-session' },
@@ -74,7 +76,6 @@ export default function RoleNavbar() {
         </ul>
       </div>
 
-      {/* User Info */}
       <div className="border-t px-4 py-3 dark:border-gray-700">
         <div className="flex items-center space-x-3">
           <User className="h-5 w-5 text-gray-600 dark:text-gray-300" />
