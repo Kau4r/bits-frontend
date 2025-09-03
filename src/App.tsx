@@ -11,7 +11,7 @@ import Layout from './components/layout/Layout'
 import StudentSession from './pages/Student/StudentSession'
 import StudentPCView from './pages/Student/StudentPCView'
 import StudentRoomView from './pages/Student/StudentRoomView'
-import Tickets from './pages/Tickets'
+import Tickets from './pages/Tickets/Tickets'
 import Notification from './pages/Notification'
 import '@/App.css'
 import './index.css';

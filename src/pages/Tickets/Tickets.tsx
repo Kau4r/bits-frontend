@@ -1,9 +1,8 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import Table from "@/components/Table"
 import TableSearchInput from "@/components/Search"
 import TicketingModal from "@/components/Ticketing/TicketingModal"
 
-// Define the Ticket interface
 export interface Ticket {
   id: number;
   reportedBy: string;
@@ -15,9 +14,9 @@ export interface Ticket {
   details: string;
   assetCode: string;
   technician?: string;
+  isArchived?: boolean;
 }
 
-// Mock data with additional fields for the modal
 const mockTickets: Ticket[] = [
     {
         id: 1,
@@ -28,7 +27,8 @@ const mockTickets: Ticket[] = [
         type: "Computer",
         status: "Pending",
         details: "There is no VALORANT!",
-        assetCode: "PC-001"
+        assetCode: "PC-001",
+        isArchived: false
     },
     {
         id: 2,
@@ -40,7 +40,8 @@ const mockTickets: Ticket[] = [
         status: "Resolved",
         details: "Missing key Caps",
         assetCode: "KB-045",
-        technician: "John Tech"
+        technician: "John Tech",
+        isArchived: false
     },
     {
         id: 3,
@@ -52,7 +53,8 @@ const mockTickets: Ticket[] = [
         status: "In Progress",
         details: "BLinking SIR!",
         assetCode: "MON-112",
-        technician: "Sarah Engineer"
+        technician: "Sarah Engineer",
+        isArchived: false
     },
 ]
 
@@ -62,14 +64,23 @@ export default function Tickets() {
     const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [tickets, setTickets] = useState<Ticket[]>(mockTickets)
+    const [showArchived, setShowArchived] = useState(false);
 
-    const filteredTickets = tickets.filter(ticket => {
-        const matchesSearch = Object.values(ticket).some(
-            value => value.toString().toLowerCase().includes(searchTerm.toLowerCase())
-        )
-        const matchesStatus = selectedStatus === 'All' || ticket.status === selectedStatus
-        return matchesSearch && matchesStatus
-    })
+    const displayedTickets = useMemo(() => {
+        return showArchived 
+            ? tickets.filter(ticket => ticket.isArchived)
+            : tickets.filter(ticket => !ticket.isArchived);
+    }, [tickets, showArchived]);
+
+    const filteredTickets = useMemo(() => {
+        return displayedTickets.filter(ticket => {
+            const matchesSearch = Object.values(ticket).some(
+                value => value.toString().toLowerCase().includes(searchTerm.toLowerCase())
+            );
+            const matchesStatus = selectedStatus === 'All' || ticket.status === selectedStatus;
+            return matchesSearch && matchesStatus;
+        });
+    }, [displayedTickets, searchTerm, selectedStatus]);
 
     const statuses = ['All', 'Pending', 'In Progress', 'Resolved']
 
@@ -79,17 +90,46 @@ export default function Tickets() {
     }
 
     const handleUpdateTicket = (updatedTicket: Ticket) => {
-        setTickets(tickets.map(t => 
-            t.id === updatedTicket.id ? updatedTicket : t
-        ))
+        setTickets(prevTickets => {
+            // Check if this is an existing ticket
+            const existingTicket = prevTickets.find(t => t.id === updatedTicket.id);
+            
+            if (existingTicket) {
+                // Update existing ticket, preserve isArchived status
+                return prevTickets.map(t => 
+                    t.id === updatedTicket.id 
+                        ? { ...updatedTicket, isArchived: t.isArchived }
+                        : t
+                );
+            } else {
+                // Add new ticket with isArchived: false
+                return [...prevTickets, { ...updatedTicket, isArchived: false }];
+            }
+        });
     }
+
+    const handleArchiveTicket = (ticketId: number) => {
+        setTickets(tickets.map(ticket => 
+            ticket.id === ticketId 
+                ? { ...ticket, isArchived: true } 
+                : ticket
+        ));
+    };
+
+    const handleRestoreTicket = (ticketId: number) => {
+        setTickets(tickets.map(ticket => 
+            ticket.id === ticketId 
+                ? { ...ticket, isArchived: false } 
+                : ticket
+        ));
+    };
 
     return (
         <div className="p-4 space-y-4">
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold">Tickets</h1>
             </div>
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row gap-4 items-center">
                 <TableSearchInput
                     searchTerm={searchTerm}
                     onChange={setSearchTerm}
@@ -108,13 +148,54 @@ export default function Tickets() {
                         ))}
                     </select>
                 </div>
-            </div>
+                
+                {/* Toggle Switch */}
+                <div className="flex items-center h-10 bg-slate-100 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600">
+                    <button
+                        onClick={() => setShowArchived(false)}
+                        className={`h-full px-4 flex items-center justify-center ${
+                            !showArchived 
+                                ? 'bg-slate-700 text-white rounded-r-lg' 
+                                : 'text-slate-600 hover:bg-gray-50 dark:text-gray-900'
+                        }`}
+                    >
+                        <span className="text-sm font-medium">
+                            Active
+                        </span>
+                    </button>
+                    <button
+                        onClick={() => setShowArchived(true)}
+                        className={`h-full px-4 flex items-center justify-center ${
+                            showArchived 
+                                ? 'bg-slate-700 text-white rounded-l-lg' 
+                                : 'text-slate-600 hover:bg-gray-50 dark:text-gray-900'
+                        }`}
+                    >
+                        <span className="text-sm font-medium">
+                            Archived
+                        </span>
+                    </button>
+                </div>
 
+                <button
+                    onClick={() => {
+                        setSelectedTicket(null)
+                        setIsModalOpen(true)
+                    }}
+                    className="w-full sm:w-auto rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:bg-indigo-700 dark:hover:bg-indigo-600"
+                >
+                    Report Issue
+                </button>
+            </div>
             <div className="mt-4">
                 <Table
                     headers={['Reported By', 'Location', 'Type', 'Status', 'Actions']}
                 >
-                    {filteredTickets.length > 0 ? (
+                    {filteredTickets.length === 0 ? (
+                        <div className="col-span-full text-center py-4 text-gray-500 dark:text-gray-400">
+                            {showArchived ? 'No archived tickets found' : 'No active tickets found'}
+                        </div>
+                    ) : (
                         filteredTickets.map((ticket) => (
                             <div 
                                 key={ticket.id} 
@@ -140,25 +221,36 @@ export default function Tickets() {
                                         <p className="text-xs text-gray-500 mt-1">Tech: {ticket.technician}</p>
                                     )}
                                 </div>
-                                <div>
+                                <div className="space-x-2">
                                     <button
                                         onClick={() => handleViewTicket(ticket)}
-                                        className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                        className="px-3 py-1 text-sm text-white bg-blue-500 rounded hover:bg-blue-600"
                                     >
                                         View
                                     </button>
+                                    {showArchived ? (
+                                        <button
+                                            onClick={() => handleRestoreTicket(ticket.id)}
+                                            className="px-3 py-1 text-sm text-white bg-green-500 rounded hover:bg-green-600"
+                                        >
+                                            Restore
+                                        </button>
+                                    ) : ticket.status === 'Resolved' ? (
+                                        <button
+                                            onClick={() => handleArchiveTicket(ticket.id)}
+                                            className="px-3 py-1 text-sm text-white bg-gray-500 rounded hover:bg-gray-600"
+                                        >
+                                            Archive
+                                        </button>
+                                    ) : null}
                                 </div>
                             </div>
                         ))
-                    ) : (
-                        <div className="col-span-full text-center py-4 text-gray-500 dark:text-gray-400">
-                            No tickets found
-                        </div>
                     )}
                 </Table>
             </div>
 
-            {selectedTicket && (
+            {isModalOpen && (
                 <TicketingModal
                     isOpen={isModalOpen}
                     onClose={() => {
@@ -167,6 +259,7 @@ export default function Tickets() {
                     }}
                     ticket={selectedTicket}
                     onUpdate={handleUpdateTicket}
+                    isCreating={selectedTicket === null}
                 />
             )}
         </div>
