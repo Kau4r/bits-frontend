@@ -11,6 +11,7 @@ interface SessionBarProps {
   isLoading?: boolean;
 }
 
+
 export default function SessionBar({ 
   pcNumber = '14', 
   room = 'LB 467',

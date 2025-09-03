@@ -8,22 +8,25 @@ const roleRoutes = {
     { label: 'Room', path: '/room' },
   ],
   Faculty: [
-    { label: 'Schedule', path: '/faculty/schedule' },
-    { label: 'Report Issue', path: '/faculty/report' },
-    { label: 'Borrow Item', path: '/faculty/borrow' },
+    { label: 'Scheduling', path: '/faculty/FacultyScheduling' },
+  ],
+  Secretary: [
+    { label: 'Scheduling', path: '/secretary/SecretaryScheduling' },
   ],
   'Lab Tech': [
-    { label: 'Dashboard', path: '/labtech-dashboard' },
-    { label: 'Tickets', path: '/tickets' },
-    { label: 'Borrow Requests', path: '/labtech/borrow-requests' },
+    { label: 'Tickets', path: '/labtech/tickets' },
+    { label: 'Scheduling', path: '/faculty/scheduling' },
     { label: 'Inventory', path: '/inventory' },
     { label: 'Room Queueing', path: '/labtech/queue-room' },
+    { label: 'Notifications', path: '/notification' },
+    { label: 'Forms', path: '/labtech/forms' },
   ],
   'Lab Head': [
-    { label: 'Faculty Schedules', path: '/labhead/faculty-schedule' },
+    { label: 'Faculty Schedules', path: '/faculty/scheduling' },
     { label: 'Lab Tech Reports', path: '/labhead/reports' },
     { label: 'Tickets', path: '/tickets' },
     { label: 'Inventory', path: '/inventory' },
+    { label: 'Notifications', path: '/notification' },
   ],
   Student: [
     { label: 'Student', path: '/student-session' },
@@ -73,7 +76,6 @@ export default function RoleNavbar() {
         </ul>
       </div>
 
-      {/* User Info */}
       <div className="border-t px-4 py-3 dark:border-gray-700">
         <div className="flex items-center space-x-3">
           <User className="h-5 w-5 text-gray-600 dark:text-gray-300" />
