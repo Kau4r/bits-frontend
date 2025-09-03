@@ -11,7 +11,7 @@ import Layout from './components/layout/Layout'
 import StudentSession from './pages/Student/StudentSession'
 import StudentPCView from './pages/Student/StudentPCView'
 import StudentRoomView from './pages/Student/StudentRoomView'
-import Tickets from './pages/Tickets/Tickets'
+import Ticket from './pages/Tickets/Tickets'
 import Notification from './pages/Notification'
 import '@/App.css'
 import './index.css';
@@ -30,19 +30,19 @@ function App() {
           <Route path="/room" element={<RoomPage />} />
           <Route path="/" element={<LandingPage />} />
           <Route path="/labtech-dashboard" element={<LabtechDashboard />} />
-          <Route path="/tickets" element={<Tickets />} />
+          <Route path="/tickets" element={<Ticket />} />
           <Route path="/labhead-dashboard" element={<LabheadDashboard />} />
           <Route path="/SysDashboard" element={<SysAdDash />} />
           <Route path="/user/:email" element={<UserDetails />} />
           <Route path="/student-session" element={<StudentSession />} />
           <Route path="/student-pc-view" element={<StudentPCView />} />
           <Route path="/student-room-view" element={<StudentRoomView />} />
-          <Route path="/notification" element={<Notification />} />
           <Route path="/faculty/FacultyScheduling" element={<FacultyScheduling />} />
-          <Route path="/labtech/tickets" element={<Tickets />} />
-          <Route path="/labtech/room" element={<Room />} />
+          <Route path="/labtech/tickets" element={<Ticket />} />
+          <Route path="/labtech/rooms" element={<Room />} />
           <Route path="/labtech/forms" element={<Forms />} />
-          <Route path="secretary/SecretaryScheduling" element={<Secretary/>}/>
+          <Route path="/secretary/scheduling" element={<Secretary />} />
+          <Route path="/notification" element={<Notification />} />
         </Route>
       </Routes>
     </div>
