@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface RoomQueueItem {
     roomCode: string;
@@ -16,9 +16,8 @@ interface QueueModalProps {
     onRemove: (item: RoomQueueItem) => void;
     roomCode: string | null;
     segment: 'CB1' | 'CB2';
-    selectedQueueItem?: RoomQueueItem;
+    selectedQueueItem: RoomQueueItem | null;
 }
-
 
 export default function QueueModal({
     isOpen,
@@ -30,10 +29,21 @@ export default function QueueModal({
     selectedQueueItem,
 }: QueueModalProps) {
 
-    const [startTime, setStartTime] = useState(selectedQueueItem?.startTime || '')
-    const [endTime, setEndTime] = useState(selectedQueueItem?.endTime || '')
-    const isEditing = !!selectedQueueItem
+    const [startTime, setStartTime] = useState('')
+    const [endTime, setEndTime] = useState('')
     const [error, setError] = useState('')
+
+    useEffect(() => {
+        if (selectedQueueItem) {
+            setStartTime(selectedQueueItem.startTime)
+            setEndTime(selectedQueueItem.endTime)
+        } else {
+            setStartTime('')
+            setEndTime('')
+        }
+    }, [selectedQueueItem])
+
+    const isEditing = !!selectedQueueItem
 
     const handleSubmit = () => {
         if (!startTime || !endTime) {
@@ -46,7 +56,7 @@ export default function QueueModal({
             return
         }
 
-        onQueue(startTime, endTime, isEditing ? selectedQueueItem!.segment : segment)
+        onQueue(startTime, endTime, selectedQueueItem?.segment || segment)
         onClose()
     }
 
@@ -70,7 +80,7 @@ export default function QueueModal({
                 )}
 
                 <div className="mb-4">
-                    <p className="text-sm text-gray-300">Segment: {segment === 'CB1' ? 'Computer Borrowing 1' : 'Computer Borrowing 2'}</p>
+                    <p className="text-sm text-gray-300">Segment: {selectedQueueItem?.segment || segment === 'CB1' ? 'Computer Borrowing 1' : 'Computer Borrowing 2'}</p>
                 </div>
 
                 <div className="mb-4">
@@ -99,34 +109,28 @@ export default function QueueModal({
                     />
                 </div>
 
-                <div className="flex justify-between mt-6">
+                <div className="flex justify-end space-x-3">
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 text-gray-300 hover:text-white"
+                    >
+                        Cancel
+                    </button>
                     {isEditing && (
                         <button
-                            onClick={() => {
-                                if (selectedQueueItem) onRemove(selectedQueueItem)
-                                onClose()
-                            }}
-                            className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg"
+                            onClick={() => selectedQueueItem && onRemove(selectedQueueItem)}
+                            className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
                         >
-                            Remove from Queue
+                            Remove
                         </button>
                     )}
-                    <div className="flex space-x-4">
-                        <button
-                            onClick={onClose}
-                            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            onClick={handleSubmit}
-                            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                        >
-                            {isEditing ? 'Update' : 'Queue'}
-                        </button>
-                    </div>
+                    <button
+                        onClick={handleSubmit}
+                        className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                    >
+                        {isEditing ? 'Update' : 'Queue'}
+                    </button>
                 </div>
-
             </div>
         </div>
     )

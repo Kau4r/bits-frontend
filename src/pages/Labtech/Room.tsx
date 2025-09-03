@@ -1,6 +1,6 @@
 import dayjs from 'dayjs'
 import { useState } from 'react'
-import type { Room } from '@/types/Room'
+import type { Room } from '@/types/room'
 import QueueModal from './components/QueueModal'
 
 interface RoomQueueItem {
