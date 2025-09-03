@@ -8,21 +8,21 @@ const roleRoutes = {
     { label: 'Room', path: '/room' },
   ],
   Faculty: [
-    { label: 'Scheduling', path: '/faculty/FacultyScheduling' },
+    { label: 'Scheduling', path: '/faculty/scheduling' },
   ],
   Secretary: [
-    { label: 'Scheduling', path: '/secretary/SecretaryScheduling' },
+    { label: 'Scheduling', path: '/secretary/scheduling' },
   ],
   'Lab Tech': [
     { label: 'Tickets', path: '/labtech/tickets' },
-    { label: 'Scheduling', path: '/faculty/scheduling' },
+    { label: 'Scheduling', path: '/scheduling' },
     { label: 'Inventory', path: '/inventory' },
-    { label: 'Room Queueing', path: '/labtech/queue-room' },
+    { label: 'Room Queueing', path: '/labtech/Room' },
     { label: 'Notifications', path: '/notification' },
     { label: 'Forms', path: '/labtech/forms' },
   ],
   'Lab Head': [
-    { label: 'Faculty Schedules', path: '/faculty/scheduling' },
+    { label: 'Scheduling', path: '/scheduling' },
     { label: 'Lab Tech Reports', path: '/labhead/reports' },
     { label: 'Tickets', path: '/tickets' },
     { label: 'Inventory', path: '/inventory' },

@@ -17,8 +17,8 @@ import '@/App.css'
 import './index.css';
 import Room from './pages/LabTech/Room'
 import Forms from './pages/LabTech/Forms'
-import Secretary from './pages/Secretary/SecretaryScheduling'
 import FacultyScheduling from './pages/Faculty/FacultyScheduling'
+import SecretaryScheduling from './pages/Secretary/SecretaryScheduling'
 
 function App() {
   return (
@@ -39,10 +39,13 @@ function App() {
           <Route path="/student-room-view" element={<StudentRoomView />} />
           <Route path="/faculty/FacultyScheduling" element={<FacultyScheduling />} />
           <Route path="/labtech/tickets" element={<Ticket />} />
-          <Route path="/labtech/rooms" element={<Room />} />
+          <Route path="/labtech/room" element={<Room />} />
           <Route path="/labtech/forms" element={<Forms />} />
-          <Route path="/secretary/scheduling" element={<Secretary />} />
+          <Route path="/Secretary/Secretaryscheduling" element={<SecretaryScheduling />} />
           <Route path="/notification" element={<Notification />} />
+          <Route path="/faculty/scheduling" element={<FacultyScheduling />} />
+          <Route path="/secretary/scheduling" element={<SecretaryScheduling />} />
+          <Route path="/scheduling" element={<FacultyScheduling />} />
         </Route>
       </Routes>
     </div>
