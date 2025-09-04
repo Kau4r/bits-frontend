@@ -1,14 +1,15 @@
 export interface InventoryItem {
-  assetCode: string
-  brand: string
-  itemType: string
-  location: string
-  status: 'Available' | 'In Use' | 'Maintenance' | 'Defective'
-  lastUpdated: string
-  assignedTo?: string
+  Item_ID: number
+  Item_Code: string
+  Item_Type: string
+  Brand: string
+  Room_ID: string
+  serialNumber: string
+  Status: 'Available' | 'In Use' | 'Maintenance' | 'Defective'
+  Updated_At: string
 }
 
-export type InventoryStatus = InventoryItem['status']
+export type InventoryStatus = InventoryItem['Status']
 
 export const statusColors: Record<InventoryStatus, string> = {
   Available: 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100',
