@@ -34,3 +34,10 @@ npm install
 npm run dev
 ```
 
+###Connecting to backend
+Environment Variables
+
+Create a .env file in the root of your project to configure the API URL and other environment-specific settings. Example:
+
+# URL of the backend API
+VITE_API_URL=http://localhost:5000
