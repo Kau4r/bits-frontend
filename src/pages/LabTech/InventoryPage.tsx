@@ -57,7 +57,7 @@ const InventoryPage = () => {
     const matchesStatus =
       selectedStatus === 'All Status'
         ? true
-        : item.Status === selectedStatus;
+        : item.Status?.toLowerCase() === selectedStatus.toLowerCase();
 
     return matchesSearch && matchesType && matchesStatus;
   });
@@ -133,12 +133,17 @@ const InventoryPage = () => {
             className="rounded-lg border px-3 pr-7 py-2 text-gray-800 dark:bg-slate-900 dark:text-white w-auto"
           >
             <option key="all-status" value="All Status">All Status ({inventory.length})</option>
-            {['Available', 'In Use', 'Maintenance', 'Defective'].map((status) => (
-              <option key={`status-${status}`} value={status}>
-                {status} ({inventory.filter(i => i.Status === status).length})
-              </option>
-            ))}
+            {['Available', 'In Use', 'Maintenance', 'Defective'].map((status) => {
+              // Normalize count regardless of case
+              const count = inventory.filter(i => i.Status?.toLowerCase() === status.toLowerCase()).length;
+              return (
+                <option key={`status-${status}`} value={status}>
+                  {status} ({count})
+                </option>
+              );
+            })}
           </select>
+
 
           <button
             className="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none dark:bg-indigo-700 dark:hover:bg-indigo-600"
@@ -173,16 +178,18 @@ const InventoryPage = () => {
             </div>
             <div>
               <span
-                className={`inline-flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${item.Status === 'Available'
+                className={`inline-flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${item.Status?.toLowerCase() === 'available'
                   ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                  : item.Status === 'In Use'
+                  : item.Status?.toLowerCase() === 'in use'
                     ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                    : item.Status === 'Maintenance'
+                    : item.Status?.toLowerCase() === 'maintenance'
                       ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
                       : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
                   }`}
               >
-                {item.Status}
+                {item.Status
+                  ? item.Status.charAt(0).toUpperCase() + item.Status.slice(1).toLowerCase()
+                  : 'Unknown'}
               </span>
             </div>
             <div className="text-sm text-gray-700 dark:text-gray-300">{item.Room_ID}</div>

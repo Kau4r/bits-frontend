@@ -9,11 +9,10 @@ interface ItemModalProps {
   onClose: () => void;
   onSave: (item: InventoryItem | InventoryItem[]) => void;
   initMode: "add" | "edit" | "view";
-  item?: InventoryItem | null; // <-- renamed
+  item?: InventoryItem | null;
   items: InventoryItem[];
-  rooms: string[]; // <-- add this
+  rooms: string[];
 }
-
 
 export default function ItemModal({
   isOpen,
@@ -25,44 +24,53 @@ export default function ItemModal({
   rooms,
 }: ItemModalProps) {
   const [baseItem, setBaseItem] = useState<InventoryItem>({
-    assetCode: "",
-    itemType: "",
-    brand: "",
-    room: "",
+    Item_ID: 0,
+    Item_Code: "",
+    Item_Type: "",
+    Brand: "",
+    Room_ID: "TEST_ROOM",
     serialNumber: "",
-    status: "Available",
-    lastUpdated: "",
+    Status: "AVAILABLE",
+    Updated_At: "",
   });
+
   const [quantity, setQuantity] = useState(0);
   const [brands, setBrands] = useState<string[]>([]);
   const [itemTypes, setItemTypes] = useState<string[]>([]);
   const [newBrand, setNewBrand] = useState("");
   const [newItemType, setNewItemType] = useState("");
   const [serials, setSerials] = useState<string[]>([""]);
-  const [mode, setMode] = useState(initMode)
+  const [mode, setMode] = useState(initMode);
 
+  // ---------- Extract unique dropdown values ----------
   useEffect(() => {
     if (!items || items.length === 0) return;
 
-    const uniqueBrands = Array.from(new Set(items.map((i) => i.brand).filter(Boolean)));
-    const uniqueItemTypes = Array.from(new Set(items.map((i) => i.itemType).filter(Boolean)));
+    const uniqueBrands = Array.from(
+      new Set(items.map((i) => i.Brand).filter(Boolean))
+    );
+    const uniqueItemTypes = Array.from(
+      new Set(items.map((i) => i.Item_Type).filter(Boolean))
+    );
 
-    setBrands(uniqueBrands);
+    setBrands(uniqueBrands); 1
     setItemTypes(uniqueItemTypes);
   }, [items]);
 
+  // ---------- Initialize modal state ----------
   useEffect(() => {
     if (!isOpen) return;
 
     if (initMode === "add") {
       setBaseItem({
-        assetCode: "",
-        itemType: "",
-        brand: "",
-        room: "",
+        Item_ID: 0,
+        Item_Code: "",
+        Item_Type: "",
+        Brand: "",
+        Room_ID: "TEST_ROOM",
         serialNumber: "",
-        status: "Available",
-        lastUpdated: "",
+        Status: "AVAILABLE",
+        Updated_At: "",
       });
       setQuantity(0);
       setSerials([""]);
@@ -75,74 +83,131 @@ export default function ItemModal({
     setMode(initMode);
   }, [isOpen, initMode, item]);
 
-
   if (!isOpen) return null;
 
   // ---------- Save ----------
+  // const handleSave = () => {
+  //   // if (!baseItem.Item_Type || !baseItem.Brand || !baseItem.Room_ID || !baseItem.serialNumber) {
+  //   if (!baseItem.Item_Type || !baseItem.Brand || !baseItem.serialNumber) {
+  //     alert("Item type, brand, room, and serial number are required.");
+  //     return;
+  //   }
+
+  //   const now = new Date().toISOString();
+  //   const year = new Date().getFullYear();
+
+  //   if (mode === "add") {
+  //     const duplicates = items.filter(
+  //       (i) =>
+  //         i.Item_Type === baseItem.Item_Type &&
+  //         i.Brand === baseItem.Brand &&
+  //         i.serialNumber === baseItem.serialNumber &&
+  //         // i.Room_ID === baseItem.Room_ID
+  //     );
+  //     if (duplicates.length > 0) {
+  //       alert("Item already exists. Cannot add duplicate.");
+  //       onClose();
+  //       return;
+  //     }
+
+  //     const newItems: InventoryItem[] = serials.map((serial, idx) => ({
+  //       ...baseItem,
+  //       Item_Code: `${baseItem.Item_Type.slice(0, 3).toUpperCase()}-${year}-${idx + 1}`,
+  //       serialNumber: serial.trim(),
+  //       Updated_At: now,
+  //     }));
+
+  //     onSave(newItems);
+  //   } else if (mode === "edit") {
+  //     const updatedItem: InventoryItem = {
+  //       ...baseItem,
+  //       Updated_At: now,
+  //     };
+
+  //     const existingItem = items.find((i) => i.Item_Code === baseItem.Item_Code);
+  //     if (!existingItem) return;
+
+  //     if (
+  //       existingItem.Item_Type !== baseItem.Item_Type ||
+  //       existingItem.Brand !== baseItem.Brand ||
+  //       existingItem.serialNumber !== baseItem.serialNumber ||
+  //       existingItem.Status !== baseItem.Status
+  //     ) {
+  //       // Key fields changed -> replace original
+  //       onSave(updatedItem);
+  //     } else if (existingItem.Room_ID !== baseItem.Room_ID) {
+  //       // Room changed -> append a new item
+  //       const count = items.filter((i) =>
+  //         i.Item_Code.startsWith(updatedItem.Item_Code)
+  //       ).length - 1;
+  //       const newRoomItem = {
+  //         ...updatedItem,
+  //         Item_Code: `${updatedItem.Item_Code}-${count + 1}`,
+  //       };
+  //       onSave(newRoomItem);
+  //     }
+  //   }
+
+  //   setMode("view");
+  //   setQuantity(0);
+  //   setSerials([baseItem.serialNumber || ""]);
+  //   onClose();
+  // };
+
   const handleSave = () => {
-    if (!baseItem.itemType || !baseItem.brand || !baseItem.room || !baseItem.serialNumber) {
-      alert("Item type, brand, room, and serial number are required.");
+    if (!baseItem.Item_Type || !baseItem.Brand) {
+      alert("Item type and brand are required.");
       return;
+    }
+
+    // Bulk add validation
+    if (mode === "add") {
+      if (quantity > 1) {
+        if (serials.some((s) => !s.trim())) {
+          alert("All serial numbers are required.");
+          return;
+        }
+      } else {
+        if (!baseItem.serialNumber.trim()) {
+          alert("Serial number is required.");
+          return;w
+        }
+      }
     }
 
     const now = new Date().toISOString();
     const year = new Date().getFullYear();
+    const safeRoom = baseItem.Room_ID || "TEST_ROOM";
 
     if (mode === "add") {
-      const duplicates = items.filter(
-        (i) =>
-          i.itemType === baseItem.itemType &&
-          i.brand === baseItem.brand &&
-          i.serialNumber === baseItem.serialNumber &&
-          i.room === baseItem.room
-      );
-      if (duplicates.length > 0) {
-        alert("Item already exists. Cannot add duplicate.");
-        onClose();
-        return;
-      }
-
-      const newItems: InventoryItem[] = serials.map((serial, idx) => ({
-        ...baseItem,
-        assetCode: `${baseItem.itemType.slice(0, 3).toUpperCase()}-${year}-${idx + 1}`,
-        serialNumber: serial.trim(),
-        lastUpdated: now,
-      }));
+      const newItems: InventoryItem[] =
+        quantity > 1
+          ? serials.map((serial, idx) => ({
+            ...baseItem,
+            Room_ID: safeRoom,
+            Item_Code: `${baseItem.Item_Type.slice(0, 3).toUpperCase()}-${year}-${idx + 1}`,
+            serialNumber: serial.trim(),
+            Updated_At: now,
+          }))
+          : [
+            {
+              ...baseItem,
+              Room_ID: safeRoom,
+              Item_Code: `${baseItem.Item_Type.slice(0, 3).toUpperCase()}-${year}-1`,
+              Updated_At: now,
+            },
+          ];
 
       onSave(newItems);
     } else if (mode === "edit") {
+      // just update existing item
       const updatedItem: InventoryItem = {
         ...baseItem,
-        lastUpdated: now,
+        Updated_At: now,
       };
 
-      const existingItem = items.find(i => i.assetCode === baseItem.assetCode);
-      if (!existingItem) return;
-
-      if (
-        existingItem.itemType !== baseItem.itemType ||
-        existingItem.brand !== baseItem.brand ||
-        existingItem.serialNumber !== baseItem.serialNumber ||
-        existingItem.status !== baseItem.status
-      ) {
-        // Key fields changed -> replace original
-        onSave(updatedItem);
-      } else if (existingItem.room !== baseItem.room) {
-        // Room changed -> append a new item
-        const count = items.filter(i => i.assetCode.startsWith(updatedItem.assetCode)).length - 1;
-        const newRoomItem = {
-          ...updatedItem,
-          assetCode: `${updatedItem.assetCode}-${count + 1}`, // append incremental number
-
-        };
-        onSave(newRoomItem);
-      }
+      onSave([updatedItem]);
     }
-
-    setMode("view");
-    setQuantity(0);
-    setSerials([baseItem.serialNumber || ""]);
-    onClose();
   };
 
   const readOnly = mode === "view";
@@ -171,8 +236,8 @@ export default function ItemModal({
     if (!brand) return;
     if (confirm(`Delete brand "${brand}"?`)) {
       setBrands((prev) => prev.filter((b) => b !== brand));
-      if (baseItem.brand === brand) {
-        setBaseItem({ ...baseItem, brand: "" });
+      if (baseItem.Brand === brand) {
+        setBaseItem({ ...baseItem, Brand: "" });
       }
     }
   };
@@ -188,8 +253,8 @@ export default function ItemModal({
     if (!type) return;
     if (confirm(`Delete item type "${type}"?`)) {
       setItemTypes((prev) => prev.filter((t) => t !== type));
-      if (baseItem.itemType === type) {
-        setBaseItem({ ...baseItem, itemType: "" });
+      if (baseItem.Item_Type === type) {
+        setBaseItem({ ...baseItem, Item_Type: "" });
       }
     }
   };
@@ -217,7 +282,9 @@ export default function ItemModal({
           >
             <option value="">Select...</option>
             {options.map((opt) => (
-              <option key={opt} value={opt}>{opt}</option>
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
             ))}
           </select>
           <button
@@ -258,7 +325,7 @@ export default function ItemModal({
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
       <div
-        className="w-full  max-w-3xl  rounded-lg bg-white p-6 shadow-lg dark:bg-gray-900 dark:text-white"
+        className="w-full max-w-3xl rounded-lg bg-white p-6 shadow-lg dark:bg-gray-900 dark:text-white"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="mb-4 text-xl font-semibold">
@@ -269,21 +336,18 @@ export default function ItemModal({
               : "View Item"}
         </h2>
 
-
+        {/* QR Code Section */}
         {(mode === "view" || mode === "edit") && baseItem.serialNumber && (
           <div className="mt-4 flex justify-center">
             <div className="flex items-start gap-4 my-5">
-              {/* QR Code */}
               <ReactQRCode
                 id="qrCode"
-                value={baseItem.assetCode || baseItem.serialNumber}
+                value={baseItem.Item_Code || baseItem.serialNumber}
                 size={200}
                 level="H"
                 bgColor="#101828"
                 fgColor="#fff"
               />
-
-              {/* Download button on the right */}
               <button
                 type="button"
                 onClick={() => {
@@ -297,7 +361,9 @@ export default function ItemModal({
                   const ctx = canvas.getContext("2d");
                   const img = new Image();
 
-                  const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+                  const svgBlob = new Blob([svgString], {
+                    type: "image/svg+xml;charset=utf-8",
+                  });
                   const url = URL.createObjectURL(svgBlob);
 
                   img.onload = () => {
@@ -308,7 +374,8 @@ export default function ItemModal({
 
                     const downloadLink = document.createElement("a");
                     downloadLink.href = pngUrl;
-                    downloadLink.download = `${baseItem.assetCode || baseItem.serialNumber}.png`;
+                    downloadLink.download = `${baseItem.Item_Code || baseItem.serialNumber
+                      }.png`;
                     downloadLink.click();
 
                     URL.revokeObjectURL(url);
@@ -324,27 +391,24 @@ export default function ItemModal({
           </div>
         )}
 
-
-
+        {/* Form Fields */}
         <div className="grid grid-cols-2 gap-4">
-          {/* Item Type */}
           {renderDropdown(
             "Item Type",
-            baseItem.itemType,
+            baseItem.Item_Type,
             itemTypes,
-            (v) => setBaseItem({ ...baseItem, itemType: v }),
+            (v) => setBaseItem({ ...baseItem, Item_Type: v }),
             removeItemType,
             newItemType,
             setNewItemType,
             addItemType
           )}
 
-          {/* Brand */}
           {renderDropdown(
             "Brand",
-            baseItem.brand,
+            baseItem.Brand,
             brands,
-            (v) => setBaseItem({ ...baseItem, brand: v }),
+            (v) => setBaseItem({ ...baseItem, Brand: v }),
             removeBrand,
             newBrand,
             setNewBrand,
@@ -355,12 +419,13 @@ export default function ItemModal({
           <div className="flex flex-col">
             <label className="mb-1 text-sm font-medium">Room</label>
             <select
-              value={baseItem.room || ""}
-              onChange={(e) => setBaseItem({ ...baseItem, room: e.target.value })}
+              value={baseItem.Room_ID || ""}
+              onChange={(e) => setBaseItem({ ...baseItem, Room_ID: e.target.value })}
               disabled={readOnly}
               className="w-full rounded-md border px-3 py-2 dark:bg-gray-800 dark:text-white"
             >
-              <option value="">Select a room</option>
+              <option value="TEST_ROOM">Test Room</option>
+              {/* <option value="">Select a room</option> */}
               {rooms.map((r) => (
                 <option key={r} value={r}>
                   {r}
@@ -369,16 +434,15 @@ export default function ItemModal({
             </select>
           </div>
 
-
           {/* Status */}
           <div className="flex flex-col">
             <label className="mb-1 text-sm font-medium">Status</label>
             <select
-              value={baseItem.status}
+              value={baseItem.Status}
               onChange={(e) =>
                 setBaseItem({
                   ...baseItem,
-                  status: e.target.value as InventoryItem["status"],
+                  Status: e.target.value as InventoryItem["Status"],
                 })
               }
               disabled={readOnly}
@@ -390,6 +454,7 @@ export default function ItemModal({
               <option>Defective</option>
             </select>
           </div>
+
           {/* Quantity */}
           {mode === "add" && (
             <div className="flex flex-col">
@@ -405,14 +470,15 @@ export default function ItemModal({
               />
             </div>
           )}
-          {/* Serial Number(s) */}
+
+          {/* Serial Numbers */}
           {mode === "add" && quantity > 1 ? (
             <div className="flex flex-col col-span-2">
               <label className="mb-1 text-sm font-medium">Serial Numbers</label>
               <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
                 {serials.map((s, idx) => (
                   <input
-                    key={`${idx}-${s}`} // ✅ unique key
+                    key={`${idx}-${s}`}
                     type="text"
                     value={s}
                     onChange={(e) => {
@@ -447,8 +513,8 @@ export default function ItemModal({
         <div className="mt-6 flex justify-end gap-3">
           <button
             onClick={() => {
-              setMode('view');
-              onClose(); // call the function
+              setMode("view");
+              onClose();
             }}
             className="rounded bg-gray-300 px-4 py-2 dark:bg-gray-700 dark:text-white"
           >
@@ -468,7 +534,6 @@ export default function ItemModal({
               Edit
             </button>
           )}
-
           {mode !== "view" && (
             <button
               onClick={handleSave}
@@ -479,7 +544,7 @@ export default function ItemModal({
           )}
         </div>
       </div>
-    </div >,
+    </div>,
     document.body
   );
 }
