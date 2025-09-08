@@ -1,15 +1,19 @@
-import { Outlet } from 'react-router-dom'
-import Navbar from './Navbar'
+import { useState } from "react";
+import Navbar from "./Navbar";
 
-export default function Layout() {
-    return (
-        <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-            <Navbar />
-            <div className="flex-1 ml-50 overflow-hidden">
-                <main className="h-full w-full overflow-y-auto">
-                    <Outlet />
-                </main>
-            </div>
-        </div>
-    )
-}
+const Layout = ({ children }: { children: React.ReactNode }) => {
+  const [collapsed, setCollapsed] = useState(false);
+
+  return (
+    <div className="flex">
+      <Navbar collapsed={collapsed} setCollapsed={setCollapsed} />
+      <main
+        className={`flex-1 overflow-y-auto transition-all duration-300 ${collapsed ? 'ml-20' : 'ml-56'}`}
+      >
+        {children}
+      </main>
+    </div>
+  );
+};
+
+export default Layout;

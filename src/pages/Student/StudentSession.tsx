@@ -37,13 +37,10 @@ export default function StudentSession() {
         <SessionBar room="LB 467" pcNumber="14" />
       </div>
 
-      {/* Centered parent for Brand + Search + Shortcuts */}
       <div className="flex-1 overflow-auto px-4 sm:px-8 lg:px-10 grid place-items-center">
         <div className="w-full max-w-6xl">
-          {/* Brand + Search */}
           <div className="max-w-5xl mx-auto pt-6 pb-4">
             <div className="flex flex-col items-center gap-4">
-              {/* BITS header */}
               <div className="flex items-center gap-3 select-none">
                 <img src="/bit.png" alt="BITS" className="w-10 h-10" />
                 <h1 className="text-3xl sm:text-4xl font-semibold text-white tracking-tight">

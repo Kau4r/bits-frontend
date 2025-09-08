@@ -1,26 +1,39 @@
 import { useState } from 'react';
 import { FiAlertTriangle, FiPower } from 'react-icons/fi';
 import ReportIssueModal from './Modals/ReportIssue';
+import { useAuth } from '@/context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface SessionBarProps {
   pcNumber?: string;
   room?: string;
   timeSlot?: string;
   onReportIssue?: (description: string, issueType: string, equipment: string) => Promise<void>;
-  onEndSession?: () => void;
+  onEndSession?: () => void; // optional; if not provided, SessionBar will logout by itself
   isLoading?: boolean;
 }
-
 
 export default function SessionBar({ 
   pcNumber = '14', 
   room = 'LB 467',
   timeSlot = '9:00 - 10:30',
   onReportIssue = async () => {},
-  onEndSession = () => {},
+  onEndSession,
   isLoading = false
 }: SessionBarProps) {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleEndSessionClick = () => {
+    if (isLoading) return;
+    if (typeof onEndSession === 'function') {
+      onEndSession();
+      return;
+    }
+    logout();
+    navigate('/login', { replace: true });
+  };
 
   return (
     <div className="flex flex-col md:flex-row justify-between items-stretch gap-3 md:gap-4 bg-slate-800 rounded-xl p-3 md:p-4 w-full border border-slate-700">
@@ -51,7 +64,7 @@ export default function SessionBar({
           <span className="whitespace-nowrap">Report Issue</span>
         </button>
         <button 
-          onClick={onEndSession}
+          onClick={handleEndSessionClick}
           disabled={isLoading}
           className="bg-red-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg hover:bg-red-700 transition-all duration-200 hover:shadow-sm font-medium flex items-center justify-center gap-1.5 sm:gap-2 text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed"
         >
