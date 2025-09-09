@@ -25,15 +25,15 @@ import type { JSX } from 'react';
 
 const ProtectedRoute = ({ children, roles }: { children: JSX.Element, roles: string[] }) => {
   const { isAuthenticated, userRole } = useAuth();
-  
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-  
+
   if (userRole && !roles.includes(userRole)) {
     return <Navigate to="/unauthorized" replace />;
   }
-  
+
   return children;
 };
 
@@ -103,7 +103,7 @@ function AppContent() {
             </div>
           </div>
         } />
-      
+
         <Route path="/" element={
           <ProtectedRoute roles={['System Admin']}>
             <SysAdDash />
@@ -121,7 +121,7 @@ function AppContent() {
         } />
 
         <Route path="/inventory" element={
-          <ProtectedRoute roles={['Lab Tech', 'Lab Head']}> 
+          <ProtectedRoute roles={['Lab Tech', 'Lab Head']}>
             <InventoryPage />
           </ProtectedRoute>
         } />
@@ -155,7 +155,7 @@ function AppContent() {
           <ProtectedRoute roles={['Lab Head']}>
             <LabheadDashboard />
           </ProtectedRoute>
-        } /> 
+        } />
       </Routes>
     </Layout>
   );
