@@ -5,7 +5,7 @@ import type { User, UserWithPassword, User_Role } from '../types/user';
 const MOCK_USERS: UserWithPassword[] = [
   {
     User_ID: 1,
-    User_Role: 'System Admin',
+    User_Role: 'ADMIN',
     First_Name: 'Admin',
     Last_Name: 'User',
     Email: 'admin@bits.edu',
@@ -14,7 +14,7 @@ const MOCK_USERS: UserWithPassword[] = [
   },
   {
     User_ID: 2,
-    User_Role: 'Lab Tech',
+    User_Role: 'LAB_TECH',
     First_Name: 'Lab',
     Last_Name: 'Technician',
     Email: 'labtech@bits.edu',
@@ -23,7 +23,7 @@ const MOCK_USERS: UserWithPassword[] = [
   },
   {
     User_ID: 3,
-    User_Role: 'Lab Head',
+    User_Role: 'LAB_HEAD',
     First_Name: 'Lab',
     Last_Name: 'Head',
     Email: 'labhead@bits.edu',
@@ -32,7 +32,7 @@ const MOCK_USERS: UserWithPassword[] = [
   },
   {
     User_ID: 4,
-    User_Role: 'Faculty',
+    User_Role: 'FACULTY',
     First_Name: 'Faculty',
     Last_Name: 'Member',
     Email: 'faculty@bits.edu',
@@ -41,7 +41,7 @@ const MOCK_USERS: UserWithPassword[] = [
   },
   {
     User_ID: 5,
-    User_Role: 'Secretary',
+    User_Role: 'SECRETARY',
     First_Name: 'Secretary',
     Last_Name: 'User',
     Email: 'secretary@bits.edu',
@@ -50,7 +50,7 @@ const MOCK_USERS: UserWithPassword[] = [
   },
   {
     User_ID: 6,
-    User_Role: 'Student',
+    User_Role: 'STUDENT',
     First_Name: 'Student',
     Last_Name: 'User',
     Email: 'student@bits.edu',
@@ -58,6 +58,7 @@ const MOCK_USERS: UserWithPassword[] = [
     password: 'student123'
   }
 ];
+
 
 
 interface AuthContextType {
@@ -71,11 +72,20 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+export const useAuth = (): AuthContextType => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Check for existing session on initial load
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       try {
@@ -136,35 +146,4 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   );
 };
 
-export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
 
-// Higher Order Component for protected routes
-export const withAuth = <P extends object>(
-  Component: React.ComponentType<P>,
-  allowedRoles: User_Role[]
-): React.FC<P> => {
-  const AuthenticatedComponent: React.FC<P> = (props) => {
-    const { isAuthenticated, userRole } = useAuth();
-
-    if (!isAuthenticated) {
-      // Redirect to login or show unauthorized
-      window.location.href = '/login';
-      return null;
-    }
-
-    if (userRole && !allowedRoles.includes(userRole)) {
-      // Show unauthorized page or redirect to a different route
-      return <div>You don't have permission to access this page.</div>;
-    }
-
-    return <Component {...props as P} />;
-  };
-
-  return AuthenticatedComponent;
-};

@@ -10,14 +10,21 @@ export interface User {
     Updated_At?: string
 }
 
-export type User_Role =
-    | 'System Admin'
-    | 'Lab Tech'
-    | 'Lab Head'
-    | 'Faculty'
-    | 'Secretary'
-    | 'Student';
+export const ROLES = {
+    ADMIN: 'ADMIN',
+    LAB_TECH: 'LAB_TECH',
+    LAB_HEAD: 'LAB_HEAD',
+    FACULTY: 'FACULTY',
+    SECRETARY: 'SECRETARY',
+    STUDENT: 'STUDENT',
+} as const;
+
+export type User_Role = typeof ROLES[keyof typeof ROLES];
 
 export interface UserWithPassword extends User {
     password: string;
 }
+
+
+
+
