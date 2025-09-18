@@ -8,16 +8,16 @@ const roleRoutes = {
     { label: 'Users', path: '/' },
     { label: 'Rooms', path: '/room' },
   ],
-  'Lab Tech': [
-    { label: 'Dashboard', path: '/labtech-dashboard' },
+  LAB_TECH: [
+    { label: 'Dashboard', path: '/' },
     { label: 'Notifications', path: '/notification' },
     { label: 'Tickets', path: '/tickets' },
     { label: 'Room Queue', path: '/labtech/room' },
     { label: 'Inventory', path: '/inventory' },
     { label: 'Forms', path: '/labtech/forms' },
   ],
-  'Lab Head': [
-    { label: 'Dashboard', path: '/labhead-dashboard' },
+  LAB_HEAD: [
+    { label: 'Dashboard', path: '/' },
     { label: 'Notifications', path: '/notification' },
     { label: 'Tickets', path: '/tickets' },
     { label: 'Room Queue', path: '/labtech/room' },

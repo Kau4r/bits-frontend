@@ -1,75 +1,84 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
+import type { User, UserWithPassword, User_Role } from '../types/user';
 
-type UserRole = 'System Admin' | 'Lab Tech' | 'Lab Head' | 'Faculty' | 'Secretary' | 'Student';
-
-interface User {
-  id: string;
-  email: string;
-  role: UserRole;
-  name: string;
-}
-
-interface UserWithPassword extends User {
-  password: string;
-}
-
-// Mock user data with password
 const MOCK_USERS: UserWithPassword[] = [
   {
-    id: '1',
-    email: 'admin@bits.edu',
-    password: 'admin123',
-    role: 'System Admin',
-    name: 'Admin User'
+    User_ID: 1,
+    User_Role: 'ADMIN',
+    First_Name: 'Admin',
+    Last_Name: 'User',
+    Email: 'admin@bits.edu',
+    Is_Active: true,
+    password: 'admin123'
   },
   {
-    id: '2',
-    email: 'labtech@bits.edu',
-    password: 'labtech123',
-    role: 'Lab Tech',
-    name: 'Lab Technician'
+    User_ID: 2,
+    User_Role: 'LAB_TECH',
+    First_Name: 'Lab',
+    Last_Name: 'Technician',
+    Email: 'labtech@bits.edu',
+    Is_Active: true,
+    password: 'labtech123'
   },
   {
-    id: '3',
-    email: 'labhead@bits.edu',
-    password: 'labhead123',
-    role: 'Lab Head',
-    name: 'Lab Head'
+    User_ID: 3,
+    User_Role: 'LAB_HEAD',
+    First_Name: 'Lab',
+    Last_Name: 'Head',
+    Email: 'labhead@bits.edu',
+    Is_Active: true,
+    password: 'labhead123'
   },
   {
-    id: '4',
-    email: 'faculty@bits.edu',
-    password: 'faculty123',
-    role: 'Faculty',
-    name: 'Faculty Member'
+    User_ID: 4,
+    User_Role: 'FACULTY',
+    First_Name: 'Faculty',
+    Last_Name: 'Member',
+    Email: 'faculty@bits.edu',
+    Is_Active: true,
+    password: 'faculty123'
   },
   {
-    id: '5',
-    email: 'secretary@bits.edu',
-    password: 'secretary123',
-    role: 'Secretary',
-    name: 'Secretary'
+    User_ID: 5,
+    User_Role: 'SECRETARY',
+    First_Name: 'Secretary',
+    Last_Name: 'User',
+    Email: 'secretary@bits.edu',
+    Is_Active: true,
+    password: 'secretary123'
   },
   {
-    id: '6',
-    email: 'student@bits.edu',
-    password: 'student123',
-    role: 'Student',
-    name: 'Student'
+    User_ID: 6,
+    User_Role: 'STUDENT',
+    First_Name: 'Student',
+    Last_Name: 'User',
+    Email: 'student@bits.edu',
+    Is_Active: true,
+    password: 'student123'
   }
 ];
+
+
 
 interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string; user?: User }>;
   logout: () => void;
-  userRole: UserRole | null;
+  userRole: User_Role | null;
   loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const useAuth = (): AuthContextType => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -92,25 +101,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = async (email: string, password: string) => {
     await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const foundUser = MOCK_USERS.find(u => u.email === email && u.password === password);
-    
+
+    const foundUser = MOCK_USERS.find(u => u.Email === email && u.password === password);
+
     if (foundUser) {
       const userData: User = {
-        id: foundUser.id,
-        email: foundUser.email,
-        role: foundUser.role,
-        name: foundUser.name
+        User_ID: foundUser.User_ID,
+        User_Role: foundUser.User_Role,
+        First_Name: foundUser.First_Name,
+        Last_Name: foundUser.Last_Name,
+        Email: foundUser.Email,
+        Is_Active: foundUser.Is_Active
       };
-      
+
       localStorage.setItem('user', JSON.stringify(userData));
       setUser(userData);
       return { success: true, user: userData };
     }
-    
-    return { 
-      success: false, 
-      error: 'Invalid email or password' 
+
+    return {
+      success: false,
+      error: 'Invalid email or password'
     };
   };
 
@@ -126,7 +137,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         user,
         login,
         logout,
-        userRole: user?.role || null,
+        userRole: user?.User_Role || null,
         loading
       }}
     >
@@ -135,35 +146,4 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   );
 };
 
-export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
 
-// Higher Order Component for protected routes
-export const withAuth = <P extends object>(
-  Component: React.ComponentType<P>,
-  allowedRoles: UserRole[]
-): React.FC<P> => {
-  const AuthenticatedComponent: React.FC<P> = (props) => {
-    const { isAuthenticated, userRole } = useAuth();
-
-    if (!isAuthenticated) {
-      // Redirect to login or show unauthorized
-      window.location.href = '/login';
-      return null;
-    }
-
-    if (userRole && !allowedRoles.includes(userRole)) {
-      // Show unauthorized page or redirect to a different route
-      return <div>You don't have permission to access this page.</div>;
-    }
-
-    return <Component {...props as P} />;
-  };
-
-  return AuthenticatedComponent;
-};
