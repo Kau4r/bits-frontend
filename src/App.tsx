@@ -20,6 +20,7 @@ import SecretaryScheduling from './pages/Secretary/SecretaryScheduling';
 import StudentSession from './pages/Student/StudentSession';
 import StudentPCView from './pages/Student/StudentPCView';
 import StudentRoomView from './pages/Student/StudentRoomView';
+import LabTechOverview from './pages/LabHead/LabTechOverview';
 import type { JSX } from 'react';
 
 
@@ -130,7 +131,7 @@ function AppContent() {
             <Room />
           </ProtectedRoute>
         } />
-        <Route path="/labtech/forms" element={
+        <Route path="/forms" element={
           <ProtectedRoute roles={['Lab Tech', 'Lab Head']}>
             <Forms />
           </ProtectedRoute>
@@ -156,6 +157,12 @@ function AppContent() {
             <LabheadDashboard />
           </ProtectedRoute>
         } /> 
+
+        <Route path="/labtechview" element={
+          <ProtectedRoute roles={['Lab Head']}>
+            <LabTechOverview />
+          </ProtectedRoute>
+        } />
       </Routes>
     </Layout>
   );

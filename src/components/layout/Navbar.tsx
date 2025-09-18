@@ -14,7 +14,7 @@ const roleRoutes = {
     { label: 'Tickets', path: '/tickets' },
     { label: 'Room Queue', path: '/labtech/room' },
     { label: 'Inventory', path: '/inventory' },
-    { label: 'Forms', path: '/labtech/forms' },
+    { label: 'Forms', path: '/forms' },
   ],
   'Lab Head': [
     { label: 'Dashboard', path: '/labhead-dashboard' },
@@ -22,7 +22,8 @@ const roleRoutes = {
     { label: 'Tickets', path: '/tickets' },
     { label: 'Room Queue', path: '/labtech/room' },
     { label: 'Inventory', path: '/inventory' },
-    { label: 'Forms', path: '/labtech/forms' },
+    { label: 'Forms', path: '/forms' },
+    {label: 'Lab Tech View', path: '/labtechview'},
   ],
 } as const;
 
