@@ -20,9 +20,9 @@ import SecretaryScheduling from './pages/Secretary/SecretaryScheduling';
 import StudentSession from './pages/Student/StudentSession';
 import StudentPCView from './pages/Student/StudentPCView';
 import StudentRoomView from './pages/Student/StudentRoomView';
+import LabTechOverview from './pages/LabHead/LabTechOverview';
 import type { JSX } from 'react';
 import { ROLES } from './types/user';
-
 
 const ProtectedRoute = ({ children, roles }: { children: JSX.Element, roles: string[] }) => {
   const { isAuthenticated, userRole } = useAuth();
@@ -40,7 +40,6 @@ const Logout = () => {
   }, [logout]);
   return <Navigate to="/login" replace />;
 };
-
 
 function AppContent() {
   const { isAuthenticated, userRole } = useAuth();
@@ -61,13 +60,13 @@ function AppContent() {
 
         {/* Redirect default / to dashboard based on role */}
         <Route path="/" element={
-          userRole === 'ADMIN' ? <SysAdDash /> :
-            userRole === 'LAB_TECH' ? <LabtechDashboard /> :
-              userRole === 'LAB_HEAD' ? <LabheadDashboard /> :
-                userRole === 'STUDENT' ? <StudentSession /> :
-                  userRole === 'FACULTY' ? <FacultyScheduling /> :
-                    userRole === 'SECRETARY' ? <SecretaryScheduling /> :
-                      <Navigate to="/unauthorized" replace />
+          userRole === ROLES.ADMIN ? <SysAdDash /> :
+          userRole === ROLES.LAB_TECH ? <LabtechDashboard /> :
+          userRole === ROLES.LAB_HEAD ? <LabheadDashboard /> :
+          userRole === ROLES.STUDENT ? <StudentSession /> :
+          userRole === ROLES.FACULTY ? <FacultyScheduling /> :
+          userRole === ROLES.SECRETARY ? <SecretaryScheduling /> :
+          <Navigate to="/unauthorized" replace />
         } />
 
         {/* Admin routes */}
@@ -84,6 +83,7 @@ function AppContent() {
 
         {/* LabHead only */}
         <Route path="/labhead-dashboard" element={<ProtectedRoute roles={[ROLES.LAB_HEAD]}><LabheadDashboard /></ProtectedRoute>} />
+        <Route path="/labtechview" element={<ProtectedRoute roles={[ROLES.LAB_HEAD]}><LabTechOverview /></ProtectedRoute>} />
 
         {/* Student */}
         <Route path="/student-session" element={<ProtectedRoute roles={[ROLES.STUDENT]}><StudentSession /></ProtectedRoute>} />
