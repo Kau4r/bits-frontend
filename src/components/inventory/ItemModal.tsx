@@ -170,7 +170,7 @@ export default function ItemModal({
       } else {
         if (!baseItem.serialNumber.trim()) {
           alert("Serial number is required.");
-          return;w
+          return; w
         }
       }
     }
