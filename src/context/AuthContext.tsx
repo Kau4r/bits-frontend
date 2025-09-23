@@ -1,65 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import type { User, UserWithPassword, User_Role } from '../types/user';
-
-const MOCK_USERS: UserWithPassword[] = [
-  {
-    User_ID: 1,
-    User_Role: 'ADMIN',
-    First_Name: 'Admin',
-    Last_Name: 'User',
-    Email: 'admin@bits.edu',
-    Is_Active: true,
-    password: 'admin123'
-  },
-  {
-    User_ID: 2,
-    User_Role: 'LAB_TECH',
-    First_Name: 'Lab',
-    Last_Name: 'Technician',
-    Email: 'labtech@bits.edu',
-    Is_Active: true,
-    password: 'labtech123'
-  },
-  {
-    User_ID: 3,
-    User_Role: 'LAB_HEAD',
-    First_Name: 'Lab',
-    Last_Name: 'Head',
-    Email: 'labhead@bits.edu',
-    Is_Active: true,
-    password: 'labhead123'
-  },
-  {
-    User_ID: 4,
-    User_Role: 'FACULTY',
-    First_Name: 'Faculty',
-    Last_Name: 'Member',
-    Email: 'faculty@bits.edu',
-    Is_Active: true,
-    password: 'faculty123'
-  },
-  {
-    User_ID: 5,
-    User_Role: 'SECRETARY',
-    First_Name: 'Secretary',
-    Last_Name: 'User',
-    Email: 'secretary@bits.edu',
-    Is_Active: true,
-    password: 'secretary123'
-  },
-  {
-    User_ID: 6,
-    User_Role: 'STUDENT',
-    First_Name: 'Student',
-    Last_Name: 'User',
-    Email: 'student@bits.edu',
-    Is_Active: true,
-    password: 'student123'
-  }
-];
-
-
+import type { User, User_Role } from '../types/user';
+import api from '../services/api';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -70,13 +12,16 @@ interface AuthContextType {
   loading: boolean;
 }
 
+interface LoginResponse {
+  token: string;
+  user: User;
+}
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const useAuth = (): AuthContextType => {
+export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };
 
@@ -84,49 +29,51 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Restore session on app load
   useEffect(() => {
-    // Check for existing session on initial load
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        const parsedUser = JSON.parse(storedUser) as User;
-        setUser(parsedUser);
-      } catch (error) {
-        console.error('Failed to parse user from localStorage', error);
-        localStorage.removeItem('user');
-      }
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setLoading(false);
+      return;
     }
-    setLoading(false);
+
+    let isMounted = true;
+
+    const fetchUser = async () => {
+      try {
+        const res = await api.get<User>('/users/me', { headers: { Authorization: `Bearer ${token}` } });
+        if (isMounted) setUser(res.data);
+      } catch (err: any) {
+        if (err.response?.status === 401) localStorage.removeItem('token');
+        console.error('Failed to fetch current user', err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchUser();
+
+    return () => { isMounted = false; };
   }, []);
 
+
   const login = async (email: string, password: string) => {
-    await new Promise(resolve => setTimeout(resolve, 500));
+    try {
+      const res = await api.post<LoginResponse>('/auth/login', { email, password });
+      const { token, user } = res.data;
 
-    const foundUser = MOCK_USERS.find(u => u.Email === email && u.password === password);
+      localStorage.setItem("userId", res.data.user.User_ID.toString()); // ✅ store as string
+      localStorage.setItem('token', token);
+      setUser(user);
 
-    if (foundUser) {
-      const userData: User = {
-        User_ID: foundUser.User_ID,
-        User_Role: foundUser.User_Role,
-        First_Name: foundUser.First_Name,
-        Last_Name: foundUser.Last_Name,
-        Email: foundUser.Email,
-        Is_Active: foundUser.Is_Active
-      };
-
-      localStorage.setItem('user', JSON.stringify(userData));
-      setUser(userData);
-      return { success: true, user: userData };
+      return { success: true, user };
+    } catch (err: any) {
+      return { success: false, error: err.response?.data?.error || 'Login failed' };
     }
-
-    return {
-      success: false,
-      error: 'Invalid email or password'
-    };
   };
 
   const logout = () => {
-    localStorage.removeItem('user');
+    localStorage.removeItem('token');
     setUser(null);
   };
 
@@ -138,12 +85,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         login,
         logout,
         userRole: user?.User_Role || null,
-        loading
+        loading,
       }}
     >
       {!loading && children}
     </AuthContext.Provider>
   );
 };
-
-
