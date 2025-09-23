@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import type { User_Role } from '@/types/user';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -14,27 +15,28 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
-    
+
     if (!email || !password) {
       setError('Please enter both email and password');
       return;
     }
 
     setIsLoading(true);
-    
+
     try {
       const result = await login(email, password);
       if (result.success && result.user) {
-        const role = result.user.role;
-        const roleToPath: Record<string, string> = {
-          'System Admin': '/',
-          'Lab Tech': '/labtech-dashboard',
-          'Lab Head': '/labhead-dashboard',
-          'Faculty': '/faculty/scheduling',
-          'Secretary': '/secretary/scheduling',
-          'Student': '/student-session',
+        const role = result.user.User_Role;
+        const roleToPath: Record<User_Role, string> = {
+          ADMIN: '/',
+          LAB_TECH: '/labtech-dashboard',
+          LAB_HEAD: '/labhead-dashboard',
+          FACULTY: '/faculty/scheduling',
+          SECRETARY: '/secretary/scheduling',
+          STUDENT: '/student-session',
         };
-        navigate(roleToPath[role] || '/', { replace: true });
+
+        navigate(roleToPath[role], { replace: true });
       } else {
         setError(result.error || 'Login failed');
       }
@@ -146,7 +148,7 @@ export default function Login() {
             </div>
 
             <div className="mt-6 grid grid-cols-1 gap-3">
-            <div className="text-sm text-gray-600 dark:text-gray-400">
+              <div className="text-sm text-gray-600 dark:text-gray-400">
                 <p className="font-medium">Roles:</p>
                 <p>admin</p>
                 <p>labtech</p>
@@ -160,7 +162,7 @@ export default function Login() {
                 <p>Email: role@bits.edu</p>
                 <p>Password: role123</p>
               </div>
-             
+
             </div>
           </div>
         </div>
