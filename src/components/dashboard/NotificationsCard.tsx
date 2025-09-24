@@ -9,7 +9,7 @@ const notifications = [
     time: '2 hours ago'
   },
   {
-    id: 2,    
+    id: 2,
     title: 'New Equipment',
     message: 'New equipment has been added to Physics Lab 2',
     type: 'success',
@@ -21,7 +21,107 @@ const notifications = [
     message: 'System update scheduled for tomorrow at 2:00 AM',
     type: 'warning',
     time: '2 days ago'
-  }
+  },
+  {
+    id: 3,
+    title: 'System Update',
+    message: 'System update scheduled for tomorrow at 2:00 AM',
+    type: 'warning',
+    time: '2 days ago'
+  },
+  {
+    id: 3,
+    title: 'System Update',
+    message: 'System update scheduled for tomorrow at 2:00 AM',
+    type: 'warning',
+    time: '2 days ago'
+  },
+  {
+    id: 3,
+    title: 'System Update',
+    message: 'System update scheduled for tomorrow at 2:00 AM',
+    type: 'warning',
+    time: '2 days ago'
+  },
+  {
+    id: 3,
+    title: 'System Update',
+    message: 'System update scheduled for tomorrow at 2:00 AM',
+    type: 'warning',
+    time: '2 days ago'
+  },
+  {
+    id: 3,
+    title: 'System Update',
+    message: 'System update scheduled for tomorrow at 2:00 AM',
+    type: 'warning',
+    time: '2 days ago'
+  },
+  {
+    id: 3,
+    title: 'System Update',
+    message: 'System update scheduled for tomorrow at 2:00 AM',
+    type: 'warning',
+    time: '2 days ago'
+  },
+
+  {
+    id: 3,
+    title: 'System Update',
+    message: 'System update scheduled for tomorrow at 2:00 AM',
+    type: 'warning',
+    time: '2 days ago'
+  },
+  {
+    id: 3,
+    title: 'System Update',
+    message: 'System update scheduled for tomorrow at 2:00 AM',
+    type: 'warning',
+    time: '2 days ago'
+  },
+  {
+    id: 3,
+    title: 'System Update',
+    message: 'System update scheduled for tomorrow at 2:00 AM',
+    type: 'warning',
+    time: '2 days ago'
+  },
+  {
+    id: 3,
+    title: 'System Update',
+    message: 'System update scheduled for tomorrow at 2:00 AM',
+    type: 'warning',
+    time: '2 days ago'
+  },
+  {
+    id: 3,
+    title: 'System Update',
+    message: 'System update scheduled for tomorrow at 2:00 AM',
+    type: 'warning',
+    time: '2 days ago'
+  },
+  {
+    id: 3,
+    title: 'System Update',
+    message: 'System update scheduled for tomorrow at 2:00 AM',
+    type: 'warning',
+    time: '2 days ago'
+  },
+  {
+    id: 3,
+    title: 'System Update',
+    message: 'System update scheduled for tomorrow at 2:00 AM',
+    type: 'warning',
+    time: '2 days ago'
+  },
+  {
+    id: 3,
+    title: 'System Update',
+    message: 'System update scheduled for tomorrow at 2:00 AM',
+    type: 'warning',
+    time: '2 days ago'
+  },
+  // add more if needed...
 ];
 
 export default function NotificationsCard() {
@@ -37,25 +137,39 @@ export default function NotificationsCard() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col h-full">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-lg font-semibold text-white">Notifications</h3>
         <button className="text-sm font-medium text-green-400 hover:text-green-300">
           View All
         </button>
       </div>
-      <div className="space-y-3">
-        {notifications.map((notification) => (
-          <div key={notification.id} className="flex items-start space-x-3 p-3 bg-[#1A2236] rounded-lg">
-            <div className="mt-0.5">
-              {getIcon(notification.type)}
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-white">{notification.title}</p>
-              <p className="text-xs text-gray-200">{notification.message}</p>
-              <p className="mt-1 text-xs text-gray-300">{notification.time}</p>
-            </div>
+      <div className="flex-1 overflow-hidden flex flex-col">
+        <div
+          className="overflow-y-auto pr-2 -mr-2"
+        >
+          <div className="space-y-2 pr-1">
+            {notifications.map(({ id, title, message, type, time }) => (
+              <div key={id} className="flex items-start space-x-3 p-3 bg-[#1A2236] rounded-lg">
+                <div className="mt-0.5 flex-shrink-0">
+                  {getIcon(type)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white truncate">{title}</p>
+                  <p className="text-xs text-gray-200 overflow-hidden" style={{
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    textOverflow: 'ellipsis'
+                  }}>
+                    {message}
+                  </p>
+                  <p className="mt-1 text-xs text-gray-300">{time}</p>
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
       </div>
     </div>
   );
