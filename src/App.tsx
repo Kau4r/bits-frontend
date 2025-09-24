@@ -1,6 +1,6 @@
 import '@/App.css'
 import './index.css';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import LabtechDashboard from './pages/LabTech/LabtechDashboard';
@@ -54,8 +54,8 @@ function AppContent() {
   }
 
   return (
-    <Layout>
-      <Routes>
+    <Routes>
+      <Route element={<Layout />}>
         <Route path="/logout" element={<Logout />} />
 
         {/* Redirect default / to dashboard based on role */}
@@ -105,8 +105,9 @@ function AppContent() {
             </div>
           </div>
         } />
-      </Routes>
-    </Layout>
+        <Route path="*" element={<Outlet />} />
+      </Route>
+    </Routes>
   );
 }
 

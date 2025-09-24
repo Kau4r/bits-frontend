@@ -1,32 +1,48 @@
-import { DocumentTextIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, ClockIcon, EyeIcon } from '@heroicons/react/24/outline';
+
+const statuses = [
+  {
+    id: 1,
+    name: 'Approved',
+    count: 15,
+    icon: CheckCircleIcon,
+    color: 'text-green-400',
+    bg: 'bg-green-900/10',
+  },
+  {
+    id: 2,
+    name: 'Pending',
+    count: 8,
+    icon: ClockIcon,
+    color: 'text-yellow-400',
+    bg: 'bg-yellow-900/10',
+  },
+  {
+    id: 3,
+    name: 'In Review',
+    count: 5,
+    icon: EyeIcon,
+    color: 'text-blue-400',
+    bg: 'bg-blue-900/10',
+  }
+];
 
 export default function FormsCard() {
-  const forms = [
-    { id: 1, name: 'Lab Equipment Request', submissions: 24 },
-    { id: 2, name: 'Maintenance Report', submissions: 18 },
-    { id: 3, name: 'Incident Report', submissions: 5 },
-  ];
-
   return (
-    <div className="space-y-4">
-      <div className="space-y-3">
-        {forms.map((form) => (
-          <div key={form.id} className="flex items-center justify-between p-3 bg-[#1A2236] rounded-lg">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-green-100 rounded-md">
-                <DocumentTextIcon className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">{form.name}</p>
-                <p className="text-xs text-white">{form.submissions} submissions</p>
-              </div>
+    <div className="grid grid-cols-3 gap-3">
+      {statuses.map(({ id, name, count, icon: Icon, color, bg }) => (
+        <div key={id} className="p-3 bg-[#1A2236] rounded-lg border border-gray-700">
+          <div className="flex items-center justify-between">
+            <div className={`p-2 rounded-lg ${bg} ${color}`}>
+              <Icon className="h-4 w-4" />
             </div>
-            <button className="text-sm font-medium text-green-400 hover:text-green-300">
-              View
-            </button>
+            <div className="text-right">
+              <div className="text-lg font-semibold text-white">{count}</div>
+              <div className="text-xs text-gray-400">{name}</div>
+            </div>
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
     </div>
   );
 }
