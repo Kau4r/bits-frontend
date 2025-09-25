@@ -6,30 +6,39 @@ import ReportsCard from '@/components/dashboard/ReportsCard';
 
 export default function LabheadDashboard() {
   return (
-    <div className="h-screen w-full p-2 sm:p-3 md:p-4 flex flex-col overflow-hidden">
-      <div className='mb-2 sm:mb-3 md:mb-4 flex-shrink-0'>
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">GOOD DAY LABHEAD</h1>
+    <div className="h-screen w-full p-4 flex flex-col">
+      <div className="mb-4 flex-shrink-0">
+        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
+          Good Day, Labhead
+        </h1>
       </div>
-      <div className="flex-1 overflow-y-auto">
-        <div className="grid grid-rows-4 sm:grid-rows-2 lg:grid-cols-3 lg:grid-rows-1 gap-2 sm:gap-3 md:gap-4 min-h-min">
-          <div className="lg:col-span-2">
-            <BookingCard />
-          </div>
-          <div className="row-span-3 lg:row-span-1">
-            <Card title="Notifications" className="h-full">
-              <NotificationsCard />
-            </Card>
-          </div>
-          <div className="lg:col-span-2">
-            <Card title="Forms" className="h-full">
+
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-0">
+        {/* Left Side (2 columns wide) */}
+        <div className="lg:col-span-2 flex flex-col gap-4 h-full min-h-0">
+          {/* Top Row: Forms + Reports */}
+          <div className="grid grid-cols-2 gap-4">
+            <Card title="Forms" className="h-48">
               <FormsCard />
             </Card>
-          </div>
-          <div className="lg:col-start-3">
-            <Card title="Reports" className="h-full">
+            <Card title="Reports" className="h-48">
               <ReportsCard />
             </Card>
           </div>
+
+          {/* Bottom Row: Bookings - takes remaining space */}
+          <div className="flex-1 min-h-0">
+            <Card title="Bookings" className="h-full">
+              <BookingCard />
+            </Card>
+          </div>
+        </div>
+
+        {/* Right Side: Notifications full height */}
+        <div className="h-full min-h-0">
+          <Card title="Notifications" className="h-full">
+            <NotificationsCard />
+          </Card>
         </div>
       </div>
     </div>

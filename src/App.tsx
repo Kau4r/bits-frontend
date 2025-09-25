@@ -1,7 +1,7 @@
 import UnauthorizedPage from './pages/UnauthorizedPage';
 import '@/App.css'
 import './index.css';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import LabtechDashboard from './pages/LabTech/LabtechDashboard';
@@ -21,9 +21,9 @@ import SecretaryScheduling from './pages/Secretary/SecretaryScheduling';
 import StudentSession from './pages/Student/StudentSession';
 import StudentPCView from './pages/Student/StudentPCView';
 import StudentRoomView from './pages/Student/StudentRoomView';
+import LabTechOverview from './pages/LabHead/LabTechOverview';
 import type { JSX } from 'react';
 import { ROLES } from './types/user';
-
 
 const ProtectedRoute = ({ children, roles }: { children: JSX.Element, roles: string[] }) => {
   const { isAuthenticated, userRole } = useAuth();
@@ -84,6 +84,8 @@ function AppContent() {
 
           {/* LabHead */}
           <Route path="labhead-dashboard" element={<ProtectedRoute roles={[ROLES.LAB_HEAD]}><LabheadDashboard /></ProtectedRoute>} />
+          <Route path="/labtechview" element={<ProtectedRoute roles={[ROLES.LAB_HEAD]}><LabTechOverview /></ProtectedRoute>} />
+
 
           {/* Student */}
           <Route path="student-session" element={<ProtectedRoute roles={[ROLES.STUDENT]}><StudentSession /></ProtectedRoute>} />
