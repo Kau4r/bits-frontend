@@ -9,6 +9,12 @@ export const fetchInventory = async (): Promise<InventoryItem[]> => {
     return res.data;
 };
 
+// Fetch a single item by its Item_Code (for QR code scan)
+export const fetchInventoryByCode = async (itemCode: string): Promise<InventoryItem> => {
+    const res = await api.get<InventoryItem>(`/inventory/code/${itemCode}`);
+    return res.data;
+};
+
 // Add single item (wrap as bulk internally)
 export const addInventoryItem = async (item: NewInventoryItem, User_ID: number): Promise<InventoryItem> => {
     const res = await api.post<{ items: InventoryItem[] }>("/inventory", { items: [item], User_ID });
@@ -28,5 +34,4 @@ export const addInventoryBulk = async ({
 export const updateInventoryItem = async (itemId: number, item: Partial<InventoryItem>): Promise<InventoryItem> => {
     const res = await api.put<InventoryItem>(`/inventory/${itemId}`, item);
     return res.data; // <- return the item directly
-};
-
+};    

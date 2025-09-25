@@ -231,7 +231,7 @@ export default function ItemModal({
             <div className="flex items-start gap-4 my-5">
               <ReactQRCode
                 id="qrCode"
-                value={baseItem.Item_Code || baseItem.Serial_Number}
+                value={baseItem.Item_Code}
                 size={200}
                 level="H"
                 bgColor="#101828"
