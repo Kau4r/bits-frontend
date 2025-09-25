@@ -1,7 +1,7 @@
 import UnauthorizedPage from './pages/UnauthorizedPage';
 import '@/App.css'
 import './index.css';
-import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import LabtechDashboard from './pages/LabTech/LabtechDashboard';
