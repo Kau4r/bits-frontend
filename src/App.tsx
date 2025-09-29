@@ -65,6 +65,13 @@ function AppContent() {
             <Route path="student-room-view" element={<StudentRoomView />} />
             <Route path="*" element={<Navigate to="/student-session" replace />} />
           </>
+        ) : userRole === 'FACULTY' ? (
+          // Faculty routes without Layout
+          <>
+            <Route index element={<Navigate to="/faculty/scheduling" replace />} />
+            <Route path="faculty/scheduling" element={<FacultyScheduling />} />
+            <Route path="*" element={<Navigate to="/faculty/scheduling" replace />} />
+          </>
         ) : (
           // All other roles with Layout
           <Route element={<Layout />}>
@@ -74,9 +81,8 @@ function AppContent() {
                 userRole === 'ADMIN' ? <SysAdDash /> :
                   userRole === 'LAB_TECH' ? <LabtechDashboard /> :
                     userRole === 'LAB_HEAD' ? <LabheadDashboard /> :
-                      userRole === 'FACULTY' ? <FacultyScheduling /> :
-                        userRole === 'SECRETARY' ? <SecretaryScheduling /> :
-                          <Navigate to="/unauthorized" replace />
+                      userRole === 'SECRETARY' ? <SecretaryScheduling /> :
+                        <Navigate to="/unauthorized" replace />
               }
             />
             {/* Admin */}
@@ -95,8 +101,7 @@ function AppContent() {
             <Route path="labhead-dashboard" element={<ProtectedRoute roles={[ROLES.LAB_HEAD]}><LabheadDashboard /></ProtectedRoute>} />
             <Route path="labtechview" element={<ProtectedRoute roles={[ROLES.LAB_HEAD]}><LabTechOverview /></ProtectedRoute>} />
 
-            {/* Faculty */}
-            <Route path="faculty/scheduling" element={<ProtectedRoute roles={[ROLES.FACULTY]}><FacultyScheduling /></ProtectedRoute>} />
+            {/* Faculty routes are handled separately without Layout */}
 
             {/* Secretary */}
             <Route path="secretary/scheduling" element={<ProtectedRoute roles={[ROLES.SECRETARY]}><SecretaryScheduling /></ProtectedRoute>} />
