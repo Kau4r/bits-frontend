@@ -4,7 +4,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 
 const roleRoutes = {
-  'System Admin': [
+  ADMIN: [
     { label: 'Users', path: '/' },
     { label: 'Rooms', path: '/room' },
   ],
