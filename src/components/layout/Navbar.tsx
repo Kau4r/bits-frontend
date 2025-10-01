@@ -4,7 +4,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 
 const roleRoutes = {
-  'System Admin': [
+  ADMIN: [
     { label: 'Users', path: '/' },
     { label: 'Rooms', path: '/room' },
   ],
@@ -23,7 +23,7 @@ const roleRoutes = {
     { label: 'Room Queue', path: '/labtech/room' },
     { label: 'Inventory', path: '/inventory' },
     { label: 'Forms', path: '/forms' },
-    {label: 'Lab Tech View', path: '/labtechview'},
+    { label: 'Lab Tech View', path: '/labtechview' },
   ],
 } as const;
 
@@ -101,9 +101,8 @@ const Navbar = ({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed:
       )}
 
       <nav
-        className={`fixed inset-y-0 left-0 z-50 flex h-screen flex-col bg-white shadow-sm dark:bg-gray-800 transition-all duration-300 ${
-          collapsed ? 'w-20' : 'w-56'
-        } ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
+        className={`fixed inset-y-0 left-0 z-50 flex h-screen flex-col bg-white shadow-sm dark:bg-gray-800 transition-all duration-300 ${collapsed ? 'w-20' : 'w-56'
+          } ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
         aria-label="Sidebar navigation"
       >
         <header className="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-700">
@@ -134,16 +133,14 @@ const Navbar = ({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed:
                   to={item.path}
                   onClick={() => setMobileOpen(false)}
                   className={({ isActive }) =>
-                    `group flex items-center gap-3 rounded-md px-4 py-2 text-sm font-medium transition-colors duration-300 ${
-                      collapsed ? 'justify-center' : ''
+                    `group flex items-center gap-3 rounded-md px-4 py-2 text-sm font-medium transition-colors duration-300 ${collapsed ? 'justify-center' : ''
                     } ${isActive ? 'bg-indigo-500 text-white shadow-sm' : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'}`
                   }
                   end
                 >
                   <span
-                    className={`text-indigo-600 group-hover:text-indigo-700 dark:text-indigo-400 ${
-                      collapsed ? 'mx-auto' : ''
-                    }`}
+                    className={`text-indigo-600 group-hover:text-indigo-700 dark:text-indigo-400 ${collapsed ? 'mx-auto' : ''
+                      }`}
                     aria-hidden="true"
                   >
                     {navIcons[item.label] || <span className="w-6 h-6" />}
@@ -158,9 +155,8 @@ const Navbar = ({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed:
         <footer className="border-t border-gray-200 px-4 py-4 dark:border-gray-700">
           <button
             onClick={handleLogout}
-            className={`w-full flex items-center gap-3 rounded-md bg-red-600 px-3 py-3 text-sm font-medium text-white shadow hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors ${
-              collapsed ? 'justify-center' : ''
-            }`}
+            className={`w-full flex items-center gap-3 rounded-md bg-red-600 px-3 py-3 text-sm font-medium text-white shadow hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors ${collapsed ? 'justify-center' : ''
+              }`}
             type="button"
             aria-label="Logout"
           >
