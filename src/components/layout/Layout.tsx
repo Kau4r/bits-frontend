@@ -20,7 +20,6 @@ const Layout = () => {
           ${hideSidebar ? "ml-0" : collapsed ? "ml-20" : "ml-56"} 
           bg-white dark:bg-gray-900`}
       >
-        <Outlet /> {/* THIS IS CRUCIAL */}
         <Outlet />
       </main>
     </div>
