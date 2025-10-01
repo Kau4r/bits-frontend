@@ -1,6 +1,8 @@
-// Cleaned and refactored Scheduling component
-import { useRef, useState } from 'react';
+import { getRooms } from "@/services/room";
+import type { Room } from '@/types/room';
+import { useRef, useState, useEffect } from 'react';
 import FullCalendar from '@fullcalendar/react';
+import type { DateSelectArg, CalendarApi } from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import listPlugin from '@fullcalendar/list';
@@ -11,9 +13,14 @@ dayjs.extend(isSameOrBefore);
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import ReportIssueModal from '../../components/student/Modals/ReportIssue';
+import { getBookings, createBooking, updateBookingStatus } from "@/services/booking";
+import type { Booking } from '@/types/booking';
+import type { Borrowing } from '@/types/borrowing';
+
+import { useAuth } from '@/context/AuthContext';
+
 
 const DAY_INDEX_TO_CODE = ['su', 'mo', 'tu', 'we', 'th', 'fr', 'sa'];
-
 const INITIAL_FORM = {
   title: '',
   description: '',
@@ -21,18 +28,11 @@ const INITIAL_FORM = {
   startTime: '',
   endTime: '',
   repeat: false,
-  repeatDays: ['su', 'mo', 'tu', 'we', 'th', 'fr', 'sa'],
+  repeatDays: [...DAY_INDEX_TO_CODE],
   endDate: '',
-  borrowedItems: [], // fixed key and initialised as array
+  borrowedItems: [], // ensure proper type
 };
 
-
-export const MOCK_ROOMS = [
-  { id: 'room_a', name: 'LB465' },
-  { id: 'room_b', name: 'LB466' },
-  { id: 'room_c', name: 'LB467' },
-  { id: 'room_d', name: 'LB468' },
-];
 
 const MOCK_ITEMS = Object.freeze([
   { id: 'item_a', name: 'Projector A' },
@@ -42,94 +42,130 @@ const MOCK_ITEMS = Object.freeze([
 
 
 export default function Scheduling() {
-
-  const [userRole, setUserRole] = useState('faculty'); // mock for now
-  const approveEvent = (event) => {
-    setEvents(prev =>
-      prev.map(e =>
-        e === event ? { ...e, extendedProps: { ...e.extendedProps, status: 'approved' } } : e
-      )
-    );
-  };
-
-  const buildEvent = (start, end) => ({
-    title: formData.title,
-    start,
-    end,
-    color: '#306844',
-    extendedProps: {
-      description: formData.description,
-      roomId: activeRoom,
-      roomName: MOCK_ROOMS.find(r => r.id === activeRoom)?.name || 'Unknown',
-      borrowedItems: formData.borrowedItems.map(id => {
-        const item = MOCK_ITEMS.find(i => i.id === id);
-        return { id: item?.id || '', name: item?.name || '' };
-      }),
-      status: 'pending',
-      createdBy: userRole,
-    },
-  });
-
-  const denyEvent = (event) => {
-    setEvents(prev => prev.filter(e => e !== event));
-  };
-
-  const calendarRef = useRef(null);
-  const [calendarView, setCalendarView] = useState('timeGridWeek');
+  const { user } = useAuth();
+  const currentUserId = user?.User_ID ?? 0;
+  const userRole = user?.User_Role.toUpperCase() ?? 'LAB_TECH';
+  type CalendarViewType = 'dayGridMonth' | 'timeGridWeek' | 'listWeek'
+  const calendarRef = useRef<FullCalendar | null>(null);
+  const [calendarView, setCalendarView] = useState<'dayGridMonth' | 'timeGridWeek' | 'listWeek'>('timeGridWeek');
   const [currentDate, setCurrentDate] = useState(dayjs().format('MMMM YYYY'));
-  const [events, setEvents] = useState([
-    {
-      title: 'Class in LB483',
-      start: '2025-08-06T09:00',
-      end: '2025-08-06T11:00',
-      extendedProps: {
-        roomId: 'room_a',
-        roomName: 'LB483',
-        status: 'approved',
-        createdBy: userRole
-      }
-    },
-    {
-      title: 'Class in LB483',
-      start: '2025-08-06T13:00',
-      end: '2025-08-06T15:00',
-      extendedProps: {
-        roomId: 'room_a',
-        roomName: 'LB483',
-        status: 'approved',
-        createdBy: userRole
-      }
-    },
-    {
-      title: 'Class in CNF2',
-      start: '2025-08-06T08:00',
-      end: '2025-08-06T10:00',
-      extendedProps: {
-        roomId: 'room_b',
-        roomName: 'CNF2',
-        status: 'approved',
-        createdBy: userRole
-      }
-    },
-    {
-      title: 'Class in CTL1',
-      start: '2025-08-06T10:00',
-      end: '2025-08-06T12:00',
-      extendedProps: {
-        roomId: 'room_c',
-        roomName: 'CTL1',
-        status: 'approved',
-        createdBy: userRole
-      }
-    }
-  ]);
-  const [showForm, setShowForm] = useState(false);
+  const [events, setEvents] = useState<any[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [activeRoom, setActiveRoom] = useState<number>(0);
+  const [showForm, setShowForm] = useState<boolean>(false);
   const [formData, setFormData] = useState(INITIAL_FORM);
-  const [activeRoom, setActiveRoom] = useState('room_a');
   const [showReportIssueModal, setShowReportIssueModal] = useState(false);
 
+  // Load rooms
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        const roomsData = await getRooms();
+        if (roomsData.length > 0) setActiveRoom(roomsData[0].Room_ID);
+        setRooms(roomsData);
+        await loadBookings();
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    loadInitialData();
+  }, []);
 
-  function BorrowedItemSelect({ value, onChange, disabledItems }) {
+
+  const loadBookings = async () => {
+    console.log('[DEBUG] Starting to load bookings...');
+    try {
+      console.log('[DEBUG] Calling getBookings API...');
+      const bookings = await getBookings();
+      console.log('[DEBUG] Raw bookings from API:', bookings);
+
+      const mapped = bookings.map((b: Booking) => ({
+        id: String(b.Booked_Room_ID),
+        title: b.Purpose ?? 'No Title',
+        start: b.Start_Time,
+        end: b.End_Time,
+        extendedProps: {
+          roomId: b.Room_ID,
+          roomName: b.Room?.Name ?? 'Unknown',
+          status: b.Status,
+          createdBy: b.Approver
+            ? `${b.Approver.First_Name || ''} ${b.Approver.Last_Name || ''}`.trim() || 'Unknown'
+            : `${b.User?.First_Name || ''} ${b.User?.Last_Name || ''}`.trim() || 'Unknown',
+          createdById: b.User_ID, // <-- add this
+          borrowedItems: b.Borrowed_Items || [],
+          description: b.Notes ?? '',
+        },
+      }));
+
+
+
+      console.log('[DEBUG] All mapped events:', mapped);
+      setEvents(mapped);
+    } catch (error) {
+      console.error('[ERROR] Error loading bookings:', error);
+    }
+  };
+
+  const approveEvent = async (booking: Booking) => {
+    try {
+      const updated = await updateBookingStatus(booking.Booked_Room_ID, {
+        status: 'APPROVED',
+        approverId: currentUserId,
+      });
+      setEvents(prev =>
+        prev.map(e =>
+          e.id === updated.Booked_Room_ID
+            ? {
+              ...e,
+              extendedProps: {
+                ...e.extendedProps,
+                status: updated.Status,
+                borrowedItems: updated.Borrowed_Items,
+              },
+            }
+            : e
+        )
+      );
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const denyEvent = async (booking: Booking) => {
+    try {
+      const updated = await updateBookingStatus(booking.Booked_Room_ID, {
+        status: 'REJECTED',
+        approverId: currentUserId,
+      });
+      setEvents(prev =>
+        prev.map(e =>
+          e.extendedProps.roomId === booking.Room_ID
+            ? { ...e, extendedProps: { ...e.extendedProps, status: 'REJECTED' } }
+            : e
+        )
+      );
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const getDisabledItems = () => {
+    return events
+      .filter(e => ['APPROVED', 'PENDING'].includes(e.extendedProps.status))
+      .filter(e =>
+        formData.startDate === dayjs(e.start).format('YYYY-MM-DD') &&
+        formData.startTime < dayjs(e.end).format('HH:mm') &&
+        formData.endTime > dayjs(e.start).format('HH:mm')
+      )
+      .flatMap(e => e.extendedProps.borrowedItems);
+  };
+
+
+  interface BorrowedItemSelectProps {
+    value: string[];
+    onChange: (newValue: string[]) => void;
+  }
+  function BorrowedItemSelect({ value, onChange }: BorrowedItemSelectProps) {
     return (
       <div>
         <label className="block text-sm mb-1 text-gray-700 dark:text-gray-300">Borrow Items</label>
@@ -137,9 +173,18 @@ export default function Scheduling() {
           {value.map((itemId, idx) => {
             const item = MOCK_ITEMS.find(i => i.id === itemId);
             return (
-              <li key={idx} className="flex justify-between items-center bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded">
+              <li
+                key={idx}
+                className="flex justify-between items-center bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded"
+              >
                 <span>{item?.name || itemId}</span>
-                <button type="button" className="text-red-500" onClick={() => onChange(value.filter((_, i) => i !== idx))}>Remove</button>
+                <button
+                  type="button"
+                  className="text-red-500"
+                  onClick={() => onChange(value.filter((_, i) => i !== idx))}
+                >
+                  Remove
+                </button>
               </li>
             );
           })}
@@ -148,7 +193,11 @@ export default function Scheduling() {
     );
   }
 
-  function BorrowedItemAddControl({ onAdd, disabledItems }) {
+  interface BorrowedItemAddControlProps {
+    onAdd: (id: string) => void;
+    disabledItems?: string[];
+  }
+  function BorrowedItemAddControl({ onAdd, disabledItems = [] }: BorrowedItemAddControlProps) {
     return (
       <div>
         <label className="block text-sm mb-1 text-gray-700 dark:text-gray-300 mt-3">Add Item to Borrow</label>
@@ -167,7 +216,7 @@ export default function Scheduling() {
             type="button"
             className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
             onClick={() => {
-              const select = document.getElementById('borrow-item-select');
+              const select = document.getElementById('borrow-item-select') as HTMLSelectElement | null;
               const val = select?.value;
               if (val && !disabledItems.includes(val)) onAdd(val);
             }}
@@ -179,13 +228,14 @@ export default function Scheduling() {
     );
   }
 
-
   const updateCurrentDate = () => {
-    const date = calendarRef.current?.getApi()?.getDate();
+    const api: CalendarApi | undefined = calendarRef.current?.getApi();
+    const date = api?.getDate();
     if (date) setCurrentDate(dayjs(date).format('MMMM YYYY'));
   };
 
-  const changeView = (viewType) => {
+
+  const changeView = (viewType: CalendarViewType) => {
     setCalendarView(viewType);
     calendarRef.current?.getApi()?.changeView(viewType);
     updateCurrentDate();
@@ -201,7 +251,7 @@ export default function Scheduling() {
     updateCurrentDate();
   };
 
-  const handleSelect = ({ start, end }) => {
+  const handleSelect = ({ start, end }: DateSelectArg) => {
     setFormData((prev) => ({
       ...INITIAL_FORM, // reset everything
       startDate: dayjs(start).format('YYYY-MM-DD'),
@@ -211,53 +261,68 @@ export default function Scheduling() {
     setShowForm(true);
   };
 
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { startDate, startTime, endTime, repeat, endDate, repeatDays } = formData;
+    console.log('[DEBUG] Form submitted with data:', formData);
 
-    if (!startDate || !startTime || !endTime) {
-      alert('Missing required fields.');
-      return;
+    if (!formData.startDate || !formData.startTime || !formData.endTime) {
+      console.log('[DEBUG] Validation failed: Missing required fields');
+      return alert('Please fill all required fields');
     }
 
-    if (repeat && (!endDate || dayjs(endDate).isBefore(startDate) || repeatDays.length === 0)) {
-      alert('Invalid repeat setup.');
-      return;
+    const bookingData = {
+      User_ID: currentUserId,
+      Room_ID: activeRoom,
+      Start_Time: `${formData.startDate}T${formData.startTime}`,
+      End_Time: `${formData.startDate}T${formData.endTime}`,
+      Purpose: formData.title,
+      Borrowed_Items: formData.borrowedItems,
+    };
+
+    console.log('[DEBUG] Sending booking data to API:', bookingData);
+
+    try {
+      console.log('[DEBUG] Calling createBooking API...');
+      const newBooking = await createBooking(bookingData);
+      console.log('[DEBUG] Booking created successfully:', newBooking);
+
+      // Get the room name from the rooms list
+      const room = rooms.find(r => r.Room_ID === activeRoom);
+      console.log('[DEBUG] Found room:', room);
+
+      const newEvent = {
+        id: newBooking.Booked_Room_ID,
+        title: newBooking.Purpose ?? 'No Title',
+        start: newBooking.Start_Time,
+        end: newBooking.End_Time,
+        extendedProps: {
+          roomId: newBooking.Room_ID,
+          roomName: room?.Name || 'Unknown Room',
+          status: newBooking.Status,
+          createdBy: user ? `${user.First_Name} ${user.Last_Name}` : 'Unknown User',
+          borrowedItems: newBooking.Borrowed_Items || [],
+          description: newBooking.Notes || '',
+        },
+      };
+
+      console.log('[DEBUG] Adding new event to calendar:', newEvent);
+      setEvents(prev => {
+        console.log('[DEBUG] Current events before update:', prev);
+        return [...prev, newEvent];
+      });
+      setFormData(INITIAL_FORM);
+      setShowForm(false);
+
+      console.log('[DEBUG] Reloading bookings...');
+      await loadBookings();
+
+    } catch (error) {
+      console.error('[ERROR] Failed to create booking:', error);
+      alert('Failed to create booking. Check console for details.');
     }
-
-    const newEvents = [];
-    const baseStart = `${startDate}T${startTime}`;
-    const baseEnd = `${startDate}T${endTime}`;
-
-    if (!repeat) {
-      newEvents.push(buildEvent(baseStart, baseEnd));
-    } else {
-      const dedupedDays = [...new Set(repeatDays)];
-      console.log('repeatDays:', dedupedDays); // <-- Log here
-
-      let current = dayjs(startDate);
-      const until = dayjs(endDate);
-
-      while (current.isSameOrBefore(until, 'day')) {
-        const currentDayCode = DAY_INDEX_TO_CODE[current.day()];
-        if (dedupedDays.includes(currentDayCode)) {
-          const eventStart = `${current.format('YYYY-MM-DD')}T${startTime}`;
-          const eventEnd = `${current.format('YYYY-MM-DD')}T${endTime}`;
-          newEvents.push(buildEvent(eventStart, eventEnd));
-          console.log('Checking:', current.format('YYYY-MM-DD'), '=>', currentDayCode);
-        }
-        current = current.add(1, 'day');
-      }
-    }
-
-    console.log('Generated Events:', newEvents); // <-- Log here
-
-    setEvents((prev) => [...prev, ...newEvents]);
-    setFormData(INITIAL_FORM);
   };
 
-  const toggleRepeatDay = (day) => {
+  const toggleRepeatDay = (day: typeof DAY_INDEX_TO_CODE[number]) => {
     setFormData((prev) => {
       const days = [...prev.repeatDays];
       const i = days.indexOf(day);
@@ -267,29 +332,53 @@ export default function Scheduling() {
     });
   };
 
-  const handleEventClick = ({ event }) => {
+  const handleEventClick = ({ event }: { event: any }) => {
+    console.log('[DEBUG] Event clicked:', event);
     const start = dayjs(event.start);
     const end = dayjs(event.end);
 
-    setFormData({
+    console.log('[DEBUG] Setting form data from event:', {
       title: event.title,
-      description: event.extendedProps.description || '',
+      start: start.format('YYYY-MM-DD HH:mm'),
+      end: end.format('YYYY-MM-DD HH:mm')
+    });
+
+    setFormData({
+      title: event.title ?? '',
+      description: event.extendedProps.description ?? '',
       startDate: start.format('YYYY-MM-DD'),
       startTime: start.format('HH:mm'),
       endTime: end.format('HH:mm'),
-      repeat: false,          // optional: disable repeat for edits
-      repeatDays: [],         // optional: clear repeats
-      endDate: '',            // optional: clear repeats
+      repeat: false,
+      repeatDays: [],
+      endDate: '',
+      borrowedItems: event.extendedProps.borrowedItems ?? [],
     });
 
     setShowForm(true);
   };
 
+  const filteredEvents = events.filter(e => {
+    if (e.extendedProps.roomId !== activeRoom) return false;
+
+    if (userRole === 'ADMIN') return true;
+    if (userRole === 'FACULTY' || userRole === 'STUDENT') {
+      return (
+        e.extendedProps.status === 'APPROVED' ||
+        (e.extendedProps.status === 'PENDING' && e.extendedProps.createdById === currentUserId)
+      );
+    }
+    if (userRole === 'LAB_TECH') {
+      return e.extendedProps.status === 'APPROVED';
+    }
+    return false;
+  });
+
 
   return (
     <div className="flex min-h-screen overflow-hidden bg-gray-100 dark:bg-gray-900">
-      <div className="flex-grow p-6">
-        <div className="flex justify-between mb-4 relative">
+      <div className="flex-1 p-6  flex flex-col min-h-0">
+        <div className="flex justify-between mb-8 mt-2 relative">
           <div className="flex items-center gap-3">
             <button
               className="px-3 py-1 rounded bg-red-600 text-white hover:bg-red-500 dark:bg-red-700 dark:hover:bg-red-600"
@@ -303,12 +392,13 @@ export default function Scheduling() {
             <select
               className="p-2 pr-8 rounded bg-gray-800 text-white border border-gray-600"
               value={activeRoom}
-              onChange={(e) => setActiveRoom(e.target.value)}
+              onChange={(e) => setActiveRoom(parseInt(e.target.value))}
             >
-              {MOCK_ROOMS.map((room) => (
-                <option key={room.id} value={room.id}>
-                  {room.name}
+              {rooms.map((room) => (
+                <option key={room.Room_ID} value={room.Room_ID}>
+                  {room.Name}
                 </option>
+
               ))}
             </select>
           </div>
@@ -316,7 +406,7 @@ export default function Scheduling() {
             <select
               className="p-2 rounded bg-gray-800 text-white border border-gray-600"
               value={calendarView}
-              onChange={(e) => changeView(e.target.value)}
+              onChange={(e) => changeView(e.target.value as CalendarViewType)}
             >
               <option value="dayGridMonth">Month</option>
               <option value="timeGridWeek">Week</option>
@@ -325,10 +415,7 @@ export default function Scheduling() {
             <span className="text-white font-semibold">{currentDate}</span>
             <button onClick={goToPrev} className="px-3 py-1 rounded bg-gray-700 text-white hover:bg-gray-600">←</button>
             <button onClick={goToNext} className="px-3 py-1 rounded bg-gray-700 text-white hover:bg-gray-600">→</button>
-
-
           </div>
-
         </div>
 
         <FullCalendar
@@ -342,25 +429,21 @@ export default function Scheduling() {
           select={handleSelect}
           editable={false}
           eventClick={handleEventClick}
-          events={events.filter(e =>
-            e.extendedProps.roomId === activeRoom &&
-            (
-              userRole === 'admin' ||
-              e.extendedProps.status === 'approved' ||
-              (e.extendedProps.status === 'pending' && e.extendedProps.createdBy === userRole)
-            )
-          )}
-
+          events={filteredEvents}
           eventContent={({ event }) => {
+            console.log(`[DEBUG] Rendering event ${event.id}:`, event);
             const status = event.extendedProps.status;
             const statusLabel = {
-              approved: 'Approved',
-              pending: 'Pending',
+              APPROVED: 'Approved',
+              PENDING: 'Pending',
+              REJECTED: 'Rejected',
+              CANCELLED: 'Cancelled'
             };
-
             const statusColor = {
-              approved: 'bg-green-600 text-white',
-              pending: 'bg-yellow-500 text-black',
+              APPROVED: 'bg-green-600 text-white',
+              PENDING: 'bg-yellow-500 text-black',
+              REJECTED: 'bg-red-600 text-white',
+              CANCELLED: 'bg-gray-400 text-white'
             };
 
             const timeText = event.start && event.end
@@ -381,10 +464,7 @@ export default function Scheduling() {
                 )}
               </div>
             );
-
-
           }}
-
 
           slotMinTime="07:00:00"
           slotMaxTime="19:00:00"
@@ -394,7 +474,7 @@ export default function Scheduling() {
         />
       </div>
 
-      <div className="w-[320px] h-screen flex flex-col border-l border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md p-3">
+      <div className="w-[320px] h-[calc(100vh-4rem)] flex flex-col border-l border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md p-3">
         <div className="mb-6">
           <button
             onClick={() => setShowForm(!showForm)}
@@ -420,13 +500,13 @@ export default function Scheduling() {
             <BorrowedItemSelect
               value={formData.borrowedItems}
               onChange={(v) => setFormData({ ...formData, borrowedItems: v })}
-              disabledItems={events.filter(e => e.extendedProps.status === 'approved' || e.extendedProps.status === 'pending')
+              disabledItems={events.filter(e => e.extendedProps.status === 'APPROVED' || e.extendedProps.status === 'PENDING')
                 .filter(e =>
                   (formData.startDate === dayjs(e.start).format('YYYY-MM-DD')) &&
                   (formData.startTime < dayjs(e.end).format('HH:mm')) &&
                   (formData.endTime > dayjs(e.start).format('HH:mm'))
                 )
-                .flatMap(e => e.extendedProps.borrowedItems.map(b => b.id))
+                .flatMap(e => e.extendedProps.borrowedItems)
               }
             />
             <BorrowedItemAddControl
@@ -435,14 +515,7 @@ export default function Scheduling() {
                   setFormData({ ...formData, borrowedItems: [...formData.borrowedItems, id] });
                 }
               }}
-              disabledItems={events.filter(e => e.extendedProps.status === 'approved' || e.extendedProps.status === 'pending')
-                .filter(e =>
-                  (formData.startDate === dayjs(e.start).format('YYYY-MM-DD')) &&
-                  (formData.startTime < dayjs(e.end).format('HH:mm')) &&
-                  (formData.endTime > dayjs(e.start).format('HH:mm'))
-                )
-                .flatMap(e => e.extendedProps.borrowedItems.map(b => b.id))
-              }
+              disabledItems={getDisabledItems()}
             />
             <DateTimeInputs formData={formData} setFormData={setFormData} />
             <RepeatInputs formData={formData} toggleRepeatDay={toggleRepeatDay} setFormData={setFormData} />
@@ -451,11 +524,11 @@ export default function Scheduling() {
         )}
 
 
-        {userRole === 'admin' && (
+        {userRole === 'ADMIN' && (
           <div className="mt-4 px-3 overflow-y-auto max-h-[300px]">
             <h2 className="font-bold text-lg mb-2 text-white">Pending Requests</h2>
             {events
-              .filter(e => e.extendedProps.status === 'pending')
+              .filter(e => e.extendedProps.status === 'PENDING')
               .map((e, idx) => (
                 <div key={idx} className="border p-3 mb-3 rounded bg-gray-200 dark:bg-gray-700">
                   <p className="font-semibold text-base">{e.title}</p>
@@ -495,7 +568,7 @@ export default function Scheduling() {
             // TODO: Implement actual submission logic here
             console.log('Submitting issue:', { description, issueType, equipment });
           }}
-          room={MOCK_ROOMS.find(r => r.id === activeRoom)?.name || ''}
+          room={rooms.find(r => r.Room_ID === activeRoom)?.Name || ''}
           pcNumber="N/A"
         />
       </div>
