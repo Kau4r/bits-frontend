@@ -1,358 +1,370 @@
-import { useState } from "react";
-import Table from "../../components/Table";
-import TableSearchInput from "../../components/Search";
+import { useMemo, useState } from 'react';
+import TableSearchInput from '../../components/Search';
+import { AddFormDialog } from '../../components/labtech/AddFormDialog';
+import { RowPreview } from '../../components/labtech/RowPreview';
+import { InlineTimeline } from '../../components/labtech/InlineTimeline';
+import { StatusSelect } from '../../components/labtech/StatusSelect';
+import { DeptSelect } from '../../components/labtech/DeptSelect';
+import type { FormRecord, FormStatus, FormType } from '../../types/formtypes';
+
+const statusChip: Record<FormStatus | 'Archived', string> = {
+  Approved: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+  Pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
+  'In Review': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+  Rejected: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+  Archived: 'bg-gray-200 text-gray-800 dark:bg-gray-700/30 dark:text-gray-300',
+};
+
+const steps = ['Registrar', 'Finance', 'DCISM', 'Laboratory'] as const;
 
 export default function Forms() {
-    const [forms] = useState([
-        { id: 1, formId: "RIS-001", type: "RIS", status: "Approved", department: "Finance" },
-        { id: 2, formId: "WRF-001", type: "WRF", status: "Pending", department: "Registrar" },
-        { id: 3, formId: "RIS-002", type: "RIS", status: "In Review", department: "DCISM" },
-        { id: 4, formId: "WRF-002", type: "WRF", status: "Rejected", department: "Finance" },
-    ]);
+  const [forms, setForms] = useState<FormRecord[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
+  const [formTypeFilter, setFormTypeFilter] = useState<FormType | 'All'>('All');
+  const [statusFilter, setStatusFilter] = useState<FormStatus | 'All'>('All');
 
-    const [searchTerm, setSearchTerm] = useState("");
-    const [selectedForm, setSelectedForm] = useState(null);
-    const [showDrafts, setShowDrafts] = useState(false);
+  const filtered = useMemo(() => {
+    const q = searchTerm.toLowerCase();
+    return forms
+      .filter(f => (showArchived ? f.isArchived : !f.isArchived))
+      .filter(f => {
+        const matchesSearch = `${f.formId} ${f.type} ${f.status} ${f.department} ${f.attachmentName || ''}`
+          .toLowerCase()
+          .includes(q);
+        const matchesFormType = formTypeFilter === 'All' || f.type === formTypeFilter;
+        const matchesStatus = statusFilter === 'All' || f.status === statusFilter;
+        return matchesSearch && matchesFormType && matchesStatus;
+      });
+  }, [forms, searchTerm, showArchived, formTypeFilter, statusFilter]);
 
-    // Force readable chips in both themes
-    const statusStyle = {
-        Approved: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
-        Pending: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
-        "In Review": "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-        Rejected: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
-        Draft: "bg-gray-200 text-gray-800 dark:bg-gray-800 dark:text-gray-200",
+  const normalizeType = (name?: string): 'pdf' | 'image' | 'doc' | 'docx' | undefined => {
+    if (!name) return undefined;
+    if (/\.(pdf)$/i.test(name)) return 'pdf';
+    if (/\.(png|jpe?g|webp|gif|heic)$/i.test(name)) return 'image';
+    if (/\.(docx?|rtf)$/i.test(name)) return name.toLowerCase().endsWith('docx') ? 'docx' : 'doc';
+    return undefined;
+  };
+
+  const handleCreateForm = (payload: Omit<FormRecord, 'id' | 'createdAt' | 'isArchived'> & { file?: File }) => {
+    const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : String(Date.now());
+    const attachmentName = payload.file?.name;
+    const attachmentUrl = payload.file ? URL.createObjectURL(payload.file) : undefined;
+    const attachmentType = normalizeType(attachmentName);
+
+    const rec: FormRecord = {
+      ...payload,
+      id,
+      createdAt: new Date().toISOString(),
+      isArchived: false,
+      attachmentName,
+      attachmentUrl,
+      attachmentType,
+      history: [{ dept: payload.department, at: new Date().toISOString() }],
     };
+    setForms(prev => [rec, ...prev]);
+  };
 
-    // Reusable field styles to stop inheriting white text
-    const inputClass =
-        "mt-1 w-full rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 " +
-        "text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 " +
-        "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500";
+  const updateForm = (id: string, patch: Partial<FormRecord>) => {
+    setForms(prev => prev.map(f => (f.id === id ? { ...f, ...patch } : f)));
+  };
 
-    const textareaClass =
-        "mt-1 w-full rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 " +
-        "text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 " +
-        "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500";
+  const moveDept = (id: string, dept: string) => {
+    setForms(prev => prev.map(f => {
+      if (f.id !== id) return f;
+      const history = [...(f.history || []), { dept, at: new Date().toISOString() }];
+      return { ...f, department: dept, history };
+    }));
+  };
 
-    const labelClass = "block text-sm font-medium text-gray-700 dark:text-gray-300";
-    const sectionBox = "border rounded p-4 bg-gray-50 dark:bg-gray-800/50 dark:border-gray-700";
-    const hintText = "text-gray-500 dark:text-gray-400";
+  const archiveForm = (f: FormRecord) => {
+    const ok = window.confirm('Are you sure you want to archive this form?');
+    if (!ok) return;
+    setForms(prev =>
+      prev.map(form =>
+        form.id === f.id ? { ...form, isArchived: true, status: 'Archived' as FormStatus } : form
+      )
+    );
+    setExpandedRow(null);
+  };
 
-    const filteredForms = forms.filter((form) => {
-        if (showDrafts && form.status !== "Draft") return false;
-        const formStr = `${form.formId} ${form.type} ${form.status} ${form.department}`.toLowerCase();
-        return formStr.includes(searchTerm.toLowerCase());
-    });
+  return (
+    <div className="flex flex-col h-screen bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100">
+      {/* Header section */}
+      <div className="p-4 flex-shrink-0">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold">Forms</h1>
+        </div>
 
-    const handleSaveDraft = () => {
-        if (!selectedForm) return;
-        const newDraft = {
-            ...selectedForm,
-            id: forms.length + 1,
-            status: "Draft",
-            department: selectedForm.department || "Unassigned",
-            timeline: [],
-        };
-        setForms([...forms, newDraft]);
-        setSelectedForm(newDraft);
-    };
+        <div className="mb-6 flex flex-wrap items-center gap-2">
+          <TableSearchInput
+            searchTerm={searchTerm}
+            onChange={setSearchTerm}
+            placeholder="Search by Filename"
+            showLabel={false}
+          />
 
-    // Timeline renderer
-    const Timeline = ({ steps, currentDept }) => (
-        <div className="flex items-center gap-4 mt-4">
-            {steps.map((dept, i) => {
-                const reached = i <= steps.indexOf(currentDept);
-                return (
-                    <div key={dept} className="flex items-center gap-2">
-                        <div
-                            className={`w-4 h-4 rounded-full ${reached ? "bg-blue-600" : "bg-gray-300"}`}
-                        ></div>
-                        <span className={`text-sm ${reached ? "font-semibold" : "text-gray-500"}`}>
-                            {dept}
+          <button
+            onClick={() => setShowArchived(!showArchived)}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+              showArchived
+                ? 'bg-blue-700 text-white'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+            </svg>
+            {showArchived ? 'Show Active' : 'Show Archived'}
+          </button>
+
+          <div className="relative">
+            <select
+              value={formTypeFilter}
+              onChange={(e) => setFormTypeFilter(e.target.value as FormType | 'All')}
+              className="appearance-none bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md pl-3 pr-8 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              {(['All', 'WRF', 'RIS'] as const).map((type) => (
+                <option key={type} value={type}>
+                  {type === 'All' ? 'All Types' : type}
+                </option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700 dark:text-gray-300">
+             
+            </div>
+          </div>
+
+          <div className="relative">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as FormStatus | 'All')}
+              className="appearance-none bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md pl-3 pr-8 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              {(['All', 'Pending', 'Approved', 'Rejected', 'In Review', 'Archived'] as const).map((status) => (
+                <option key={status} value={status}>
+                  {status === 'All' ? 'All Statuses' : status}
+                </option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700 dark:text-gray-300">
+            </div>
+          </div>
+
+          <button
+            onClick={() => setIsAddDialogOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors ml-auto"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            Add Form
+          </button>
+        </div>
+      </div>
+
+      {/* Table section */}
+      <div className="flex-1 flex flex-col px-4 pb-4 overflow-hidden">
+        <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm flex-1 flex flex-col">
+     
+          <div className="grid grid-cols-12 gap-2 px-4 py-3 text-xs font-medium uppercase text-gray-500 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
+            <div className="col-span-4">File</div>
+            <div className="col-span-2">Form</div>
+            <div className="col-span-2">Status</div>
+            <div className="col-span-2">Department</div>
+            <div className="col-span-2 text-right">Actions</div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto">
+            <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+              {filtered.map(f => (
+                <li 
+                  key={f.id} 
+                  className="bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                >
+                  <div
+                    className="grid grid-cols-12 gap-2 px-4 py-3 cursor-pointer"
+                    onClick={() => setExpandedRow(expandedRow === f.id ? null : f.id)}
+                  >
+                    <div className="col-span-4 flex items-center">
+                      <div className="flex items-center gap-3">
+                        <RowPreview url={f.attachmentUrl} name={f.attachmentName} type={f.attachmentType} />
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                          {f.attachmentName || 'No file'}
                         </span>
-                        {i < steps.length - 1 && <div className="w-8 h-0.5 bg-gray-400"></div>}
+                      </div>
                     </div>
-                );
-            })}
+
+                    <div className="col-span-2 flex items-center">
+                      <span className="text-sm text-gray-700 dark:text-gray-300">{f.formId}</span>
+                    </div>
+
+                    <div className="col-span-2 flex items-center">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        statusChip[(f.status as FormStatus) || 'Pending'] || statusChip.Archived
+                      }`}>
+                        {f.status}
+                      </span>
+                    </div>
+
+                    <div className="col-span-2 flex items-center">
+                      <span className="text-sm text-gray-700 dark:text-gray-300">{f.department}</span>
+                    </div>
+
+                    <div className="col-span-2 flex items-center justify-end">
+                      <button
+                        className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedRow(expandedRow === f.id ? null : f.id);
+                        }}
+                        aria-label={expandedRow === f.id ? 'Collapse' : 'Expand'}
+                      >
+                        {expandedRow === f.id ? (
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                          </svg>
+                        ) : (
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {expandedRow === f.id && (
+                    <div className="p-6 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="lg:col-span-1">
+                          <div className="bg-white dark:bg-gray-900 p-5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm h-full">
+                            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-5 flex items-center gap-2">
+                              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              Processing Timeline
+                            </h4>
+                            <div className="p-2">
+                              <InlineTimeline steps={steps as unknown as string[]} current={f.department} />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="lg:col-span-2 space-y-5">
+                          <div className="bg-white dark:bg-gray-900 p-5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
+                              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              Update Status
+                            </h4>
+                            <div className="w-full">
+                              <StatusSelect
+                                value={f.status}
+                                onChange={(s) => updateForm(f.id, { status: s })}
+                                className="w-full"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="bg-white dark:bg-gray-900 p-5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
+                              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                              </svg>
+                              Transfer Department
+                            </h4>
+                            <div className="w-full">
+                              <DeptSelect
+                                value={f.department}
+                                onChange={(d) => moveDept(f.id, d)}
+                                className="w-full"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="bg-white dark:bg-gray-900 p-5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
+                              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-7a2 2 0 012-2h2m3-4H9a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-1m-1 4l-3 3m0 0l-3-3m3 3V3" />
+                              </svg>
+                              File Actions
+                            </h4>
+                            <div className="flex flex-wrap gap-3">
+                              {f.attachmentUrl ? (
+                                <>
+                                  <a
+                                    href={f.attachmentUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                    Preview
+                                  </a>
+                                  <a
+                                    href={f.attachmentUrl}
+                                    download={f.attachmentName || f.formId}
+                                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                    Download
+                                  </a>
+                                  <button
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      archiveForm(f);
+                                    }}
+                                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-yellow-600 border border-transparent rounded-md shadow-sm hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                                    </svg>
+                                    Archive
+                                  </button>
+                                </>
+                              ) : (
+                                <span className="text-sm text-gray-500 dark:text-gray-400">No file attached</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </li>
+              ))}
+              {filtered.length === 0 && (
+                <li className="px-4 py-6 text-sm text-center text-gray-500 bg-white dark:bg-gray-900 dark:text-gray-400">
+                  No forms found. {!showArchived && (
+                    <button
+                      onClick={() => setShowArchived(true)}
+                      className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                    >
+                      Check archived forms
+                    </button>
+                  )}
+                </li>
+              )}
+            </ul>
+          </div>
         </div>
-    );
+      </div>
 
-    return (
-        <div className="flex min-h-screen bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100">
-            {/* LEFT: List */}
-            <div className="w-2/4 border-r border-gray-200 dark:border-gray-700 p-4 flex flex-col">
-                <div className="flex-1 overflow-y-auto">
-                    <h2 className="text-xl font-bold mb-4">Forms</h2>
-
-                    <div className="mb-4 flex items-center justify-between gap-2">
-                        <div className="flex-1">
-                            <TableSearchInput
-                                searchTerm={searchTerm}
-                                onChange={setSearchTerm}
-                                placeholder="Search forms..."
-                            />
-                        </div>
-                        <button
-                            className={
-                                showDrafts
-                                    ? "mt-7 px-3 py-1.5 rounded whitespace-nowrap bg-blue-600 text-white"
-                                    : "mt-7 px-3 py-1.5 rounded whitespace-nowrap border border-gray-300 dark:border-gray-600 " +
-                                    "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
-                            }
-                            onClick={() => setShowDrafts(!showDrafts)}
-                        >
-                            {showDrafts ? "All Forms" : "Drafts"}
-                        </button>
-                    </div>
-
-                    <Table headers={["Form ID", "Type", "Status", "Department"]}>
-                        {filteredForms.map((form) => (
-                            <div
-                                key={form.id}
-                                onClick={() => setSelectedForm(form)}
-                                className="grid grid-cols-4 items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 transition cursor-pointer"
-                            >
-                                <div className="text-sm font-medium">{form.formId}</div>
-                                <div className="text-sm">{form.type}</div>
-                                <div>
-                                    <span className={`text-xs px-2 py-1 rounded-full font-semibold ${statusStyle[form.status] || ""}`}>
-                                        {form.status}
-                                    </span>
-                                </div>
-                                <div className="text-sm">{form.department}</div>
-                            </div>
-                        ))}
-                    </Table>
-                </div>
-            </div>
-
-            {/* RIGHT: Detail View */}
-            <div className="w-2/4 p-6 overflow-y-auto">
-                {!selectedForm ? (
-                    <p className={hintText}>Select a form to view details</p>
-                ) : selectedForm.type === "WRF" ? (
-                    <div className="space-y-6">
-                        <h2 className="text-xl font-bold mb-4">Work Request Form #{selectedForm.formId}</h2>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className={labelClass}>Date Requested</label>
-                                <input type="date" className={inputClass} />
-                            </div>
-                            <div>
-                                <label className={labelClass}>Date Required</label>
-                                <input type="date" className={inputClass} />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className={labelClass}>Description</label>
-                            <textarea className={textareaClass} rows={3}></textarea>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className={labelClass}>Requested By</label>
-                                <input type="text" className={inputClass} />
-                            </div>
-                            <div>
-                                <label className={labelClass}>Received By</label>
-                                <input type="text" className={inputClass} />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className={labelClass}>Office/Department</label>
-                                <input type="text" className={inputClass} />
-                            </div>
-                            <div>
-                                <label className={labelClass}>Payee</label>
-                                <input type="text" className={inputClass} />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className={labelClass}>Forward To</label>
-                            <div className="flex gap-4 mt-1">
-                                <label className="inline-flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-blue-600 focus:ring-blue-500"
-                                    />
-                                    <span>PPFO</span>
-                                </label>
-                                <label className="inline-flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-blue-600 focus:ring-blue-500"
-                                    />
-                                    <span>IDO</span>
-                                </label>
-                                <label className="inline-flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-blue-600 focus:ring-blue-500"
-                                    />
-                                    <span>Budget & Purchasing</span>
-                                </label>
-                            </div>
-                        </div>
-
-                        <div className={sectionBox}>
-                            <h3 className="font-semibold text-blue-600 dark:text-blue-400 mb-2">For PPFO use only</h3>
-                            <div className="grid grid-cols-3 gap-4">
-                                <div>
-                                    <label className={labelClass}>Materials Used</label>
-                                    <input type="text" className={inputClass} placeholder="Material" />
-                                </div>
-                                <div>
-                                    <label className={labelClass}>PPFO</label>
-                                    <input type="number" className={inputClass} />
-                                </div>
-                                <div>
-                                    <label className={labelClass}>Outside Contractor</label>
-                                    <input type="number" className={inputClass} />
-                                </div>
-                            </div>
-                            <button className="mt-3 text-sm text-blue-600 dark:text-blue-400">+ Add Material</button>
-                            <div className="grid grid-cols-2 gap-4 mt-4">
-                                <div>
-                                    <label className={labelClass}>Labor Cost</label>
-                                    <input type="number" className={inputClass} />
-                                </div>
-                                <div>
-                                    <label className={labelClass}>Total Charges</label>
-                                    <input type="number" className={inputClass} />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className={sectionBox}>
-                            <h3 className="font-semibold mb-2">Certification of Work Completion</h3>
-                            <p className="text-sm mb-2">I certify that the above request has been accomplished</p>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className={labelClass}>Name</label>
-                                    <input type="text" className={inputClass} />
-                                </div>
-                                <div>
-                                    <label className={labelClass}>Department</label>
-                                    <input type="text" className={inputClass} />
-                                </div>
-                            </div>
-                            <div className="mt-4">
-                                <label className={labelClass}>Date</label>
-                                <input type="date" className={inputClass} />
-                            </div>
-                        </div>
-
-                        <div className="flex justify-between mt-4">
-                            <button className="px-4 py-2 rounded border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800">
-                                Save as Draft
-                            </button>
-                            <button className="px-4 py-2 bg-blue-600 text-white rounded">Submit Request</button>
-                        </div>
-                    </div>
-                ) : selectedForm.type === "RIS" ? (
-                    <div className="space-y-6">
-                        <h2 className="text-xl font-bold mb-4">Request and Issue Slip #{selectedForm.formId}</h2>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className={labelClass}>Date Today</label>
-                                <input type="date" className={inputClass} />
-                            </div>
-                            <div>
-                                <label className={labelClass}>Date Needed</label>
-                                <input type="date" className={inputClass} />
-                            </div>
-                        </div>
-
-                        <div className={sectionBox}>
-                            <h3 className="font-semibold text-blue-600 dark:text-blue-400 mb-2">Peso Amounts</h3>
-                            <div className="grid grid-cols-5 gap-2 items-end">
-                                <div>
-                                    <label className={labelClass}>Qty</label>
-                                    <input type="number" className={inputClass} />
-                                </div>
-                                <div>
-                                    <label className={labelClass}>Unit</label>
-                                    <input type="text" className={inputClass} />
-                                </div>
-                                <div>
-                                    <label className={labelClass}>Description</label>
-                                    <input type="text" className={inputClass} />
-                                </div>
-                                <div>
-                                    <label className={labelClass}>Unit Cost</label>
-                                    <input type="number" className={inputClass} />
-                                </div>
-                                <div>
-                                    <label className={labelClass}>Amount</label>
-                                    <input type="number" className={inputClass} />
-                                </div>
-                            </div>
-                            <button className="mt-3 text-sm text-blue-600 dark:text-blue-400">+ Add Item</button>
-                            <p className="mt-2 text-right font-medium">Total: ₱0.00</p>
-                        </div>
-
-                        <div>
-                            <label className={labelClass}>Cost Center</label>
-                            <input type="text" className={inputClass} />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className={labelClass}>Requested By</label>
-                                <input type="text" className={inputClass} />
-                            </div>
-                            <div>
-                                <label className={labelClass}>Noted By</label>
-                                <input type="text" className={inputClass} />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className={labelClass}>Endorsed By</label>
-                                <input type="text" className={inputClass} />
-                            </div>
-                            <div>
-                                <label className={labelClass}>Verified By</label>
-                                <input type="text" className={inputClass} />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className={labelClass}>Payee</label>
-                                <input type="text" className={inputClass} />
-                            </div>
-                            <div>
-                                <label className={labelClass}>Payment Instructions</label>
-                                <input type="text" className={inputClass} />
-                            </div>
-                        </div>
-
-                        <Timeline
-                            steps={["Registrar", "Finance", "DCISM", "PPFO"]}
-                            currentDept={selectedForm.department}
-                        />
-                        <div className="flex justify-between mt-4">
-                            <button
-                                onClick={handleSaveDraft}
-                                className="px-4 py-2 rounded border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
-                            >
-                                Save as Draft
-                            </button>
-                            <button className="px-4 py-2 bg-blue-600 text-white rounded">Submit Request</button>
-                        </div>
-                    </div>
-                ) : (
-                    <p className={hintText}>Form type not supported for detailed view</p>
-                )}
-            </div>
-        </div>
-    );
+      <AddFormDialog
+        open={isAddDialogOpen}
+        onClose={() => setIsAddDialogOpen(false)}
+        onCreate={handleCreateForm}
+        existing={forms}
+      />
+    </div>
+  );
 }
