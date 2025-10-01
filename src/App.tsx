@@ -1,6 +1,7 @@
+import UnauthorizedPage from './pages/UnauthorizedPage';
 import '@/App.css'
 import './index.css';
-import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import LabtechDashboard from './pages/LabTech/LabtechDashboard';
@@ -42,36 +43,51 @@ const Logout = () => {
 };
 
 function AppContent() {
-  const { isAuthenticated, userRole } = useAuth();
+  const { isAuthenticated, userRole, loading } = useAuth();
 
-  if (!isAuthenticated) {
-    return (
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
-    );
-  }
+  if (loading)
+    return <div className="flex items-center justify-center h-screen">Loading...</div>;
 
   return (
     <Routes>
-      <Route element={<Layout />}>
-        <Route path="/logout" element={<Logout />} />
+      {/* Public routes */}
+      <Route path="/unauthorized" element={<UnauthorizedPage />} />
+      <Route path="/logout" element={<Logout />} />
 
-        {/* Redirect default / to dashboard based on role */}
-        <Route path="/" element={
-          userRole === ROLES.ADMIN ? <SysAdDash /> :
-          userRole === ROLES.LAB_TECH ? <LabtechDashboard /> :
-          userRole === ROLES.LAB_HEAD ? <LabheadDashboard /> :
-          userRole === ROLES.STUDENT ? <StudentSession /> :
-          userRole === ROLES.FACULTY ? <FacultyScheduling /> :
-          userRole === ROLES.SECRETARY ? <SecretaryScheduling /> :
-          <Navigate to="/unauthorized" replace />
-        } />
-
-        {/* Admin routes */}
-        <Route path="/room" element={<ProtectedRoute roles={[ROLES.ADMIN]}><RoomPage /></ProtectedRoute>} />
-        <Route path="/user/:email" element={<ProtectedRoute roles={[ROLES.ADMIN]}><UserDetails /></ProtectedRoute>} />
+      {/* Protected routes */}
+      {isAuthenticated ? (
+        userRole === 'STUDENT' ? (
+          // Student routes without Layout
+          <>
+            <Route index element={<Navigate to="/student-session" replace />} />
+            <Route path="student-session" element={<StudentSession />} />
+            <Route path="student-pc-view" element={<StudentPCView />} />
+            <Route path="student-room-view" element={<StudentRoomView />} />
+            <Route path="*" element={<Navigate to="/student-session" replace />} />
+          </>
+        ) : userRole === 'FACULTY' ? (
+          // Faculty routes without Layout
+          <>
+            <Route index element={<Navigate to="/faculty/scheduling" replace />} />
+            <Route path="faculty/scheduling" element={<FacultyScheduling />} />
+            <Route path="*" element={<Navigate to="/faculty/scheduling" replace />} />
+          </>
+        ) : (
+          // All other roles with Layout
+          <Route element={<Layout />}>
+            <Route
+              index
+              element={
+                userRole === 'ADMIN' ? <SysAdDash /> :
+                  userRole === 'LAB_TECH' ? <LabtechDashboard /> :
+                    userRole === 'LAB_HEAD' ? <LabheadDashboard /> :
+                      userRole === 'SECRETARY' ? <SecretaryScheduling /> :
+                        <Navigate to="/unauthorized" replace />
+              }
+            />
+            {/* Admin */}
+            <Route path="room" element={<ProtectedRoute roles={[ROLES.ADMIN]}><RoomPage /></ProtectedRoute>} />
+            <Route path="user/:email" element={<ProtectedRoute roles={[ROLES.ADMIN]}><UserDetails /></ProtectedRoute>} />
 
         {/* LabTech & LabHead routes */}
         <Route path="/labtech-dashboard" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><LabtechDashboard /></ProtectedRoute>} />
@@ -81,35 +97,29 @@ function AppContent() {
         <Route path="/tickets" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Ticket /></ProtectedRoute>} />
         <Route path="/notification" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Notification /></ProtectedRoute>} />
 
-        {/* LabHead only */}
-        <Route path="/labhead-dashboard" element={<ProtectedRoute roles={[ROLES.LAB_HEAD]}><LabheadDashboard /></ProtectedRoute>} />
-        <Route path="/labtechview" element={<ProtectedRoute roles={[ROLES.LAB_HEAD]}><LabTechOverview /></ProtectedRoute>} />
+            {/* LabHead */}
+            <Route path="labhead-dashboard" element={<ProtectedRoute roles={[ROLES.LAB_HEAD]}><LabheadDashboard /></ProtectedRoute>} />
+            <Route path="labtechview" element={<ProtectedRoute roles={[ROLES.LAB_HEAD]}><LabTechOverview /></ProtectedRoute>} />
 
-        {/* Student */}
-        <Route path="/student-session" element={<ProtectedRoute roles={[ROLES.STUDENT]}><StudentSession /></ProtectedRoute>} />
-        <Route path="/student-pc-view" element={<ProtectedRoute roles={[ROLES.STUDENT]}><StudentPCView /></ProtectedRoute>} />
-        <Route path="/student-room-view" element={<ProtectedRoute roles={[ROLES.STUDENT]}><StudentRoomView /></ProtectedRoute>} />
+            {/* Faculty routes are handled separately without Layout */}
 
-        {/* Faculty */}
-        <Route path="/faculty/scheduling" element={<ProtectedRoute roles={[ROLES.FACULTY]}><FacultyScheduling /></ProtectedRoute>} />
+            {/* Secretary */}
+            <Route path="secretary/scheduling" element={<ProtectedRoute roles={[ROLES.SECRETARY]}><SecretaryScheduling /></ProtectedRoute>} />
 
-        {/* Secretary */}
-        <Route path="/secretary/scheduling" element={<ProtectedRoute roles={[ROLES.SECRETARY]}><SecretaryScheduling /></ProtectedRoute>} />
-
-        {/* Unauthorized */}
-        <Route path="/unauthorized" element={
-          <div className="flex items-center justify-center p-8">
-            <div className="rounded-lg border border-red-300/30 bg-red-50/10 p-6 text-center dark:border-red-700/30 dark:bg-red-900/20">
-              <h1 className="mb-2 text-2xl font-semibold text-red-700 dark:text-red-300">Unauthorized</h1>
-              <p className="text-sm text-gray-700 dark:text-gray-300">You don't have permission to access this page.</p>
-            </div>
-          </div>
-        } />
-        <Route path="*" element={<Outlet />} />
-      </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+        )
+      ) : (
+        // Public routes for unauthenticated users
+        <Route path="/login" element={<Login />} />
+      )}
+      
+      {/* Catch-all for any other route */}
+      <Route path="*" element={<Navigate to={isAuthenticated ? "/" : "/login"} replace />} />
     </Routes>
   );
 }
+
 
 function App() {
   return (

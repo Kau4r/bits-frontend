@@ -2,16 +2,23 @@ import { Download } from "lucide-react";
 import ReactQRCode from "react-qr-code";
 import { createPortal } from "react-dom";
 import { useState, useEffect } from "react";
-import { type InventoryItem } from "@/types/inventory";
+import type { InventoryItem } from "@/types/inventory";
+import type { Room } from "@/types/room";
+
+// Omit Item_Code and Item_ID for new items
+type NewInventoryItem = Omit<InventoryItem, "Item_Code" | "Item_ID">;
 
 interface ItemModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (item: InventoryItem | InventoryItem[]) => void;
+  onSave: (
+    item: NewInventoryItem | NewInventoryItem[] | InventoryItem | InventoryItem[]
+  ) => void;
   initMode: "add" | "edit" | "view";
   item?: InventoryItem | null;
   items: InventoryItem[];
-  rooms: string[];
+  rooms: Room[];
+  userId?: number;
 }
 
 export default function ItemModal({
@@ -22,19 +29,18 @@ export default function ItemModal({
   item,
   items,
   rooms,
+  userId,
 }: ItemModalProps) {
-  const [baseItem, setBaseItem] = useState<InventoryItem>({
-    Item_ID: 0,
-    Item_Code: "",
+  const [baseItem, setBaseItem] = useState<InventoryItem | NewInventoryItem>({
     Item_Type: "",
     Brand: "",
-    Room_ID: "TEST_ROOM",
-    serialNumber: "",
+    Room_ID: rooms?.[0]?.Room_ID ?? 0,
+    Serial_Number: "",
     Status: "AVAILABLE",
-    Updated_At: "",
+    Updated_At: new Date().toISOString(),
   });
 
-  const [quantity, setQuantity] = useState(0);
+  const [quantity, setQuantity] = useState(1);
   const [brands, setBrands] = useState<string[]>([]);
   const [itemTypes, setItemTypes] = useState<string[]>([]);
   const [newBrand, setNewBrand] = useState("");
@@ -42,117 +48,40 @@ export default function ItemModal({
   const [serials, setSerials] = useState<string[]>([""]);
   const [mode, setMode] = useState(initMode);
 
-  // ---------- Extract unique dropdown values ----------
+  // Extract unique brands and item types
   useEffect(() => {
     if (!items || items.length === 0) return;
-
-    const uniqueBrands = Array.from(
-      new Set(items.map((i) => i.Brand).filter(Boolean))
-    );
-    const uniqueItemTypes = Array.from(
-      new Set(items.map((i) => i.Item_Type).filter(Boolean))
-    );
-
-    setBrands(uniqueBrands); 1
-    setItemTypes(uniqueItemTypes);
+    setBrands([...new Set(items.map((i) => i.Brand).filter(Boolean))]);
+    setItemTypes([...new Set(items.map((i) => i.Item_Type).filter(Boolean))]);
   }, [items]);
 
-  // ---------- Initialize modal state ----------
+  // Initialize modal state
   useEffect(() => {
     if (!isOpen) return;
 
     if (initMode === "add") {
       setBaseItem({
-        Item_ID: 0,
-        Item_Code: "",
         Item_Type: "",
         Brand: "",
-        Room_ID: "TEST_ROOM",
-        serialNumber: "",
+        Room_ID: rooms?.[0]?.Room_ID ?? 0,
+        Serial_Number: "",
         Status: "AVAILABLE",
-        Updated_At: "",
+        Updated_At: new Date().toISOString(),
       });
-      setQuantity(0);
+      setQuantity(1);
       setSerials([""]);
     } else if ((initMode === "edit" || initMode === "view") && item) {
-      setBaseItem(item);
-      setQuantity(0);
-      setSerials([item.serialNumber || ""]);
+      setBaseItem(item as NewInventoryItem);
+      setQuantity(1);
+      setSerials([item.Serial_Number || ""]);
     }
 
     setMode(initMode);
-  }, [isOpen, initMode, item]);
+  }, [isOpen, initMode, item, rooms]);
 
   if (!isOpen) return null;
 
-  // ---------- Save ----------
-  // const handleSave = () => {
-  //   // if (!baseItem.Item_Type || !baseItem.Brand || !baseItem.Room_ID || !baseItem.serialNumber) {
-  //   if (!baseItem.Item_Type || !baseItem.Brand || !baseItem.serialNumber) {
-  //     alert("Item type, brand, room, and serial number are required.");
-  //     return;
-  //   }
-
-  //   const now = new Date().toISOString();
-  //   const year = new Date().getFullYear();
-
-  //   if (mode === "add") {
-  //     const duplicates = items.filter(
-  //       (i) =>
-  //         i.Item_Type === baseItem.Item_Type &&
-  //         i.Brand === baseItem.Brand &&
-  //         i.serialNumber === baseItem.serialNumber &&
-  //         // i.Room_ID === baseItem.Room_ID
-  //     );
-  //     if (duplicates.length > 0) {
-  //       alert("Item already exists. Cannot add duplicate.");
-  //       onClose();
-  //       return;
-  //     }
-
-  //     const newItems: InventoryItem[] = serials.map((serial, idx) => ({
-  //       ...baseItem,
-  //       Item_Code: `${baseItem.Item_Type.slice(0, 3).toUpperCase()}-${year}-${idx + 1}`,
-  //       serialNumber: serial.trim(),
-  //       Updated_At: now,
-  //     }));
-
-  //     onSave(newItems);
-  //   } else if (mode === "edit") {
-  //     const updatedItem: InventoryItem = {
-  //       ...baseItem,
-  //       Updated_At: now,
-  //     };
-
-  //     const existingItem = items.find((i) => i.Item_Code === baseItem.Item_Code);
-  //     if (!existingItem) return;
-
-  //     if (
-  //       existingItem.Item_Type !== baseItem.Item_Type ||
-  //       existingItem.Brand !== baseItem.Brand ||
-  //       existingItem.serialNumber !== baseItem.serialNumber ||
-  //       existingItem.Status !== baseItem.Status
-  //     ) {
-  //       // Key fields changed -> replace original
-  //       onSave(updatedItem);
-  //     } else if (existingItem.Room_ID !== baseItem.Room_ID) {
-  //       // Room changed -> append a new item
-  //       const count = items.filter((i) =>
-  //         i.Item_Code.startsWith(updatedItem.Item_Code)
-  //       ).length - 1;
-  //       const newRoomItem = {
-  //         ...updatedItem,
-  //         Item_Code: `${updatedItem.Item_Code}-${count + 1}`,
-  //       };
-  //       onSave(newRoomItem);
-  //     }
-  //   }
-
-  //   setMode("view");
-  //   setQuantity(0);
-  //   setSerials([baseItem.serialNumber || ""]);
-  //   onClose();
-  // };
+  const readOnly = mode === "view";
 
   const handleSave = () => {
     if (!baseItem.Item_Type || !baseItem.Brand) {
@@ -160,71 +89,40 @@ export default function ItemModal({
       return;
     }
 
-    // Bulk add validation
-    if (mode === "add") {
-      if (quantity > 1) {
-        if (serials.some((s) => !s.trim())) {
-          alert("All serial numbers are required.");
-          return;
-        }
-      } else {
-        if (!baseItem.serialNumber.trim()) {
-          alert("Serial number is required.");
-          return; w
-        }
-      }
-    }
-
-    const now = new Date().toISOString();
-    const year = new Date().getFullYear();
-    const safeRoom = baseItem.Room_ID || "TEST_ROOM";
+    const safeRoomId = baseItem.Room_ID ?? rooms?.[0]?.Room_ID ?? 0;
 
     if (mode === "add") {
-      const newItems: InventoryItem[] =
-        quantity > 1
-          ? serials.map((serial, idx) => ({
-            ...baseItem,
-            Room_ID: safeRoom,
-            Item_Code: `${baseItem.Item_Type.slice(0, 3).toUpperCase()}-${year}-${idx + 1}`,
-            serialNumber: serial.trim(),
-            Updated_At: now,
-          }))
-          : [
-            {
-              ...baseItem,
-              Room_ID: safeRoom,
-              Item_Code: `${baseItem.Item_Type.slice(0, 3).toUpperCase()}-${year}-1`,
-              Updated_At: now,
-            },
-          ];
+      const itemsPayload = (quantity > 1 ? serials : [baseItem.Serial_Number || ""]).map(serial => ({
+        Item_Type: baseItem.Item_Type,
+        Brand: baseItem.Brand,
+        Serial_Number: serial.trim() || null,
+        Status: baseItem.Status,
+        Room_ID: safeRoomId,
+      }));
 
-      onSave(newItems);
-    } else if (mode === "edit") {
-      // just update existing item
+      onSave(itemsPayload); // pass only the array of items
+    } else if (mode === "edit" && item) {
       const updatedItem: InventoryItem = {
-        ...baseItem,
-        Updated_At: now,
+        ...item,
+        Item_Type: baseItem.Item_Type,
+        Brand: baseItem.Brand,
+        Serial_Number: baseItem.Serial_Number,
+        Status: baseItem.Status,
+        Room_ID: safeRoomId,
+        Updated_At: new Date().toISOString(),
       };
-
-      onSave([updatedItem]);
+      onSave(updatedItem); // pass single item
     }
   };
 
-  const readOnly = mode === "view";
-
-  // ---------- Quantity / Serials ----------
   const handleQuantityChange = (val: number) => {
     const qty = Math.max(1, val || 1);
     setQuantity(qty);
 
-    if (qty > serials.length) {
-      setSerials([...serials, ...Array(qty - serials.length).fill("")]);
-    } else if (qty < serials.length) {
-      setSerials(serials.slice(0, qty));
-    }
+    if (qty > serials.length) setSerials([...serials, ...Array(qty - serials.length).fill("")]);
+    else if (qty < serials.length) setSerials(serials.slice(0, qty));
   };
 
-  // ---------- CRUD helpers ----------
   const addBrand = () => {
     const v = newBrand.trim();
     if (v && !brands.includes(v)) {
@@ -236,9 +134,7 @@ export default function ItemModal({
     if (!brand) return;
     if (confirm(`Delete brand "${brand}"?`)) {
       setBrands((prev) => prev.filter((b) => b !== brand));
-      if (baseItem.Brand === brand) {
-        setBaseItem({ ...baseItem, Brand: "" });
-      }
+      if (baseItem.Brand === brand) setBaseItem({ ...baseItem, Brand: "" });
     }
   };
 
@@ -253,13 +149,10 @@ export default function ItemModal({
     if (!type) return;
     if (confirm(`Delete item type "${type}"?`)) {
       setItemTypes((prev) => prev.filter((t) => t !== type));
-      if (baseItem.Item_Type === type) {
-        setBaseItem({ ...baseItem, Item_Type: "" });
-      }
+      if (baseItem.Item_Type === type) setBaseItem({ ...baseItem, Item_Type: "" });
     }
   };
 
-  // ---------- UI ----------
   const renderDropdown = (
     label: string,
     value: string,
@@ -329,20 +222,16 @@ export default function ItemModal({
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="mb-4 text-xl font-semibold">
-          {mode === "add"
-            ? "Add Item"
-            : mode === "edit"
-              ? "Edit Item"
-              : "View Item"}
+          {mode === "add" ? "Add Item" : mode === "edit" ? "Edit Item" : "View Item"}
         </h2>
 
-        {/* QR Code Section */}
-        {(mode === "view" || mode === "edit") && baseItem.serialNumber && (
+        {/* QR Code */}
+        {(mode === "view" || mode === "edit") && baseItem.Serial_Number && (
           <div className="mt-4 flex justify-center">
             <div className="flex items-start gap-4 my-5">
               <ReactQRCode
                 id="qrCode"
-                value={baseItem.Item_Code || baseItem.serialNumber}
+                value={baseItem.Item_Code}
                 size={200}
                 level="H"
                 bgColor="#101828"
@@ -351,19 +240,17 @@ export default function ItemModal({
               <button
                 type="button"
                 onClick={() => {
-                  const svg = document.getElementById("qrCode") as SVGSVGElement;
-                  if (!svg) return;
+                  const svgEl = document.getElementById("qrCode");
+                  if (!svgEl || !(svgEl instanceof SVGSVGElement)) return;
 
                   const serializer = new XMLSerializer();
-                  const svgString = serializer.serializeToString(svg);
+                  const svgString = serializer.serializeToString(svgEl);
 
                   const canvas = document.createElement("canvas");
                   const ctx = canvas.getContext("2d");
                   const img = new Image();
 
-                  const svgBlob = new Blob([svgString], {
-                    type: "image/svg+xml;charset=utf-8",
-                  });
+                  const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
                   const url = URL.createObjectURL(svgBlob);
 
                   img.onload = () => {
@@ -374,8 +261,7 @@ export default function ItemModal({
 
                     const downloadLink = document.createElement("a");
                     downloadLink.href = pngUrl;
-                    downloadLink.download = `${baseItem.Item_Code || baseItem.serialNumber
-                      }.png`;
+                    downloadLink.download = `${baseItem.Item_Code || baseItem.Serial_Number}.png`;
                     downloadLink.click();
 
                     URL.revokeObjectURL(url);
@@ -391,7 +277,6 @@ export default function ItemModal({
           </div>
         )}
 
-        {/* Form Fields */}
         <div className="grid grid-cols-2 gap-4">
           {renderDropdown(
             "Item Type",
@@ -419,16 +304,14 @@ export default function ItemModal({
           <div className="flex flex-col">
             <label className="mb-1 text-sm font-medium">Room</label>
             <select
-              value={baseItem.Room_ID || ""}
-              onChange={(e) => setBaseItem({ ...baseItem, Room_ID: e.target.value })}
+              value={baseItem.Room_ID}
+              onChange={(e) => setBaseItem({ ...baseItem, Room_ID: Number(e.target.value) })}
               disabled={readOnly}
               className="w-full rounded-md border px-3 py-2 dark:bg-gray-800 dark:text-white"
             >
-              <option value="TEST_ROOM">Test Room</option>
-              {/* <option value="">Select a room</option> */}
               {rooms.map((r) => (
-                <option key={r} value={r}>
-                  {r}
+                <option key={r.Room_ID} value={r.Room_ID}>
+                  {r.Name}
                 </option>
               ))}
             </select>
@@ -440,18 +323,16 @@ export default function ItemModal({
             <select
               value={baseItem.Status}
               onChange={(e) =>
-                setBaseItem({
-                  ...baseItem,
-                  Status: e.target.value as InventoryItem["Status"],
-                })
+                setBaseItem({ ...baseItem, Status: e.target.value as InventoryItem["Status"] })
               }
               disabled={readOnly}
               className="w-full rounded-md border px-3 py-2 dark:bg-gray-800 dark:text-white"
             >
-              <option>Available</option>
-              <option>In Use</option>
-              <option>Maintenance</option>
-              <option>Defective</option>
+              <option value="AVAILABLE">Available</option>
+              <option value="BORROWED">Borrowed</option>
+              <option value="DEFECTIVE">Defective</option>
+              <option value="LOST">Lost</option>
+              <option value="REPLACED">Replaced</option>
             </select>
           </div>
 
@@ -463,9 +344,7 @@ export default function ItemModal({
                 type="number"
                 min={1}
                 value={quantity}
-                onChange={(e) =>
-                  handleQuantityChange(parseInt(e.target.value))
-                }
+                onChange={(e) => handleQuantityChange(parseInt(e.target.value))}
                 className="w-full rounded-md border px-3 py-2 dark:bg-gray-800 dark:text-white"
               />
             </div>
@@ -478,7 +357,7 @@ export default function ItemModal({
               <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
                 {serials.map((s, idx) => (
                   <input
-                    key={`${idx}-${s}`}
+                    key={idx}
                     type="text"
                     value={s}
                     onChange={(e) => {
@@ -498,10 +377,8 @@ export default function ItemModal({
               <label className="mb-1 text-sm font-medium">Serial Number</label>
               <input
                 type="text"
-                value={baseItem.serialNumber ?? ""}
-                onChange={(e) =>
-                  setBaseItem({ ...baseItem, serialNumber: e.target.value })
-                }
+                value={baseItem.Serial_Number ?? ""}
+                onChange={(e) => setBaseItem({ ...baseItem, Serial_Number: e.target.value })}
                 disabled={readOnly}
                 className="w-full rounded-md border px-3 py-2 dark:bg-gray-800 dark:text-white"
               />
@@ -523,10 +400,8 @@ export default function ItemModal({
           {mode === "view" && (
             <button
               onClick={() => {
-                if (mode !== "edit") {
-                  setBaseItem(item!);
-                  setQuantity(1);
-                }
+                if (item) setBaseItem(item as NewInventoryItem);
+                setQuantity(1);
                 setMode("edit");
               }}
               className="rounded bg-yellow-500 px-4 py-2 text-white hover:bg-yellow-600 transition-colors"
@@ -535,10 +410,7 @@ export default function ItemModal({
             </button>
           )}
           {mode !== "view" && (
-            <button
-              onClick={handleSave}
-              className="rounded bg-blue-600 px-4 py-2 text-white"
-            >
+            <button onClick={handleSave} className="rounded bg-blue-600 px-4 py-2 text-white">
               Save
             </button>
           )}
