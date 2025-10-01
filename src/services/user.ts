@@ -7,20 +7,20 @@ export const fetchUsers = async (): Promise<User[]> => {
     return data;
 };
 
-// Fetch a single user by ID
-export const fetchUserById = async (userId: string): Promise<User> => {
+// Fetch user by ID
+export const fetchUserById = async (userId: number): Promise<User> => {
     const { data } = await api.get<User>(`/users/${userId}`);
     return data;
 };
 
 // Add a new user
-export const addUser = async (user: User): Promise<User> => {
+export const addUser = async (user: Omit<User, "User_ID">): Promise<User> => {
     const { data } = await api.post<User>("/users", user);
     return data;
 };
 
-// Update an existing user
-export const updateUser = async (userId: number, user: User): Promise<User> => {
+// Update user
+export const updateUser = async (userId: number, user: Partial<Omit<User, "User_ID">>): Promise<User> => {
     const { data } = await api.put<User>(`/users/${userId}`, user);
     return data;
 };

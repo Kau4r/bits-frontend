@@ -2,21 +2,21 @@ import { Download } from "lucide-react";
 import ReactQRCode from "react-qr-code";
 import { createPortal } from "react-dom";
 import { useState, useEffect } from "react";
-import type { InventoryItem } from "@/types/inventory";
+import type { Item } from "@/types/inventory";
 import type { Room } from "@/types/room";
 
 // Omit Item_Code and Item_ID for new items
-type NewInventoryItem = Omit<InventoryItem, "Item_Code" | "Item_ID">;
+type NewInventoryItem = Omit<Item, "Item_Code" | "Item_ID">;
 
 interface ItemModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (
-    item: NewInventoryItem | NewInventoryItem[] | InventoryItem | InventoryItem[]
+    item: NewInventoryItem | NewInventoryItem[] | Item | Item[] | { id: number; data: Partial<Item> }
   ) => void;
   initMode: "add" | "edit" | "view";
-  item?: InventoryItem | null;
-  items: InventoryItem[];
+  item?: Item | null;
+  items: Item[];
   rooms: Room[];
   userId?: number;
 }
@@ -31,14 +31,16 @@ export default function ItemModal({
   rooms,
   userId,
 }: ItemModalProps) {
-  const [baseItem, setBaseItem] = useState<InventoryItem | NewInventoryItem>({
+  const [baseItem, setBaseItem] = useState<Item | Omit<Item, 'Item_ID' | 'Item_Code'>>({
     Item_Type: "",
     Brand: "",
     Room_ID: rooms?.[0]?.Room_ID ?? 0,
     Serial_Number: "",
     Status: "AVAILABLE",
     Updated_At: new Date().toISOString(),
+    IsBorrowable: false
   });
+
 
   const [quantity, setQuantity] = useState(1);
   const [brands, setBrands] = useState<string[]>([]);
@@ -67,6 +69,7 @@ export default function ItemModal({
         Serial_Number: "",
         Status: "AVAILABLE",
         Updated_At: new Date().toISOString(),
+        IsBorrowable: false,
       });
       setQuantity(1);
       setSerials([""]);
@@ -84,36 +87,26 @@ export default function ItemModal({
   const readOnly = mode === "view";
 
   const handleSave = () => {
-    if (!baseItem.Item_Type || !baseItem.Brand) {
-      alert("Item type and brand are required.");
-      return;
-    }
+    if (!baseItem.Item_Type || !baseItem.Brand) return;
 
     const safeRoomId = baseItem.Room_ID ?? rooms?.[0]?.Room_ID ?? 0;
 
-    if (mode === "add") {
-      const itemsPayload = (quantity > 1 ? serials : [baseItem.Serial_Number || ""]).map(serial => ({
-        Item_Type: baseItem.Item_Type,
-        Brand: baseItem.Brand,
-        Serial_Number: serial.trim() || null,
-        Status: baseItem.Status,
-        Room_ID: safeRoomId,
-      }));
-
-      onSave(itemsPayload); // pass only the array of items
-    } else if (mode === "edit" && item) {
-      const updatedItem: InventoryItem = {
-        ...item,
+    // ItemModal.tsx
+    if (mode === "edit" && item) {
+      const updatedItem: Partial<Item> = {
+        Item_ID: item.Item_ID, // preserve ID
         Item_Type: baseItem.Item_Type,
         Brand: baseItem.Brand,
         Serial_Number: baseItem.Serial_Number,
         Status: baseItem.Status,
-        Room_ID: safeRoomId,
+        Room_ID: baseItem.Room_ID ?? rooms?.[0]?.Room_ID ?? 0,
         Updated_At: new Date().toISOString(),
       };
-      onSave(updatedItem); // pass single item
+      onSave({ id: item.Item_ID, data: updatedItem });
     }
+
   };
+
 
   const handleQuantityChange = (val: number) => {
     const qty = Math.max(1, val || 1);
@@ -231,7 +224,7 @@ export default function ItemModal({
             <div className="flex items-start gap-4 my-5">
               <ReactQRCode
                 id="qrCode"
-                value={baseItem.Item_Code}
+                value={baseItem.Serial_Number}
                 size={200}
                 level="H"
                 bgColor="#101828"
@@ -261,7 +254,7 @@ export default function ItemModal({
 
                     const downloadLink = document.createElement("a");
                     downloadLink.href = pngUrl;
-                    downloadLink.download = `${baseItem.Item_Code || baseItem.Serial_Number}.png`;
+                    downloadLink.download = `${baseItem.Serial_Number}.png`;
                     downloadLink.click();
 
                     URL.revokeObjectURL(url);
@@ -323,7 +316,7 @@ export default function ItemModal({
             <select
               value={baseItem.Status}
               onChange={(e) =>
-                setBaseItem({ ...baseItem, Status: e.target.value as InventoryItem["Status"] })
+                setBaseItem({ ...baseItem, Status: e.target.value as Item["Status"] })
               }
               disabled={readOnly}
               className="w-full rounded-md border px-3 py-2 dark:bg-gray-800 dark:text-white"

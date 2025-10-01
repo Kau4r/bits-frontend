@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { type InventoryItem } from '@/types/inventory'
+import { type Item } from '@/types/inventory'
 import { PlusIcon } from '@heroicons/react/24/outline'
 import Table from '@/components/Table'
 import ItemModal from '@/components/inventory/ItemModal'
@@ -14,12 +14,12 @@ import { useAuth } from '@/context/AuthContext'
 const InventoryPage = () => {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('')
-  const [inventory, setInventory] = useState<InventoryItem[]>([])
+  const [inventory, setInventory] = useState<Item[]>([])
   const [selectedType, setSelectedType] = useState('All Types')
   const [selectedStatus, setSelectedStatus] = useState('All Status')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalMode, setModalMode] = useState<'view' | 'edit' | 'add'>('view')
-  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null)
+  const [selectedItem, setSelectedItem] = useState<Item | null>(null)
   const [rooms, setRooms] = useState<Room[]>([])
 
   useEffect(() => {
@@ -41,7 +41,7 @@ const InventoryPage = () => {
     const loadInventory = async () => {
       try {
         const data = await fetchInventory()
-        setInventory(data.filter((item): item is InventoryItem => !!item));
+        setInventory(data.filter((item): item is Item => !!item));
         console.log("Fetched inventory:", data);
       } catch (err) {
         console.error("Error fetching inventory:", err)
@@ -50,7 +50,7 @@ const InventoryPage = () => {
     loadInventory()
   }, [])
 
-  const archiveStatuses: InventoryItem['Status'][] = ['AVAILABLE', 'BORROWED'];
+  const archiveStatuses: Item['Status'][] = ['AVAILABLE', 'BORROWED'];
   const filteredInventory = inventory.filter(item => {
     const isArchive = archiveStatuses.includes(item.Status);
     const matchesSearch = (item.Brand + item.Item_Code + (item.Item_Type ?? ''))
@@ -63,21 +63,59 @@ const InventoryPage = () => {
   });
 
 
-  const handleSaveItem = async (payload: InventoryItem | InventoryItem[]) => {
+  const handleSaveItem = async (
+    payload: Item | Item[] | { id: number; data: Partial<Item> }
+  ) => {
     try {
-      if (Array.isArray(payload)) {
-        const savedItems = await addInventoryBulk({ User_ID: user?.User_ID ?? 0, items: payload });
+      // Bulk add
+      if (Array.isArray(payload) && payload.every(p => !('id' in p))) {
+        const savedItems = await addInventoryBulk(payload as Item[], user?.User_ID ?? 0);
         setInventory(prev => [...prev, ...savedItems]);
-      } else {
-        const updatedItem = await updateInventoryItem(payload.Item_ID, payload);
-        console.log("Updated item:", updatedItem);
-        setInventory(prev => prev.map(i => i.Item_ID === updatedItem.Item_ID ? updatedItem : i));
+        setIsModalOpen(false);
+        return;
       }
+
+      // Single edit: either flat Item or { id, data }
+      let itemId: number;
+      let updateData: Partial<Item>;
+
+      if ('id' in payload && 'data' in payload) {
+        itemId = payload.id;
+        updateData = payload.data;
+      } else if ('Item_ID' in payload) {
+        itemId = payload.Item_ID!;
+        updateData = payload as Partial<Item>;
+      } else {
+        console.error("Cannot update: missing Item_ID", payload);
+        return;
+      }
+
+      const updatedItem = await updateInventoryItem(itemId, updateData);
+
+      // Find the room object from current rooms
+      const roomObj = rooms.find(r => r.Room_ID === updatedItem.Room_ID);
+
+      // Merge room object into updatedItem
+      const mergedItem: Item = { ...updatedItem, Room: roomObj } as Item;
+
+      // Update inventory state
+      setInventory(prev =>
+        prev.map(i => i.Item_ID === mergedItem.Item_ID ? mergedItem : i)
+      );
+
+      // Update selectedItem if modal is open
+      if (selectedItem?.Item_ID === mergedItem.Item_ID) {
+        setSelectedItem(mergedItem);
+      }
+
       setIsModalOpen(false);
+
     } catch (err) {
       console.error("Error saving inventory item:", err);
     }
   };
+
+
 
   return (
     <div className="px-6 py-4 sm:px-8 lg:px-10">
@@ -135,9 +173,9 @@ const InventoryPage = () => {
             if (!item) return null;
             return (
               <div
-                key={item.Item_ID ?? Math.random()} // fallback key just in case
+                key={item.Item_ID}
                 onClick={() => {
-                  setSelectedItem(item);
+                  setSelectedItem({ ...item }); // clone to break reference
                   setModalMode('view');
                   setIsModalOpen(true);
                 }}

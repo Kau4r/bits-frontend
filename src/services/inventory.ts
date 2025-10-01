@@ -1,37 +1,35 @@
 import api from "./api";
-import type { InventoryItem } from "@/types/inventory";
+import type { Item, Computer } from "@/types/inventory";
 
-export type NewInventoryItem = Omit<InventoryItem, "Item_ID" | "Item_Code">;
-
-// Fetch all items
-export const fetchInventory = async (): Promise<InventoryItem[]> => {
-    const res = await api.get<InventoryItem[]>("/inventory");
-    return res.data;
+// Fetch all inventory items
+export const fetchInventory = async (): Promise<(Item | Computer)[]> => {
+    const { data } = await api.get<(Item | Computer)[]>("/inventory");
+    return data;
 };
 
-// Fetch a single item by its Item_Code (for QR code scan)
-export const fetchInventoryByCode = async (itemCode: string): Promise<InventoryItem> => {
-    const res = await api.get<InventoryItem>(`/inventory/code/${itemCode}`);
-    return res.data;
+// Fetch a single item by code
+export const fetchInventoryByCode = async (itemCode: string): Promise<Item | Computer> => {
+    const { data } = await api.get<Item | Computer>(`/inventory/code/${itemCode}`);
+    return data;
+};
+export const addInventoryItem = async (
+    item: Omit<Item | Computer, "Item_ID">,
+    User_ID: number
+): Promise<Item | Computer> => {
+    const { data } = await api.post<Item | Computer>("/inventory", { items: item, User_ID });
+    return data;
 };
 
-// Add single item (wrap as bulk internally)
-export const addInventoryItem = async (item: NewInventoryItem, User_ID: number): Promise<InventoryItem> => {
-    const res = await api.post<{ items: InventoryItem[] }>("/inventory", { items: [item], User_ID });
-    return res.data.items[0];
+export const addInventoryBulk = async (
+    items: Omit<Item, "Item_ID">[],
+    User_ID: number
+): Promise<Item[]> => {
+    const { data } = await api.post<Item[]>("/inventory/bulk", { User_ID, items });
+    return data;
 };
 
-// Add multiple items
-export const addInventoryBulk = async ({
-    items,
-    User_ID
-}: { items: NewInventoryItem[]; User_ID: number }): Promise<InventoryItem[]> => {
-    const res = await api.post<{ items: InventoryItem[] }>("/inventory", { items, User_ID });
-    return res.data.items;
+// Update inventory item
+export const updateInventoryItem = async (id: number, item: Partial<Item | Computer>): Promise<Item | Computer> => {
+    const { data } = await api.put<Item | Computer>(`/inventory/${id}`, item);
+    return data;
 };
-
-// Update item
-export const updateInventoryItem = async (itemId: number, item: Partial<InventoryItem>): Promise<InventoryItem> => {
-    const res = await api.put<InventoryItem>(`/inventory/${itemId}`, item);
-    return res.data; // <- return the item directly
-};    

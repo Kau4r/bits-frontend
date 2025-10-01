@@ -1,39 +1,30 @@
 import api from "./api";
-import type { Room, RoomType, RoomStatus } from "@/types/room";
+import type { Room } from "@/types/room";
 
+// Create / update shapes
+export type RoomCreateInput = Omit<Room, "Room_ID"> & { Created_By: number };
+export type RoomUpdateInput = Partial<Omit<Room, "Room_ID">>;
 
-// Shape for creating a new room (exclude auto fields)
-export type RoomCreateInput = {
-    Name: string;
-    Capacity: number;
-    Room_Type: RoomType;
-    Status: RoomStatus;
-};
-
-// Shape for updating a room (all optional except ID in URL)
-export type RoomUpdateInput = Partial<RoomCreateInput>;
 // Fetch all rooms
 export const getRooms = async (): Promise<Room[]> => {
-    const res = await api.get<Room[]>("/rooms"); // <-- generic here
-    return res.data;
+    const { data } = await api.get<Room[]>("/rooms");
+    return data;
 };
 
 // Fetch room by ID
 export const getRoomById = async (id: number): Promise<Room> => {
-    const res = await api.get<Room>(`${"/rooms"}/${id}`); // <-- generic here
-    return res.data;
+    const { data } = await api.get<Room>(`/rooms/${id}`);
+    return data;
 };
 
-// Create a new room
-export const createRoom = async (room: Partial<Room> & { Created_By: number }): Promise<Room> => {
-    const { Name, Capacity, Room_Type, Created_By } = room;
-    const res = await api.post<Room>("/rooms", { Name, Capacity, Room_Type, Created_By });
-    return res.data;
+// Create new room
+export const createRoom = async (room: RoomCreateInput): Promise<Room> => {
+    const { data } = await api.post<Room>("/rooms", room);
+    return data;
 };
 
-export const updateRoom = async (id: number, room: Partial<Room>): Promise<Room> => {
-    console.log("updateRoom called:", id, room);
-    const res = await api.put<{ message: string; room: Room }>(`${"/rooms"}/${id}`, room);
-    console.log("updateRoom response:", res.data);
-    return res.data.room; // <-- extract the Room object
+// Update room
+export const updateRoom = async (id: number, room: RoomUpdateInput): Promise<Room> => {
+    const { data } = await api.put<{ message: string; room: Room }>(`/rooms/${id}`, room);
+    return data.room;
 };

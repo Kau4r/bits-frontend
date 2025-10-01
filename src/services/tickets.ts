@@ -1,42 +1,37 @@
-import api from "@/services/api"; // Axios instance
-import type { Ticket, TicketCategory, TicketPriority, TicketStatus, NewTicketInput } from "@/types/tickets";
+import api from "./api";
+import type { Ticket, NewTicketInput, TicketStatus, TicketPriority, TicketCategory } from "@/types/tickets";
 
-const TICKETS_URL = "/tickets";
-
-// Fetch all tickets, optionally filtered by status
-export const fetchTickets = async (status?: string): Promise<Ticket[]> => {
-    const { data } = await api.get<Ticket[]>(TICKETS_URL, { params: { status } });
+// Fetch all tickets
+export const fetchTickets = async (status?: TicketStatus): Promise<Ticket[]> => {
+    const { data } = await api.get<Ticket[]>("/tickets", { params: { status } });
     return data;
 };
 
-// Fetch single ticket by ID
+// Fetch ticket by ID
 export const fetchTicketById = async (id: number): Promise<Ticket> => {
-    const { data } = await api.get<Ticket>(`${TICKETS_URL}/${id}`);
+    const { data } = await api.get<Ticket>(`${"/tickets"}/${id}`);
     return data;
 };
 
-// Create a new ticket
+// Create ticket
 export const createTicket = async (ticket: NewTicketInput): Promise<Ticket> => {
-    const { data } = await api.post<Ticket>(TICKETS_URL, ticket);
+    const { data } = await api.post<Ticket>("/tickets", ticket);
     return data;
 };
 
-// Update ticket (status, priority, category)
-export const updateTicket = async (
-    ticketId: number,
-    data: { Status: TicketStatus; Priority?: TicketPriority; Category?: TicketCategory }
-): Promise<Ticket> => {
-    const { data: updated } = await api.put<Ticket>(`${TICKETS_URL}/${ticketId}`, data);
+// Update ticket
+export const updateTicket = async (ticketId: number, data: { Status: TicketStatus; Priority?: TicketPriority; Category?: TicketCategory }): Promise<Ticket> => {
+    const { data: updated } = await api.put<Ticket>(`${"/tickets"}/${ticketId}`, data);
     return updated;
 };
 
 // Archive ticket
 export const archiveTicket = async (ticketId: number): Promise<Ticket> => {
-    const res = await api.put<Ticket>(`${TICKETS_URL}/${ticketId}`, { Archived: true });
-    return res.data;
+    const { data } = await api.put<Ticket>(`${"/tickets"}/${ticketId}`, { Archived: true });
+    return data;
 };
 
 // Delete ticket
 export const deleteTicket = async (id: number): Promise<void> => {
-    await api.delete(`${TICKETS_URL}/${id}`);
+    await api.delete(`${"/tickets"}/${id}`);
 };

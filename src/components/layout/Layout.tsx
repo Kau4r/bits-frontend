@@ -9,7 +9,8 @@ const Layout = () => {
 
   const noSidebarRoles = ["STUDENT", "FACULTY"];
 
-  const hideSidebar = noSidebarRoles.includes(userRole ?? "");
+  const hideSidebar = noSidebarRoles.includes((userRole ?? "").toUpperCase());
+  console.log("userRole:", userRole);
 
   return (
     <div className="flex min-h-screen bg-white dark:bg-gray-900">
@@ -19,7 +20,8 @@ const Layout = () => {
           ${hideSidebar ? "ml-0" : collapsed ? "ml-20" : "ml-56"} 
           bg-white dark:bg-gray-900`}
       >
-        <Outlet /> 
+        <Outlet /> {/* THIS IS CRUCIAL */}
+        <Outlet />
       </main>
     </div>
   );
