@@ -106,6 +106,17 @@ html {
   --fc-cell-text-color: #1e293b;
 }
 
+/* Ensure the parent container allows full height */
+.fc-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  /* or 100% if parent is already full height */
+  min-height: 0;
+  padding: 1rem;
+  /* optional if you want spacing like p-4/p-6 */
+}
+
 .fc .fc-toolbar-title {
   color: var(--fc-toolbar-title-color) !important;
   font-weight: 600;

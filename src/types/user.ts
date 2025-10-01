@@ -1,13 +1,13 @@
 export interface User {
-    User_ID: number
-    User_Role: User_Role
-    First_Name: string
-    Middle_Name?: string
-    Last_Name: string
-    Email: string
-    Is_Active: boolean
-    Created_At?: string
-    Updated_At?: string
+    User_ID: number;
+    User_Role: User_Role;
+    First_Name: string;
+    Middle_Name?: string;
+    Last_Name: string;
+    Email: string;
+    Is_Active: boolean;
+    Created_At?: string;
+    Updated_At?: string;
 }
 
 export const ROLES = {
@@ -24,7 +24,3 @@ export type User_Role = typeof ROLES[keyof typeof ROLES];
 export interface UserWithPassword extends User {
     password: string;
 }
-
-
-
-
