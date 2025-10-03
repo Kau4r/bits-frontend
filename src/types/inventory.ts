@@ -2,8 +2,8 @@ import type { Room } from "./room";
 import type { User } from "./user";
 
 export interface Item {
-  Item_ID: number;
-  Item_Code: string;
+  Item_ID?: number;
+  Item_Code?: string;
   Item_Type: string;
   Brand: string;
   Room_ID?: number;

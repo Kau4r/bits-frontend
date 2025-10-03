@@ -4,22 +4,24 @@ import { createPortal } from "react-dom";
 import { useState, useEffect } from "react";
 import type { Item } from "@/types/inventory";
 import type { Room } from "@/types/room";
+import { ComboBox } from "./ComboBox";
 
 // Omit Item_Code and Item_ID for new items
 type NewInventoryItem = Omit<Item, "Item_Code" | "Item_ID">;
 
 interface ItemModalProps {
   isOpen: boolean;
-  onClose: () => void;
-  onSave: (
-    item: NewInventoryItem | NewInventoryItem[] | Item | Item[] | { id: number; data: Partial<Item> }
-  ) => void;
-  initMode: "add" | "edit" | "view";
-  item?: Item | null;
+  initMode: "view" | "edit" | "add";
+  item: Item | null;
   items: Item[];
   rooms: Room[];
+  onClose: () => void;
+  onSave: (
+    payload: Item | Omit<Item, "Item_ID" | "Item_Code">[] | { id: number; data: Partial<Item> }
+  ) => void;
   userId?: number;
 }
+
 
 export default function ItemModal({
   isOpen,
@@ -45,8 +47,6 @@ export default function ItemModal({
   const [quantity, setQuantity] = useState(1);
   const [brands, setBrands] = useState<string[]>([]);
   const [itemTypes, setItemTypes] = useState<string[]>([]);
-  const [newBrand, setNewBrand] = useState("");
-  const [newItemType, setNewItemType] = useState("");
   const [serials, setSerials] = useState<string[]>([""]);
   const [mode, setMode] = useState(initMode);
 
@@ -55,6 +55,7 @@ export default function ItemModal({
     if (!items || items.length === 0) return;
     setBrands([...new Set(items.map((i) => i.Brand).filter(Boolean))]);
     setItemTypes([...new Set(items.map((i) => i.Item_Type).filter(Boolean))]);
+    if (item) setBaseItem({ ...item });
   }, [items]);
 
   // Initialize modal state
@@ -89,12 +90,9 @@ export default function ItemModal({
   const handleSave = () => {
     if (!baseItem.Item_Type || !baseItem.Brand) return;
 
-    const safeRoomId = baseItem.Room_ID ?? rooms?.[0]?.Room_ID ?? 0;
-
-    // ItemModal.tsx
     if (mode === "edit" && item) {
+      // Update existing
       const updatedItem: Partial<Item> = {
-        Item_ID: item.Item_ID, // preserve ID
         Item_Type: baseItem.Item_Type,
         Brand: baseItem.Brand,
         Serial_Number: baseItem.Serial_Number,
@@ -102,10 +100,40 @@ export default function ItemModal({
         Room_ID: baseItem.Room_ID ?? rooms?.[0]?.Room_ID ?? 0,
         Updated_At: new Date().toISOString(),
       };
-      onSave({ id: item.Item_ID, data: updatedItem });
+
+      onSave({ id: item.Item_ID!, data: updatedItem });
+    }
+    if (mode === 'add') {
+      let itemsToAdd: Omit<Item, 'Item_ID' | 'Item_Code'>[] = [];
+
+      if (quantity > 1) {
+        itemsToAdd = serials.map((sn) => ({
+          Item_Type: baseItem.Item_Type!,
+          Brand: baseItem.Brand!,
+          Serial_Number: sn ?? '',
+          Status: baseItem.Status ?? 'AVAILABLE',
+          Room_ID: baseItem.Room_ID ?? rooms?.[0]?.Room_ID ?? 0,
+          Updated_At: new Date().toISOString(),
+          IsBorrowable: baseItem.IsBorrowable ?? false,
+        }));
+      } else {
+        itemsToAdd = [{
+          Item_Type: baseItem.Item_Type!,
+          Brand: baseItem.Brand!,
+          Serial_Number: baseItem.Serial_Number ?? '',
+          Status: baseItem.Status ?? 'AVAILABLE',
+          Room_ID: baseItem.Room_ID ?? rooms?.[0]?.Room_ID ?? 0,
+          Updated_At: new Date().toISOString(),
+          IsBorrowable: baseItem.IsBorrowable ?? false,
+        }];
+      }
+
+      onSave(itemsToAdd); // Pass array for bulk add
     }
 
+
   };
+
 
 
   const handleQuantityChange = (val: number) => {
@@ -116,13 +144,13 @@ export default function ItemModal({
     else if (qty < serials.length) setSerials(serials.slice(0, qty));
   };
 
-  const addBrand = () => {
-    const v = newBrand.trim();
-    if (v && !brands.includes(v)) {
-      setBrands([...brands, v]);
-      setNewBrand("");
-    }
-  };
+  // const addBrand = () => {
+  //   const v = newBrand.trim();
+  //   if (v && !brands.includes(v)) {
+  //     setBrands([...brands, v]);
+  //     setNewBrand("");
+  //   }
+  // };
   const removeBrand = (brand: string) => {
     if (!brand) return;
     if (confirm(`Delete brand "${brand}"?`)) {
@@ -131,13 +159,13 @@ export default function ItemModal({
     }
   };
 
-  const addItemType = () => {
-    const v = newItemType.trim();
-    if (v && !itemTypes.includes(v)) {
-      setItemTypes([...itemTypes, v]);
-      setNewItemType("");
-    }
-  };
+  // const addItemType = () => {
+  //   const v = newItemType.trim();
+  //   if (v && !itemTypes.includes(v)) {
+  //     setItemTypes([...itemTypes, v]);
+  //     setNewItemType("");
+  //   }
+  // };
   const removeItemType = (type: string) => {
     if (!type) return;
     if (confirm(`Delete item type "${type}"?`)) {
@@ -146,67 +174,7 @@ export default function ItemModal({
     }
   };
 
-  const renderDropdown = (
-    label: string,
-    value: string,
-    options: string[],
-    onChange: (val: string) => void,
-    onRemove: (val: string) => void,
-    newValue: string,
-    setNewValue: (val: string) => void,
-    onAdd: () => void
-  ) => (
-    <div className="flex flex-col">
-      <label className="mb-1 text-sm font-medium">{label}</label>
-      <div className="flex flex-col gap-2">
-        <div className="flex gap-2">
-          <select
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            disabled={readOnly}
-            className="flex-1 rounded-md border px-3 py-2 dark:bg-gray-800 dark:text-white"
-          >
-            <option value="">Select...</option>
-            {options.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={() => onRemove(value)}
-            disabled={!value || readOnly}
-            className={`rounded px-2 py-1 ${value && !readOnly
-              ? "bg-red-600 text-white"
-              : "bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-700"
-              }`}
-          >
-            Delete
-          </button>
-        </div>
 
-        {!readOnly && (
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder={`New ${label.toLowerCase()}`}
-              value={newValue}
-              onChange={(e) => setNewValue(e.target.value)}
-              className="flex-1 rounded-md border px-2 py-1 dark:bg-gray-800 dark:text-white"
-            />
-            <button
-              type="button"
-              onClick={onAdd}
-              className="rounded bg-gray-200 px-3 py-1 text-sm dark:bg-gray-700 dark:text-white"
-            >
-              Add
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
@@ -271,27 +239,25 @@ export default function ItemModal({
         )}
 
         <div className="grid grid-cols-2 gap-4">
-          {renderDropdown(
-            "Item Type",
-            baseItem.Item_Type,
-            itemTypes,
-            (v) => setBaseItem({ ...baseItem, Item_Type: v }),
-            removeItemType,
-            newItemType,
-            setNewItemType,
-            addItemType
-          )}
 
-          {renderDropdown(
-            "Brand",
-            baseItem.Brand,
-            brands,
-            (v) => setBaseItem({ ...baseItem, Brand: v }),
-            removeBrand,
-            newBrand,
-            setNewBrand,
-            addBrand
-          )}
+          {/* render */}
+          <ComboBox
+            label="Item Type"
+            value={baseItem.Item_Type}
+            options={itemTypes}
+            onChange={(v: string) => setBaseItem({ ...baseItem, Item_Type: v })}
+            onRemove={removeItemType}
+            readOnly={readOnly}
+          />
+
+          <ComboBox
+            label="Brand"
+            value={baseItem.Brand}
+            options={brands}
+            onChange={(v: string) => setBaseItem({ ...baseItem, Brand: v })}
+            onRemove={removeBrand}
+            readOnly={readOnly}
+          />
 
           {/* Room */}
           <div className="flex flex-col">

@@ -24,7 +24,7 @@ export const addInventoryBulk = async (
     items: Omit<Item, "Item_ID">[],
     User_ID: number
 ): Promise<Item[]> => {
-    const { data } = await api.post<Item[]>("/inventory/bulk", { User_ID, items });
+    const { data } = await api.post<Item[]>("/inventory", { User_ID, items });
     return data;
 };
 
