@@ -1,31 +1,144 @@
-import { BeakerIcon } from '@heroicons/react/24/outline';
+import { ClockIcon } from '@heroicons/react/24/outline';
+import { ComputerDesktopIcon } from '@heroicons/react/24/solid';
+import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
+import 'react-circular-progressbar/dist/styles.css';
+
+type OpenRoom = {
+  id: number;
+  label: 'Windows Laboratory' | 'MAC Laboratory';
+  room: string;
+  status: 'Open' | 'Closed';
+  schedule: string;
+  capacity: { used: number; total: number };
+};
 
 export default function OpenedLaboratories() {
-  const labs = [
-    { id: 1, name: 'Computer Lab 1', status: 'Open', users: 12 },
-    { id: 2, name: 'Physics Lab 2', status: 'Open', users: 8 },
-    { id: 3, name: 'Chemistry Lab', status: 'Closed', users: 0 },
+  const rooms: OpenRoom[] = [
+    { id: 1, label: 'Windows Laboratory', room: 'LB 447', status: 'Open', schedule: '12:00 – 1:30', capacity: { used: 8, total: 30 } },
+    { id: 2, label: 'MAC Laboratory', room: 'LB 335', status: 'Open', schedule: '12:00 – 1:30', capacity: { used: 8, total: 30 } },
   ];
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-3">
-        {labs.map((lab) => (
-          <div key={lab.id} className="flex items-center justify-between p-3 bg-[#1A2236] rounded-lg">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-green-100 rounded-md">
-                <BeakerIcon className="h-5 w-5 text-green-600" />
+    <div className="flex h-full flex-col gap-4">
+      {/* Top: two opened rooms; auto-rows-fr keeps equal heights */}
+      <div className="grid h-full grid-cols-1 gap-4 md:grid-cols-2 auto-rows-fr">
+        {rooms.map((r) => {
+          const isWindowsLab = r.label.toLowerCase().includes('windows');
+          const isOpen = r.status === 'Open';
+          
+          return (
+            <div
+              key={r.id}
+              className="grid h-full grid-rows-[auto_minmax(10rem,1fr)_auto_auto] gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm ring-1 ring-gray-200/50 dark:border-gray-700 dark:bg-gray-800 dark:ring-gray-700/50"
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2.5">
+                  <span className={`rounded-lg p-2 ring-1 ring-inset ${
+                    isWindowsLab 
+                      ? 'bg-blue-50 ring-blue-200 dark:bg-blue-900/30 dark:ring-blue-800/50' 
+                      : 'bg-gray-50 ring-gray-200 dark:bg-gray-700/50 dark:ring-gray-600/50'
+                  }`}>
+                    <ComputerDesktopIcon 
+                      className={`h-5 w-5 ${
+                        isWindowsLab 
+                          ? 'text-blue-600 dark:text-blue-300' 
+                          : 'text-gray-600 dark:text-gray-300'
+                      }`} 
+                    />
+                  </span>
+                  <div className="leading-tight">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{r.label}</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-300">Room {r.room}</p>
+                  </div>
+                </div>
+                <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${
+                  isOpen
+                    ? 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:ring-emerald-800/60'
+                    : 'bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-900/30 dark:text-rose-300 dark:ring-rose-800/60'
+                }`}>
+                  <span className={`h-2 w-2 rounded-full ${
+                    isOpen ? 'bg-emerald-500' : 'bg-rose-500'
+                  }`} />
+                  {r.status}
+                </span>
               </div>
+
+              {/* Capacity (fills remaining vertical space) */}
+              <div className="flex flex-col items-center justify-center h-full">
+                <div className="relative w-full max-w-[160px] mx-auto">
+                  <CircularProgressbar
+                    value={r.capacity.used}
+                    maxValue={r.capacity.total}
+                    text=""
+                    strokeWidth={10}
+                    styles={buildStyles({
+                      pathColor: '#6366F1',
+                      trailColor: 'rgba(0, 0, 0, 0.05)',
+                      pathTransitionDuration: 0.5,
+                    })}
+                  />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <div className="text-2xl font-semibold text-gray-900 dark:text-white">
+                      {r.capacity.used}
+                      <span className="text-lg text-gray-500 dark:text-gray-400">/{r.capacity.total}</span>
+                    </div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">Capacity</div>
+                  </div>
+                </div>
+              </div>
+              
+
+              {/* Schedule */}
+              <div className="rounded-xl bg-gray-50 dark:bg-gray-700/50">
+                <div className="flex items-center justify-between px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <ClockIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Schedule</span>
+                  </div>
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{r.schedule}</span>
+                </div>
+              </div>
+
+              {/* Footer */}
               <div>
-                <p className="text-sm font-medium text-white">{lab.name}</p>
-                <p className="text-xs text-gray-200">{lab.status} • {lab.users} users</p>
+                <button
+                  type="button"
+                  className="h-10 w-full rounded-xl bg-indigo-600 px-3 text-sm font-medium text-white transition hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-800"
+                >
+                  View Details
+                </button>
               </div>
             </div>
-            <button className="text-sm font-medium text-green-400 hover:text-green-300">
-              View
-            </button>
-          </div>
-        ))}
+          );
+        })}
+      </div>
+
+      {/* Bottom: queue rows */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <button
+          type="button"
+          className="flex flex-col rounded-2xl border border-gray-200 bg-white px-4 py-3 text-left ring-1 ring-gray-200/50 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:ring-gray-700/50 dark:hover:bg-gray-700/50"
+        >
+          <p className="text-sm font-medium text-gray-900 dark:text-white">Next Room in Queue</p>
+          <p className="mt-0.5 text-sm text-gray-600 dark:text-gray-300">LB 221 • 1:45 – 3:00</p>
+          <span className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+            <span className="h-2 w-2 rounded-full bg-indigo-400" />
+            Capacity: 0/30
+          </span>
+        </button>
+
+        <button
+          type="button"
+          className="flex flex-col rounded-2xl border border-gray-200 bg-white px-4 py-3 text-left ring-1 ring-gray-200/50 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:ring-gray-700/50 dark:hover:bg-gray-700/50"
+        >
+          <p className="text-sm font-medium text-gray-900 dark:text-white">Next Room in Queue</p>
+          <p className="mt-0.5 text-sm text-gray-600 dark:text-gray-300">LB 118 • 2:00 – 3:30</p>
+          <span className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+            <span className="h-2 w-2 rounded-full bg-indigo-400" />
+            Capacity: 0/30
+          </span>
+        </button>
       </div>
     </div>
   );
