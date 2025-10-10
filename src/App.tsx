@@ -18,13 +18,12 @@ import LabheadDashboard from './pages/LabHead/LabheadDashboard';
 import FacultyScheduling from './pages/Faculty/FacultyScheduling';
 import SecretaryScheduling from './pages/Secretary/SecretaryScheduling';
 import StudentSession from './pages/Student/StudentSession';
-import StudentPCView from './pages/Student/StudentPCView';
-import StudentRoomView from './pages/Student/StudentRoomView';
 import LabTechOverview from './pages/LabHead/LabTechOverview';
 import LabheadScheduling from './pages/LabHead/LabheadScheduling';
 import type { JSX } from 'react';
 import { ROLES } from './types/user';
 
+// 🔒 Protects routes based on auth + role
 const ProtectedRoute = ({ children, roles }: { children: JSX.Element, roles: string[] }) => {
   const { isAuthenticated, userRole } = useAuth();
 
@@ -34,6 +33,7 @@ const ProtectedRoute = ({ children, roles }: { children: JSX.Element, roles: str
   return children;
 };
 
+// 🚪 Handles logout redirection
 const Logout = () => {
   const { logout } = useAuth();
   useEffect(() => {
@@ -42,6 +42,7 @@ const Logout = () => {
   return <Navigate to="/login" replace />;
 };
 
+// ⚙️ Main app logic
 function AppContent() {
   const { isAuthenticated, userRole } = useAuth();
 
@@ -54,6 +55,17 @@ function AppContent() {
     );
   }
 
+  // 🔹 Public routes (not logged in)
+  if (!isAuthenticated) {
+    return (
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    );
+  }
+
+  // 🔹 Authenticated routes
   return (
     <Routes>
       <Route element={<Layout />}>
