@@ -151,12 +151,12 @@ const InventoryPage = () => {
           // Replace in inventory
           setInventory(prev =>
             prev.map(i => (i.Item_ID === mergedItem.Item_ID ? mergedItem : i))
-        );
+          );
 
-        if (selectedItem?.Item_ID === mergedItem.Item_ID || modalMode === 'add') {
-          setSelectedItem(mergedItem);
+          if (selectedItem?.Item_ID === mergedItem.Item_ID || modalMode === 'add') {
+            setSelectedItem(mergedItem);
+          }
         }
-      }
 
         setIsModalOpen(false);
         return;

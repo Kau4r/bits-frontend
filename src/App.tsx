@@ -1,6 +1,7 @@
-import UnauthorizedPage from './pages/UnauthorizedPage';
-import '@/App.css'
+import '@/App.css';
 import './index.css';
+import InventoryMobile from './pages/LabTech/InventoryMobile';
+import UnauthorizedPage from './pages/UnauthorizedPage';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -19,12 +20,12 @@ import LabheadDashboard from './pages/LabHead/LabheadDashboard';
 import FacultyScheduling from './pages/Faculty/FacultyScheduling';
 import SecretaryScheduling from './pages/Secretary/SecretaryScheduling';
 import StudentSession from './pages/Student/StudentSession';
-import StudentPCView from './pages/Student/StudentPCView';
-import StudentRoomView from './pages/Student/StudentRoomView';
 import LabTechOverview from './pages/LabHead/LabTechOverview';
+
 import type { JSX } from 'react';
 import { ROLES } from './types/user';
 
+// 🔒 Protects routes based on auth + role
 const ProtectedRoute = ({ children, roles }: { children: JSX.Element, roles: string[] }) => {
   const { isAuthenticated, userRole } = useAuth();
 
@@ -34,6 +35,7 @@ const ProtectedRoute = ({ children, roles }: { children: JSX.Element, roles: str
   return children;
 };
 
+// 🚪 Handles logout redirection
 const Logout = () => {
   const { logout } = useAuth();
   useEffect(() => {
@@ -42,85 +44,116 @@ const Logout = () => {
   return <Navigate to="/login" replace />;
 };
 
+// ⚙️ Main app logic
 function AppContent() {
   const { isAuthenticated, userRole, loading } = useAuth();
 
   if (loading)
     return <div className="flex items-center justify-center h-screen">Loading...</div>;
 
+  // 🔹 Public routes (not logged in)
+  if (!isAuthenticated) {
+    return (
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    );
+  }
+
+  // 🔹 Authenticated routes
   return (
     <Routes>
-      {/* Public routes */}
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
       <Route path="/logout" element={<Logout />} />
 
-      {/* Protected routes */}
-      {isAuthenticated ? (
-        userRole === 'STUDENT' ? (
-          // Student routes without Layout
-          <>
-            <Route index element={<Navigate to="/student-session" replace />} />
-            <Route path="student-session" element={<StudentSession />} />
-            <Route path="student-pc-view" element={<StudentPCView />} />
-            <Route path="student-room-view" element={<StudentRoomView />} />
-            <Route path="*" element={<Navigate to="/student-session" replace />} />
-          </>
-        ) : userRole === 'FACULTY' ? (
-          // Faculty routes without Layout
-          <>
-            <Route index element={<Navigate to="/faculty/scheduling" replace />} />
-            <Route path="faculty/scheduling" element={<FacultyScheduling />} />
-            <Route path="*" element={<Navigate to="/faculty/scheduling" replace />} />
-          </>
-        ) : (
-          // All other roles with Layout
-          <Route element={<Layout />}>
-            <Route
-              index
-              element={
-                userRole === 'ADMIN' ? <SysAdDash /> :
-                  userRole === 'LAB_TECH' ? <LabtechDashboard /> :
-                    userRole === 'LAB_HEAD' ? <LabheadDashboard /> :
-                      userRole === 'SECRETARY' ? <SecretaryScheduling /> :
-                        <Navigate to="/unauthorized" replace />
-              }
-            />
-            {/* Admin */}
-            <Route path="room" element={<ProtectedRoute roles={[ROLES.ADMIN]}><RoomPage /></ProtectedRoute>} />
-            <Route path="user/:email" element={<ProtectedRoute roles={[ROLES.ADMIN]}><UserDetails /></ProtectedRoute>} />
+      <Route element={<Layout />}>
+        {/* Default dashboard by role */}
+        <Route
+          index
+          element={
+            userRole === 'ADMIN' ? (
+              <SysAdDash />
+            ) : userRole === 'LAB_TECH' ? (
+              <LabtechDashboard />
+            ) : userRole === 'LAB_HEAD' ? (
+              <LabheadDashboard />
+            ) : userRole === 'SECRETARY' ? (
+              <SecretaryScheduling />
+            ) : userRole === 'FACULTY' ? (
+              <FacultyScheduling />
+            ) : userRole === 'STUDENT' ? (
+              <StudentSession />
+            ) : (
+              <Navigate to="/unauthorized" replace />
+            )
+          }
+        />
 
-        {/* LabTech & LabHead routes */}
-        <Route path="/labtech-dashboard" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><LabtechDashboard /></ProtectedRoute>} />
-        <Route path="/labtech/room" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Room /></ProtectedRoute>} />
-        <Route path="/forms" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Forms /></ProtectedRoute>} />
-        <Route path="/inventory" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><InventoryPage /></ProtectedRoute>} />
-        <Route path="/tickets" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Ticket /></ProtectedRoute>} />
-        <Route path="/notification" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Notification /></ProtectedRoute>} />
+        {/* Admin */}
+        <Route
+          path="/room"
+          element={<ProtectedRoute roles={[ROLES.ADMIN]}><RoomPage /></ProtectedRoute>}
+        />
+        <Route
+          path="/user/:email"
+          element={<ProtectedRoute roles={[ROLES.ADMIN]}><UserDetails /></ProtectedRoute>}
+        />
 
-            {/* LabHead */}
-            <Route path="labhead-dashboard" element={<ProtectedRoute roles={[ROLES.LAB_HEAD]}><LabheadDashboard /></ProtectedRoute>} />
-            <Route path="labtechview" element={<ProtectedRoute roles={[ROLES.LAB_HEAD]}><LabTechOverview /></ProtectedRoute>} />
+        {/* LabTech + LabHead */}
+        <Route
+          path="/labtech-dashboard"
+          element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><LabtechDashboard /></ProtectedRoute>}
+        />
+        <Route
+          path="/labtech/room"
+          element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Room /></ProtectedRoute>}
+        />
+        <Route
+          path="/forms"
+          element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Forms /></ProtectedRoute>}
+        />
+        <Route
+          path="/inventory"
+          element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><InventoryPage /></ProtectedRoute>}
+        />
+        <Route
+          path="/inventory-mobile"
+          element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><InventoryMobile /></ProtectedRoute>}
+        />
+        <Route
+          path="/tickets"
+          element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Ticket /></ProtectedRoute>}
+        />
+        <Route
+          path="/notification"
+          element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Notification /></ProtectedRoute>}
+        />
 
-            {/* Faculty routes are handled separately without Layout */}
+        {/* LabHead only */}
+        <Route
+          path="/labhead-dashboard"
+          element={<ProtectedRoute roles={[ROLES.LAB_HEAD]}><LabheadDashboard /></ProtectedRoute>}
+        />
+        <Route
+          path="/labtechview"
+          element={<ProtectedRoute roles={[ROLES.LAB_HEAD]}><LabTechOverview /></ProtectedRoute>}
+        />
 
-            {/* Secretary */}
-            <Route path="secretary/scheduling" element={<ProtectedRoute roles={[ROLES.SECRETARY]}><SecretaryScheduling /></ProtectedRoute>} />
+        {/* Secretary */}
+        <Route
+          path="/secretary/scheduling"
+          element={<ProtectedRoute roles={[ROLES.SECRETARY]}><SecretaryScheduling /></ProtectedRoute>}
+        />
 
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Route>
-        )
-      ) : (
-        // Public routes for unauthenticated users
-        <Route path="/login" element={<Login />} />
-      )}
-      
-      {/* Catch-all for any other route */}
-      <Route path="*" element={<Navigate to={isAuthenticated ? "/" : "/login"} replace />} />
+        {/* Catch-all */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Route>
     </Routes>
   );
 }
 
-
+// 🧩 App wrapper
 function App() {
   return (
     <AuthProvider>

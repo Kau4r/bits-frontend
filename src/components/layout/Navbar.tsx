@@ -77,7 +77,7 @@ const navIcons: Record<string, ReactNode> = {
   ),
 };
 
-const Navbar = ({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed: (c: boolean) => void }) => {
+const Navbar = ({ collapsed, setCollapsed, isMobile }: { collapsed: boolean; setCollapsed: (c: boolean) => void; isMobile: boolean }) => {
   const { userRole, logout } = useAuth();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -87,11 +87,17 @@ const Navbar = ({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed:
 
   const handleLogout = () => {
     logout();
-    navigate('/login', { replace: true });
+    navigate("/login", { replace: true });
+  };
+
+  const toggleSidebar = () => {
+    if (isMobile) setMobileOpen(!mobileOpen);
+    else setCollapsed(!collapsed);
   };
 
   return (
     <>
+      {/* Overlay */}
       {mobileOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"
@@ -101,20 +107,16 @@ const Navbar = ({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed:
       )}
 
       <nav
-        className={`fixed inset-y-0 left-0 z-50 flex h-screen flex-col bg-white shadow-sm dark:bg-gray-800 transition-all duration-300 ${collapsed ? 'w-20' : 'w-56'
-          } ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
-        aria-label="Sidebar navigation"
+        className={`fixed inset-y-0 left-0 z-50 flex h-screen flex-col bg-white shadow-sm dark:bg-gray-800 transition-all duration-300
+          ${collapsed && !isMobile ? "w-20" : !collapsed && !isMobile ? "w-56" : "w-56"} 
+          ${mobileOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}
       >
         <header className="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-700">
-          <h1 className={`text-xl font-bold text-indigo-600 ${collapsed ? 'sr-only' : ''}`}>BITS</h1>
+          <h1 className={`text-xl font-bold text-indigo-600 ${collapsed && !isMobile ? "sr-only" : ""}`}>
+            BITS
+          </h1>
           <button
-            onClick={() => {
-              if (window.innerWidth < 1024) {
-                setMobileOpen(!mobileOpen);
-              } else {
-                setCollapsed(!collapsed);
-              }
-            }}
+            onClick={toggleSidebar}
             className="rounded-md p-2 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             aria-label="Toggle navigation"
             type="button"
@@ -131,21 +133,21 @@ const Navbar = ({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed:
               <li key={item.path}>
                 <NavLink
                   to={item.path}
-                  onClick={() => setMobileOpen(false)}
+                  onClick={() => isMobile && setMobileOpen(false)}
                   className={({ isActive }) =>
-                    `group flex items-center gap-3 rounded-md px-4 py-2 text-sm font-medium transition-colors duration-300 ${collapsed ? 'justify-center' : ''
-                    } ${isActive ? 'bg-indigo-500 text-white shadow-sm' : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'}`
+                    `group flex items-center gap-3 rounded-md px-4 py-2 text-sm font-medium transition-colors duration-300 
+                    ${collapsed && !isMobile ? "justify-center" : ""} 
+                    ${isActive ? "bg-indigo-500 text-white shadow-sm" : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"}`
                   }
                   end
                 >
                   <span
-                    className={`text-indigo-600 group-hover:text-indigo-700 dark:text-indigo-400 ${collapsed ? 'mx-auto' : ''
-                      }`}
+                    className={`text-indigo-600 group-hover:text-indigo-700 dark:text-indigo-400 ${collapsed && !isMobile ? "mx-auto" : ""}`}
                     aria-hidden="true"
                   >
                     {navIcons[item.label] || <span className="w-6 h-6" />}
                   </span>
-                  <span className={collapsed ? 'sr-only' : ''}>{item.label}</span>
+                  <span className={collapsed && !isMobile ? "sr-only" : ""}>{item.label}</span>
                 </NavLink>
               </li>
             ))}
@@ -155,32 +157,20 @@ const Navbar = ({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed:
         <footer className="border-t border-gray-200 px-4 py-4 dark:border-gray-700">
           <button
             onClick={handleLogout}
-            className={`w-full flex items-center gap-3 rounded-md bg-red-600 px-3 py-3 text-sm font-medium text-white shadow hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors ${collapsed ? 'justify-center' : ''
-              }`}
+            className={`w-full flex items-center gap-3 rounded-md bg-red-600 px-3 py-3 text-sm font-medium text-white shadow hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors ${collapsed && !isMobile ? "justify-center" : ""}`}
             type="button"
             aria-label="Logout"
           >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-              focusable="false"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1"
-              />
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1" />
             </svg>
-            <span className={collapsed ? 'sr-only' : 'inline'}>Logout</span>
+            <span className={collapsed && !isMobile ? "sr-only" : "inline"}>Logout</span>
           </button>
         </footer>
       </nav>
     </>
   );
 };
+
 
 export default Navbar;
