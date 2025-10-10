@@ -1,8 +1,6 @@
-import '@/App.css';
+import '@/App.css'
 import './index.css';
-import InventoryMobile from './pages/LabTech/InventoryMobile';
-import UnauthorizedPage from './pages/UnauthorizedPage';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import LabtechDashboard from './pages/LabTech/LabtechDashboard';
@@ -21,7 +19,7 @@ import FacultyScheduling from './pages/Faculty/FacultyScheduling';
 import SecretaryScheduling from './pages/Secretary/SecretaryScheduling';
 import StudentSession from './pages/Student/StudentSession';
 import LabTechOverview from './pages/LabHead/LabTechOverview';
-
+import LabheadScheduling from './pages/LabHead/LabheadScheduling';
 import type { JSX } from 'react';
 import { ROLES } from './types/user';
 
@@ -46,10 +44,16 @@ const Logout = () => {
 
 // ⚙️ Main app logic
 function AppContent() {
-  const { isAuthenticated, userRole, loading } = useAuth();
+  const { isAuthenticated, userRole } = useAuth();
 
-  if (loading)
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  if (!isAuthenticated) {
+    return (
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    );
+  }
 
   // 🔹 Public routes (not logged in)
   if (!isAuthenticated) {
@@ -64,96 +68,63 @@ function AppContent() {
   // 🔹 Authenticated routes
   return (
     <Routes>
-      <Route path="/unauthorized" element={<UnauthorizedPage />} />
-      <Route path="/logout" element={<Logout />} />
-
       <Route element={<Layout />}>
-        {/* Default dashboard by role */}
-        <Route
-          index
-          element={
-            userRole === 'ADMIN' ? (
-              <SysAdDash />
-            ) : userRole === 'LAB_TECH' ? (
-              <LabtechDashboard />
-            ) : userRole === 'LAB_HEAD' ? (
-              <LabheadDashboard />
-            ) : userRole === 'SECRETARY' ? (
-              <SecretaryScheduling />
-            ) : userRole === 'FACULTY' ? (
-              <FacultyScheduling />
-            ) : userRole === 'STUDENT' ? (
-              <StudentSession />
-            ) : (
-              <Navigate to="/unauthorized" replace />
-            )
-          }
-        />
+        <Route path="/logout" element={<Logout />} />
 
-        {/* Admin */}
-        <Route
-          path="/room"
-          element={<ProtectedRoute roles={[ROLES.ADMIN]}><RoomPage /></ProtectedRoute>}
-        />
-        <Route
-          path="/user/:email"
-          element={<ProtectedRoute roles={[ROLES.ADMIN]}><UserDetails /></ProtectedRoute>}
-        />
+        {/* Redirect default / to dashboard based on role */}
+        <Route path="/" element={
+          userRole === ROLES.ADMIN ? <SysAdDash /> :
+          userRole === ROLES.LAB_TECH ? <LabtechDashboard /> :
+          userRole === ROLES.LAB_HEAD ? <LabheadDashboard /> :
+          userRole === ROLES.STUDENT ? <StudentSession /> :
+          userRole === ROLES.FACULTY ? <FacultyScheduling /> :
+          userRole === ROLES.SECRETARY ? <SecretaryScheduling /> :
+          <Navigate to="/unauthorized" replace />
+        } />
 
-        {/* LabTech + LabHead */}
-        <Route
-          path="/labtech-dashboard"
-          element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><LabtechDashboard /></ProtectedRoute>}
-        />
-        <Route
-          path="/labtech/room"
-          element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Room /></ProtectedRoute>}
-        />
-        <Route
-          path="/forms"
-          element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Forms /></ProtectedRoute>}
-        />
-        <Route
-          path="/inventory"
-          element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><InventoryPage /></ProtectedRoute>}
-        />
-        <Route
-          path="/inventory-mobile"
-          element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><InventoryMobile /></ProtectedRoute>}
-        />
-        <Route
-          path="/tickets"
-          element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Ticket /></ProtectedRoute>}
-        />
-        <Route
-          path="/notification"
-          element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Notification /></ProtectedRoute>}
-        />
+        {/* Admin routes */}
+        <Route path="/room" element={<ProtectedRoute roles={[ROLES.ADMIN]}><RoomPage /></ProtectedRoute>} />
+        <Route path="/user/:email" element={<ProtectedRoute roles={[ROLES.ADMIN]}><UserDetails /></ProtectedRoute>} />
+
+        {/* LabTech & LabHead routes */}
+        <Route path="/labtech-dashboard" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><LabtechDashboard /></ProtectedRoute>} />
+        <Route path="/labtech/room" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Room /></ProtectedRoute>} />
+        <Route path="/forms" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Forms /></ProtectedRoute>} />
+        <Route path="/inventory" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><InventoryPage /></ProtectedRoute>} />
+        <Route path="/tickets" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Ticket /></ProtectedRoute>} />
+        <Route path="/notification" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Notification /></ProtectedRoute>} />
+        <Route path="/labhead-scheduling" element={<ProtectedRoute roles={[ROLES.LAB_HEAD]}><LabheadScheduling /></ProtectedRoute>} />
 
         {/* LabHead only */}
-        <Route
-          path="/labhead-dashboard"
-          element={<ProtectedRoute roles={[ROLES.LAB_HEAD]}><LabheadDashboard /></ProtectedRoute>}
-        />
-        <Route
-          path="/labtechview"
-          element={<ProtectedRoute roles={[ROLES.LAB_HEAD]}><LabTechOverview /></ProtectedRoute>}
-        />
+        <Route path="/labhead-dashboard" element={<ProtectedRoute roles={[ROLES.LAB_HEAD]}><LabheadDashboard /></ProtectedRoute>} />
+        <Route path="/labtechview" element={<ProtectedRoute roles={[ROLES.LAB_HEAD]}><LabTechOverview /></ProtectedRoute>} />
+
+        {/* Student */}
+        <Route path="/student-session" element={<ProtectedRoute roles={[ROLES.STUDENT]}><StudentSession /></ProtectedRoute>} />
+        <Route path="/student-pc-view" element={<ProtectedRoute roles={[ROLES.STUDENT]}><StudentPCView /></ProtectedRoute>} />
+        <Route path="/student-room-view" element={<ProtectedRoute roles={[ROLES.STUDENT]}><StudentRoomView /></ProtectedRoute>} />
+
+        {/* Faculty */}
+        <Route path="/faculty/scheduling" element={<ProtectedRoute roles={[ROLES.FACULTY]}><FacultyScheduling /></ProtectedRoute>} />
 
         {/* Secretary */}
-        <Route
-          path="/secretary/scheduling"
-          element={<ProtectedRoute roles={[ROLES.SECRETARY]}><SecretaryScheduling /></ProtectedRoute>}
-        />
+        <Route path="/secretary/scheduling" element={<ProtectedRoute roles={[ROLES.SECRETARY]}><SecretaryScheduling /></ProtectedRoute>} />
 
-        {/* Catch-all */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* Unauthorized */}
+        <Route path="/unauthorized" element={
+          <div className="flex items-center justify-center p-8">
+            <div className="rounded-lg border border-red-300/30 bg-red-50/10 p-6 text-center dark:border-red-700/30 dark:bg-red-900/20">
+              <h1 className="mb-2 text-2xl font-semibold text-red-700 dark:text-red-300">Unauthorized</h1>
+              <p className="text-sm text-gray-700 dark:text-gray-300">You don't have permission to access this page.</p>
+            </div>
+          </div>
+        } />
+        <Route path="*" element={<Outlet />} />
       </Route>
     </Routes>
   );
 }
 
-// 🧩 App wrapper
 function App() {
   return (
     <AuthProvider>
