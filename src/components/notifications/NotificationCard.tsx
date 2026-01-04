@@ -1,19 +1,21 @@
-import { Bell, Clock, Check, AlertTriangle, Eye } from 'lucide-react';
+import { Bell, Clock, AlertTriangle, Check, FileText } from 'lucide-react';
+import type { Notification } from '@/types/notification';
+import MarkAsRead from './MarkAsRead';
+import Archive from './Archive';
 
 interface NotificationCardProps {
-  notification: {
-    id: number;
-    title: string;
-    message: string;
-    time: string;
-    read: boolean;
-    type: 'System' | 'Issue Report' | 'Asset Request' | 'Form Update';
-    role: 'Lab Tech' | 'Lab Head';
-  };
+  notification: Notification;
   onMarkAsRead?: (id: number) => void;
+  onArchive?: (id: number) => void;
+  onRestore?: (id: number) => void;
 }
 
-export default function NotificationCard({ notification, onMarkAsRead }: NotificationCardProps) {
+export default function NotificationCard({
+  notification,
+  onMarkAsRead,
+  onArchive,
+  onRestore,
+}: NotificationCardProps) {
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'System':
@@ -23,7 +25,7 @@ export default function NotificationCard({ notification, onMarkAsRead }: Notific
       case 'Asset Request':
         return <Check className="h-5 w-5 text-green-500" />;
       case 'Form Update':
-        return <Eye className="h-5 w-5 text-purple-500" />;
+        return <FileText className="h-5 w-5 text-purple-500" />;
       default:
         return <Bell className="h-5 w-5 text-blue-500" />;
     }
@@ -31,11 +33,10 @@ export default function NotificationCard({ notification, onMarkAsRead }: Notific
 
   return (
     <div
-      className={`group relative p-4 rounded-xl border ${
-        notification.read
+      className={`group relative p-4 rounded-xl border ${notification.isRead
           ? 'bg-white dark:bg-gray-800'
           : 'bg-blue-50/60 dark:bg-blue-900/30'
-      } border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all`}
+        } border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all`}
     >
       <div className="flex items-start gap-4">
         <div className="pt-0.5">{getNotificationIcon(notification.type)}</div>
@@ -52,17 +53,26 @@ export default function NotificationCard({ notification, onMarkAsRead }: Notific
                 {notification.time}
               </span>
 
-              {!notification.read && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onMarkAsRead?.(notification.id);
-                  }}
-                  title="Mark as read"
-                  className="rounded-full p-1 hover:bg-blue-100 dark:hover:bg-blue-800 text-blue-600 dark:text-blue-400 transition"
-                >
-                  <Eye className="h-4 w-4" />
-                </button>
+              {/* Show Mark as Read only for unread, non-archived */}
+              {!notification.isRead && !notification.isArchived && onMarkAsRead && (
+                <MarkAsRead onClick={() => onMarkAsRead(notification.id)} />
+              )}
+
+              {/* Show Archive/Restore button */}
+              {notification.isArchived ? (
+                onRestore && (
+                  <Archive
+                    isArchived={true}
+                    onClick={() => onRestore(notification.id)}
+                  />
+                )
+              ) : (
+                onArchive && (
+                  <Archive
+                    isArchived={false}
+                    onClick={() => onArchive(notification.id)}
+                  />
+                )
               )}
             </div>
           </div>

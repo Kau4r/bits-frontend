@@ -6,7 +6,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import LabtechDashboard from './pages/LabTech/LabtechDashboard';
 import Layout from './components/layout/Layout';
 import Ticket from './pages/Tickets/Tickets';
-import Notification from './pages/Notification';
+import Notification from './pages/Notifications/Notification';
 import UserDetails from './pages/SysAd/UserDetails';
 import Login from './pages/Login';
 import SysAdDash from './pages/SysAd/UserPage';
