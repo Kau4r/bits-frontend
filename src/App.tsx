@@ -18,6 +18,8 @@ import LabheadDashboard from './pages/LabHead/LabheadDashboard';
 import FacultyScheduling from './pages/Faculty/FacultyScheduling';
 import SecretaryScheduling from './pages/Secretary/SecretaryScheduling';
 import StudentSession from './pages/Student/StudentSession';
+import StudentPCView from './pages/Student/StudentPCView';
+import StudentRoomView from './pages/Student/StudentRoomView';
 import LabTechOverview from './pages/LabHead/LabTechOverview';
 import LabheadScheduling from './pages/LabHead/LabheadScheduling';
 import type { JSX } from 'react';
@@ -74,12 +76,12 @@ function AppContent() {
         {/* Redirect default / to dashboard based on role */}
         <Route path="/" element={
           userRole === ROLES.ADMIN ? <SysAdDash /> :
-          userRole === ROLES.LAB_TECH ? <LabtechDashboard /> :
-          userRole === ROLES.LAB_HEAD ? <LabheadDashboard /> :
-          userRole === ROLES.STUDENT ? <StudentSession /> :
-          userRole === ROLES.FACULTY ? <FacultyScheduling /> :
-          userRole === ROLES.SECRETARY ? <SecretaryScheduling /> :
-          <Navigate to="/unauthorized" replace />
+            userRole === ROLES.LAB_TECH ? <LabtechDashboard /> :
+              userRole === ROLES.LAB_HEAD ? <LabheadDashboard /> :
+                userRole === ROLES.STUDENT ? <StudentSession /> :
+                  userRole === ROLES.FACULTY ? <FacultyScheduling /> :
+                    userRole === ROLES.SECRETARY ? <SecretaryScheduling /> :
+                      <Navigate to="/unauthorized" replace />
         } />
 
         {/* Admin routes */}
