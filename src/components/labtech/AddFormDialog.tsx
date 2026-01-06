@@ -4,7 +4,7 @@ import type { FormStatus, FormType, FormRecord } from '@/types/formtypes';
 export const AddFormDialog: React.FC<{
   open: boolean;
   onClose: () => void;
-  onCreate: (record: Omit<FormRecord, 'id' | 'createdAt' > & { file?: File }) => void;
+  onCreate: (record: Omit<FormRecord, 'id' | 'createdAt'> & { file?: File }) => void;
   existing?: FormRecord[];
 }> = ({ open, onClose, onCreate, existing = [] }) => {
   const [type, setType] = useState<FormType>('WRF');
@@ -41,7 +41,7 @@ export const AddFormDialog: React.FC<{
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!file) return;
-    
+
     onCreate({
       formId: nextId,
       type,
@@ -68,11 +68,11 @@ export const AddFormDialog: React.FC<{
   if (!open) return null;
 
   return (
-    <div 
-      className="fixed inset-0 bg-black/40 grid place-items-center p-4 z-50" 
+    <div
+      className="fixed inset-0 bg-black/40 grid place-items-center p-4 z-50"
       onClick={onClose}
     >
-      <div 
+      <div
         className="w-full max-w-lg rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-6 shadow-xl"
         onClick={e => e.stopPropagation()}
       >
@@ -212,13 +212,12 @@ export const AddFormDialog: React.FC<{
             <button
               type="submit"
               disabled={!file}
-              className={`px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-                file 
-                  ? 'bg-blue-600 hover:bg-blue-700' 
+              className={`px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${file
+                  ? 'bg-blue-600 hover:bg-blue-700'
                   : 'bg-blue-400 cursor-not-allowed'
-              }`}
+                }`}
             >
-              Create Form
+              Track Form
             </button>
           </div>
         </form>

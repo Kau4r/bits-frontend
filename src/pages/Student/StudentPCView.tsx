@@ -8,13 +8,13 @@ export default function StudentPCView() {
     return (
         <div className="h-screen w-full flex flex-col bg-white dark:bg-gray-900 overflow-hidden">
             <div className="p-4 sm:px-8 lg:px-10 flex justify-between items-center">
-                <button 
+                <button
                     onClick={() => navigate('/student-room-view')}
                     className="text-gray-300 hover:text-white transition-colors flex items-center"
                 >
                     ← Go to Room
                 </button>
-                <button 
+                <button
                     onClick={() => navigate('/student-session')}
                     className="text-gray-300 hover:text-white transition-colors flex items-center"
                 >
@@ -22,10 +22,10 @@ export default function StudentPCView() {
                 </button>
             </div>
             <div className="px-4 sm:px-8 lg:px-10">
-                <SessionBar 
-              room="LB 467"
-              pcNumber="14"
-            />
+                <SessionBar
+                    room="LB 467"
+                    pcNumber="14"
+                />
             </div>
             <div className="flex-1 overflow-auto p-4 sm:px-8 lg:px-10">
                 <PCview />

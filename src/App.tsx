@@ -22,8 +22,11 @@ import StudentPCView from './pages/Student/StudentPCView';
 import StudentRoomView from './pages/Student/StudentRoomView';
 import LabTechOverview from './pages/LabHead/LabTechOverview';
 import LabheadScheduling from './pages/LabHead/LabheadScheduling';
+import StudentPCView from './pages/Student/StudentPCView';
+import StudentRoomView from './pages/Student/StudentRoomView';
 import type { JSX } from 'react';
 import { ROLES } from './types/user';
+import InventoryMobile from './pages/LabTech/InventoryMobile';
 
 // 🔒 Protects routes based on auth + role
 const ProtectedRoute = ({ children, roles }: { children: JSX.Element, roles: string[] }) => {
@@ -90,6 +93,7 @@ function AppContent() {
 
         {/* LabTech & LabHead routes */}
         <Route path="/labtech-dashboard" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><LabtechDashboard /></ProtectedRoute>} />
+        <Route path="/labtech-mobile" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><InventoryMobile /></ProtectedRoute>} />
         <Route path="/labtech/room" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Room /></ProtectedRoute>} />
         <Route path="/forms" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Forms /></ProtectedRoute>} />
         <Route path="/inventory" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><InventoryPage /></ProtectedRoute>} />
