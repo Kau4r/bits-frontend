@@ -11,16 +11,16 @@ import { getRooms } from '@/services/room';
 
 const InventoryMobilePage = () => {
     const { user } = useAuth();
-
+    const [isQrOpen, setIsQrOpen] = useState(false);
     const [inventory, setInventory] = useState<Item[]>([]);
     const [selectedItem, setSelectedItem] = useState<Item | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<'view' | 'edit' | 'add'>('view');
 
     const [rooms, setRooms] = useState<Room[]>([]);
-    const [isQrOpen, setIsQrOpen] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
     const codeReaderRef = useRef<BrowserQRCodeReader | null>(null);
+    const qrControlsRef = useRef<{ stop: () => void } | null>(null);
 
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedType, setSelectedType] = useState('All Types');
@@ -65,58 +65,60 @@ const InventoryMobilePage = () => {
     });
 
     // QR Scanner setup
-    // --- inside your component ---
     useEffect(() => {
         if (!isQrOpen || !videoRef.current) return;
 
-        const codeReader = new BrowserQRCodeReader();
-        codeReaderRef.current = codeReader;
+        const reader = new BrowserQRCodeReader();
+        codeReaderRef.current = reader;
 
-        let controls: any;
+        let stopped = false;
 
-        // List available cameras and pick the first one
-        const startScanner = async () => {
+        const start = async () => {
             try {
-                const videoInputDevices = await BrowserQRCodeReader.listVideoInputDevices();
-                const selectedDeviceId = videoInputDevices?.[0]?.deviceId;
+                const devices = await BrowserQRCodeReader.listVideoInputDevices();
+                const backCamera =
+                    devices.find(d => /back|rear|environment/i.test(d.label))?.deviceId ??
+                    devices[0]?.deviceId;
 
-                controls = await codeReader.decodeFromVideoDevice(
-                    selectedDeviceId,
+                const controls = await reader.decodeFromVideoDevice(
+                    backCamera,
                     videoRef.current!,
-                    (result, error, _controls) => {
-                        if (result) {
-                            const scannedCode = result.getText();
+                    (result, error) => {
+                        if (result && !stopped) {
+                            const code = result.getText();
                             const item = inventory.find(
-                                i => i.Serial_Number === scannedCode || i.Item_Code === scannedCode
+                                i => i.Serial_Number === code || i.Item_Code === code
                             );
 
                             if (item) {
+                                stopped = true;
+                                qrControlsRef.current?.stop();
+                                setIsQrOpen(false);
                                 setSelectedItem(item);
                                 setModalMode('view');
                                 setIsModalOpen(true);
-                                setIsQrOpen(false);
-                                _controls.stop(); // stop camera safely
                             }
-                        } else if (error && error.name !== 'NotFoundException') {
+                        }
+
+                        if (error && error.name !== 'NotFoundException') {
                             console.error(error);
                         }
                     }
                 );
+
+                qrControlsRef.current = controls;
             } catch (err) {
-                console.error('Error starting QR scanner:', err);
+                console.error('QR start failed:', err);
             }
         };
 
-        startScanner();
+        start();
 
-        // Cleanup when modal closes or component unmounts
         return () => {
-            try {
-                controls?.stop?.();
-                codeReaderRef.current = null;
-            } catch (err) {
-                console.warn('QR cleanup failed:', err);
-            }
+            stopped = true;
+            qrControlsRef.current?.stop();
+            qrControlsRef.current = null;
+            codeReaderRef.current = null;
         };
     }, [isQrOpen, inventory]);
 
@@ -131,6 +133,7 @@ const InventoryMobilePage = () => {
                 >
                     <QrCodeIcon className="w-5 h-5 text-gray-700 dark:text-gray-200" />
                 </button>
+
                 <button
                     className="p-2 bg-gray-200 rounded-md dark:bg-gray-800 flex items-center gap-1"
                     onClick={() => setIsFilterOpen(!isFilterOpen)}
@@ -195,7 +198,7 @@ const InventoryMobilePage = () => {
             <div className="flex flex-col gap-3">
                 {filteredInventory.map(item => (
                     <div
-                        key={item.Item_ID}
+                        key={`${item.Item_ID}-${item.Item_Code}`}
                         onClick={() => { setSelectedItem({ ...item }); setModalMode('view'); setIsModalOpen(true); }}
                         className="p-4 border rounded-lg shadow-sm bg-white dark:bg-slate-900 cursor-pointer"
                     >
@@ -226,7 +229,6 @@ const InventoryMobilePage = () => {
             {isQrOpen && (
                 <div
                     className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-                    onClick={() => setIsQrOpen(false)}
                 >
                     <div
                         className="bg-white dark:bg-gray-900 p-4 rounded-md"
@@ -238,6 +240,7 @@ const InventoryMobilePage = () => {
                         >
                             Close
                         </button>
+
                         <video ref={videoRef} className="w-64 h-64 border rounded-md" />
                     </div>
                 </div>

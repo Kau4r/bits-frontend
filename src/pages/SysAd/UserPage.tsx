@@ -21,6 +21,7 @@ export function formatRole(role?: string | null) {
 
 export default function SysAdDash() {
   const [searchTerm, setSearchTerm] = useState('')
+  const [showInactive, setShowInactive] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
@@ -51,10 +52,12 @@ export default function SysAdDash() {
     loadUsers()
   }, [])
 
-  const filteredUsers = users.filter(
-    (user) =>
+  const filteredUsers = users.filter((user) => {
+    const matchesSearch =
       user.First_Name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false
-  )
+    const matchesStatus = showInactive ? !user.Is_Active : user.Is_Active
+    return matchesSearch && matchesStatus
+  })
 
 
   const handleAddUser = async (newUser: User) => {
@@ -76,6 +79,15 @@ export default function SysAdDash() {
       <div className="mb-4 flex items-center justify-between gap-4">
         <h2 className="text-2xl font-semibold">Account Management</h2>
         <Search searchTerm={searchTerm} onChange={setSearchTerm} showLabel={false} />
+        <button
+          onClick={() => setShowInactive(!showInactive)}
+          className={`inline-flex items-center rounded-md border border-transparent px-4 py-2 text-sm font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 ${showInactive
+            ? 'bg-gray-600 text-white hover:bg-gray-700 focus:ring-gray-500 dark:bg-gray-800 dark:hover:bg-gray-500'
+            : 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500 dark:bg-green-600 dark:hover:bg-green-500'
+            }`}
+        >
+          {showInactive ? 'Inactive' : 'Active'}
+        </button>
         <button
           className="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none dark:bg-indigo-700 dark:hover:bg-indigo-600"
           onClick={() => setIsModalOpen(true)}

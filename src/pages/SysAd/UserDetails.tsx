@@ -2,6 +2,9 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import { updateUser } from '@/services/user'
 import { type User, type User_Role, ROLES } from '@/types/user'
+import { formatRole } from './UserPage'
+
+import ConfirmModal from '@/components/SysAd/ConfirmModal'
 
 export default function UserDetails() {
   const { state } = useLocation()
@@ -13,7 +16,40 @@ export default function UserDetails() {
   const [loading, setLoading] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
 
+  // Modal State
+  const [modalOpen, setModalOpen] = useState(false)
+  const [modalConfig, setModalConfig] = useState<{
+    title: string
+    message: string
+    onConfirm: () => void
+  }>({ title: '', message: '', onConfirm: () => { } })
+
   if (!user) return <div className="py-8 text-center">Loading...</div>
+
+  const handleRoleChange = (newRole: User_Role) => {
+    setModalConfig({
+      title: 'Confirm Role Change',
+      message: `Are you sure you want to change this user's role to ${formatRole(newRole)}?`,
+      onConfirm: () => {
+        setRole(newRole)
+        setHasChanges(true)
+      },
+    })
+    setModalOpen(true)
+  }
+
+  const handleStatusChange = () => {
+    const newStatus = !isActive
+    setModalConfig({
+      title: newStatus ? 'Activate User' : 'Deactivate User',
+      message: `Are you sure you want to ${newStatus ? 'activate' : 'deactivate'} this user?`,
+      onConfirm: () => {
+        setIsActive(newStatus)
+        setHasChanges(true)
+      },
+    })
+    setModalOpen(true)
+  }
 
   const handleSave = async () => {
     try {
@@ -23,7 +59,7 @@ export default function UserDetails() {
         ...user,
         User_Role: role,
         Is_Active: isActive,
-        Updated_At: new Date().toISOString(), // add this
+        Updated_At: new Date().toISOString(),
       };
 
       console.log("Sending update payload:", payload);
@@ -45,6 +81,13 @@ export default function UserDetails() {
 
   return (
     <div className="h-full w-full bg-white p-4 sm:px-8 lg:px-10 dark:bg-gray-900">
+      <ConfirmModal
+        isOpen={modalOpen}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        onConfirm={modalConfig.onConfirm}
+        onCancel={() => setModalOpen(false)}
+      />
       <button
         onClick={() => navigate(-1)}
         className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
@@ -87,13 +130,12 @@ export default function UserDetails() {
               <select
                 value={role}
                 onChange={(e) => {
-                  setRole(e.target.value as User_Role)
-                  setHasChanges(true)
+                  handleRoleChange(e.target.value as User_Role)
                 }}
                 className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
               >
                 {Object.values(ROLES).map((r) => (
-                  <option key={r} value={r}>{r}</option>
+                  <option key={r} value={r}>{formatRole(r)}</option>
                 ))}
               </select>
             </div>
@@ -106,8 +148,7 @@ export default function UserDetails() {
                   type="checkbox"
                   checked={isActive}
                   onChange={() => {
-                    setIsActive(!isActive)
-                    setHasChanges(true)
+                    handleStatusChange()
                   }}
                   className="sr-only peer"
                 />

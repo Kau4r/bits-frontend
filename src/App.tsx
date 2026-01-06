@@ -20,8 +20,11 @@ import SecretaryScheduling from './pages/Secretary/SecretaryScheduling';
 import StudentSession from './pages/Student/StudentSession';
 import LabTechOverview from './pages/LabHead/LabTechOverview';
 import LabheadScheduling from './pages/LabHead/LabheadScheduling';
+import StudentPCView from './pages/Student/StudentPCView';
+import StudentRoomView from './pages/Student/StudentRoomView';
 import type { JSX } from 'react';
 import { ROLES } from './types/user';
+import InventoryMobile from './pages/LabTech/InventoryMobile';
 
 // 🔒 Protects routes based on auth + role
 const ProtectedRoute = ({ children, roles }: { children: JSX.Element, roles: string[] }) => {
@@ -74,12 +77,12 @@ function AppContent() {
         {/* Redirect default / to dashboard based on role */}
         <Route path="/" element={
           userRole === ROLES.ADMIN ? <SysAdDash /> :
-          userRole === ROLES.LAB_TECH ? <LabtechDashboard /> :
-          userRole === ROLES.LAB_HEAD ? <LabheadDashboard /> :
-          userRole === ROLES.STUDENT ? <StudentSession /> :
-          userRole === ROLES.FACULTY ? <FacultyScheduling /> :
-          userRole === ROLES.SECRETARY ? <SecretaryScheduling /> :
-          <Navigate to="/unauthorized" replace />
+            userRole === ROLES.LAB_TECH ? <LabtechDashboard /> :
+              userRole === ROLES.LAB_HEAD ? <LabheadDashboard /> :
+                userRole === ROLES.STUDENT ? <StudentSession /> :
+                  userRole === ROLES.FACULTY ? <FacultyScheduling /> :
+                    userRole === ROLES.SECRETARY ? <SecretaryScheduling /> :
+                      <Navigate to="/unauthorized" replace />
         } />
 
         {/* Admin routes */}
@@ -88,6 +91,7 @@ function AppContent() {
 
         {/* LabTech & LabHead routes */}
         <Route path="/labtech-dashboard" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><LabtechDashboard /></ProtectedRoute>} />
+        <Route path="/labtech-mobile" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><InventoryMobile /></ProtectedRoute>} />
         <Route path="/labtech/room" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Room /></ProtectedRoute>} />
         <Route path="/forms" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Forms /></ProtectedRoute>} />
         <Route path="/inventory" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><InventoryPage /></ProtectedRoute>} />
