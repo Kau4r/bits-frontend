@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react"
+import { Eye } from 'lucide-react';
 import Table from "@/components/Table"
 import TableSearchInput from "@/components/Search"
 import TicketingModal from "@/components/Ticketing/TicketingModal"
-import { fetchTickets } from "@/services/tickets";
-import type { Ticket, TicketStatus } from "@/types/tickets";
+import { fetchTickets, archiveTicket, restoreTicket } from "@/services/tickets";
+import type { Ticket } from "@/types/tickets";
 
 export default function Tickets() {
     const [searchTerm, setSearchTerm] = useState('');
@@ -46,7 +47,7 @@ export default function Tickets() {
         });
     }, [displayedTickets, searchTerm, selectedStatus]);
 
-    const statuses: TicketStatus[] = ["PENDING", "IN_PROGRESS", "RESOLVED"];
+    const statuses: string[] = ["All", "PENDING", "IN_PROGRESS", "RESOLVED"];
 
     const handleViewTicket = (ticket: Ticket) => {
         setSelectedTicket(ticket)
@@ -70,20 +71,30 @@ export default function Tickets() {
         });
     }
 
-    const handleArchiveTicket = (ticketId: number) => {
-        setTickets(tickets.map(ticket =>
-            ticket.Ticket_ID === ticketId
-                ? { ...ticket, isArchived: true }
-                : ticket
-        ));
+    const handleArchiveTicket = async (ticketId: number) => {
+        try {
+            await archiveTicket(ticketId);
+            setTickets(tickets.map(ticket =>
+                ticket.Ticket_ID === ticketId
+                    ? { ...ticket, Archived: true }
+                    : ticket
+            ));
+        } catch (error) {
+            console.error("Failed to archive ticket", error);
+        }
     };
 
-    const handleRestoreTicket = (ticketId: number) => {
-        setTickets(tickets.map(ticket =>
-            ticket.Ticket_ID === ticketId
-                ? { ...ticket, isArchived: false }
-                : ticket
-        ));
+    const handleRestoreTicket = async (ticketId: number) => {
+        try {
+            await restoreTicket(ticketId);
+            setTickets(tickets.map(ticket =>
+                ticket.Ticket_ID === ticketId
+                    ? { ...ticket, Archived: false }
+                    : ticket
+            ));
+        } catch (error) {
+            console.error("Failed to restore ticket", error);
+        }
     };
 
     return (
@@ -112,28 +123,24 @@ export default function Tickets() {
                 </div>
 
                 {/* Toggle Switch */}
-                <div className="flex items-center h-10 bg-slate-100 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600">
+                <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
                     <button
                         onClick={() => setShowArchived(false)}
-                        className={`h-full px-4 flex items-center justify-center ${!showArchived
-                            ? 'bg-slate-700 text-white rounded-r-lg'
-                            : 'text-slate-600 hover:bg-gray-50 dark:text-gray-900'
+                        className={`flex-1 px-4 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${!showArchived
+                            ? 'bg-white text-gray-900 shadow dark:bg-gray-700 dark:text-white'
+                            : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
                             }`}
                     >
-                        <span className="text-sm font-medium">
-                            Active
-                        </span>
+                        Active
                     </button>
                     <button
                         onClick={() => setShowArchived(true)}
-                        className={`h-full px-4 flex items-center justify-center ${showArchived
-                            ? 'bg-slate-700 text-white rounded-l-lg'
-                            : 'text-slate-600 hover:bg-gray-50 dark:text-gray-900'
+                        className={`flex-1 px-4 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${showArchived
+                            ? 'bg-white text-gray-900 shadow dark:bg-gray-700 dark:text-white'
+                            : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
                             }`}
                     >
-                        <span className="text-sm font-medium">
-                            Archived
-                        </span>
+                        Archived
                     </button>
                 </div>
 
@@ -148,7 +155,7 @@ export default function Tickets() {
                 </button>
             </div>
             <div className="mt-4">
-                <Table headers={['Reported By', 'Location', 'Type', 'Status', 'Actions']}>
+                <Table headers={['Reported By', 'Location', 'Category', 'Status', 'Actions']}>
                     {loading ? (
                         <div className="col-span-full text-center py-4 text-gray-500 dark:text-gray-400">
                             Loading tickets...
@@ -161,14 +168,21 @@ export default function Tickets() {
                         filteredTickets.map(ticket => (
                             <div
                                 key={ticket.Ticket_ID}
-                                className="grid grid-cols-5 gap-4 px-6 py-4 items-center hover:bg-gray-50 dark:hover:bg-gray-800"
+                                className="px-6 py-4 items-center text-center hover:bg-gray-50 dark:hover:bg-gray-800"
+                                style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '1rem' }}
                             >
-                                <div>
+                                <div className="text-left">
                                     <p className="font-medium">{ticket.Reported_By.First_Name}</p>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">{ticket.Reported_By.User_Role}</p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                                        {ticket.Reported_By.User_Role} • {new Date(ticket.Created_At).toLocaleDateString()}
+                                    </p>
                                 </div>
-                                <div>{ticket.Created_At}</div>
-                                <div>{ticket.Report_Problem}</div>
+                                <div className="text-sm">{ticket.Location || ticket.Room?.Name || '-'}</div>
+                                <div className="text-sm">
+                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                                        {ticket.Category || 'Uncategorized'}
+                                    </span>
+                                </div>
                                 <div>
                                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${ticket.Status === 'PENDING'
                                         ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
@@ -182,12 +196,13 @@ export default function Tickets() {
                                         <p className="text-xs text-gray-500 mt-1">Tech: {ticket.Technician.First_Name}</p>
                                     )}
                                 </div>
-                                <div className="space-x-2">
+                                <div className="flex items-center justify-center gap-2">
                                     <button
                                         onClick={() => handleViewTicket(ticket)}
-                                        className="px-3 py-1 text-sm text-white bg-blue-500 rounded hover:bg-blue-600"
+                                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-full transition-colors dark:text-blue-400 dark:hover:bg-blue-900/30"
+                                        title="View Details"
                                     >
-                                        View
+                                        <Eye className="w-5 h-5" />
                                     </button>
                                     {showArchived ? (
                                         <button

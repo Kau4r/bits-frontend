@@ -20,7 +20,7 @@ export const createTicket = async (ticket: NewTicketInput): Promise<Ticket> => {
 };
 
 // Update ticket
-export const updateTicket = async (ticketId: number, data: { Status: TicketStatus; Priority?: TicketPriority; Category?: TicketCategory }): Promise<Ticket> => {
+export const updateTicket = async (ticketId: number, data: { Status?: TicketStatus; Priority?: TicketPriority; Category?: TicketCategory; Technician_ID?: number | null; Archived?: boolean }): Promise<Ticket> => {
     const { data: updated } = await api.put<Ticket>(`${"/tickets"}/${ticketId}`, data);
     return updated;
 };
@@ -28,6 +28,12 @@ export const updateTicket = async (ticketId: number, data: { Status: TicketStatu
 // Archive ticket
 export const archiveTicket = async (ticketId: number): Promise<Ticket> => {
     const { data } = await api.put<Ticket>(`${"/tickets"}/${ticketId}`, { Archived: true });
+    return data;
+};
+
+// Restore (Unarchive) ticket
+export const restoreTicket = async (ticketId: number): Promise<Ticket> => {
+    const { data } = await api.put<Ticket>(`${"/tickets"}/${ticketId}`, { Archived: false });
     return data;
 };
 
