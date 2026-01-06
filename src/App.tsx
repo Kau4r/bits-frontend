@@ -22,8 +22,6 @@ import StudentPCView from './pages/Student/StudentPCView';
 import StudentRoomView from './pages/Student/StudentRoomView';
 import LabTechOverview from './pages/LabHead/LabTechOverview';
 import LabheadScheduling from './pages/LabHead/LabheadScheduling';
-import StudentPCView from './pages/Student/StudentPCView';
-import StudentRoomView from './pages/Student/StudentRoomView';
 import type { JSX } from 'react';
 import { ROLES } from './types/user';
 import InventoryMobile from './pages/LabTech/InventoryMobile';

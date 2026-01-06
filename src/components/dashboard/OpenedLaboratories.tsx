@@ -1,11 +1,14 @@
+import { useState, useEffect } from 'react';
 import { ClockIcon } from '@heroicons/react/24/outline';
 import { ComputerDesktopIcon } from '@heroicons/react/24/solid';
 import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
+import { getRooms } from '@/services/room';
+import type { Room } from '@/types/room';
 
-type OpenRoom = {
+type DisplayRoom = {
   id: number;
-  label: 'Windows Laboratory' | 'MAC Laboratory';
+  label: string;
   room: string;
   status: 'Open' | 'Closed';
   schedule: string;
@@ -13,19 +16,68 @@ type OpenRoom = {
 };
 
 export default function OpenedLaboratories() {
-  const rooms: OpenRoom[] = [
-    { id: 1, label: 'Windows Laboratory', room: 'LB 447', status: 'Open', schedule: '12:00 – 1:30', capacity: { used: 8, total: 30 } },
-    { id: 2, label: 'MAC Laboratory', room: 'LB 335', status: 'Open', schedule: '12:00 – 1:30', capacity: { used: 8, total: 30 } },
-  ];
+  const [rooms, setRooms] = useState<DisplayRoom[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadRooms = async () => {
+      try {
+        const data = await getRooms();
+
+        // Filter for LAB type rooms that are IN_USE (opened)
+        const labRooms = data
+          .filter((r: Room) => r.Room_Type === 'LAB' && r.Status === 'IN_USE')
+          .slice(0, 2) // Show only first 2 rooms
+          .map((r: Room): DisplayRoom => ({
+            id: r.Room_ID,
+            label: r.Name,
+            room: r.Name,
+            status: 'Open',
+            schedule: '—', // Schedule would need separate API call
+            capacity: { used: 0, total: r.Capacity ?? 30 },
+          }));
+
+        setRooms(labRooms);
+      } catch (err) {
+        console.error('Error fetching rooms:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadRooms();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex h-full flex-col gap-4">
+        <div className="grid h-full grid-cols-1 gap-4 md:grid-cols-2">
+          {[1, 2].map((i) => (
+            <div key={i} className="animate-pulse rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+              <div className="h-6 w-32 rounded bg-gray-200 dark:bg-gray-700 mb-4" />
+              <div className="h-32 w-32 mx-auto rounded-full bg-gray-200 dark:bg-gray-700" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (rooms.length === 0) {
+    return (
+      <div className="flex h-full items-center justify-center text-gray-500 dark:text-gray-400">
+        No labs currently open
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full flex-col gap-4">
-      {/* Top: two opened rooms; auto-rows-fr keeps equal heights */}
       <div className="grid h-full grid-cols-1 gap-4 md:grid-cols-2 auto-rows-fr">
         {rooms.map((r) => {
           const isWindowsLab = r.label.toLowerCase().includes('windows');
           const isOpen = r.status === 'Open';
-          
+
           return (
             <div
               key={r.id}
@@ -34,17 +86,15 @@ export default function OpenedLaboratories() {
               {/* Header */}
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2.5">
-                  <span className={`rounded-lg p-2 ring-1 ring-inset ${
-                    isWindowsLab 
-                      ? 'bg-blue-50 ring-blue-200 dark:bg-blue-900/30 dark:ring-blue-800/50' 
-                      : 'bg-gray-50 ring-gray-200 dark:bg-gray-700/50 dark:ring-gray-600/50'
-                  }`}>
-                    <ComputerDesktopIcon 
-                      className={`h-5 w-5 ${
-                        isWindowsLab 
-                          ? 'text-blue-600 dark:text-blue-300' 
-                          : 'text-gray-600 dark:text-gray-300'
-                      }`} 
+                  <span className={`rounded-lg p-2 ring-1 ring-inset ${isWindowsLab
+                    ? 'bg-blue-50 ring-blue-200 dark:bg-blue-900/30 dark:ring-blue-800/50'
+                    : 'bg-gray-50 ring-gray-200 dark:bg-gray-700/50 dark:ring-gray-600/50'
+                    }`}>
+                    <ComputerDesktopIcon
+                      className={`h-5 w-5 ${isWindowsLab
+                        ? 'text-blue-600 dark:text-blue-300'
+                        : 'text-gray-600 dark:text-gray-300'
+                        }`}
                     />
                   </span>
                   <div className="leading-tight">
@@ -52,19 +102,17 @@ export default function OpenedLaboratories() {
                     <p className="text-xs text-gray-600 dark:text-gray-300">Room {r.room}</p>
                   </div>
                 </div>
-                <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${
-                  isOpen
-                    ? 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:ring-emerald-800/60'
-                    : 'bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-900/30 dark:text-rose-300 dark:ring-rose-800/60'
-                }`}>
-                  <span className={`h-2 w-2 rounded-full ${
-                    isOpen ? 'bg-emerald-500' : 'bg-rose-500'
-                  }`} />
+                <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${isOpen
+                  ? 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:ring-emerald-800/60'
+                  : 'bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-900/30 dark:text-rose-300 dark:ring-rose-800/60'
+                  }`}>
+                  <span className={`h-2 w-2 rounded-full ${isOpen ? 'bg-emerald-500' : 'bg-rose-500'
+                    }`} />
                   {r.status}
                 </span>
               </div>
 
-              {/* Capacity (fills remaining vertical space) */}
+              {/* Capacity */}
               <div className="flex flex-col items-center justify-center h-full">
                 <div className="relative w-full max-w-[160px] mx-auto">
                   <CircularProgressbar
@@ -87,7 +135,6 @@ export default function OpenedLaboratories() {
                   </div>
                 </div>
               </div>
-              
 
               {/* Schedule */}
               <div className="rounded-xl bg-gray-50 dark:bg-gray-700/50">
@@ -112,33 +159,6 @@ export default function OpenedLaboratories() {
             </div>
           );
         })}
-      </div>
-
-      {/* Bottom: queue rows */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <button
-          type="button"
-          className="flex flex-col rounded-2xl border border-gray-200 bg-white px-4 py-3 text-left ring-1 ring-gray-200/50 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:ring-gray-700/50 dark:hover:bg-gray-700/50"
-        >
-          <p className="text-sm font-medium text-gray-900 dark:text-white">Next Room in Queue</p>
-          <p className="mt-0.5 text-sm text-gray-600 dark:text-gray-300">LB 221 • 1:45 – 3:00</p>
-          <span className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-700 dark:bg-gray-700 dark:text-gray-300">
-            <span className="h-2 w-2 rounded-full bg-indigo-400" />
-            Capacity: 0/30
-          </span>
-        </button>
-
-        <button
-          type="button"
-          className="flex flex-col rounded-2xl border border-gray-200 bg-white px-4 py-3 text-left ring-1 ring-gray-200/50 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:ring-gray-700/50 dark:hover:bg-gray-700/50"
-        >
-          <p className="text-sm font-medium text-gray-900 dark:text-white">Next Room in Queue</p>
-          <p className="mt-0.5 text-sm text-gray-600 dark:text-gray-300">LB 118 • 2:00 – 3:30</p>
-          <span className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-700 dark:bg-gray-700 dark:text-gray-300">
-            <span className="h-2 w-2 rounded-full bg-indigo-400" />
-            Capacity: 0/30
-          </span>
-        </button>
       </div>
     </div>
   );

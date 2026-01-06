@@ -1,38 +1,72 @@
+import { useState, useEffect } from 'react';
 import { CheckCircleIcon, ClockIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
+import { fetchTickets } from '@/services/tickets';
 
-const reportStatuses = [
-  {
-    id: 1,
-    name: 'Resolved',
-    count: 23,
-    icon: CheckCircleIcon,
-    color: 'text-green-500 dark:text-green-400',
-    bg: 'bg-green-100 dark:bg-green-900/20',
-  },
-  {
-    id: 2,
-    name: 'In Progress',
-    count: 12,
-    icon: ClockIcon,
-    color: 'text-yellow-500 dark:text-yellow-400',
-    bg: 'bg-yellow-100 dark:bg-yellow-900/20',
-  },
-  {
-    id: 3,
-    name: 'Pending',
-    count: 5,
-    icon: ExclamationCircleIcon,
-    color: 'text-blue-500 dark:text-blue-400',
-    bg: 'bg-blue-100 dark:bg-blue-900/20',
-  }
-];
+type StatusConfig = {
+  id: number;
+  name: string;
+  count: number;
+  icon: typeof CheckCircleIcon;
+  color: string;
+  bg: string;
+};
 
 export default function ReportsCard() {
+  const [statuses, setStatuses] = useState<StatusConfig[]>([
+    { id: 1, name: 'Resolved', count: 0, icon: CheckCircleIcon, color: 'text-green-500 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-900/20' },
+    { id: 2, name: 'In Progress', count: 0, icon: ClockIcon, color: 'text-yellow-500 dark:text-yellow-400', bg: 'bg-yellow-100 dark:bg-yellow-900/20' },
+    { id: 3, name: 'Pending', count: 0, icon: ExclamationCircleIcon, color: 'text-blue-500 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/20' },
+  ]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadTickets = async () => {
+      try {
+        const tickets = await fetchTickets();
+
+        // Count tickets by status
+        const resolved = tickets.filter(t => t.Status === 'RESOLVED').length;
+        const inProgress = tickets.filter(t => t.Status === 'IN_PROGRESS').length;
+        const pending = tickets.filter(t => t.Status === 'PENDING').length;
+
+        setStatuses([
+          { id: 1, name: 'Resolved', count: resolved, icon: CheckCircleIcon, color: 'text-green-500 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-900/20' },
+          { id: 2, name: 'In Progress', count: inProgress, icon: ClockIcon, color: 'text-yellow-500 dark:text-yellow-400', bg: 'bg-yellow-100 dark:bg-yellow-900/20' },
+          { id: 3, name: 'Pending', count: pending, icon: ExclamationCircleIcon, color: 'text-blue-500 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/20' },
+        ]);
+      } catch (err) {
+        console.error('Error fetching tickets:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTickets();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-3 gap-3">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="animate-pulse rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
+            <div className="flex items-center justify-between">
+              <div className="h-8 w-8 rounded-lg bg-gray-200 dark:bg-gray-700" />
+              <div className="text-right">
+                <div className="h-5 w-8 rounded bg-gray-200 dark:bg-gray-700 mb-1" />
+                <div className="h-3 w-12 rounded bg-gray-200 dark:bg-gray-700" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-3 gap-3">
-      {reportStatuses.map(({ id, name, count, icon: Icon, color, bg }) => (
-        <div 
-          key={id} 
+      {statuses.map(({ id, name, count, icon: Icon, color, bg }) => (
+        <div
+          key={id}
           className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm ring-1 ring-gray-200/50 dark:border-gray-700 dark:bg-gray-800 dark:ring-gray-700/50"
         >
           <div className="flex items-center justify-between">

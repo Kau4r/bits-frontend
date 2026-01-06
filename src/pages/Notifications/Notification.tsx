@@ -1,143 +1,57 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import NotificationCard from '@/components/notifications/NotificationCard';
 import TableSearchInput from '@/components/Search';
 import { Bell } from 'lucide-react';
 import type { Notification, NotificationView, NotificationType } from '@/types/notification';
-
-const mockNotifications: Notification[] = [
-  // System Notifications
-  {
-    id: 1,
-    title: 'System Maintenance Schedule',
-    message: 'System maintenance scheduled for tomorrow 10:00 PM - 11:00 PM',
-    time: '10 min ago',
-    isRead: false,
-    isArchived: false,
-    type: 'System',
-    role: 'Lab Tech',
-  },
-  {
-    id: 2,
-    title: 'System Update Available',
-    message: 'New system update version 1.2.3 is now available',
-    time: '1 hour ago',
-    isRead: true,
-    isArchived: false,
-    type: 'System',
-    role: 'Lab Tech',
-  },
-  {
-    id: 3,
-    title: 'System Alert',
-    message: 'Storage space running low, please clean up old files',
-    time: '30 minutes ago',
-    isRead: false,
-    isArchived: false,
-    type: 'System',
-    role: 'Lab Tech',
-  },
-  // Issue Report Notifications
-  {
-    id: 4,
-    title: 'New Issue Report',
-    message: 'Lab 102 printer malfunction reported by John Doe',
-    time: '1 hour ago',
-    isRead: false,
-    isArchived: false,
-    type: 'Issue Report',
-    role: 'Lab Tech',
-  },
-  {
-    id: 5,
-    title: 'Issue Report Status',
-    message: 'Ticket #1234 has been assigned to Sarah Engineer',
-    time: '45 minutes ago',
-    isRead: true,
-    isArchived: false,
-    type: 'Issue Report',
-    role: 'Lab Tech',
-  },
-  {
-    id: 6,
-    title: 'Issue Report Update',
-    message: 'Ticket #1230 has been marked as resolved',
-    time: '1 hour ago',
-    isRead: false,
-    isArchived: false,
-    type: 'Issue Report',
-    role: 'Lab Tech',
-  },
-  // Asset Request Notifications
-  {
-    id: 7,
-    title: 'Asset Request Approved',
-    message: 'Your request for new monitor has been approved',
-    time: '5 hours ago',
-    isRead: false,
-    isArchived: false,
-    type: 'Asset Request',
-    role: 'Lab Tech',
-  },
-  {
-    id: 8,
-    title: 'Asset Request Update',
-    message: 'Your asset request is being processed',
-    time: '1 hour ago',
-    isRead: false,
-    isArchived: false,
-    type: 'Asset Request',
-    role: 'Lab Tech',
-  },
-  {
-    id: 9,
-    title: 'New Asset Request',
-    message: 'Inventory request #123 submitted for review',
-    time: '30 minutes ago',
-    isRead: false,
-    isArchived: false,
-    type: 'Asset Request',
-    role: 'Lab Tech',
-  },
-  // Form Update Notifications
-  {
-    id: 10,
-    title: 'Form Update Available',
-    message: 'New version of Inventory Form is now available',
-    time: '2 hours ago',
-    isRead: false,
-    isArchived: false,
-    type: 'Form Update',
-    role: 'Lab Tech',
-  },
-  {
-    id: 11,
-    title: 'Form Update Required',
-    message: 'Please update your forms to the latest version',
-    time: '5 hours ago',
-    isRead: true,
-    isArchived: false,
-    type: 'Form Update',
-    role: 'Lab Tech',
-  },
-  {
-    id: 12,
-    title: 'Form Update Status',
-    message: 'Form update #1234 has been approved',
-    time: '45 minutes ago',
-    isRead: false,
-    isArchived: false,
-    type: 'Form Update',
-    role: 'Lab Tech',
-  },
-];
+import { getNotifications, markNotificationRead, type Notification as ApiNotification } from '@/services/notifications';
 
 const notificationTypes: NotificationType[] = ['System', 'Issue Report', 'Asset Request', 'Form Update'];
 
-export default function Notification() {
+export default function NotificationPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState<NotificationType | 'All'>('All');
   const [activeView, setActiveView] = useState<NotificationView>('all');
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchNotifications = async () => {
+    try {
+      const data = await getNotifications({ limit: 50 });
+      // Map API notifications to frontend type
+      const mappedNotifications: Notification[] = data.map((n: ApiNotification) => {
+        let type: NotificationType = 'System';
+        const titleLower = n.title.toLowerCase();
+
+        if (titleLower.includes('ticket') || titleLower.includes('report') || titleLower.includes('issue')) {
+          type = 'Issue Report';
+        } else if (titleLower.includes('form')) {
+          type = 'Form Update';
+        } else if (titleLower.includes('asset') || titleLower.includes('inventory') || titleLower.includes('borrow')) {
+          type = 'Asset Request';
+        }
+
+        return {
+          id: n.id,
+          title: n.title,
+          message: n.message,
+          time: n.time,
+          isRead: n.read,
+          isArchived: false, // API doesn't support archive yet
+          type: type,
+          role: 'Lab Tech',
+        };
+      });
+      setNotifications(mappedNotifications);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
 
   // Filter notifications based on role
   const roleFilteredNotifications = notifications.filter(
@@ -171,10 +85,15 @@ export default function Notification() {
     return matchesView && matchesSearch && matchesType;
   });
 
-  const handleMarkAsRead = (id: number) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-    );
+  const handleMarkAsRead = async (id: number) => {
+    try {
+      await markNotificationRead(id);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+      );
+    } catch (err) {
+      console.error('Error marking as read', err);
+    }
   };
 
   const handleArchive = (id: number) => {
@@ -201,6 +120,10 @@ export default function Notification() {
       }
     }).length;
   };
+
+  if (loading) {
+    return <div className="p-8 text-center text-gray-500">Loading notifications...</div>;
+  }
 
   return (
     <div className="p-4">
@@ -239,17 +162,17 @@ export default function Notification() {
             <button
               onClick={() => setActiveView('all')}
               className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeView === 'all'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
                 }`}
             >
-              All ({getViewCount('all')})
+              Inbox ({getViewCount('all')})
             </button>
             <button
               onClick={() => setActiveView('read')}
               className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeView === 'read'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
                 }`}
             >
               Read ({getViewCount('read')})
@@ -257,8 +180,8 @@ export default function Notification() {
             <button
               onClick={() => setActiveView('archived')}
               className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeView === 'archived'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
                 }`}
             >
               Archived ({getViewCount('archived')})
