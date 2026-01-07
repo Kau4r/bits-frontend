@@ -158,6 +158,94 @@ html {
   background-color: #374151 !important;
 }
 
+/* ---------------------------------- */
+/* FullCalendar List View (Dark Mode) */
+/* ---------------------------------- */
+
+/* List view container */
+.fc-list {
+  background-color: #111827 !important;
+  border-color: #1f2937 !important;
+}
+
+/* List day header */
+.fc-list-day th {
+  background-color: #111827 !important;
+}
+
+.fc-list-day-cushion {
+  background-color: #1f2937 !important;
+}
+
+.fc-list-day-text,
+.fc-list-day-side-text {
+  color: #f3f4f6 !important;
+  font-weight: 600 !important;
+}
+
+/* List event rows */
+.fc-list-event {
+  background-color: #111827 !important;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.fc-list-event:hover {
+  background-color: #1f2937 !important;
+}
+
+.fc-list-event:hover td {
+  background-color: #1f2937 !important;
+}
+
+/* List event time */
+.fc-list-event-time {
+  color: #9ca3af !important;
+  font-weight: 500 !important;
+  white-space: nowrap;
+}
+
+/* List event title */
+.fc-list-event-title {
+  color: #f3f4f6 !important;
+  font-weight: 500 !important;
+}
+
+.fc-list-event-title a {
+  color: #f3f4f6 !important;
+  text-decoration: none !important;
+}
+
+.fc-list-event:hover .fc-list-event-title,
+.fc-list-event:hover .fc-list-event-title a {
+  color: #ffffff !important;
+}
+
+/* List event dot/graphic */
+.fc-list-event-graphic {
+  padding-right: 8px !important;
+}
+
+.fc-list-event-dot {
+  border-color: #6366f1 !important;
+}
+
+/* Table cells in list view */
+.fc-list-table td,
+.fc-list-table th {
+  border-color: #1f2937 !important;
+  padding: 12px 16px !important;
+}
+
+/* Empty list message */
+.fc-list-empty {
+  background-color: #111827 !important;
+}
+
+.fc-list-empty-cushion {
+  color: #9ca3af !important;
+}
+
 .fc .fc-timegrid-axis,
 .fc .fc-timegrid-axis .fc-scrollgrid-sync-inner {
   background-color: #1f2937 !important;

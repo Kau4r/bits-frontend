@@ -97,6 +97,7 @@ function AppContent() {
         <Route path="/inventory" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><InventoryPage /></ProtectedRoute>} />
         <Route path="/tickets" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Ticket /></ProtectedRoute>} />
         <Route path="/notification" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Notification /></ProtectedRoute>} />
+  
         <Route path="/labhead-scheduling" element={<ProtectedRoute roles={[ROLES.LAB_HEAD]}><LabheadScheduling /></ProtectedRoute>} />
 
         {/* LabHead only */}

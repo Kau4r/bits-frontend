@@ -27,6 +27,15 @@ export const updateBookingStatus = async (
     return data;
 };
 
+// Update booking details
+export const updateBooking = async (
+    id: number,
+    dto: Partial<CreateBookingDTO>
+): Promise<Booking> => {
+    const { data } = await api.patch<Booking>(`/bookings/${id}`, dto);
+    return data;
+};
+
 // Get available rooms
 export const fetchAvailableRooms = async (params: {
     startTime: string | Date;

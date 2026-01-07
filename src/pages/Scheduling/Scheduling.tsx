@@ -2,83 +2,107 @@ import { getRooms } from "@/services/room";
 import type { Room } from '@/types/room';
 import { useRef, useState, useEffect } from 'react';
 import FullCalendar from '@fullcalendar/react';
-import type { DateSelectArg, CalendarApi } from '@fullcalendar/core';
+import type { CalendarApi, DateSelectArg, EventDropArg } from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import listPlugin from '@fullcalendar/list';
 import interactionPlugin from '@fullcalendar/interaction';
 import dayjs from 'dayjs';
-import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
-dayjs.extend(isSameOrBefore);
-import Calendar from 'react-calendar';
-import 'react-calendar/dist/Calendar.css';
 import ReportIssueModal from '../../components/student/Modals/ReportIssue';
-import { getBookings, createBooking, updateBookingStatus } from "@/services/booking";
+import { getBookings, createBooking, updateBooking, updateBookingStatus } from "@/services/booking";
 import type { Booking } from '@/types/booking';
-import type { Borrowing } from '@/types/borrowing';
-
 import { useAuth } from '@/context/AuthContext';
-
-
-const DAY_INDEX_TO_CODE = ['su', 'mo', 'tu', 'we', 'th', 'fr', 'sa'];
-const INITIAL_FORM = {
-  title: '',
-  description: '',
-  startDate: '',
-  startTime: '',
-  endTime: '',
-  repeat: false,
-  repeatDays: [...DAY_INDEX_TO_CODE],
-  endDate: '',
-  borrowedItems: [], // ensure proper type
-};
-
-
-const MOCK_ITEMS = Object.freeze([
-  { id: 'item_a', name: 'Projector A' },
-  { id: 'item_b', name: 'Laptop B' },
-  { id: 'item_c', name: 'Microphone C' },
-]);
-
+import CalendarSidebar from '@/components/Scheduling/CalendarSidebar';
+import BookingPopover from '@/components/Scheduling/BookingPopover';
+import WarningModal from '@/components/Scheduling/WarningModal';
+import ConfirmModal from '@/components/Scheduling/ConfirmModal';
 
 export default function Scheduling() {
   const { user } = useAuth();
   const currentUserId = user?.User_ID ?? 0;
-  const userRole = user?.User_Role.toUpperCase() ?? 'LAB_TECH';
-  type CalendarViewType = 'dayGridMonth' | 'timeGridWeek' | 'listWeek'
+  const userRole = user?.User_Role.toUpperCase() ?? 'FACULTY';
+  type CalendarViewType = 'dayGridMonth' | 'timeGridWeek' | 'timeGridDay' | 'listWeek';
+
   const calendarRef = useRef<FullCalendar | null>(null);
-  const [calendarView, setCalendarView] = useState<'dayGridMonth' | 'timeGridWeek' | 'listWeek'>('timeGridWeek');
+  const [calendarView, setCalendarView] = useState<CalendarViewType>('timeGridWeek');
   const [currentDate, setCurrentDate] = useState(dayjs().format('MMMM YYYY'));
   const [events, setEvents] = useState<any[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
-  const [activeRoom, setActiveRoom] = useState<number>(0);
-  const [showForm, setShowForm] = useState<boolean>(false);
-  const [formData, setFormData] = useState(INITIAL_FORM);
+  const [selectedRooms, setSelectedRooms] = useState<number[]>([]);
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [showReportIssueModal, setShowReportIssueModal] = useState(false);
 
-  // Load rooms
+  // Popover state
+  const [showPopover, setShowPopover] = useState(false);
+  const [, setPopoverPosition] = useState({ x: 0, y: 0 });
+  const [popoverTimes, setPopoverTimes] = useState({ start: new Date(), end: new Date() });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [viewingBooking, setViewingBooking] = useState<{
+    id: string;
+    title: string;
+    description: string;
+    roomId: number;
+    roomName: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    createdBy: string;
+    createdById: number;
+    status: string;
+  } | null>(null);
+  const [canEditBooking, setCanEditBooking] = useState(false);
+
+  // Warning modal state
+  const [warningModal, setWarningModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'warning' | 'error' | 'info';
+  }>({ isOpen: false, title: '', message: '', type: 'warning' });
+
+  // Confirm modal state for drag reschedule
+  const [pendingDrag, setPendingDrag] = useState<{
+    event: any;
+    revert: () => void;
+    oldStart: Date;
+    oldEnd: Date;
+    newStart: Date;
+    newEnd: Date;
+  } | null>(null);
+
+  // Helper to check if a time range overlaps with existing events
+  const checkOverlap = (start: Date, end: Date, roomId: number, excludeEventId?: string) => {
+    return events.find(e => {
+      if (excludeEventId && e.id === excludeEventId) return false;
+      if (e.extendedProps.roomId !== roomId) return false;
+      if (!['APPROVED', 'PENDING'].includes(e.extendedProps.status?.toUpperCase())) return false;
+
+      const eventStart = new Date(e.start);
+      const eventEnd = new Date(e.end);
+      return start < eventEnd && end > eventStart;
+    });
+  };
+
+  // Load rooms and bookings
   useEffect(() => {
     const loadInitialData = async () => {
       try {
         const roomsData = await getRooms();
-        if (roomsData.length > 0) setActiveRoom(roomsData[0].Room_ID);
+        if (roomsData.length > 0) {
+          setSelectedRooms(roomsData.map(r => r.Room_ID)); // Select ALL rooms by default
+        }
         setRooms(roomsData);
         await loadBookings();
       } catch (error) {
-        console.error(error);
+        console.error('Failed to load initial data:', error);
       }
     };
     loadInitialData();
   }, []);
 
-
   const loadBookings = async () => {
-    console.log('[DEBUG] Starting to load bookings...');
     try {
-      console.log('[DEBUG] Calling getBookings API...');
       const bookings = await getBookings();
-      console.log('[DEBUG] Raw bookings from API:', bookings);
-
       const mapped = bookings.map((b: Booking) => ({
         id: String(b.Booked_Room_ID),
         title: b.Purpose ?? 'No Title',
@@ -87,146 +111,17 @@ export default function Scheduling() {
         extendedProps: {
           roomId: b.Room_ID,
           roomName: b.Room?.Name ?? 'Unknown',
-          status: b.Status,
-          createdBy: b.Approver
-            ? `${b.Approver.First_Name || ''} ${b.Approver.Last_Name || ''}`.trim() || 'Unknown'
-            : `${b.User?.First_Name || ''} ${b.User?.Last_Name || ''}`.trim() || 'Unknown',
-          createdById: b.User_ID, // <-- add this
-          borrowedItems: b.Borrowed_Items || [],
+          status: b.Status?.toUpperCase() || 'PENDING',
+          createdBy: b.User ? `${b.User.First_Name || ''} ${b.User.Last_Name || ''}`.trim() : 'Unknown',
+          createdById: b.User_ID,
           description: b.Notes ?? '',
         },
       }));
-
-
-
-      console.log('[DEBUG] All mapped events:', mapped);
       setEvents(mapped);
     } catch (error) {
-      console.error('[ERROR] Error loading bookings:', error);
+      console.error('Error loading bookings:', error);
     }
   };
-
-  const approveEvent = async (booking: Booking) => {
-    try {
-      const updated = await updateBookingStatus(booking.Booked_Room_ID, {
-        status: 'APPROVED',
-        approverId: currentUserId,
-      });
-      setEvents(prev =>
-        prev.map(e =>
-          e.id === updated.Booked_Room_ID
-            ? {
-              ...e,
-              extendedProps: {
-                ...e.extendedProps,
-                status: updated.Status,
-                borrowedItems: updated.Borrowed_Items,
-              },
-            }
-            : e
-        )
-      );
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const denyEvent = async (booking: Booking) => {
-    try {
-      const updated = await updateBookingStatus(booking.Booked_Room_ID, {
-        status: 'REJECTED',
-        approverId: currentUserId,
-      });
-      setEvents(prev =>
-        prev.map(e =>
-          e.extendedProps.roomId === booking.Room_ID
-            ? { ...e, extendedProps: { ...e.extendedProps, status: 'REJECTED' } }
-            : e
-        )
-      );
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const getDisabledItems = () => {
-    return events
-      .filter(e => ['APPROVED', 'PENDING'].includes(e.extendedProps.status))
-      .filter(e =>
-        formData.startDate === dayjs(e.start).format('YYYY-MM-DD') &&
-        formData.startTime < dayjs(e.end).format('HH:mm') &&
-        formData.endTime > dayjs(e.start).format('HH:mm')
-      )
-      .flatMap(e => e.extendedProps.borrowedItems);
-  };
-
-
-  interface BorrowedItemSelectProps {
-    value: string[];
-    onChange: (newValue: string[]) => void;
-  }
-  function BorrowedItemSelect({ value, onChange }: BorrowedItemSelectProps) {
-    return (
-      <div>
-        <label className="block text-sm mb-1 text-gray-700 dark:text-gray-300">Borrow Items</label>
-        <ul className="space-y-2">
-          {value.map((itemId, idx) => {
-            const item = MOCK_ITEMS.find(i => i.id === itemId);
-            return (
-              <li
-                key={idx}
-                className="flex justify-between items-center bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded"
-              >
-                <span>{item?.name || itemId}</span>
-                <button
-                  type="button"
-                  className="text-red-500"
-                  onClick={() => onChange(value.filter((_, i) => i !== idx))}
-                >
-                  Remove
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-    );
-  }
-
-  interface BorrowedItemAddControlProps {
-    onAdd: (id: string) => void;
-    disabledItems?: string[];
-  }
-  function BorrowedItemAddControl({ onAdd, disabledItems = [] }: BorrowedItemAddControlProps) {
-    return (
-      <div>
-        <label className="block text-sm mb-1 text-gray-700 dark:text-gray-300 mt-3">Add Item to Borrow</label>
-        <div className="flex gap-2">
-          <select
-            className="flex-1 p-2 rounded border dark:bg-gray-700 dark:text-white"
-            id="borrow-item-select"
-          >
-            {MOCK_ITEMS.map((item) => (
-              <option key={item.id} value={item.id} disabled={disabledItems.includes(item.id)}>
-                {item.name} {disabledItems.includes(item.id) ? '(Unavailable)' : ''}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
-            onClick={() => {
-              const select = document.getElementById('borrow-item-select') as HTMLSelectElement | null;
-              const val = select?.value;
-              if (val && !disabledItems.includes(val)) onAdd(val);
-            }}
-          >
-            Add
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   const updateCurrentDate = () => {
     const api: CalendarApi | undefined = calendarRef.current?.getApi();
@@ -234,10 +129,9 @@ export default function Scheduling() {
     if (date) setCurrentDate(dayjs(date).format('MMMM YYYY'));
   };
 
-
-  const changeView = (viewType: CalendarViewType) => {
-    setCalendarView(viewType);
-    calendarRef.current?.getApi()?.changeView(viewType);
+  const goToToday = () => {
+    calendarRef.current?.getApi()?.today();
+    setSelectedDate(new Date());
     updateCurrentDate();
   };
 
@@ -251,426 +145,533 @@ export default function Scheduling() {
     updateCurrentDate();
   };
 
-  const handleSelect = ({ start, end }: DateSelectArg) => {
-    setFormData((prev) => ({
-      ...INITIAL_FORM, // reset everything
-      startDate: dayjs(start).format('YYYY-MM-DD'),
-      startTime: dayjs(start).format('HH:mm'),
-      endTime: dayjs(end).format('HH:mm'),
-    }));
-    setShowForm(true);
+  const handleRoomToggle = (roomId: number) => {
+    setSelectedRooms(prev => {
+      if (prev.includes(roomId)) {
+        // Don't allow deselecting all rooms
+        if (prev.length === 1) return prev;
+        return prev.filter(id => id !== roomId);
+      }
+      return [...prev, roomId];
+    });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('[DEBUG] Form submitted with data:', formData);
+  const handleDateSelect = (selectInfo: DateSelectArg) => {
+    calendarRef.current?.getApi()?.unselect();
 
-    if (!formData.startDate || !formData.startTime || !formData.endTime) {
-      console.log('[DEBUG] Validation failed: Missing required fields');
-      return alert('Please fill all required fields');
+    // Check all selected rooms for overlap
+    for (const roomId of selectedRooms) {
+      const overlap = checkOverlap(selectInfo.start, selectInfo.end, roomId);
+      if (overlap) {
+        setWarningModal({
+          isOpen: true,
+          title: 'Time Slot Unavailable',
+          message: `This time slot is already ${overlap.extendedProps.status === 'PENDING' ? 'pending approval' : 'booked'} by ${overlap.extendedProps.createdBy || 'someone else'}.\n\nBooking: "${overlap.title}"\nTime: ${dayjs(overlap.start).format('h:mm A')} - ${dayjs(overlap.end).format('h:mm A')}`,
+          type: 'warning',
+        });
+        return; // Don't open popover
+      }
     }
 
-    const bookingData = {
-      User_ID: currentUserId,
-      Room_ID: activeRoom,
-      Start_Time: `${formData.startDate}T${formData.startTime}`,
-      End_Time: `${formData.startDate}T${formData.endTime}`,
-      Purpose: formData.title,
-      Borrowed_Items: formData.borrowedItems,
-    };
+    // Get the click position for popover - use RIGHT edge so popover appears beside cell
+    // Pass full rect for precise positioning (AnchorRect support)
+    const rect = (selectInfo.jsEvent?.target as HTMLElement)?.getBoundingClientRect();
+    if (rect) {
+      setPopoverPosition({
+        x: rect.right,
+        y: rect.top,
+        rect: {
+          left: rect.left,
+          right: rect.right,
+          top: rect.top,
+          bottom: rect.bottom,
+          width: rect.width,
+          height: rect.height
+        }
+      } as any);
+    } else {
+      setPopoverPosition({ x: 500, y: 200 } as any);
+    }
+    setPopoverTimes({
+      start: selectInfo.start,
+      end: selectInfo.end,
+    });
+    setViewingBooking(null);
+    setCanEditBooking(false);
+    setShowPopover(true);
+  };
 
-    console.log('[DEBUG] Sending booking data to API:', bookingData);
+  const handleSidebarDateSelect = (date: Date) => {
+    setSelectedDate(date);
+    calendarRef.current?.getApi()?.gotoDate(date);
+    updateCurrentDate();
+  };
 
+  const handleCreateClick = () => {
+    // Open popover with default times
+    const now = new Date();
+    const start = new Date(now.setMinutes(0, 0, 0));
+    const end = new Date(start.getTime() + 60 * 60 * 1000);
+
+    // Fake centered rect for Create button
+    const cx = 256 + (window.innerWidth - 256) / 2;
+    const cy = 150;
+    setPopoverPosition({
+      x: cx,
+      y: cy,
+      rect: { left: cx, right: cx, top: cy, bottom: cy, width: 0, height: 0 }
+    } as any);
+    setPopoverTimes({ start, end });
+    setShowPopover(true);
+  };
+
+  const handlePopoverSave = async (data: {
+    title: string;
+    description: string;
+    roomId: number;
+    date: string;
+    startTime: string;
+    endTime: string;
+    repeat: boolean;
+  }) => {
+    setIsSubmitting(true);
     try {
-      console.log('[DEBUG] Calling createBooking API...');
-      const newBooking = await createBooking(bookingData);
-      console.log('[DEBUG] Booking created successfully:', newBooking);
+      const startDateTime = `${data.date}T${data.startTime}:00`;
+      const endDateTime = `${data.date}T${data.endTime}:00`;
 
-      // Get the room name from the rooms list
-      const room = rooms.find(r => r.Room_ID === activeRoom);
-      console.log('[DEBUG] Found room:', room);
+      const newBooking = await createBooking({
+        User_ID: currentUserId,
+        Room_ID: data.roomId,
+        Start_Time: startDateTime,
+        End_Time: endDateTime,
+        Purpose: data.title,
+      });
 
-      const newEvent = {
-        id: newBooking.Booked_Room_ID,
+      const room = rooms.find(r => r.Room_ID === data.roomId);
+      setEvents(prev => [...prev, {
+        id: String(newBooking.Booked_Room_ID),
         title: newBooking.Purpose ?? 'No Title',
         start: newBooking.Start_Time,
         end: newBooking.End_Time,
         extendedProps: {
           roomId: newBooking.Room_ID,
-          roomName: room?.Name || 'Unknown Room',
+          roomName: room?.Name || 'Unknown',
           status: newBooking.Status,
-          createdBy: user ? `${user.First_Name} ${user.Last_Name}` : 'Unknown User',
-          borrowedItems: newBooking.Borrowed_Items || [],
-          description: newBooking.Notes || '',
+          createdBy: user ? `${user.First_Name} ${user.Last_Name}` : 'Unknown',
+          createdById: currentUserId,
+          description: data.description,
         },
-      };
+      }]);
 
-      console.log('[DEBUG] Adding new event to calendar:', newEvent);
-      setEvents(prev => {
-        console.log('[DEBUG] Current events before update:', prev);
-        return [...prev, newEvent];
+      setShowPopover(false);
+    } catch (error: any) {
+      console.error('Failed to create booking:', error);
+
+      // Show user-friendly conflict error
+      if (error.response?.status === 409) {
+        const conflict = error.response?.data?.conflictingBooking;
+        const bookedBy = conflict?.bookedBy || 'someone else';
+        const statusText = conflict?.status === 'PENDING' ? 'pending approval' : 'already booked';
+        alert(`⚠️ Time Conflict!\n\nThis slot is ${statusText} by ${bookedBy}.\n\nPlease choose a different time.`);
+      } else {
+        alert('Failed to create booking. Please try again.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEventDrop = async (dropInfo: EventDropArg) => {
+    const { event, revert, oldEvent } = dropInfo;
+
+    // Only allow owner or admin to reschedule
+    if (event.extendedProps.createdById !== currentUserId && userRole !== 'ADMIN') {
+      setWarningModal({
+        isOpen: true,
+        title: 'Permission Denied',
+        message: 'You can only reschedule your own bookings.',
+        type: 'error',
       });
-      setFormData(INITIAL_FORM);
-      setShowForm(false);
-
-      console.log('[DEBUG] Reloading bookings...');
-      await loadBookings();
-
-    } catch (error) {
-      console.error('[ERROR] Failed to create booking:', error);
-      alert('Failed to create booking. Check console for details.');
+      revert();
+      return;
     }
-  };
 
-  const toggleRepeatDay = (day: typeof DAY_INDEX_TO_CODE[number]) => {
-    setFormData((prev) => {
-      const days = [...prev.repeatDays];
-      const i = days.indexOf(day);
-      if (i >= 0) days.splice(i, 1);
-      else days.push(day);
-      return { ...prev, repeatDays: days };
+    const newStart = event.start;
+    const newEnd = event.end;
+    const oldStart = oldEvent.start;
+    const oldEnd = oldEvent.end;
+
+    if (!newStart || !newEnd || !oldStart || !oldEnd) {
+      revert();
+      return;
+    }
+
+    // Frontend check for overlap before showing confirm modal
+    const overlap = checkOverlap(newStart, newEnd, event.extendedProps.roomId, event.id);
+    if (overlap) {
+      setWarningModal({
+        isOpen: true,
+        title: 'Time Slot Unavailable',
+        message: `Cannot move here - this slot is already ${overlap.extendedProps.status === 'PENDING' ? 'pending approval' : 'booked'} by ${overlap.extendedProps.createdBy || 'someone else'}.\n\nBooking: "${overlap.title}"`,
+        type: 'warning',
+      });
+      revert();
+      return;
+    }
+
+    // Store pending drag and show confirmation modal
+    setPendingDrag({
+      event,
+      revert,
+      oldStart,
+      oldEnd,
+      newStart,
+      newEnd,
     });
   };
 
-  const handleEventClick = ({ event }: { event: any }) => {
-    console.log('[DEBUG] Event clicked:', event);
-    const start = dayjs(event.start);
-    const end = dayjs(event.end);
+  // Confirm drag reschedule
+  const handleConfirmDrag = async () => {
+    if (!pendingDrag) return;
 
-    console.log('[DEBUG] Setting form data from event:', {
+    const { event, newStart, newEnd, revert } = pendingDrag;
+    setIsSubmitting(true);
+
+    try {
+      await updateBooking(parseInt(event.id), {
+        Start_Time: newStart.toISOString(),
+        End_Time: newEnd.toISOString(),
+      });
+
+      setEvents(prev => prev.map(e =>
+        e.id === event.id
+          ? { ...e, start: newStart.toISOString(), end: newEnd.toISOString() }
+          : e
+      ));
+      setPendingDrag(null);
+    } catch (error: any) {
+      revert();
+      setPendingDrag(null);
+
+      if (error.response?.status === 409) {
+        const conflict = error.response?.data?.conflictingBooking;
+        const bookedBy = conflict?.bookedBy || 'someone else';
+        setWarningModal({
+          isOpen: true,
+          title: 'Time Slot Unavailable',
+          message: `This slot is already ${conflict?.status === 'PENDING' ? 'pending approval' : 'booked'} by ${bookedBy}.\n\nPlease choose a different time.`,
+          type: 'warning',
+        });
+      } else {
+        setWarningModal({
+          isOpen: true,
+          title: 'Error',
+          message: 'Failed to reschedule booking. Please try again.',
+          type: 'error',
+        });
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Cancel drag reschedule
+  const handleCancelDrag = () => {
+    if (pendingDrag) {
+      pendingDrag.revert();
+      setPendingDrag(null);
+    }
+  };
+
+  // Handle clicking on an existing event
+  const handleEventClick = (clickInfo: { event: any; jsEvent: MouseEvent }) => {
+    const { event, jsEvent } = clickInfo;
+    const start = new Date(event.start);
+    const end = new Date(event.end);
+
+    // Determine if user can edit this booking
+    const isOwner = event.extendedProps.createdById === currentUserId;
+    const isAdmin = userRole === 'ADMIN';
+    const canEdit = isOwner || isAdmin;
+
+    setViewingBooking({
+      id: event.id,
       title: event.title,
-      start: start.format('YYYY-MM-DD HH:mm'),
-      end: end.format('YYYY-MM-DD HH:mm')
+      description: event.extendedProps.description || '',
+      roomId: event.extendedProps.roomId,
+      roomName: event.extendedProps.roomName || 'Unknown',
+      date: dayjs(start).format('YYYY-MM-DD'),
+      startTime: dayjs(start).format('HH:mm'),
+      endTime: dayjs(end).format('HH:mm'),
+      createdBy: event.extendedProps.createdBy || 'Unknown',
+      createdById: event.extendedProps.createdById,
+      status: event.extendedProps.status || 'PENDING',
     });
+    setCanEditBooking(canEdit);
 
-    setFormData({
-      title: event.title ?? '',
-      description: event.extendedProps.description ?? '',
-      startDate: start.format('YYYY-MM-DD'),
-      startTime: start.format('HH:mm'),
-      endTime: end.format('HH:mm'),
-      repeat: false,
-      repeatDays: [],
-      endDate: '',
-      borrowedItems: event.extendedProps.borrowedItems ?? [],
+    setPopoverPosition({
+      x: jsEvent.clientX,
+      y: jsEvent.clientY,
     });
-
-    setShowForm(true);
+    setPopoverTimes({ start, end });
+    setShowPopover(true);
   };
 
-  const filteredEvents = events.filter(e => {
-    if (e.extendedProps.roomId !== activeRoom) return false;
+  // Handle updating an existing booking
+  const handlePopoverUpdate = async (id: string, data: {
+    title: string;
+    description: string;
+    roomId: number;
+    date: string;
+    startTime: string;
+    endTime: string;
+  }) => {
+    setIsSubmitting(true);
+    try {
+      const startDateTime = `${data.date}T${data.startTime}:00`;
+      const endDateTime = `${data.date}T${data.endTime}:00`;
 
-    if (userRole === 'ADMIN') return true;
-    if (userRole === 'FACULTY' || userRole === 'STUDENT') {
-      return (
-        e.extendedProps.status === 'APPROVED' ||
-        (e.extendedProps.status === 'PENDING' && e.extendedProps.createdById === currentUserId)
-      );
-    }
-    if (userRole === 'LAB_TECH') {
-      return e.extendedProps.status === 'APPROVED';
-    }
-    return false;
-  });
+      await updateBooking(parseInt(id), {
+        Room_ID: data.roomId,
+        Start_Time: startDateTime,
+        End_Time: endDateTime,
+        Purpose: data.title,
+      });
 
+      // Update local state
+      const room = rooms.find(r => r.Room_ID === data.roomId);
+      setEvents(prev => prev.map(e =>
+        e.id === id
+          ? {
+            ...e,
+            title: data.title,
+            start: startDateTime,
+            end: endDateTime,
+            extendedProps: {
+              ...e.extendedProps,
+              roomId: data.roomId,
+              roomName: room?.Name || 'Unknown',
+              description: data.description,
+            },
+          }
+          : e
+      ));
+
+      setShowPopover(false);
+      setViewingBooking(null);
+      setCanEditBooking(false);
+    } catch (error) {
+      console.error('Failed to update booking:', error);
+      alert('Failed to update booking');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Filter events by selected rooms
+  const filteredEvents = events.filter(e => selectedRooms.includes(e.extendedProps.roomId));
+
+  const statusColor: Record<string, string> = {
+    APPROVED: '#22c55e',
+    PENDING: '#eab308',
+    REJECTED: '#ef4444',
+    CANCELLED: '#6b7280'
+  };
 
   return (
-    <div className="flex min-h-screen overflow-hidden bg-gray-100 dark:bg-gray-900">
-      <div className="flex-1 p-6  flex flex-col min-h-0">
-        <div className="flex justify-between mb-8 mt-2 relative">
-          <div className="flex items-center gap-3">
+    <div className="flex h-screen bg-gray-900">
+      {/* Left Sidebar */}
+      <CalendarSidebar
+        rooms={rooms}
+        selectedRooms={selectedRooms}
+        onRoomToggle={handleRoomToggle}
+        onSelectAll={(selectAll) => {
+          if (selectAll) {
+            setSelectedRooms(rooms.map(r => r.Room_ID));
+          } else {
+            setSelectedRooms([]);
+          }
+        }}
+        onDateSelect={handleSidebarDateSelect}
+        selectedDate={selectedDate}
+        onCreateClick={handleCreateClick}
+        onReportIssueClick={() => setShowReportIssueModal(true)}
+        hideReportIssue={userRole === 'LAB_HEAD'}
+      />
+
+      {/* Main Calendar Area */}
+      <div className="flex-1 flex flex-col min-h-0">
+        {/* Top Navigation */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+          <div className="flex items-center gap-4">
             <button
-              className="px-3 py-1 rounded bg-red-600 text-white hover:bg-red-500 dark:bg-red-700 dark:hover:bg-red-600"
-              onClick={() => setShowReportIssueModal(true)}
+              onClick={goToToday}
+              className="px-4 py-1.5 text-sm border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-800 transition-colors"
             >
-              Report Issue
+              Today
             </button>
+            <div className="flex items-center gap-1">
+              <button onClick={goToPrev} className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-full">
+                ‹
+              </button>
+              <button onClick={goToNext} className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-full">
+                ›
+              </button>
+            </div>
+            <h1 className="text-xl font-medium text-white">{currentDate}</h1>
           </div>
-          <div className="absolute left-1/2 transform -translate-x-1/2">
 
-            <select
-              className="p-2 pr-8 rounded bg-gray-800 text-white border border-gray-600"
-              value={activeRoom}
-              onChange={(e) => setActiveRoom(parseInt(e.target.value))}
-            >
-              {rooms.map((room) => (
-                <option key={room.Room_ID} value={room.Room_ID}>
-                  {room.Name}
-                </option>
-
-              ))}
-            </select>
-          </div>
-          <div className="flex items-center gap-3">
-            <select
-              className="p-2 rounded bg-gray-800 text-white border border-gray-600"
-              value={calendarView}
-              onChange={(e) => changeView(e.target.value as CalendarViewType)}
-            >
-              <option value="dayGridMonth">Month</option>
-              <option value="timeGridWeek">Week</option>
-              <option value="listWeek">List</option>
-            </select>
-            <span className="text-white font-semibold">{currentDate}</span>
-            <button onClick={goToPrev} className="px-3 py-1 rounded bg-gray-700 text-white hover:bg-gray-600">←</button>
-            <button onClick={goToNext} className="px-3 py-1 rounded bg-gray-700 text-white hover:bg-gray-600">→</button>
+          {/* View Selector */}
+          <div className="flex bg-gray-800 rounded-lg p-1">
+            {(['timeGridDay', 'timeGridWeek', 'dayGridMonth', 'listWeek'] as const).map((view) => (
+              <button
+                key={view}
+                onClick={() => {
+                  setCalendarView(view);
+                  calendarRef.current?.getApi()?.changeView(view);
+                }}
+                className={`px-3 py-1.5 text-sm rounded-md transition-colors ${calendarView === view
+                  ? 'bg-gray-700 text-white'
+                  : 'text-gray-400 hover:text-white'
+                  }`}
+              >
+                {view === 'timeGridDay' ? 'Day' : view === 'timeGridWeek' ? 'Week' : view === 'dayGridMonth' ? 'Month' : 'List'}
+              </button>
+            ))}
           </div>
         </div>
 
-        <FullCalendar
-          ref={calendarRef}
-          plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
-          initialView={calendarView}
-          headerToolbar={false}
-          selectable
-          selectMirror
-          unselectAuto={false}
-          select={handleSelect}
-          editable={false}
-          eventClick={handleEventClick}
-          events={filteredEvents}
-          eventContent={({ event }) => {
-            console.log(`[DEBUG] Rendering event ${event.id}:`, event);
-            const status = event.extendedProps.status;
-            const statusLabel = {
-              APPROVED: 'Approved',
-              PENDING: 'Pending',
-              REJECTED: 'Rejected',
-              CANCELLED: 'Cancelled'
-            };
-            const statusColor = {
-              APPROVED: 'bg-green-600 text-white',
-              PENDING: 'bg-yellow-500 text-black',
-              REJECTED: 'bg-red-600 text-white',
-              CANCELLED: 'bg-gray-400 text-white'
-            };
+        {/* Calendar */}
+        <div className="flex-1 overflow-auto p-2">
+          <FullCalendar
+            ref={calendarRef}
+            plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
+            initialView={calendarView}
+            headerToolbar={false}
+            selectable={true}
+            selectMirror={true}
+            editable={true}
+            eventDurationEditable={false}
+            select={handleDateSelect}
+            eventClick={handleEventClick}
+            eventDrop={handleEventDrop}
+            events={filteredEvents}
+            eventBackgroundColor="#4f46e5"
+            eventBorderColor="transparent"
+            eventContent={({ event }) => {
+              const status = event.extendedProps.status as string;
+              const timeText = event.start && event.end
+                ? `${dayjs(event.start).format('h:mma')}`
+                : '';
 
-            const timeText = event.start && event.end
-              ? `${dayjs(event.start).format('HH:mm')}–${dayjs(event.end).format('HH:mm')}`
-              : '';
-
-            return (
-              <div className="flex flex-col">
-                <div className="flex justify-between items-center">
-                  <span className="font-semibold">{event.title}</span>
-                  <span className={`text-xs rounded px-1 ml-2 ${statusColor[status]}`}>
-                    {statusLabel[status]}
-                  </span>
+              return (
+                <div
+                  className="px-2 py-1 rounded text-xs overflow-hidden"
+                  style={{ borderLeft: `3px solid ${statusColor[status] || '#6366f1'}` }}
+                >
+                  <div className="font-medium truncate">{event.title}</div>
+                  <div className="text-gray-300 opacity-75">{timeText}</div>
                 </div>
-                <span className="text-xs">{timeText}</span>
-                {event.extendedProps.description && (
-                  <span className="text-xs italic truncate">{event.extendedProps.description}</span>
-                )}
-              </div>
-            );
-          }}
-
-          slotMinTime="07:00:00"
-          slotMaxTime="19:00:00"
-          height="auto"
-          datesSet={updateCurrentDate}
-          dayHeaderFormat={calendarView === 'dayGridMonth' ? { weekday: 'short' } : { weekday: 'short', day: 'numeric' }}
-        />
-      </div>
-
-      <div className="w-[320px] h-[calc(100vh-4rem)] flex flex-col border-l border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md p-3">
-        <div className="mb-6">
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
-          >
-            {showForm ? 'Close Form' : 'Add Schedule'}
-          </button>
-          <Calendar
-            onChange={(date) => {
-              const formatted = dayjs(date).format('YYYY-MM-DD');
-              setFormData((prev) => ({ ...prev, startDate: formatted }));
-              calendarRef.current?.getApi()?.gotoDate(formatted);
+              );
             }}
-            value={formData.startDate ? new Date(formData.startDate) : new Date()}
+            slotMinTime="07:00:00"
+            slotMaxTime="19:00:00"
+            height="100%"
+            datesSet={updateCurrentDate}
+            dayHeaderFormat={{ weekday: 'short', day: 'numeric' }}
+            nowIndicator={true}
+            slotLabelFormat={{ hour: 'numeric', minute: '2-digit', hour12: true }}
           />
         </div>
-
-
-        {showForm && (
-          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 border-t border-gray-300 dark:border-gray-700 flex flex-col gap-3">
-            <Input label="Title" type="text" value={formData.title} onChange={(v) => setFormData({ ...formData, title: v })} required />
-            <Input label="Description" isTextArea value={formData.description} onChange={(v) => setFormData({ ...formData, description: v })} />
-            <BorrowedItemSelect
-              value={formData.borrowedItems}
-              onChange={(v) => setFormData({ ...formData, borrowedItems: v })}
-              disabledItems={events.filter(e => e.extendedProps.status === 'APPROVED' || e.extendedProps.status === 'PENDING')
-                .filter(e =>
-                  (formData.startDate === dayjs(e.start).format('YYYY-MM-DD')) &&
-                  (formData.startTime < dayjs(e.end).format('HH:mm')) &&
-                  (formData.endTime > dayjs(e.start).format('HH:mm'))
-                )
-                .flatMap(e => e.extendedProps.borrowedItems)
-              }
-            />
-            <BorrowedItemAddControl
-              onAdd={(id) => {
-                if (!formData.borrowedItems.includes(id)) {
-                  setFormData({ ...formData, borrowedItems: [...formData.borrowedItems, id] });
-                }
-              }}
-              disabledItems={getDisabledItems()}
-            />
-            <DateTimeInputs formData={formData} setFormData={setFormData} />
-            <RepeatInputs formData={formData} toggleRepeatDay={toggleRepeatDay} setFormData={setFormData} />
-            <button type="submit" className="mt-2 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded">Add Booking</button>
-          </form>
-        )}
-
-
-        {userRole === 'ADMIN' && (
-          <div className="mt-4 px-3 overflow-y-auto max-h-[300px]">
-            <h2 className="font-bold text-lg mb-2 text-white">Pending Requests</h2>
-            {events
-              .filter(e => e.extendedProps.status === 'PENDING')
-              .map((e, idx) => (
-                <div key={idx} className="border p-3 mb-3 rounded bg-gray-200 dark:bg-gray-700">
-                  <p className="font-semibold text-base">{e.title}</p>
-                  <p className="text-sm text-gray-700 dark:text-gray-300">
-                    {e.extendedProps.roomName}
-                  </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {dayjs(e.start).format('MMM D, YYYY')} | {dayjs(e.start).format('HH:mm')}–{dayjs(e.end).format('HH:mm')}
-                  </p>
-                  {e.extendedProps.description && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400 italic mt-1">
-                      {e.extendedProps.description}
-                    </p>
-                  )}
-                  <div className="mt-3 flex gap-2">
-                    <button
-                      className="bg-green-600 text-white px-3 py-1 rounded"
-                      onClick={() => approveEvent(e)}
-                    >
-                      Approve
-                    </button>
-                    <button
-                      className="bg-red-600 text-white px-3 py-1 rounded"
-                      onClick={() => denyEvent(e)}
-                    >
-                      Deny
-                    </button>
-                  </div>
-                </div>
-              ))}
-          </div>
-        )}
-        <ReportIssueModal
-          isOpen={showReportIssueModal}
-          onClose={() => setShowReportIssueModal(false)}
-          onSubmit={async (description, issueType, equipment) => {
-            // TODO: Implement actual submission logic here
-            console.log('Submitting issue:', { description, issueType, equipment });
-          }}
-          room={rooms.find(r => r.Room_ID === activeRoom)?.Name || ''}
-          pcNumber="N/A"
-        />
-      </div>
-    </div>
-
-  );
-}
-
-function Input({ label, type = 'text', value, onChange, isTextArea = false, required }) {
-  return (
-    <div>
-      <label className="block text-sm mb-1 text-gray-700 dark:text-gray-300">{label}</label>
-      {isTextArea ? (
-        <textarea
-          className="w-full p-2 rounded border dark:bg-gray-700 dark:text-white resize-none"
-          style={{ height: '72px' }}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-        />
-      ) : (
-        <input
-          type={type}
-          className="w-full p-2 rounded border dark:bg-gray-700 dark:text-white"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          required={required}
-        />
-      )}
-    </div>
-  );
-}
-
-function DateTimeInputs({ formData, setFormData }) {
-  return (
-    <div>
-      <label className="block text-sm mb-1 text-gray-700 dark:text-gray-300">Start Date & Time</label>
-      <input type="date" className="w-full p-2 rounded border dark:bg-gray-700 dark:text-white mb-2" value={formData.startDate} onChange={(e) => setFormData({ ...formData, startDate: e.target.value })} required />
-      <div className="flex gap-4">
-        <input type="time" className="flex-1 p-2 rounded border dark:bg-gray-700 dark:text-white" value={formData.startTime} onChange={(e) => setFormData({ ...formData, startTime: e.target.value })} required />
-        <input type="time" className="flex-1 p-2 rounded border dark:bg-gray-700 dark:text-white" value={formData.endTime} onChange={(e) => setFormData({ ...formData, endTime: e.target.value })} required />
-      </div>
-    </div>
-  );
-}
-
-function RepeatInputs({ formData, toggleRepeatDay, setFormData }) {
-  const handleRepeatToggle = (e) => {
-    const checked = e.target.checked;
-    const newRepeatDays = checked
-      ? [DAY_INDEX_TO_CODE[dayjs(formData.startDate).day()]]
-      : [];
-    setFormData((prev) => ({
-      ...prev,
-      repeat: checked,
-      repeatDays: newRepeatDays,
-      endDate: checked ? prev.endDate : '',
-    }));
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={formData.repeat}
-          onChange={handleRepeatToggle}
-        />
-        <span className="text-sm text-gray-600 dark:text-gray-400">Repeat Event</span>
       </div>
 
-      {formData.repeat && (
-        <>
-          <div>
-            <label className="block text-sm mb-1 text-gray-700 dark:text-gray-300">Repeats on:</label>
-            <div className="grid grid-cols-4 gap-2">
-              {DAY_INDEX_TO_CODE.map((day) => (
-                <div key={day} className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={formData.repeatDays.includes(day)}
-                    onChange={() => toggleRepeatDay(day)}
-                  />
-                  <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">{day.toUpperCase()}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+      {/* Booking Popover */}
+      <BookingPopover
+        isOpen={showPopover}
+        onClose={() => {
+          setShowPopover(false);
+          setViewingBooking(null);
+          setCanEditBooking(false);
+        }}
+        onSave={handlePopoverSave}
+        onUpdate={handlePopoverUpdate}
+        onApprove={async (id) => {
+          setIsSubmitting(true);
+          try {
+            await updateBookingStatus(parseInt(id), { status: 'APPROVED', approverId: currentUserId });
+            setEvents(prev => prev.map(e =>
+              e.id === id ? { ...e, extendedProps: { ...e.extendedProps, status: 'APPROVED' } } : e
+            ));
+            setShowPopover(false);
+            setViewingBooking(null);
+          } catch (error) {
+            console.error('Failed to approve booking:', error);
+            alert('Failed to approve booking');
+          } finally {
+            setIsSubmitting(false);
+          }
+        }}
+        onReject={async (id) => {
+          setIsSubmitting(true);
+          try {
+            await updateBookingStatus(parseInt(id), { status: 'REJECTED', approverId: currentUserId });
+            setEvents(prev => prev.map(e =>
+              e.id === id ? { ...e, extendedProps: { ...e.extendedProps, status: 'REJECTED' } } : e
+            ));
+            setShowPopover(false);
+            setViewingBooking(null);
+          } catch (error) {
+            console.error('Failed to reject booking:', error);
+            alert('Failed to reject booking');
+          } finally {
+            setIsSubmitting(false);
+          }
+        }}
+        startTime={popoverTimes.start}
+        endTime={popoverTimes.end}
+        rooms={rooms}
+        selectedRoomId={selectedRooms[0]}
+        isSubmitting={isSubmitting}
+        viewingBooking={viewingBooking}
+        canEdit={canEditBooking}
+        canApprove={userRole === 'LAB_HEAD'}
+      />
 
-          <div>
-            <label className="block text-sm mb-1 text-gray-700 dark:text-gray-300">End Date</label>
-            <input
-              type="date"
-              className="w-full p-2 rounded border dark:bg-gray-700 dark:text-white"
-              value={formData.endDate}
-              onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-              required
-            />
-          </div>
-        </>
-      )}
+      <ReportIssueModal
+        isOpen={showReportIssueModal}
+        onClose={() => setShowReportIssueModal(false)}
+        onSubmit={async (description, issueType, equipment) => {
+          console.log('Submitting issue:', { description, issueType, equipment });
+        }}
+        room={rooms.find(r => r.Room_ID === selectedRooms[0])?.Name || ''}
+        pcNumber="N/A"
+      />
+
+      <WarningModal
+        isOpen={warningModal.isOpen}
+        onClose={() => setWarningModal(prev => ({ ...prev, isOpen: false }))}
+        title={warningModal.title}
+        message={warningModal.message}
+        type={warningModal.type}
+      />
+
+      <ConfirmModal
+        isOpen={!!pendingDrag}
+        onConfirm={handleConfirmDrag}
+        onCancel={handleCancelDrag}
+        title="Reschedule Booking?"
+        message="Do you want to move this booking to the new time?"
+        confirmText="Reschedule"
+        cancelText="Cancel"
+        isLoading={isSubmitting}
+        eventDetails={pendingDrag ? {
+          title: pendingDrag.event.title,
+          oldStart: pendingDrag.oldStart,
+          oldEnd: pendingDrag.oldEnd,
+          newStart: pendingDrag.newStart,
+          newEnd: pendingDrag.newEnd,
+        } : undefined}
+      />
     </div>
   );
 }
-
-
