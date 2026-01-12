@@ -1,46 +1,20 @@
-import LabTechList from '../../components/labhead/LabTechList';
+import LabTechList, { type Tech } from '../../components/labhead/LabTechList';
 import LabTechDetailPanel from '../../components/labhead/LabTechDetailPanel';
 import { useState } from 'react';
 
-export type Activity = {
-  title: string;
-  details: string;
-  date: string;
-};
-
-export type Tech = {
-  id: string;
-  name: string;
-  department: string;
-  status: string;
-  weeklyProgress: { completedTasks: number; totalTasks: number };
-  activities: {
-    completed: Activity[];
-    pending: Activity[];
-    inProgress: Activity[];
-  };
-};
-
-const initialTech: Tech = {
-  id: 'LT001',
-  name: 'Alex Johnson',
-  department: 'Computer Lab',
-  status: 'Active',
-  weeklyProgress: { completedTasks: 0, totalTasks: 10 },
-  activities: {
-    completed: [],
-    pending: [],
-    inProgress: []
-  }
-};
-
 export default function LabTechOverview() {
-  const [selectedTech, setSelectedTech] = useState<Tech>(initialTech);
+  const [selectedTech, setSelectedTech] = useState<Tech | null>(null);
 
   return (
     <div className="flex bg-gray-900 text-white sm:p-3 md:p-4 gap-4 h-screen w-full">
       <LabTechList selectedTech={selectedTech} onSelect={setSelectedTech} />
-      <LabTechDetailPanel labTech={selectedTech} />
+      {selectedTech ? (
+        <LabTechDetailPanel labTech={selectedTech} />
+      ) : (
+        <div className="flex-1 flex items-center justify-center text-gray-500">
+          Select a lab technician to view details
+        </div>
+      )}
     </div>
   );
 }

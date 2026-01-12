@@ -1,9 +1,18 @@
 import api from "./api";
 import type { Ticket, NewTicketInput, TicketStatus, TicketPriority, TicketCategory } from "@/types/tickets";
 
-// Fetch all tickets
-export const fetchTickets = async (status?: TicketStatus): Promise<Ticket[]> => {
-    const { data } = await api.get<Ticket[]>("/tickets", { params: { status } });
+// Filter types
+export interface TicketFilters {
+    status?: TicketStatus;
+    technicianId?: number;
+    excludeStatus?: TicketStatus;
+}
+
+// Fetch all tickets with optional filters
+export const fetchTickets = async (filters?: TicketStatus | TicketFilters): Promise<Ticket[]> => {
+    // Handle backward compatibility where argument implies status
+    const params = typeof filters === 'string' ? { status: filters } : filters;
+    const { data } = await api.get<Ticket[]>("/tickets", { params });
     return data;
 };
 

@@ -1,9 +1,15 @@
 import api from "./api";
-import type { User } from "@/types/user";
+import type { User, User_Role } from "@/types/user";
 
 // Fetch all users
 export const fetchUsers = async (): Promise<User[]> => {
     const { data } = await api.get<User[]>("/users");
+    return data;
+};
+
+// Fetch users by role (e.g., LAB_TECH, LAB_HEAD)
+export const fetchUsersByRole = async (role: User_Role): Promise<User[]> => {
+    const { data } = await api.get<User[]>("/users", { params: { role } });
     return data;
 };
 

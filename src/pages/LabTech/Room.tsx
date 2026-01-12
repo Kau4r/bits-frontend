@@ -4,6 +4,7 @@ import type { Room as RoomType, RoomStatus, RoomType as RoomTypeEnum, LabCategor
 import { labCategoryLabels, labCategories } from '@/types/room'
 import { getRooms } from '@/services/room'
 import QueueModal from './components/QueueModal'
+import RoomDetailModal from './components/RoomDetailModal'
 import RoomCard from './components/RoomCard'
 import TimeSlotGrid from './components/TimeSlotGrid'
 
@@ -39,6 +40,7 @@ export default function Room() {
     const [queueModalOpen, setQueueModalOpen] = useState(false);
     const [selectedLabCategory, setSelectedLabCategory] = useState<LabCategory | null>(null);
     const [selectedSession, setSelectedSession] = useState<RoomSession | null>(null);
+    const [selectedViewRoom, setSelectedViewRoom] = useState<RoomType | null>(null);
 
     // Fetch rooms from API
     useEffect(() => {
@@ -199,7 +201,7 @@ export default function Room() {
                                     status={room.Status === 'AVAILABLE' ? 'Available' : 'In Use'}
                                     nextSchedule="12:00 - 1:30"
                                     currentUser={room.Status !== 'AVAILABLE' ? 'In Use' : undefined}
-                                    onViewDetails={() => console.log('View details:', room.Room_ID)}
+                                    onViewDetails={() => setSelectedViewRoom(room)}
                                 />
                             ))}
                             {filteredRooms.length === 0 && (
@@ -278,6 +280,13 @@ export default function Room() {
                     status: selectedSession.status,
                 } : null}
             />
+            {selectedViewRoom && (
+                <RoomDetailModal
+                    isOpen={!!selectedViewRoom}
+                    onClose={() => setSelectedViewRoom(null)}
+                    room={selectedViewRoom}
+                />
+            )}
         </div>
     );
 }
