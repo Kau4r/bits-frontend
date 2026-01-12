@@ -5,6 +5,17 @@ import { createTicket, updateTicket } from '@/services/tickets';
 import { getRooms } from '@/services/room';
 import type { Room } from '@/types/room';
 import { useAuth } from '@/context/AuthContext';
+import api from '@/services/api';
+
+// Asset type for item selection
+interface Asset {
+  Item_ID: number;
+  Item_Code: string;
+  Item_Type: string;
+  Brand: string | null;
+  Status: string;
+  Room?: { Name: string } | null;
+}
 
 interface TicketingModalProps {
   isOpen: boolean;
@@ -35,6 +46,8 @@ export default function TicketingModal({
     roomId: undefined as number | undefined,
   });
   const [feedbackMessage, setFeedbackMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [isLoadingAssets, setIsLoadingAssets] = useState(false);
 
   // Clear feedback after 3 seconds
   useEffect(() => {
@@ -58,6 +71,75 @@ export default function TicketingModal({
       fetchRooms();
     }
   }, [isOpen]);
+
+  // Fetch assets when category is HARDWARE and location is selected
+  useEffect(() => {
+    const fetchAssets = async () => {
+      if (category !== 'HARDWARE') {
+        setAssets([]);
+        return;
+      }
+
+      // Find room ID from location
+      const selectedRoom = rooms.find(r => r.Name === formData.location);
+
+      if (!selectedRoom) {
+        setAssets([]);
+        return;
+      }
+
+      setIsLoadingAssets(true);
+      try {
+        // Get items directly linked to the room
+        const inventoryResponse = await api.get<Asset[]>('/inventory', { params: { roomId: selectedRoom.Room_ID } });
+
+        // Also get items from computers in this room
+        const computersResponse = await api.get<{
+          Computer_ID: number;
+          Name: string;
+          Items: { Item_ID: number; Item_Code: string; Item_Type: string; Brand: string | null; Status: string }[];
+        }[]>('/computers', { params: { roomId: selectedRoom.Room_ID } });
+
+        // Map computer items to Asset format
+        const computerItems: Asset[] = computersResponse.data.flatMap(computer =>
+          computer.Items.map(item => ({
+            Item_ID: item.Item_ID,
+            Item_Code: item.Item_Code,
+            Item_Type: item.Item_Type,
+            Brand: item.Brand,
+            Status: item.Status,
+            Room: { Name: selectedRoom.Name },
+          }))
+        );
+
+        // Combine both sources, avoiding duplicates
+        const directItems = inventoryResponse.data;
+        const allItems = [...directItems];
+
+        computerItems.forEach(ci => {
+          if (!allItems.some(item => item.Item_ID === ci.Item_ID)) {
+            allItems.push(ci);
+          }
+        });
+
+        // Filter to show only available/defective items
+        const relevantAssets = allItems.filter(item =>
+          ['AVAILABLE', 'BORROWED', 'DEFECTIVE'].includes(item.Status)
+        );
+        setAssets(relevantAssets);
+      } catch (err) {
+        console.error('Failed to fetch assets', err);
+      } finally {
+        setIsLoadingAssets(false);
+      }
+    };
+
+    if (isOpen && category === 'HARDWARE' && formData.location) {
+      fetchAssets();
+    } else {
+      setAssets([]);
+    }
+  }, [isOpen, category, formData.location, rooms]);
 
   // Populate form when editing or creating
   useEffect(() => {
@@ -250,16 +332,21 @@ export default function TicketingModal({
               </div>
             )}
 
-            {/* Location with Room Suggestions - Second Position */}
+            {/* Location with Room Suggestions - Shows for all, required for HARDWARE */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Location</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Location {category === 'HARDWARE' && <span className="text-red-500">*</span>}
+              </label>
               <input
                 list="room-suggestions"
                 type="text"
                 value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, location: e.target.value, itemId: undefined });
+                }}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 placeholder="Select a room or type location..."
+                required={category === 'HARDWARE'}
               />
               <datalist id="room-suggestions">
                 {rooms.map((room) => (
@@ -267,6 +354,35 @@ export default function TicketingModal({
                 ))}
               </datalist>
             </div>
+
+            {/* Asset/Item Selector - Only for HARDWARE category after location is selected */}
+            {category === 'HARDWARE' && formData.location && rooms.some(r => r.Name === formData.location) && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Affected Item (Optional)
+                </label>
+                <select
+                  value={formData.itemId || ''}
+                  onChange={(e) => setFormData({ ...formData, itemId: e.target.value ? parseInt(e.target.value) : undefined })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  disabled={isLoadingAssets}
+                >
+                  <option value="">Select an item...</option>
+                  {assets.map((asset) => (
+                    <option key={asset.Item_ID} value={asset.Item_ID}>
+                      {asset.Item_Code} - {asset.Item_Type.replace('_', ' ')}
+                      {asset.Brand ? ` (${asset.Brand})` : ''}
+                    </option>
+                  ))}
+                </select>
+                {isLoadingAssets && (
+                  <p className="mt-1 text-xs text-gray-500">Loading assets from {formData.location}...</p>
+                )}
+                {!isLoadingAssets && assets.length === 0 && (
+                  <p className="mt-1 text-xs text-gray-500">No items found in this room</p>
+                )}
+              </div>
+            )}
 
             {/* Priority - Third Position */}
             {canEditTicketDetails && (

@@ -289,7 +289,9 @@ const InventoryPage = () => {
                   </span>
 
                 </div>
-                <div className="text-sm text-gray-700 dark:text-gray-300">{item.Room?.Name ?? '—'}</div>
+                <div className="text-sm text-gray-700 dark:text-gray-300">
+                  {item.Room?.Name ?? ((item as any).Computers?.[0]?.Room?.Name) ?? '—'}
+                </div>
                 <div className="text-sm text-gray-700 dark:text-gray-300">
                   {item.Updated_At
                     ? new Date(item.Updated_At).toLocaleDateString(undefined, {
