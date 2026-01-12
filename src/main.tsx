@@ -4,15 +4,16 @@ import { BrowserRouter } from 'react-router-dom';
 import './index.css'
 import App from './App.tsx'
 
-// Import Preline
-import 'preline/preline';
-
 const Root = () => {
   useEffect(() => {
-    // Initialize Preline
+    // Initialize Preline with error handling
     const loadPreline = async () => {
-      const { HSStaticMethods } = await import('preline/preline');
-      HSStaticMethods.autoInit();
+      try {
+        const { HSStaticMethods } = await import('preline/preline');
+        HSStaticMethods.autoInit();
+      } catch (error) {
+        console.warn('Preline initialization failed:', error);
+      }
     };
     loadPreline();
   }, [])

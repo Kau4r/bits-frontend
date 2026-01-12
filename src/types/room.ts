@@ -1,5 +1,6 @@
 export type RoomType = 'CONSULTATION' | 'LECTURE' | 'LAB';
 export type RoomStatus = 'AVAILABLE' | 'IN_USE' | 'MAINTENANCE' | 'OCCUPIED' | 'RESERVED';
+export type LabCategory = 'MAC' | 'WINDOWS' | 'NETWORKING';
 
 export const statusColors: Record<RoomStatus, string> = {
     AVAILABLE: 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100',
@@ -9,13 +10,21 @@ export const statusColors: Record<RoomStatus, string> = {
     RESERVED: 'bg-purple-100 text-purple-800 dark:bg-purple-800 dark:text-purple-100',
 };
 
+export const labCategoryLabels: Record<LabCategory, string> = {
+    MAC: 'Mac Laboratories',
+    WINDOWS: 'Windows Laboratories',
+    NETWORKING: 'Networking Laboratories',
+};
+
 export const roomStatuses: RoomStatus[] = ['AVAILABLE', 'IN_USE', 'MAINTENANCE', 'OCCUPIED', 'RESERVED'];
 export const roomTypes: RoomType[] = ['CONSULTATION', 'LECTURE', 'LAB'];
+export const labCategories: LabCategory[] = ['MAC', 'WINDOWS', 'NETWORKING'];
 
 export interface Room {
     Room_ID: number;
     Name: string;
     Capacity: number;
     Room_Type: RoomType;
+    Lab_Category?: LabCategory | null;
     Status: RoomStatus;
 }

@@ -1,23 +1,18 @@
 import dayjs from 'dayjs'
 import { useState, useEffect } from 'react'
-import type { Room as RoomType, RoomStatus, RoomType as RoomTypeEnum } from '@/types/room'
+import type { Room as RoomType, RoomStatus, RoomType as RoomTypeEnum, LabCategory } from '@/types/room'
+import { labCategoryLabels, labCategories } from '@/types/room'
 import { getRooms } from '@/services/room'
 import QueueModal from './components/QueueModal'
 import RoomCard from './components/RoomCard'
+import TimeSlotGrid from './components/TimeSlotGrid'
 
-interface RoomQueueItem {
-    roomCode: string;
+interface RoomSession {
+    roomName: string;
     startTime: string;
     endTime: string;
-    user: string;
     status: 'pending' | 'approved' | 'rejected';
-    segment: 'CB1' | 'CB2';
-}
-
-interface RoomSchedule {
-    roomCode: string;
-    start: string;
-    end: string;
+    labCategory: LabCategory;
 }
 
 type TabType = 'rooms' | 'queue';
@@ -31,15 +26,6 @@ const roomTypeLabels: Record<RoomTypeEnum, string> = {
     LAB: 'Lab',
 };
 
-// Map backend Status to display name
-const statusLabels: Record<RoomStatus, string> = {
-    AVAILABLE: 'Available',
-    IN_USE: 'In Use',
-    MAINTENANCE: 'Maintenance',
-    OCCUPIED: 'Occupied',
-    RESERVED: 'Reserved',
-};
-
 export default function Room() {
     const [activeTab, setActiveTab] = useState<TabType>('rooms');
     const [searchTerm, setSearchTerm] = useState('');
@@ -49,16 +35,10 @@ export default function Room() {
     const [rooms, setRooms] = useState<RoomType[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    const [roomSchedules, setRoomSchedules] = useState<RoomSchedule[]>([
-        { roomCode: 'LB 483', start: '2025-08-06T09:00', end: '2025-08-06T11:00' },
-        { roomCode: 'CNF 2', start: '2025-08-06T08:00', end: '2025-08-06T10:00' }
-    ]);
-
-    const [queueItems, setQueueItems] = useState<RoomQueueItem[]>([]);
-    const [selectedQueueItem, setSelectedQueueItem] = useState<RoomQueueItem | null>(null);
+    const [sessions, setSessions] = useState<RoomSession[]>([]);
     const [queueModalOpen, setQueueModalOpen] = useState(false);
-    const [selectedSegment, setSelectedSegment] = useState<'CB1' | 'CB2'>('CB1');
-    const [user] = useState('labtech');
+    const [selectedLabCategory, setSelectedLabCategory] = useState<LabCategory | null>(null);
+    const [selectedSession, setSelectedSession] = useState<RoomSession | null>(null);
 
     // Fetch rooms from API
     useEffect(() => {
@@ -76,72 +56,59 @@ export default function Room() {
         loadRooms();
     }, []);
 
-    // Timeline config
-    const startHour = 7;
-    const endHour = 19;
-    const hours = Array.from({ length: endHour - startHour }, (_, i) =>
-        dayjs().hour(startHour + i).minute(0).format('h A')
-    );
+    // Filter LAB rooms by category
+    const getLabRoomsByCategory = (category: LabCategory) => {
+        return rooms.filter(r => r.Room_Type === 'LAB' && r.Lab_Category === category);
+    };
 
-    function isConflict(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
-        return !(aEnd <= bStart || aStart >= bEnd);
-    }
+    // Get sessions for a category
+    const getSessionsByCategory = (category: LabCategory) => {
+        return sessions.filter(s => s.labCategory === category);
+    };
 
-    const handleQueueRoom = (startTime: string, endTime: string, segment: 'CB1' | 'CB2') => {
+    const handleAddRoom = (category: LabCategory, _startTime: string, _endTime: string) => {
+        setSelectedLabCategory(category);
+        setSelectedSession(null);
+        setQueueModalOpen(true);
+    };
+
+    const handleSessionClick = (session: { roomName: string; startTime: string; endTime: string; status: 'pending' | 'approved' | 'rejected'; labCategory?: string }) => {
+        // Find the full session with labCategory
+        const fullSession = sessions.find(s => s.roomName === session.roomName && s.startTime === session.startTime);
+        if (fullSession) {
+            setSelectedSession(fullSession);
+            setSelectedLabCategory(fullSession.labCategory);
+            setQueueModalOpen(true);
+        }
+    };
+
+    const handleQueueRoom = (startTime: string, endTime: string, roomName: string) => {
+        if (!selectedLabCategory) return;
+
         const today = dayjs().startOf('day');
         const requestedStart = today.hour(Number(startTime.split(':')[0])).minute(Number(startTime.split(':')[1])).toISOString();
         const requestedEnd = today.hour(Number(endTime.split(':')[0])).minute(Number(endTime.split(':')[1])).toISOString();
 
-        const primaryRoom = segment === 'CB1' ? 'LB 483' : 'CNF 2';
-        const fallbackRooms = segment === 'CB1' ? ['LB 101', 'CNF 1'] : ['CTL 1', 'CTL 2'];
-
-        let assignedRoom: string | null = null;
-
-        const primaryConflict = roomSchedules.some(
-            s => s.roomCode === primaryRoom && isConflict(requestedStart, requestedEnd, s.start, s.end)
-        );
-
-        if (!primaryConflict) {
-            assignedRoom = primaryRoom;
-        } else {
-            for (const fallback of fallbackRooms) {
-                const hasConflict = roomSchedules.some(
-                    s => s.roomCode === fallback && isConflict(requestedStart, requestedEnd, s.start, s.end)
-                );
-                const isAvailable = rooms.find(r => r.Name === fallback)?.Status === 'AVAILABLE';
-                if (!hasConflict && isAvailable) {
-                    assignedRoom = fallback;
-                    break;
-                }
-            }
-        }
-
-        const newQueueItem: RoomQueueItem = {
-            roomCode: assignedRoom ?? 'Unassigned',
+        const newSession: RoomSession = {
+            roomName,
             startTime: requestedStart,
             endTime: requestedEnd,
-            user,
-            status: assignedRoom ? 'approved' : 'pending',
-            segment,
+            status: 'approved',
+            labCategory: selectedLabCategory,
         };
 
-        setQueueItems(prev => [...prev, newQueueItem]);
-
-        if (assignedRoom) {
-            setRoomSchedules(prev => [...prev, {
-                roomCode: assignedRoom,
-                start: requestedStart,
-                end: requestedEnd
-            }]);
-        }
+        setSessions(prev => [...prev, newSession]);
     };
 
-    const handleQueueItemClick = (item: RoomQueueItem) => {
-        setSelectedQueueItem(item);
-        setQueueModalOpen(true);
+    const handleRemoveSession = (session: RoomSession) => {
+        setSessions(prev => prev.filter(s => s !== session));
+        setQueueModalOpen(false);
+        setSelectedSession(null);
     };
 
-    // Filtering
+
+
+    // Filtering for Rooms tab
     const filteredRooms = rooms.filter(room => {
         const matchesSearch = room.Name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             roomTypeLabels[room.Room_Type].toLowerCase().includes(searchTerm.toLowerCase());
@@ -149,9 +116,6 @@ export default function Room() {
         const matchesType = typeFilter === 'All Types' || room.Room_Type === typeFilter;
         return matchesSearch && matchesStatus && matchesType;
     });
-
-    const borrowing1 = queueItems.filter(item => item.segment === 'CB1');
-    const borrowing2 = queueItems.filter(item => item.segment === 'CB2');
 
     return (
         <div className="flex flex-col h-screen bg-gray-900 overflow-hidden">
@@ -199,8 +163,8 @@ export default function Room() {
                     <button
                         onClick={() => setActiveTab('rooms')}
                         className={`px-5 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'rooms'
-                                ? 'bg-blue-500 text-white'
-                                : 'text-gray-400 hover:text-white'
+                            ? 'bg-blue-500 text-white'
+                            : 'text-gray-400 hover:text-white'
                             }`}
                     >
                         Rooms
@@ -208,8 +172,8 @@ export default function Room() {
                     <button
                         onClick={() => setActiveTab('queue')}
                         className={`px-5 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'queue'
-                                ? 'bg-blue-500 text-white'
-                                : 'text-gray-400 hover:text-white'
+                            ? 'bg-blue-500 text-white'
+                            : 'text-gray-400 hover:text-white'
                             }`}
                     >
                         Room Availability Queue
@@ -220,7 +184,7 @@ export default function Room() {
             {/* Scrollable Content Area */}
             <div className="flex-1 overflow-y-auto px-6 pb-6">
                 {activeTab === 'rooms' ? (
-                    /* Rooms Grid */
+                    /* Rooms Grid - All room types */
                     isLoading ? (
                         <div className="flex items-center justify-center h-64">
                             <div className="text-gray-400">Loading rooms...</div>
@@ -246,82 +210,52 @@ export default function Room() {
                         </div>
                     )
                 ) : (
-                    /* Room Availability Queue Timeline */
-                    <div className="overflow-x-auto text-white text-sm">
-                        <div className="min-w-[1000px]">
-                            <div className="grid grid-cols-[150px_1fr] border-b border-gray-600 mb-2">
-                                <div className="font-semibold">Time →</div>
-                                <div className="grid grid-cols-12 text-gray-400 pl-5">
-                                    {hours.map((label, index) => (
-                                        <div key={index}>{label}</div>
-                                    ))}
-                                </div>
+                    /* Room Availability Queue - Grouped by Lab Category */
+                    <div className="space-y-8">
+                        {isLoading ? (
+                            <div className="flex items-center justify-center h-32">
+                                <div className="text-gray-400">Loading lab rooms...</div>
                             </div>
+                        ) : (
+                            labCategories.map((category) => {
+                                const categoryRooms = getLabRoomsByCategory(category);
+                                const categorySessions = getSessionsByCategory(category);
 
-                            {/* CB1 */}
-                            <div className="grid grid-cols-[150px_1fr] items-start mb-6 gap-3">
-                                <h3 className="text-md font-bold text-white whitespace-nowrap mt-1">Computer Borrowing 1</h3>
-                                <div className="relative h-10 bg-gray-800 rounded border border-gray-700 overflow-hidden w-full flex items-center px-1">
-                                    {borrowing1.map((item, index) => {
-                                        const start = dayjs(item.startTime);
-                                        const end = dayjs(item.endTime);
-                                        const startMinutes = (start.hour() * 60 + start.minute()) - (startHour * 60);
-                                        const endMinutes = (end.hour() * 60 + end.minute()) - (startHour * 60);
-                                        const totalMinutes = (endHour - startHour) * 60;
-                                        const left = (startMinutes / totalMinutes) * 100;
-                                        const width = ((endMinutes - startMinutes) / totalMinutes) * 100;
-                                        const colour = item.status === 'approved'
-                                            ? 'bg-green-600'
-                                            : item.status === 'pending'
-                                                ? 'bg-yellow-500'
-                                                : 'bg-red-500';
-                                        return (
-                                            <div
-                                                key={`b1-${index}`}
-                                                className={`absolute h-6 rounded text-xs text-white px-2 flex items-center justify-center ${colour} cursor-pointer`}
-                                                style={{ left: `${left}%`, width: `${width}%` }}
-                                                title={`${start.format('h:mm A')}–${end.format('h:mm A')}`}
-                                                onClick={() => handleQueueItemClick(item)}
-                                            >
-                                                {item.roomCode}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
+                                // Only show categories that have rooms
+                                if (categoryRooms.length === 0) return null;
 
-                            {/* CB2 */}
-                            <div className="grid grid-cols-[150px_1fr] items-start mb-6 gap-3">
-                                <h3 className="text-md font-bold text-white whitespace-nowrap mt-1">Computer Borrowing 2</h3>
-                                <div className="relative h-10 bg-gray-800 rounded border border-gray-700 overflow-hidden w-full flex items-center px-1">
-                                    {borrowing2.map((item, index) => {
-                                        const start = dayjs(item.startTime);
-                                        const end = dayjs(item.endTime);
-                                        const startMinutes = (start.hour() * 60 + start.minute()) - (startHour * 60);
-                                        const endMinutes = (end.hour() * 60 + end.minute()) - (startHour * 60);
-                                        const totalMinutes = (endHour - startHour) * 60;
-                                        const left = (startMinutes / totalMinutes) * 100;
-                                        const width = ((endMinutes - startMinutes) / totalMinutes) * 100;
-                                        const colour = item.status === 'approved'
-                                            ? 'bg-green-600'
-                                            : item.status === 'pending'
-                                                ? 'bg-yellow-500'
-                                                : 'bg-red-500';
-                                        return (
-                                            <div
-                                                key={`b2-${index}`}
-                                                className={`absolute h-6 rounded text-xs text-white px-2 flex items-center justify-center ${colour} cursor-pointer`}
-                                                style={{ left: `${left}%`, width: `${width}%` }}
-                                                title={`${start.format('h:mm A')}–${end.format('h:mm A')}`}
-                                                onClick={() => handleQueueItemClick(item)}
+                                return (
+                                    <div key={category} className="bg-gray-800 rounded-lg p-4">
+                                        <h2 className="text-xl font-bold text-white mb-4">
+                                            {labCategoryLabels[category]}:
+                                        </h2>
+                                        <TimeSlotGrid
+                                            sessions={categorySessions}
+                                            totalRoomsInCategory={categoryRooms.length}
+                                            onAddRoom={(start, end) => handleAddRoom(category, start, end)}
+                                            onSessionClick={handleSessionClick}
+                                        />
+
+                                        {/* Add Room Button */}
+                                        <div className="mt-4 flex justify-center">
+                                            <button
+                                                onClick={() => handleAddRoom(category, '09:00', '10:00')}
+                                                className="px-4 py-2 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
                                             >
-                                                {item.roomCode}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
+                                                + Add Room
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
+
+                        {/* Show message if no lab rooms exist */}
+                        {!isLoading && labCategories.every(cat => getLabRoomsByCategory(cat).length === 0) && (
+                            <div className="text-center text-gray-500 py-12">
+                                No LAB rooms with categories found. Please assign Lab_Category to your LAB rooms.
                             </div>
-                        </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -330,18 +264,19 @@ export default function Room() {
                 isOpen={queueModalOpen}
                 onClose={() => {
                     setQueueModalOpen(false);
-                    setSelectedQueueItem(null);
+                    setSelectedSession(null);
+                    setSelectedLabCategory(null);
                 }}
                 onQueue={handleQueueRoom}
-                onRemove={(item) => {
-                    setQueueItems(prev => prev.filter(q => q !== item));
-                    setRoomSchedules(prev => prev.filter(
-                        s => !(s.roomCode === item.roomCode && s.start === item.startTime && s.end === item.endTime)
-                    ));
-                }}
-                roomCode={selectedQueueItem?.roomCode || null}
-                segment={selectedQueueItem?.segment || selectedSegment}
-                selectedQueueItem={selectedQueueItem}
+                onRemove={selectedSession ? () => handleRemoveSession(selectedSession) : () => { }}
+                availableRooms={selectedLabCategory ? getLabRoomsByCategory(selectedLabCategory) : []}
+                selectedQueueItem={selectedSession ? {
+                    roomName: selectedSession.roomName,
+                    startTime: selectedSession.startTime,
+                    endTime: selectedSession.endTime,
+                    user: 'labtech',
+                    status: selectedSession.status,
+                } : null}
             />
         </div>
     );
