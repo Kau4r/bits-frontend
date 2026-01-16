@@ -12,6 +12,7 @@ import ReportIssueModal from '../../components/student/Modals/ReportIssue';
 import { getBookings, createBooking, updateBooking, updateBookingStatus } from "@/services/booking";
 import type { Booking } from '@/types/booking';
 import { useAuth } from '@/context/AuthContext';
+import { useModal } from '@/context/ModalContext';
 import CalendarSidebar from '@/components/Scheduling/CalendarSidebar';
 import BookingPopover from '@/components/Scheduling/BookingPopover';
 import WarningModal from '@/components/Scheduling/WarningModal';
@@ -19,6 +20,7 @@ import ConfirmModal from '@/components/Scheduling/ConfirmModal';
 
 export default function Scheduling() {
   const { user } = useAuth();
+  const modal = useModal();
   const currentUserId = user?.User_ID ?? 0;
   const userRole = user?.User_Role.toUpperCase() ?? 'FACULTY';
   type CalendarViewType = 'dayGridMonth' | 'timeGridWeek' | 'timeGridDay' | 'listWeek';
@@ -103,20 +105,22 @@ export default function Scheduling() {
   const loadBookings = async () => {
     try {
       const bookings = await getBookings();
-      const mapped = bookings.map((b: Booking) => ({
-        id: String(b.Booked_Room_ID),
-        title: b.Purpose ?? 'No Title',
-        start: b.Start_Time,
-        end: b.End_Time,
-        extendedProps: {
-          roomId: b.Room_ID,
-          roomName: b.Room?.Name ?? 'Unknown',
-          status: b.Status?.toUpperCase() || 'PENDING',
-          createdBy: b.User ? `${b.User.First_Name || ''} ${b.User.Last_Name || ''}`.trim() : 'Unknown',
-          createdById: b.User_ID,
-          description: b.Notes ?? '',
-        },
-      }));
+      const mapped = bookings
+        .filter((b: Booking) => b.Status !== 'CANCELLED' && b.Status !== 'REJECTED')
+        .map((b: Booking) => ({
+          id: String(b.Booked_Room_ID),
+          title: b.Purpose ?? 'No Title',
+          start: b.Start_Time,
+          end: b.End_Time,
+          extendedProps: {
+            roomId: b.Room_ID,
+            roomName: b.Room?.Name ?? 'Unknown',
+            status: b.Status?.toUpperCase() || 'PENDING',
+            createdBy: b.User ? `${b.User.First_Name || ''} ${b.User.Last_Name || ''}`.trim() : 'Unknown',
+            createdById: b.User_ID,
+            description: b.Notes ?? '',
+          },
+        }));
       setEvents(mapped);
     } catch (error) {
       console.error('Error loading bookings:', error);
@@ -272,9 +276,9 @@ export default function Scheduling() {
         const conflict = error.response?.data?.conflictingBooking;
         const bookedBy = conflict?.bookedBy || 'someone else';
         const statusText = conflict?.status === 'PENDING' ? 'pending approval' : 'already booked';
-        alert(`⚠️ Time Conflict!\n\nThis slot is ${statusText} by ${bookedBy}.\n\nPlease choose a different time.`);
+        await modal.showError(`This slot is ${statusText} by ${bookedBy}.\n\nPlease choose a different time.`, 'Time Conflict');
       } else {
-        alert('Failed to create booking. Please try again.');
+        await modal.showError('Failed to create booking. Please try again.', 'Error');
       }
     } finally {
       setIsSubmitting(false);
@@ -462,7 +466,7 @@ export default function Scheduling() {
       setCanEditBooking(false);
     } catch (error) {
       console.error('Failed to update booking:', error);
-      alert('Failed to update booking');
+      await modal.showError('Failed to update booking', 'Error');
     } finally {
       setIsSubmitting(false);
     }
@@ -606,7 +610,7 @@ export default function Scheduling() {
             setViewingBooking(null);
           } catch (error) {
             console.error('Failed to approve booking:', error);
-            alert('Failed to approve booking');
+            await modal.showError('Failed to approve booking', 'Error');
           } finally {
             setIsSubmitting(false);
           }
@@ -622,7 +626,23 @@ export default function Scheduling() {
             setViewingBooking(null);
           } catch (error) {
             console.error('Failed to reject booking:', error);
-            alert('Failed to reject booking');
+            await modal.showError('Failed to reject booking', 'Error');
+          } finally {
+            setIsSubmitting(false);
+          }
+        }}
+        onRemove={async (id) => {
+          setIsSubmitting(true);
+          try {
+            await updateBookingStatus(parseInt(id), { status: 'CANCELLED', approverId: currentUserId });
+            // Remove from calendar
+            setEvents(prev => prev.filter(e => e.id !== id));
+            setShowPopover(false);
+            setViewingBooking(null);
+            setCanEditBooking(false);
+          } catch (error) {
+            console.error('Failed to remove booking:', error);
+            await modal.showError('Failed to remove booking', 'Error');
           } finally {
             setIsSubmitting(false);
           }

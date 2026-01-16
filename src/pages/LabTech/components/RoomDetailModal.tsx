@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import type { Room } from '@/types/room';
 import { fetchComputers, createComputer, updateComputer, deleteComputer, type Computer, type CreateComputerPayload, type UpdateComputerPayload } from '@/services/computers';
 import api from '@/services/api';
+import { useModal } from '@/context/ModalContext';
 
 // Asset/Item type from inventory
 interface RoomAsset {
@@ -36,6 +37,7 @@ const formatItemType = (type: string) => {
 };
 
 export default function RoomDetailModal({ isOpen, onClose, room }: RoomDetailModalProps) {
+    const modal = useModal();
     const [activeTab, setActiveTab] = useState<'Computers' | 'Assets' | 'Schedule'>('Computers');
     const [computers, setComputers] = useState<Computer[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -207,7 +209,8 @@ export default function RoomDetailModal({ isOpen, onClose, room }: RoomDetailMod
 
     const handleDeleteComputer = async (computerId: number, e: React.MouseEvent) => {
         e.stopPropagation(); // Prevent triggering edit
-        if (!confirm('Are you sure you want to delete this computer?')) return;
+        const confirmed = await modal.showConfirm('Are you sure you want to delete this computer?', 'Delete Computer');
+        if (!confirmed) return;
 
         try {
             await deleteComputer(computerId);

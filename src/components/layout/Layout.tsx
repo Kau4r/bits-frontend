@@ -3,7 +3,10 @@ import Navbar from "./Navbar";
 import { Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 
+import { useNotificationStream } from "@/hooks/useNotificationStream";
+
 const Layout = () => {
+  useNotificationStream(); // Initialize real-time notifications
   const [collapsed, setCollapsed] = useState(false);
   const { userRole, user, logout } = useAuth();
   const [isMobile, setIsMobile] = useState(false);

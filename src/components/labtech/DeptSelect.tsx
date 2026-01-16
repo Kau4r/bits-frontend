@@ -1,20 +1,22 @@
 // src/components/labtech/DeptSelect.tsx
 import React from 'react';
+import type { FormDepartment } from '../../types/formtypes';
+import { formDepartmentLabels } from '../../types/formtypes';
 
 interface DeptSelectProps {
-  value: string;
-  onChange: (value: string) => void;
+  value: FormDepartment | string;
+  onChange: (value: FormDepartment) => void;
   className?: string;
 }
 
-const departments = ['Registrar', 'Finance', 'DCISM', 'Laboratory'];
+const departments: FormDepartment[] = ['REGISTRAR', 'FINANCE', 'DCISM', 'LABORATORY'];
 
 export const DeptSelect: React.FC<DeptSelectProps> = ({ value, onChange, className = '' }) => {
   return (
     <div className={`relative ${className}`}>
       <select
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => onChange(e.target.value as FormDepartment)}
         className={`
           block w-full pl-3 pr-10 py-2.5
           text-sm text-gray-900 dark:text-gray-100
@@ -30,7 +32,7 @@ export const DeptSelect: React.FC<DeptSelectProps> = ({ value, onChange, classNa
       >
         {departments.map((dept) => (
           <option key={dept} value={dept}>
-            {dept}
+            {formDepartmentLabels[dept]}
           </option>
         ))}
       </select>

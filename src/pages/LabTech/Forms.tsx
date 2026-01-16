@@ -1,23 +1,32 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import TableSearchInput from '../../components/Search';
 import { AddFormDialog } from '../../components/labtech/AddFormDialog';
 import { RowPreview } from '../../components/labtech/RowPreview';
 import { InlineTimeline } from '../../components/labtech/InlineTimeline';
 import { StatusSelect } from '../../components/labtech/StatusSelect';
 import { DeptSelect } from '../../components/labtech/DeptSelect';
-import type { FormRecord, FormStatus, FormType } from '../../types/formtypes';
+import type { FormRecord, FormStatus, FormType, FormDepartment } from '../../types/formtypes';
+import { formStatusColors, formStatusLabels, formDepartmentLabels } from '../../types/formtypes';
+import { getForms, createForm, updateForm as updateFormAPI, archiveForm as archiveFormAPI, transferForm } from '../../services/forms';
+import { useAuth } from '../../context/AuthContext';
+import { useModal } from '../../context/ModalContext';
+import type { Form } from '../../types/formtypes';
 
-const statusChip: Record<FormStatus | 'Archived', string> = {
-  Approved: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
-  Pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
-  'In Review': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-  Rejected: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
-  Archived: 'bg-gray-200 text-gray-800 dark:bg-gray-700/30 dark:text-gray-300',
+// Use the imported formStatusColors for status chips
+const statusChip = formStatusColors;
+
+// Department display names (for UI) with matching to backend uppercase values
+const steps = ['Registrar', 'Finance', 'DCISM', 'Laboratory'] as const;
+const stepToBackend: Record<string, string> = {
+  'Registrar': 'REGISTRAR',
+  'Finance': 'FINANCE',
+  'DCISM': 'DCISM',
+  'Laboratory': 'LABORATORY'
 };
 
-const steps = ['Registrar', 'Finance', 'DCISM', 'Laboratory'] as const;
-
 export default function Forms() {
+  const { user } = useAuth();
+  const modal = useModal();
   const [forms, setForms] = useState<FormRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -25,6 +34,40 @@ export default function Forms() {
   const [showArchived, setShowArchived] = useState(false);
   const [formTypeFilter, setFormTypeFilter] = useState<FormType | 'All'>('All');
   const [statusFilter, setStatusFilter] = useState<FormStatus | 'All'>('All');
+  const [loading, setLoading] = useState(true);
+
+  // Load forms from database on mount
+  useEffect(() => {
+    const loadForms = async () => {
+      try {
+        const data = await getForms();
+        setForms(data.map(mapFormToRecord));
+      } catch (error) {
+        console.error('Failed to load forms:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadForms();
+  }, []);
+
+  // Helper to map API Form to local FormRecord
+  const mapFormToRecord = (form: Form): FormRecord => ({
+    id: form.Form_ID.toString(),
+    formId: form.Form_Code,
+    type: form.Form_Type,
+    status: form.Status,
+    department: form.Department,
+    createdAt: form.Created_At,
+    isArchived: form.Is_Archived,
+    attachmentName: form.File_Name || undefined,
+    attachmentUrl: form.File_URL || undefined,
+    attachmentType: normalizeType(form.File_Name || undefined),
+    history: form.History?.map(h => ({
+      dept: h.Department,
+      at: h.Changed_At
+    })) || []
+  });
 
   const filtered = useMemo(() => {
     const q = searchTerm.toLowerCase();
@@ -48,46 +91,75 @@ export default function Forms() {
     return undefined;
   };
 
-  const handleCreateForm = (payload: Omit<FormRecord, 'id' | 'createdAt' | 'isArchived'> & { file?: File }) => {
-    const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : String(Date.now());
-    const attachmentName = payload.file?.name;
-    const attachmentUrl = payload.file ? URL.createObjectURL(payload.file) : undefined;
-    const attachmentType = normalizeType(attachmentName);
+  const handleCreateForm = async (payload: Omit<FormRecord, 'id' | 'createdAt' | 'isArchived'> & { file?: File }) => {
+    if (!user?.User_ID) {
+      console.error('User not authenticated');
+      return;
+    }
 
-    const rec: FormRecord = {
-      ...payload,
-      id,
-      createdAt: new Date().toISOString(),
-      isArchived: false,
-      attachmentName,
-      attachmentUrl,
-      attachmentType,
-      history: [{ dept: payload.department, at: new Date().toISOString() }],
-    };
-    setForms(prev => [rec, ...prev]);
+    try {
+      const createdForm = await createForm({
+        creatorId: user.User_ID,
+        formType: payload.type,
+        title: payload.formId,
+        content: payload.department,
+        fileName: payload.file?.name,
+        fileUrl: undefined, // TODO: Implement file upload
+        fileType: payload.file?.type,
+        department: payload.department as any
+      });
+
+      setForms(prev => [mapFormToRecord(createdForm), ...prev]);
+      setIsAddDialogOpen(false);
+    } catch (error) {
+      console.error('Failed to create form:', error);
+      await modal.showError('Failed to create form. Please try again.', 'Error');
+    }
   };
 
-  const updateForm = (id: string, patch: Partial<FormRecord>) => {
-    setForms(prev => prev.map(f => (f.id === id ? { ...f, ...patch } : f)));
+  const updateForm = async (id: string, patch: Partial<FormRecord>) => {
+    try {
+      await updateFormAPI(parseInt(id), {
+        status: patch.status as any,
+        title: patch.formId,
+      });
+      setForms(prev => prev.map(f => (f.id === id ? { ...f, ...patch } : f)));
+    } catch (error) {
+      console.error('Failed to update form:', error);
+      await modal.showError('Failed to update form. Please try again.', 'Error');
+    }
   };
 
-  const moveDept = (id: string, dept: string) => {
-    setForms(prev => prev.map(f => {
-      if (f.id !== id) return f;
-      const history = [...(f.history || []), { dept, at: new Date().toISOString() }];
-      return { ...f, department: dept, history };
-    }));
+  const moveDept = async (id: string, dept: string) => {
+    try {
+      await transferForm(parseInt(id), dept as any, `Transferred to ${dept}`);
+      setForms(prev => prev.map(f => {
+        if (f.id !== id) return f;
+        const history = [...(f.history || []), { dept, at: new Date().toISOString() }];
+        return { ...f, department: dept, history };
+      }));
+    } catch (error) {
+      console.error('Failed to transfer form:', error);
+      await modal.showError('Failed to transfer form. Please try again.', 'Error');
+    }
   };
 
-  const archiveForm = (f: FormRecord) => {
-    const ok = window.confirm('Are you sure you want to archive this form?');
+  const archiveForm = async (f: FormRecord) => {
+    const ok = await modal.showConfirm('Are you sure you want to archive this form?', 'Archive Form');
     if (!ok) return;
-    setForms(prev =>
-      prev.map(form =>
-        form.id === f.id ? { ...form, isArchived: true, status: 'Archived' as FormStatus } : form
-      )
-    );
-    setExpandedRow(null);
+
+    try {
+      await archiveFormAPI(parseInt(f.id));
+      setForms(prev =>
+        prev.map(form =>
+          form.id === f.id ? { ...form, isArchived: true, status: 'Archived' as FormStatus } : form
+        )
+      );
+      setExpandedRow(null);
+    } catch (error) {
+      console.error('Failed to archive form:', error);
+      await modal.showError('Failed to archive form. Please try again.', 'Error');
+    }
   };
 
   return (
@@ -108,11 +180,10 @@ export default function Forms() {
 
           <button
             onClick={() => setShowArchived(!showArchived)}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              showArchived
-                ? 'bg-blue-700 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-colors ${showArchived
+              ? 'bg-blue-700 text-white'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+              }`}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
@@ -133,7 +204,7 @@ export default function Forms() {
               ))}
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700 dark:text-gray-300">
-             
+
             </div>
           </div>
 
@@ -143,9 +214,10 @@ export default function Forms() {
               onChange={(e) => setStatusFilter(e.target.value as FormStatus | 'All')}
               className="appearance-none bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md pl-3 pr-8 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
-              {(['All', 'Pending', 'Approved', 'Rejected', 'In Review', 'Archived'] as const).map((status) => (
+              <option value="All">All Statuses</option>
+              {(['PENDING', 'APPROVED', 'REJECTED', 'IN_REVIEW', 'ARCHIVED'] as FormStatus[]).map((status) => (
                 <option key={status} value={status}>
-                  {status === 'All' ? 'All Statuses' : status}
+                  {formStatusLabels[status]}
                 </option>
               ))}
             </select>
@@ -168,7 +240,7 @@ export default function Forms() {
       {/* Table section */}
       <div className="flex-1 flex flex-col px-4 pb-4 overflow-hidden">
         <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm flex-1 flex flex-col">
-     
+
           <div className="grid grid-cols-12 gap-2 px-4 py-3 text-xs font-medium uppercase text-gray-500 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
             <div className="col-span-4">File</div>
             <div className="col-span-2">Form</div>
@@ -180,8 +252,8 @@ export default function Forms() {
           <div className="flex-1 overflow-y-auto">
             <ul className="divide-y divide-gray-200 dark:divide-gray-700">
               {filtered.map(f => (
-                <li 
-                  key={f.id} 
+                <li
+                  key={f.id}
                   className="bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
                   <div
@@ -189,9 +261,9 @@ export default function Forms() {
                     onClick={() => setExpandedRow(expandedRow === f.id ? null : f.id)}
                   >
                     <div className="col-span-4 flex items-center">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 min-w-0 w-full">
                         <RowPreview url={f.attachmentUrl} name={f.attachmentName} type={f.attachmentType} />
-                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-[200px]">
                           {f.attachmentName || 'No file'}
                         </span>
                       </div>
@@ -202,15 +274,14 @@ export default function Forms() {
                     </div>
 
                     <div className="col-span-2 flex items-center">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        statusChip[(f.status as FormStatus) || 'Pending'] || statusChip.Archived
-                      }`}>
-                        {f.status}
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusChip[f.status as FormStatus] || statusChip.ARCHIVED
+                        }`}>
+                        {formStatusLabels[f.status as FormStatus] || f.status}
                       </span>
                     </div>
 
                     <div className="col-span-2 flex items-center">
-                      <span className="text-sm text-gray-700 dark:text-gray-300">{f.department}</span>
+                      <span className="text-sm text-gray-700 dark:text-gray-300">{formDepartmentLabels[f.department as FormDepartment] || f.department}</span>
                     </div>
 
                     <div className="col-span-2 flex items-center justify-end">
@@ -247,7 +318,11 @@ export default function Forms() {
                               Processing Timeline
                             </h4>
                             <div className="p-2">
-                              <InlineTimeline steps={steps as unknown as string[]} current={f.department} />
+                              <InlineTimeline
+                                steps={steps as unknown as string[]}
+                                current={formDepartmentLabels[f.department as FormDepartment] || f.department}
+                                completedSteps={f.history?.map(h => h.dept) || []}
+                              />
                             </div>
                           </div>
                         </div>

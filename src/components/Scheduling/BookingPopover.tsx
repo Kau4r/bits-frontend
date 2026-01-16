@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import dayjs from 'dayjs';
 import type { Room } from '@/types/room';
+import { useModal } from '@/context/ModalContext';
 
 interface ViewingBooking {
     id: string;
@@ -38,6 +39,7 @@ interface BookingPopoverProps {
     }) => void;
     onApprove?: (id: string) => void;
     onReject?: (id: string) => void;
+    onRemove?: (id: string) => void;
     startTime: Date;
     endTime: Date;
     rooms: Room[];
@@ -84,6 +86,7 @@ export default function BookingPopover({
     onUpdate,
     onApprove,
     onReject,
+    onRemove,
     startTime,
     endTime,
     rooms,
@@ -93,6 +96,7 @@ export default function BookingPopover({
     canEdit = false,
     canApprove = false,
 }: BookingPopoverProps) {
+    const modal = useModal();
     const isViewMode = !!viewingBooking && !canEdit;
     const isEditMode = !!viewingBooking && canEdit;
     const isCreateMode = !viewingBooking;
@@ -423,17 +427,36 @@ export default function BookingPopover({
                     )}
 
                     {/* Actions */}
-                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-700">
-                        <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-300 hover:text-white">
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={!title.trim() || !roomId || isSubmitting}
-                            className="px-6 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {isSubmitting ? 'Saving...' : isEditMode ? 'Update' : 'Save'}
-                        </button>
+                    <div className="flex justify-between gap-3 pt-4 border-t border-gray-700">
+                        {/* Remove button - only in edit mode */}
+                        {isEditMode && viewingBooking && onRemove ? (
+                            <button
+                                type="button"
+                                onClick={async () => {
+                                    const confirmed = await modal.showConfirm('Are you sure you want to remove this booking? This action cannot be undone.', 'Remove Booking');
+                                    if (confirmed) {
+                                        onRemove(viewingBooking.id);
+                                    }
+                                }}
+                                disabled={isSubmitting}
+                                className="px-4 py-2 text-sm bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600/30 disabled:opacity-50"
+                            >
+                                Remove
+                            </button>
+                        ) : <div />}
+
+                        <div className="flex gap-3">
+                            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-300 hover:text-white">
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={!title.trim() || !roomId || isSubmitting}
+                                className="px-6 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isSubmitting ? 'Saving...' : isEditMode ? 'Update' : 'Save'}
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>

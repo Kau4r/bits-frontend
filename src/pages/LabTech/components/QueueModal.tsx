@@ -12,7 +12,7 @@ interface RoomQueueItem {
 interface QueueModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onQueue: (startTime: string, endTime: string, roomName: string) => void;
+    onQueue: (startTime: string, endTime: string, roomName: string) => Promise<void> | void;
     onRemove: (item: RoomQueueItem) => void;
     availableRooms: Room[];
     selectedQueueItem: RoomQueueItem | null;
@@ -68,10 +68,15 @@ export default function QueueModal({
         } else {
             setStartTime('09:00');
             setEndTime('10:30');
-            setSelectedRoom(null);
+            // Pre-select the first room from availableRooms when adding new
+            if (availableRooms.length > 0) {
+                setSelectedRoom(availableRooms[0].Name);
+            } else {
+                setSelectedRoom(null);
+            }
         }
         setError('');
-    }, [selectedQueueItem, isOpen]);
+    }, [selectedQueueItem, isOpen, availableRooms]);
 
     const isEditing = !!selectedQueueItem;
 
@@ -99,7 +104,7 @@ export default function QueueModal({
         return timeSlots.slice(startIndex + 1);
     };
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         if (!selectedRoom) {
             setError('Please select a room');
             return;
@@ -115,8 +120,12 @@ export default function QueueModal({
             return;
         }
 
-        onQueue(startTime, endTime, selectedRoom);
-        onClose();
+        try {
+            await onQueue(startTime, endTime, selectedRoom);
+            // Only close on success - the parent handles closing after API success
+        } catch (err: any) {
+            setError(err.message || 'Failed to set room availability');
+        }
     };
 
     if (!isOpen) return null;
@@ -175,10 +184,10 @@ export default function QueueModal({
                                                     }
                                                 }}
                                                 className={`w-full px-4 py-2 text-left text-sm ${occupied
-                                                        ? 'bg-red-500/30 text-red-300'
-                                                        : time === startTime
-                                                            ? 'bg-gray-600 text-white'
-                                                            : 'text-gray-200 hover:bg-gray-600'
+                                                    ? 'bg-red-500/30 text-red-300'
+                                                    : time === startTime
+                                                        ? 'bg-gray-600 text-white'
+                                                        : 'text-gray-200 hover:bg-gray-600'
                                                     }`}
                                             >
                                                 {formatTimeDisplay(time)}
@@ -220,10 +229,10 @@ export default function QueueModal({
                                                     setEndDropdownOpen(false);
                                                 }}
                                                 className={`w-full px-4 py-2 text-left text-sm ${occupied
-                                                        ? 'bg-red-500/30 text-red-300'
-                                                        : time === endTime
-                                                            ? 'bg-gray-600 text-white'
-                                                            : 'text-gray-200 hover:bg-gray-600'
+                                                    ? 'bg-red-500/30 text-red-300'
+                                                    : time === endTime
+                                                        ? 'bg-gray-600 text-white'
+                                                        : 'text-gray-200 hover:bg-gray-600'
                                                     }`}
                                             >
                                                 {formatTimeDisplay(time)}
@@ -254,8 +263,8 @@ export default function QueueModal({
                                     onClick={() => setSelectedRoom(room.Name)}
                                     disabled={isEditing}
                                     className={`px-4 py-3 rounded-lg border-2 text-sm font-medium transition-colors ${selectedRoom === room.Name
-                                            ? 'border-blue-500 bg-blue-500/20 text-blue-300'
-                                            : 'border-gray-600 bg-gray-700 text-gray-300 hover:border-gray-500'
+                                        ? 'border-blue-500 bg-blue-500/20 text-blue-300'
+                                        : 'border-gray-600 bg-gray-700 text-gray-300 hover:border-gray-500'
                                         } ${isEditing ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 >
                                     {room.Name}

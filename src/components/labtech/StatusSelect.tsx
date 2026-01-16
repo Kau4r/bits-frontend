@@ -1,7 +1,7 @@
 // src/components/labtech/StatusSelect.tsx
 import React from 'react';
-
-type FormStatus = 'Approved' | 'Pending' | 'In Review' | 'Rejected' | 'Archived';
+import type { FormStatus } from '../../types/formtypes';
+import { formStatusLabels } from '../../types/formtypes';
 
 interface StatusSelectProps {
   value: FormStatus;
@@ -9,7 +9,7 @@ interface StatusSelectProps {
   className?: string;
 }
 
-const statuses: FormStatus[] = ['Approved', 'Pending', 'In Review', 'Rejected', 'Archived'];
+const statuses: FormStatus[] = ['PENDING', 'IN_REVIEW', 'APPROVED', 'REJECTED', 'ARCHIVED'];
 
 export const StatusSelect: React.FC<StatusSelectProps> = ({ value, onChange, className = '' }) => {
   return (
@@ -32,7 +32,7 @@ export const StatusSelect: React.FC<StatusSelectProps> = ({ value, onChange, cla
       >
         {statuses.map((status) => (
           <option key={status} value={status}>
-            {status}
+            {formStatusLabels[status]}
           </option>
         ))}
       </select>

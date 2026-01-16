@@ -7,6 +7,7 @@ import AddUserModal from '@/components/SysAd/user/AddUserModal'
 import { fetchUsers, addUser } from '@/services/user'
 import type { User } from '@/types/user'
 import { ROLES, type User_Role } from "@/types/user"
+import { useModal } from '@/context/ModalContext'
 
 
 export function formatRole(role?: string | null) {
@@ -27,6 +28,7 @@ export default function SysAdDash() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
+  const modal = useModal()
   const roleClasses: Record<User_Role, string> = {
     [ROLES.ADMIN]: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
     [ROLES.LAB_HEAD]: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
@@ -67,7 +69,7 @@ export default function SysAdDash() {
       setIsModalOpen(false)
     } catch (err) {
       console.error(err)
-      alert('Failed to add user.')
+      await modal.showError('Failed to add user.', 'Error')
     }
   }
 

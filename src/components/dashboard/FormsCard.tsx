@@ -10,7 +10,18 @@ type FormStatusConfig = {
   bg: string;
 };
 
-export default function FormsCard() {
+interface FormsCardProps {
+  pendingCount?: number;
+}
+
+export default function FormsCard({ pendingCount = 0 }: FormsCardProps) {
+  // Update state when prop changes
+  useEffect(() => {
+    setStatuses(prev => prev.map(s =>
+      s.name === 'Pending' ? { ...s, count: pendingCount } : s
+    ));
+  }, [pendingCount]);
+
   const [statuses, setStatuses] = useState<FormStatusConfig[]>([
     { id: 1, name: 'Approved', count: 0, icon: CheckCircleIcon, color: 'text-green-500 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-900/20' },
     { id: 2, name: 'Pending', count: 0, icon: ClockIcon, color: 'text-yellow-500 dark:text-yellow-400', bg: 'bg-yellow-100 dark:bg-yellow-900/20' },
