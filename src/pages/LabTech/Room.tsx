@@ -1,19 +1,21 @@
 import dayjs from 'dayjs'
 import { useState, useEffect } from 'react'
-import type { Room as RoomType, RoomStatus, RoomType as RoomTypeEnum, LabCategory } from '@/types/room'
-import { labCategoryLabels, labCategories } from '@/types/room'
+import type { Room as RoomType, RoomStatus, RoomType as RoomTypeEnum } from '@/types/room'
 import { getRooms } from '@/services/room'
+import api from '@/services/api'
+import { useModal } from '@/context/ModalContext'
 import QueueModal from './components/QueueModal'
 import RoomDetailModal from './components/RoomDetailModal'
 import RoomCard from './components/RoomCard'
 import TimeSlotGrid from './components/TimeSlotGrid'
 
 interface RoomSession {
+    roomId: number;
     roomName: string;
     startTime: string;
     endTime: string;
     status: 'pending' | 'approved' | 'rejected';
-    labCategory: LabCategory;
+    purpose?: string; // Display name for the booking
 }
 
 type TabType = 'rooms' | 'queue';
@@ -28,6 +30,7 @@ const roomTypeLabels: Record<RoomTypeEnum, string> = {
 };
 
 export default function Room() {
+    const modal = useModal();
     const [activeTab, setActiveTab] = useState<TabType>('rooms');
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<StatusFilterType>('All Status');
@@ -38,7 +41,7 @@ export default function Room() {
 
     const [sessions, setSessions] = useState<RoomSession[]>([]);
     const [queueModalOpen, setQueueModalOpen] = useState(false);
-    const [selectedLabCategory, setSelectedLabCategory] = useState<LabCategory | null>(null);
+    const [selectedRoom, setSelectedRoom] = useState<RoomType | null>(null);
     const [selectedSession, setSelectedSession] = useState<RoomSession | null>(null);
     const [selectedViewRoom, setSelectedViewRoom] = useState<RoomType | null>(null);
 
@@ -58,48 +61,143 @@ export default function Room() {
         loadRooms();
     }, []);
 
-    // Filter LAB rooms by category
-    const getLabRoomsByCategory = (category: LabCategory) => {
-        return rooms.filter(r => r.Room_Type === 'LAB' && r.Lab_Category === category);
+    // Get only LAB rooms for the queue tab
+    const labRooms = rooms.filter(r => r.Room_Type === 'LAB');
+
+    // Fetch existing schedules and approved bookings for LAB rooms when rooms are loaded
+    useEffect(() => {
+        const loadSchedulesAndBookings = async () => {
+            if (labRooms.length === 0) return;
+
+            try {
+                // Get today's date for filtering
+                const today = dayjs().startOf('day');
+                const todayDayOfWeek = today.day(); // 0 = Sunday, 1 = Monday, etc.
+
+                const allSessions: RoomSession[] = [];
+
+                for (const room of labRooms) {
+                    // 1. Fetch room schedules (from Schedule table)
+                    if (room.Schedule && room.Schedule.length > 0) {
+                        room.Schedule.forEach(schedule => {
+                            // Check if schedule applies to today (days is comma-separated, e.g., "1,2,3,4,5")
+                            const scheduleDays = schedule.Days?.split(',').map(d => parseInt(d.trim())) || [];
+                            if (scheduleDays.includes(todayDayOfWeek)) {
+                                // Create datetime for today with schedule times
+                                const scheduleStart = dayjs(schedule.Start_Time);
+                                const scheduleEnd = dayjs(schedule.End_Time);
+
+                                allSessions.push({
+                                    roomId: room.Room_ID,
+                                    roomName: room.Name,
+                                    startTime: today.hour(scheduleStart.hour()).minute(scheduleStart.minute()).toISOString(),
+                                    endTime: today.hour(scheduleEnd.hour()).minute(scheduleEnd.minute()).toISOString(),
+                                    status: 'approved', // Schedules are always considered approved
+                                    purpose: (schedule as { Title?: string }).Title || 'Scheduled'
+                                });
+                            }
+                        });
+                    }
+
+                    // 2. Fetch APPROVED bookings only (from Booked_Room table)
+                    const response = await api.get(`/bookings`, {
+                        params: {
+                            roomId: room.Room_ID,
+                            status: 'APPROVED' // Only approved bookings
+                        }
+                    });
+
+                    const bookings = response.data as Array<{
+                        Booked_Room_ID: number;
+                        Room_ID: number;
+                        Start_Time: string;
+                        End_Time: string;
+                        Status: string;
+                        Purpose?: string;
+                        Room?: { Name: string };
+                    }>;
+
+                    // Convert to RoomSession format and filter for today
+                    bookings.forEach(booking => {
+                        const bookingDate = dayjs(booking.Start_Time);
+                        // Only show today's bookings
+                        if (bookingDate.isSame(today, 'day')) {
+                            allSessions.push({
+                                roomId: booking.Room_ID,
+                                roomName: booking.Room?.Name || room.Name,
+                                startTime: booking.Start_Time,
+                                endTime: booking.End_Time,
+                                status: 'approved',
+                                purpose: booking.Purpose || 'Booked'
+                            });
+                        }
+                    });
+                }
+
+                setSessions(allSessions);
+            } catch (error) {
+                console.error('Failed to load schedules/bookings:', error);
+            }
+        };
+
+        loadSchedulesAndBookings();
+    }, [labRooms.length]); // Re-run when labRooms changes
+
+    // Get sessions for a specific room
+    const getSessionsByRoom = (roomId: number) => {
+        return sessions.filter(s => s.roomId === roomId);
     };
 
-    // Get sessions for a category
-    const getSessionsByCategory = (category: LabCategory) => {
-        return sessions.filter(s => s.labCategory === category);
-    };
-
-    const handleAddRoom = (category: LabCategory, _startTime: string, _endTime: string) => {
-        setSelectedLabCategory(category);
+    const handleAddTimeSlot = (room: RoomType, _startTime: string, _endTime: string) => {
+        setSelectedRoom(room);
         setSelectedSession(null);
         setQueueModalOpen(true);
     };
 
-    const handleSessionClick = (session: { roomName: string; startTime: string; endTime: string; status: 'pending' | 'approved' | 'rejected'; labCategory?: string }) => {
-        // Find the full session with labCategory
+    const handleSessionClick = (session: { roomName: string; startTime: string; endTime: string; status: 'pending' | 'approved' | 'rejected' }) => {
+        // Find the full session
         const fullSession = sessions.find(s => s.roomName === session.roomName && s.startTime === session.startTime);
         if (fullSession) {
             setSelectedSession(fullSession);
-            setSelectedLabCategory(fullSession.labCategory);
+            const room = labRooms.find(r => r.Room_ID === fullSession.roomId);
+            setSelectedRoom(room || null);
             setQueueModalOpen(true);
         }
     };
 
-    const handleQueueRoom = (startTime: string, endTime: string, roomName: string) => {
-        if (!selectedLabCategory) return;
+    const handleQueueRoom = async (startTime: string, endTime: string, roomName: string) => {
+        if (!selectedRoom) return;
 
         const today = dayjs().startOf('day');
         const requestedStart = today.hour(Number(startTime.split(':')[0])).minute(Number(startTime.split(':')[1])).toISOString();
         const requestedEnd = today.hour(Number(endTime.split(':')[0])).minute(Number(endTime.split(':')[1])).toISOString();
 
-        const newSession: RoomSession = {
-            roomName,
-            startTime: requestedStart,
-            endTime: requestedEnd,
-            status: 'approved',
-            labCategory: selectedLabCategory,
-        };
+        try {
+            // Call API to set room availability (with audit logging)
+            const response = await api.post(`/rooms/${selectedRoom.Room_ID}/student-availability`, {
+                startTime: requestedStart,
+                endTime: requestedEnd,
+                notes: `Student usage time set by staff`
+            });
 
-        setSessions(prev => [...prev, newSession]);
+            if ((response.data as { success: boolean }).success) {
+                // Add to local state for display
+                const newSession: RoomSession = {
+                    roomId: selectedRoom.Room_ID,
+                    roomName,
+                    startTime: requestedStart,
+                    endTime: requestedEnd,
+                    status: 'approved',
+                };
+                setSessions(prev => [...prev, newSession]);
+                setQueueModalOpen(false);
+                await modal.showSuccess('Room availability set! Students have been notified.', 'Success');
+            }
+        } catch (error: any) {
+            console.error('Error setting room availability:', error);
+            const errorMessage = error.response?.data?.details || error.response?.data?.error || 'Failed to set room availability';
+            await modal.showError(errorMessage, 'Error');
+        }
     };
 
     const handleRemoveSession = (session: RoomSession) => {
@@ -107,8 +205,6 @@ export default function Room() {
         setQueueModalOpen(false);
         setSelectedSession(null);
     };
-
-
 
     // Filtering for Rooms tab
     const filteredRooms = rooms.filter(room => {
@@ -212,50 +308,51 @@ export default function Room() {
                         </div>
                     )
                 ) : (
-                    /* Room Availability Queue - Grouped by Lab Category */
+                    /* Room Availability Queue - Show LAB rooms with time slots */
                     <div className="space-y-8">
                         {isLoading ? (
                             <div className="flex items-center justify-center h-32">
                                 <div className="text-gray-400">Loading lab rooms...</div>
                             </div>
-                        ) : (
-                            labCategories.map((category) => {
-                                const categoryRooms = getLabRoomsByCategory(category);
-                                const categorySessions = getSessionsByCategory(category);
-
-                                // Only show categories that have rooms
-                                if (categoryRooms.length === 0) return null;
+                        ) : labRooms.length > 0 ? (
+                            labRooms.map((room) => {
+                                const roomSessions = getSessionsByRoom(room.Room_ID);
 
                                 return (
-                                    <div key={category} className="bg-gray-800 rounded-lg p-4">
-                                        <h2 className="text-xl font-bold text-white mb-4">
-                                            {labCategoryLabels[category]}:
-                                        </h2>
+                                    <div key={room.Room_ID} className="bg-gray-800 rounded-lg p-4">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h2 className="text-xl font-bold text-white">
+                                                {room.Name}
+                                            </h2>
+                                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${room.Status === 'AVAILABLE'
+                                                ? 'bg-green-500/20 text-green-400'
+                                                : 'bg-yellow-500/20 text-yellow-400'
+                                                }`}>
+                                                {room.Status}
+                                            </span>
+                                        </div>
                                         <TimeSlotGrid
-                                            sessions={categorySessions}
-                                            totalRoomsInCategory={categoryRooms.length}
-                                            onAddRoom={(start, end) => handleAddRoom(category, start, end)}
+                                            sessions={roomSessions}
+                                            totalRoomsInCategory={1}
+                                            onAddRoom={(start, end) => handleAddTimeSlot(room, start, end)}
                                             onSessionClick={handleSessionClick}
                                         />
 
-                                        {/* Add Room Button */}
+                                        {/* Add Time Slot Button */}
                                         <div className="mt-4 flex justify-center">
                                             <button
-                                                onClick={() => handleAddRoom(category, '09:00', '10:00')}
+                                                onClick={() => handleAddTimeSlot(room, '09:00', '10:00')}
                                                 className="px-4 py-2 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
                                             >
-                                                + Add Room
+                                                + Add Student Usage Time
                                             </button>
                                         </div>
                                     </div>
                                 );
                             })
-                        )}
-
-                        {/* Show message if no lab rooms exist */}
-                        {!isLoading && labCategories.every(cat => getLabRoomsByCategory(cat).length === 0) && (
+                        ) : (
                             <div className="text-center text-gray-500 py-12">
-                                No LAB rooms with categories found. Please assign Lab_Category to your LAB rooms.
+                                No LAB rooms found. Create rooms with Room Type = LAB to see them here.
                             </div>
                         )}
                     </div>
@@ -267,11 +364,11 @@ export default function Room() {
                 onClose={() => {
                     setQueueModalOpen(false);
                     setSelectedSession(null);
-                    setSelectedLabCategory(null);
+                    setSelectedRoom(null);
                 }}
                 onQueue={handleQueueRoom}
                 onRemove={selectedSession ? () => handleRemoveSession(selectedSession) : () => { }}
-                availableRooms={selectedLabCategory ? getLabRoomsByCategory(selectedLabCategory) : []}
+                availableRooms={selectedRoom ? [selectedRoom] : []}
                 selectedQueueItem={selectedSession ? {
                     roomName: selectedSession.roomName,
                     startTime: selectedSession.startTime,

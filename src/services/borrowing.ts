@@ -1,7 +1,7 @@
 import type { Borrowing, CreateBorrowingDTO, UpdateBorrowingStatusDTO } from "@/types/borrowing";
 import api from "./api";
 
-const API_BASE = "/borrowings";
+const API_BASE = "/borrowing";
 
 export const getBorrowings = async (): Promise<Borrowing[]> => {
     const { data } = await api.get<Borrowing[]>(API_BASE);

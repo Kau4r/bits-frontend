@@ -90,7 +90,11 @@ export function ComboBox({ label, value, options, onChange, onRemove, readOnly }
                     type="text"
                     value={inputValue}
                     readOnly={readOnly}
-                    onChange={(e) => setInputValue(e.target.value)}
+                    onChange={(e) => {
+                        setInputValue(e.target.value);
+                        // Also update parent state as user types
+                        onChange(e.target.value);
+                    }}
                     onFocus={() => setOpen(true)}
                     onKeyDown={handleKeyDown}
                     placeholder={`Select or add ${label.toLowerCase()}...`}

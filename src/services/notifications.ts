@@ -22,8 +22,20 @@ export const getNotifications = async (params?: {
     limit?: number;
     unreadOnly?: boolean;
 }): Promise<Notification[]> => {
-    const { data } = await api.get<Notification[]>("/notifications", { params });
-    return data;
+    const response = await api.get<{ success: boolean; data: any[] }>("/notifications", { params });
+    // Map backend Audit_Log format to frontend Notification interface
+    return response.data.data.map((log: any) => ({
+        id: log.Log_ID,
+        type: log.Action.includes('ERROR') || log.Action.includes('REJECT') ? 'warning' : 'info',
+        title: log.Action.replace(/_/g, ' '),
+        message: log.Details,
+        time: new Date(log.Timestamp).toLocaleTimeString(),
+        timestamp: log.Timestamp,
+        read: !!log.Notification_Read_At,
+        readAt: log.Notification_Read_At,
+        user: log.User,
+        details: log.Notification_Data || {}
+    }));
 };
 
 // Mark single notification as read

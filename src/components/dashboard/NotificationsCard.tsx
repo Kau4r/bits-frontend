@@ -10,9 +10,12 @@ export default function NotificationsCard() {
     const loadNotifications = async () => {
       try {
         const data = await getNotifications();
-        setNotifications(data);
+        // Ensure we always set an array
+        setNotifications(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error('Error fetching notifications:', err);
+        // On error, keep empty array
+        setNotifications([]);
       } finally {
         setLoading(false);
       }
@@ -76,7 +79,7 @@ export default function NotificationsCard() {
         <div className="flex flex-1 flex-col overflow-hidden">
           <div className="-mr-2 overflow-y-auto pr-2">
             <div className="space-y-2 pr-1">
-              {notifications.map(({ id, title, message, type, time }) => (
+              {(notifications || []).map(({ id, title, message, type, time }) => (
                 <div
                   key={id}
                   className="flex items-start space-x-3 rounded-lg bg-white p-3 shadow-sm ring-1 ring-gray-200/50 dark:bg-gray-800 dark:ring-gray-700/50"

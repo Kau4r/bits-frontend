@@ -28,11 +28,13 @@ export interface Borrowing {
 
 // DTOs
 export interface CreateBorrowingDTO {
-    User_ID: number;
-    Item_ID?: number;
-    Computer_ID?: number;
-    Start_Time: string | Date;
-    End_Time: string | Date;
+    borrowerId: number;
+    borroweeId?: number;
+    items?: { itemId: number; quantity: number }[];
+    computers?: { computerId: number }[];
+    type: 'ITEM' | 'COMPUTER';
+    purpose?: string;
+    expectedReturnDate?: string | Date;
 }
 
 export interface UpdateBorrowingStatusDTO {

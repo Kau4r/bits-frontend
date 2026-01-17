@@ -1,8 +1,9 @@
 import '@/App.css'
 import './index.css';
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ModalProvider } from './context/ModalContext';
 import LabtechDashboard from './pages/LabTech/LabtechDashboard';
 import Layout from './components/layout/Layout';
 import Ticket from './pages/Tickets/Tickets';
@@ -39,9 +40,15 @@ const ProtectedRoute = ({ children, roles }: { children: JSX.Element, roles: str
 // 🚪 Handles logout redirection
 const Logout = () => {
   const { logout } = useAuth();
+  const hasLoggedOut = useRef(false);
+
   useEffect(() => {
-    logout();
+    if (!hasLoggedOut.current) {
+      hasLoggedOut.current = true;
+      logout();
+    }
   }, [logout]);
+
   return <Navigate to="/login" replace />;
 };
 
@@ -97,7 +104,7 @@ function AppContent() {
         <Route path="/inventory" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><InventoryPage /></ProtectedRoute>} />
         <Route path="/tickets" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Ticket /></ProtectedRoute>} />
         <Route path="/notification" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Notification /></ProtectedRoute>} />
-  
+
         <Route path="/labhead-scheduling" element={<ProtectedRoute roles={[ROLES.LAB_HEAD]}><LabheadScheduling /></ProtectedRoute>} />
 
         {/* LabHead only */}
@@ -133,9 +140,12 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <ModalProvider>
+        <AppContent />
+      </ModalProvider>
     </AuthProvider>
   );
 }
 
 export default App;
+

@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import type { Item } from "@/types/inventory";
 import type { Room } from "@/types/room";
 import { ComboBox } from "./ComboBox";
+import { useModal } from "@/context/ModalContext";
 
 // Omit Item_Code and Item_ID for new items
 type NewInventoryItem = Omit<Item, "Item_Code" | "Item_ID">;
@@ -33,8 +34,9 @@ export default function ItemModal({
   rooms,
   userId,
 }: ItemModalProps) {
+  const modal = useModal();
   const [baseItem, setBaseItem] = useState<Item | Omit<Item, 'Item_ID' | 'Item_Code'>>({
-    Item_Type: "",
+    Item_Type: "GENERAL",
     Brand: "",
     Room_ID: rooms?.[0]?.Room_ID ?? 0,
     Serial_Number: "",
@@ -64,7 +66,7 @@ export default function ItemModal({
 
     if (initMode === "add") {
       setBaseItem({
-        Item_Type: "",
+        Item_Type: "GENERAL",
         Brand: "",
         Room_ID: rooms?.[0]?.Room_ID ?? 0,
         Serial_Number: "",
@@ -87,8 +89,19 @@ export default function ItemModal({
 
   const readOnly = mode === "view";
 
-  const handleSave = () => {
-    if (!baseItem.Item_Type || !baseItem.Brand) return;
+  const handleSave = async () => {
+    console.log("[ItemModal] handleSave called");
+    console.log("[ItemModal] mode:", mode);
+    console.log("[ItemModal] baseItem:", baseItem);
+    console.log("[ItemModal] baseItem.Item_Type:", baseItem.Item_Type);
+    console.log("[ItemModal] baseItem.Brand:", baseItem.Brand);
+
+    if (!baseItem.Item_Type || !baseItem.Brand) {
+      const msg = `Validation failed - Item_Type: "${baseItem.Item_Type}", Brand: "${baseItem.Brand}"`;
+      console.error("[ItemModal]", msg);
+      await modal.showError(msg, 'Validation Error');
+      return;
+    }
 
     if (mode === "edit" && item) {
       // Update existing
@@ -101,6 +114,7 @@ export default function ItemModal({
         Updated_At: new Date().toISOString(),
       };
 
+      console.log("[ItemModal] Calling onSave for edit:", updatedItem);
       onSave({ id: item.Item_ID!, data: updatedItem });
     }
     if (mode === 'add') {
@@ -128,6 +142,7 @@ export default function ItemModal({
         }];
       }
 
+      console.log("[ItemModal] Calling onSave for add:", itemsToAdd);
       onSave(itemsToAdd); // Pass array for bulk add
     }
 
@@ -142,17 +157,19 @@ export default function ItemModal({
     else if (qty < serials.length) setSerials(serials.slice(0, qty));
   };
 
-  const removeBrand = (brand: string) => {
+  const removeBrand = async (brand: string) => {
     if (!brand) return;
-    if (confirm(`Delete brand "${brand}"?`)) {
+    const confirmed = await modal.showConfirm(`Delete brand "${brand}"?`, 'Delete Brand');
+    if (confirmed) {
       setBrands((prev) => prev.filter((b) => b !== brand));
       if (baseItem.Brand === brand) setBaseItem({ ...baseItem, Brand: "" });
     }
   };
 
-  const removeItemType = (type: string) => {
+  const removeItemType = async (type: string) => {
     if (!type) return;
-    if (confirm(`Delete item type "${type}"?`)) {
+    const confirmed = await modal.showConfirm(`Delete item type "${type}"?`, 'Delete Item Type');
+    if (confirmed) {
       setItemTypes((prev) => prev.filter((t) => t !== type));
       if (baseItem.Item_Type === type) setBaseItem({ ...baseItem, Item_Type: "" });
     }
@@ -232,7 +249,7 @@ export default function ItemModal({
             label="Item Type"
             value={baseItem.Item_Type}
             options={itemTypes}
-            onChange={(v: string) => setBaseItem({ ...baseItem, Item_Type: v })}
+            onChange={(v: string) => setBaseItem({ ...baseItem, Item_Type: v as Item["Item_Type"] })}
             onRemove={removeItemType}
             readOnly={readOnly}
           />
@@ -301,22 +318,33 @@ export default function ItemModal({
               {mode === "add" && quantity > 1 ? "Serial Numbers" : "Serial Number"}
             </label>
             <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-              {(mode === "add" && quantity > 1 ? serials : [baseItem.Serial_Number ?? ""]).map(
-                (s, idx) => (
+              {mode === "add" && quantity > 1 ? (
+                // Bulk add - multiple serial number inputs
+                serials.map((s, idx) => (
                   <input
                     key={idx}
                     type="text"
                     value={s}
                     onChange={(e) => {
-                      const next = [...(mode === "add" && quantity > 1 ? serials : [baseItem.Serial_Number ?? ""])];
+                      const next = [...serials];
                       next[idx] = e.target.value;
-                      mode === "add" ? setSerials(next) : setBaseItem({ ...baseItem, Serial_Number: next[0] });
+                      setSerials(next);
                     }}
                     disabled={readOnly}
                     className="w-full rounded-md border px-3 py-2 dark:bg-gray-800 dark:text-white"
                     placeholder={`Serial #${idx + 1}`}
                   />
-                )
+                ))
+              ) : (
+                // Single item - one serial number input
+                <input
+                  type="text"
+                  value={baseItem.Serial_Number ?? ""}
+                  onChange={(e) => setBaseItem({ ...baseItem, Serial_Number: e.target.value })}
+                  disabled={readOnly}
+                  className="w-full rounded-md border px-3 py-2 dark:bg-gray-800 dark:text-white"
+                  placeholder="Serial Number"
+                />
               )}
             </div>
           </div>

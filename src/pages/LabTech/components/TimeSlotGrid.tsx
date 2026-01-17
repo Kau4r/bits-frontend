@@ -6,6 +6,7 @@ interface RoomSession {
     endTime: string;
     status: 'pending' | 'approved' | 'rejected';
     labCategory?: string;
+    purpose?: string; // Display name for the booking
 }
 
 interface TimeSlotGridProps {
@@ -126,7 +127,7 @@ function TimeRow({ slots, sessions, totalRoomsInCategory, onAddRoom, onSessionCl
                                 }}
                                 onClick={() => onSessionClick(startingSession)}
                             >
-                                {startingSession.roomName}
+                                {startingSession.purpose || startingSession.roomName}
                                 {/* Three dot menu */}
                                 <button className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-white">
                                     ⋮
@@ -142,8 +143,8 @@ function TimeRow({ slots, sessions, totalRoomsInCategory, onAddRoom, onSessionCl
                         <div
                             key={slot}
                             className={`flex-1 min-w-[60px] flex items-center justify-center text-xs py-2 rounded cursor-pointer transition-colors ${allRoomsOccupied
-                                    ? 'bg-red-500/70 text-white cursor-not-allowed'
-                                    : 'bg-gray-700 border border-gray-600 hover:bg-gray-600 text-gray-300'
+                                ? 'bg-red-500/70 text-white cursor-not-allowed'
+                                : 'bg-gray-700 border border-gray-600 hover:bg-gray-600 text-gray-300'
                                 }`}
                             onClick={() => {
                                 if (!allRoomsOccupied) {

@@ -1,6 +1,5 @@
 export type RoomType = 'CONSULTATION' | 'LECTURE' | 'LAB';
 export type RoomStatus = 'AVAILABLE' | 'IN_USE' | 'MAINTENANCE' | 'OCCUPIED' | 'RESERVED';
-export type LabCategory = 'MAC' | 'WINDOWS' | 'NETWORKING';
 
 export const statusColors: Record<RoomStatus, string> = {
     AVAILABLE: 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100',
@@ -10,21 +9,23 @@ export const statusColors: Record<RoomStatus, string> = {
     RESERVED: 'bg-purple-100 text-purple-800 dark:bg-purple-800 dark:text-purple-100',
 };
 
-export const labCategoryLabels: Record<LabCategory, string> = {
-    MAC: 'Mac Laboratories',
-    WINDOWS: 'Windows Laboratories',
-    NETWORKING: 'Networking Laboratories',
-};
-
 export const roomStatuses: RoomStatus[] = ['AVAILABLE', 'IN_USE', 'MAINTENANCE', 'OCCUPIED', 'RESERVED'];
 export const roomTypes: RoomType[] = ['CONSULTATION', 'LECTURE', 'LAB'];
-export const labCategories: LabCategory[] = ['MAC', 'WINDOWS', 'NETWORKING'];
+
+export interface RoomSchedule {
+    Schedule_ID: number;
+    Room_ID: number;
+    Days: string;       // Comma-separated day numbers, e.g., "1,2,3,4,5"
+    Start_Time: string; // ISO datetime string
+    End_Time: string;   // ISO datetime string
+    Title?: string;     // Optional schedule title/description
+}
 
 export interface Room {
     Room_ID: number;
     Name: string;
     Capacity: number;
     Room_Type: RoomType;
-    Lab_Category?: LabCategory | null;
     Status: RoomStatus;
+    Schedule?: RoomSchedule[]; // Optional array of schedules for this room
 }

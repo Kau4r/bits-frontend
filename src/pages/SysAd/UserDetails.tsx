@@ -3,13 +3,14 @@ import { useState } from 'react'
 import { updateUser } from '@/services/user'
 import { type User, type User_Role, ROLES } from '@/types/user'
 import { formatRole } from './UserPage'
-
+import { useModal } from '@/context/ModalContext'
 import ConfirmModal from '@/components/SysAd/ConfirmModal'
 
 export default function UserDetails() {
   const { state } = useLocation()
   const user = state?.user as User
   const navigate = useNavigate()
+  const modal = useModal()
 
   const [role, setRole] = useState<User_Role>(user.User_Role)
   const [isActive, setIsActive] = useState<boolean>(user.Is_Active)
@@ -68,10 +69,10 @@ export default function UserDetails() {
 
       console.log("✅ Updated user:", updated);
       setHasChanges(false);
-      alert("User updated successfully!");
+      await modal.showSuccess('User updated successfully!', 'Success');
     } catch (err) {
       console.error("❌ Failed to update user:", err);
-      alert("Failed to update user. See console for details.");
+      await modal.showError('Failed to update user. See console for details.', 'Error');
     } finally {
       setLoading(false);
     }
@@ -161,7 +162,7 @@ export default function UserDetails() {
           {/* Right: Actions */}
           <div className="flex items-center gap-3">
             <button
-              onClick={() => alert(`Password reset link would be sent to ${user.Email}`)}
+              onClick={async () => await modal.showAlert(`Password reset link would be sent to ${user.Email}`, 'Password Reset')}
               className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 dark:focus:ring-offset-gray-800"
             >
               Send Password Reset

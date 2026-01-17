@@ -1,10 +1,12 @@
 import type { Room } from "./room";
 import type { User } from "./user";
 
+export type ItemType = "HDMI" | "VGA" | "ADAPTER" | "PROJECTOR" | "EXTENSION" | "MOUSE" | "KEYBOARD" | "MONITOR" | "GENERAL" | "OTHER";
+
 export interface Item {
   Item_ID?: number;
   Item_Code?: string;
-  Item_Type: string;
+  Item_Type: ItemType;
   Brand: string;
   Room_ID?: number;
   User_ID?: number;
