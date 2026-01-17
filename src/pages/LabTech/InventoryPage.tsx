@@ -9,7 +9,7 @@ import { fetchInventory, updateInventoryItem, addInventoryBulk, addInventoryItem
 import { inventoryStatuses } from "@/types/inventory"
 import type { Room } from '@/types/room'
 import { useAuth } from '@/context/AuthContext'
-
+import InventoryMobilePage from './InventoryMobile'
 
 const InventoryPage = () => {
   const { user } = useAuth();
@@ -21,6 +21,15 @@ const InventoryPage = () => {
   const [modalMode, setModalMode] = useState<'view' | 'edit' | 'add'>('view')
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
   const [rooms, setRooms] = useState<Room[]>([])
+
+  // Responsive state
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     const loadRoomsAndUsers = async () => {
@@ -49,6 +58,11 @@ const InventoryPage = () => {
     }
     loadInventory()
   }, [])
+
+  // If mobile, render the mobile view immediately
+  if (isMobile) {
+    return <InventoryMobilePage />;
+  }
 
   // const archiveStatuses: Item['Status'][] = ['AVAILABLE', 'BORROWED'];
   const filteredInventory = inventory.filter(item => {
@@ -287,7 +301,6 @@ const InventoryPage = () => {
                   >
                     {(item.Status ?? "AVAILABLE").charAt(0).toUpperCase() + (item.Status ?? "AVAILABLE").slice(1).toLowerCase()}
                   </span>
-
                 </div>
                 <div className="text-sm text-gray-700 dark:text-gray-300">
                   {item.Room?.Name ?? ((item as any).Computers?.[0]?.Room?.Name) ?? '—'}

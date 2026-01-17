@@ -197,7 +197,7 @@ export default function Room() {
             } else {
                 // CREATE LOGIC
                 // Call API to set room availability (with audit logging)
-                const response = await api.post(`/rooms/${selectedRoom.Room_ID}/student-availability`, {
+                const response = await api.post(`/rooms/${selectedRoom.Room_ID}/student-room-schedule`, {
                     startTime: requestedStart,
                     endTime: requestedEnd,
                     notes: `Student usage time set by staff`
