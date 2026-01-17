@@ -32,7 +32,7 @@ export default function Login() {
         const target =
           role === "LAB_TECH"
             ? isMobile
-              ? "/inventory-mobile"
+              ? "/labtech-mobile"
               : "/labtech-dashboard"
             : role === "LAB_HEAD"
               ? "/labhead-dashboard"
