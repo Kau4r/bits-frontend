@@ -17,6 +17,7 @@ interface QueueModalProps {
     availableRooms: Room[];
     selectedQueueItem: RoomQueueItem | null;
     occupiedSlots?: { roomName: string; startTime: string; endTime: string }[];
+    readOnly?: boolean;
 }
 
 // Generate 30-minute time slots
@@ -48,6 +49,7 @@ export default function QueueModal({
     availableRooms,
     selectedQueueItem,
     occupiedSlots = [],
+    readOnly = false,
 }: QueueModalProps) {
 
     const [startTime, setStartTime] = useState('')
@@ -79,6 +81,8 @@ export default function QueueModal({
     }, [selectedQueueItem, isOpen, availableRooms]);
 
     const isEditing = !!selectedQueueItem;
+    // If readOnly, we are just viewing details
+
 
     // Check if a time slot is occupied for any room
     const isTimeOccupied = (time: string, isEndTime: boolean = false) => {
@@ -159,13 +163,15 @@ export default function QueueModal({
                             <button
                                 type="button"
                                 onClick={() => {
+                                    if (readOnly) return;
                                     setStartDropdownOpen(!startDropdownOpen);
                                     setEndDropdownOpen(false);
                                 }}
-                                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-left text-white flex justify-between items-center hover:border-gray-500"
+                                disabled={readOnly}
+                                className={`w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-left text-white flex justify-between items-center ${readOnly ? 'opacity-60 cursor-not-allowed' : 'hover:border-gray-500'}`}
                             >
                                 {startTime ? formatTimeDisplay(startTime) : 'Select time'}
-                                <span className="text-gray-400">▼</span>
+                                {!readOnly && <span className="text-gray-400">▼</span>}
                             </button>
                             {startDropdownOpen && (
                                 <div className="absolute z-10 mt-1 w-full bg-gray-700 border border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto">
@@ -208,13 +214,15 @@ export default function QueueModal({
                             <button
                                 type="button"
                                 onClick={() => {
+                                    if (readOnly) return;
                                     setEndDropdownOpen(!endDropdownOpen);
                                     setStartDropdownOpen(false);
                                 }}
-                                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-left text-white flex justify-between items-center hover:border-gray-500"
+                                disabled={readOnly}
+                                className={`w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-left text-white flex justify-between items-center ${readOnly ? 'opacity-60 cursor-not-allowed' : 'hover:border-gray-500'}`}
                             >
                                 {endTime ? formatTimeDisplay(endTime) : 'Select time'}
-                                <span className="text-gray-400">▼</span>
+                                {!readOnly && <span className="text-gray-400">▼</span>}
                             </button>
                             {endDropdownOpen && (
                                 <div className="absolute z-10 mt-1 w-full bg-gray-700 border border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto">
@@ -283,7 +291,7 @@ export default function QueueModal({
                     >
                         Cancel
                     </button>
-                    {isEditing && (
+                    {isEditing && !readOnly && (
                         <button
                             type="button"
                             onClick={() => selectedQueueItem && onRemove(selectedQueueItem)}
@@ -292,13 +300,15 @@ export default function QueueModal({
                             Remove
                         </button>
                     )}
-                    <button
-                        type="button"
-                        onClick={handleSubmit}
-                        className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-                    >
-                        Confirm
-                    </button>
+                    {!readOnly && (
+                        <button
+                            type="button"
+                            onClick={handleSubmit}
+                            className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                        >
+                            Confirm
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

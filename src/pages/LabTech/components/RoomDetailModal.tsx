@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { Room } from '@/types/room';
+import type { Room, RoomSession } from '@/types/room';
 import { fetchComputers, createComputer, updateComputer, deleteComputer, type Computer, type CreateComputerPayload, type UpdateComputerPayload } from '@/services/computers';
 import api from '@/services/api';
 import { useModal } from '@/context/ModalContext';
@@ -21,6 +21,7 @@ interface RoomDetailModalProps {
     isOpen: boolean;
     onClose: () => void;
     room: Room;
+    sessions?: RoomSession[];
 }
 
 // Mock Schedule Data with columns
@@ -36,7 +37,7 @@ const formatItemType = (type: string) => {
     return type.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
 };
 
-export default function RoomDetailModal({ isOpen, onClose, room }: RoomDetailModalProps) {
+export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }: RoomDetailModalProps) {
     const modal = useModal();
     const [activeTab, setActiveTab] = useState<'Computers' | 'Assets' | 'Schedule'>('Computers');
     const [computers, setComputers] = useState<Computer[]>([]);
@@ -495,37 +496,72 @@ export default function RoomDetailModal({ isOpen, onClose, room }: RoomDetailMod
                                     </div>
 
                                     {/* Events Rows */}
-                                    <div className="relative space-y-4">
+                                    <div className="relative space-y-4 min-h-[100px]">
                                         <div className="h-24 bg-gray-800/30 rounded-lg relative">
-                                            <div className="absolute left-[calc((100%/28)*18)] w-[calc((100%/28)*4)] top-1 bottom-1 p-1">
-                                                <div className="bg-blue-500/20 border border-blue-500/50 rounded-md h-full p-2">
-                                                    <div className="flex justify-between items-start mb-1">
-                                                        <span className="text-xs text-gray-300">16:30 - 18:30</span>
-                                                        <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">Class</span>
-                                                    </div>
-                                                    <p className="text-sm font-medium text-blue-200">Faculty: Patrick Elalto</p>
-                                                    <p className="text-xs text-gray-400">Event: Class</p>
+                                            {sessions.length === 0 ? (
+                                                <div className="flex items-center justify-center h-full text-gray-500 italic">
+                                                    No schedules or bookings for today
                                                 </div>
-                                            </div>
+                                            ) : (
+                                                sessions.map((session, index) => {
+                                                    // Calculate position
+                                                    const start = new Date(session.startTime);
+                                                    const end = new Date(session.endTime);
 
-                                            <div className="absolute left-[calc((100%/28)*9)] w-[calc((100%/28)*4)] top-1 bottom-1 p-1">
-                                                <div className="bg-green-500/10 border border-green-500/30 rounded-md h-full p-2 flex items-center justify-center">
-                                                    <span className="text-green-400 font-medium">Available</span>
-                                                </div>
-                                            </div>
-                                        </div>
+                                                    // Grid starts at 7:30 (450 mins from midnight)
+                                                    // Each slot is 30 mins
+                                                    const gridStartMins = 7 * 60 + 30;
 
-                                        <div className="h-24 bg-gray-800/30 rounded-lg relative">
-                                            <div className="absolute left-[calc((100%/28)*18)] w-[calc((100%/28)*4)] top-1 bottom-1 p-1">
-                                                <div className="bg-blue-900/40 border border-blue-700/50 rounded-md h-full p-2">
-                                                    <div className="flex justify-between items-start mb-1">
-                                                        <span className="text-xs text-gray-300">16:30 - 18:30</span>
-                                                        <span className="text-xs bg-blue-700 text-white px-2 py-0.5 rounded-full">Queue</span>
-                                                    </div>
-                                                    <p className="text-sm font-medium text-blue-200">On Queue</p>
-                                                    <p className="text-xs text-gray-400">Event: Student Use</p>
-                                                </div>
-                                            </div>
+                                                    const startMins = start.getHours() * 60 + start.getMinutes();
+                                                    const endMins = end.getHours() * 60 + end.getMinutes();
+
+                                                    // Calculate column index (0-based) form 7:30
+                                                    // 28 columns total representing 7:30 to 21:30
+                                                    const colStart = (startMins - gridStartMins) / 30;
+                                                    const durationSlots = (endMins - startMins) / 30;
+
+                                                    // CSS Grid placement
+                                                    // left = (colStart / 28) * 100 %
+                                                    // width = (durationSlots / 28) * 100 %
+
+                                                    // Ensure within bounds
+                                                    if (colStart < 0 || colStart >= 28) return null;
+
+                                                    const isSchedule = session.type === 'schedule';
+
+                                                    return (
+                                                        <div
+                                                            key={index}
+                                                            className="absolute top-1 bottom-1 p-1"
+                                                            style={{
+                                                                left: `calc((100% / 28) * ${colStart})`,
+                                                                width: `calc((100% / 28) * ${Math.max(durationSlots, 0.5)})` // Min width
+                                                            }}
+                                                        >
+                                                            <div className={`
+                                                                h-full p-2 rounded-md border overflow-hidden
+                                                                ${isSchedule
+                                                                    ? 'bg-blue-500/20 border-blue-500/50'
+                                                                    : 'bg-green-500/10 border-green-500/30'}
+                                                            `}>
+                                                                <div className="flex justify-between items-start mb-1 gap-1">
+                                                                    <span className="text-[10px] text-gray-300 truncate">
+                                                                        {start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} -
+                                                                        {end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                    </span>
+                                                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full truncate ${isSchedule ? 'bg-blue-500 text-white' : 'bg-green-500 text-green-100'
+                                                                        }`}>
+                                                                        {isSchedule ? 'Class' : 'Booking'}
+                                                                    </span>
+                                                                </div>
+                                                                <p className={`text-sm font-medium truncate ${isSchedule ? 'text-blue-200' : 'text-green-200'}`}>
+                                                                    {session.purpose}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })
+                                            )}
                                         </div>
                                     </div>
                                 </div>

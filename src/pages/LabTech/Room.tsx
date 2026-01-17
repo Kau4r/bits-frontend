@@ -1,6 +1,6 @@
 import dayjs from 'dayjs'
 import { useState, useEffect } from 'react'
-import type { Room as RoomType, RoomStatus, RoomType as RoomTypeEnum } from '@/types/room'
+import type { Room as RoomType, RoomStatus, RoomType as RoomTypeEnum, RoomSession } from '@/types/room'
 import { getRooms } from '@/services/room'
 import api from '@/services/api'
 import { useModal } from '@/context/ModalContext'
@@ -8,15 +8,8 @@ import QueueModal from './components/QueueModal'
 import RoomDetailModal from './components/RoomDetailModal'
 import RoomCard from './components/RoomCard'
 import TimeSlotGrid from './components/TimeSlotGrid'
+import { useAuth } from '@/context/AuthContext'
 
-interface RoomSession {
-    roomId: number;
-    roomName: string;
-    startTime: string;
-    endTime: string;
-    status: 'pending' | 'approved' | 'rejected';
-    purpose?: string; // Display name for the booking
-}
 
 type TabType = 'rooms' | 'queue';
 type StatusFilterType = 'All Status' | RoomStatus;
@@ -30,6 +23,7 @@ const roomTypeLabels: Record<RoomTypeEnum, string> = {
 };
 
 export default function Room() {
+    const { user } = useAuth();
     const modal = useModal();
     const [activeTab, setActiveTab] = useState<TabType>('rooms');
     const [searchTerm, setSearchTerm] = useState('');
@@ -92,8 +86,10 @@ export default function Room() {
                                     roomName: room.Name,
                                     startTime: today.hour(scheduleStart.hour()).minute(scheduleStart.minute()).toISOString(),
                                     endTime: today.hour(scheduleEnd.hour()).minute(scheduleEnd.minute()).toISOString(),
-                                    status: 'approved', // Schedules are always considered approved
-                                    purpose: (schedule as { Title?: string }).Title || 'Scheduled'
+                                    status: 'approved',
+                                    purpose: (schedule as { Title?: string }).Title || 'Scheduled',
+                                    type: 'schedule',
+                                    id: schedule.Schedule_ID
                                 });
                             }
                         });
@@ -115,6 +111,8 @@ export default function Room() {
                         Status: string;
                         Purpose?: string;
                         Room?: { Name: string };
+                        User_ID?: number;
+                        Created_By?: number;
                     }>;
 
                     // Convert to RoomSession format and filter for today
@@ -128,7 +126,10 @@ export default function Room() {
                                 startTime: booking.Start_Time,
                                 endTime: booking.End_Time,
                                 status: 'approved',
-                                purpose: booking.Purpose || 'Booked'
+                                purpose: booking.Purpose || 'Booked',
+                                id: booking.Booked_Room_ID,
+                                type: 'booking',
+                                userId: booking.User_ID || booking.Created_By
                             });
                         }
                     });
@@ -173,37 +174,69 @@ export default function Room() {
         const requestedEnd = today.hour(Number(endTime.split(':')[0])).minute(Number(endTime.split(':')[1])).toISOString();
 
         try {
-            // Call API to set room availability (with audit logging)
-            const response = await api.post(`/rooms/${selectedRoom.Room_ID}/student-availability`, {
-                startTime: requestedStart,
-                endTime: requestedEnd,
-                notes: `Student usage time set by staff`
-            });
+            if (selectedSession && selectedSession.type === 'booking' && selectedSession.id) {
+                // EDIT LOGIC
+                if (selectedSession.userId !== user?.User_ID) {
+                    await modal.showError("You can only edit your own bookings.", "Permission Denied");
+                    return;
+                }
 
-            if ((response.data as { success: boolean }).success) {
-                // Add to local state for display
-                const newSession: RoomSession = {
-                    roomId: selectedRoom.Room_ID,
-                    roomName,
+                await api.patch(`/bookings/${selectedSession.id}`, {
+                    startTime: requestedStart,
+                    endTime: requestedEnd
+                });
+
+                setSessions(prev => prev.map(s =>
+                    s === selectedSession
+                        ? { ...s, startTime: requestedStart, endTime: requestedEnd }
+                        : s
+                ));
+
+                setQueueModalOpen(false);
+                await modal.showSuccess('Booking updated successfully.', 'Success');
+            } else {
+                // CREATE LOGIC
+                // Call API to set room availability (with audit logging)
+                const response = await api.post(`/rooms/${selectedRoom.Room_ID}/student-availability`, {
                     startTime: requestedStart,
                     endTime: requestedEnd,
-                    status: 'approved',
-                };
-                setSessions(prev => [...prev, newSession]);
-                setQueueModalOpen(false);
-                await modal.showSuccess('Room availability set! Students have been notified.', 'Success');
+                    notes: `Student usage time set by staff`
+                });
+
+                if ((response.data as { success: boolean }).success) {
+                    // Ideally we should reload to get the real ID and proper formatting
+                    // For now, we'll force a reload of the page to simplify
+                    window.location.reload();
+                }
             }
         } catch (error: any) {
             console.error('Error setting room availability:', error);
-            const errorMessage = error.response?.data?.details || error.response?.data?.error || 'Failed to set room availability';
+            const errorMessage = error.response?.data?.details || error.response?.data?.error || 'Failed to action room availability';
             await modal.showError(errorMessage, 'Error');
         }
     };
 
-    const handleRemoveSession = (session: RoomSession) => {
-        setSessions(prev => prev.filter(s => s !== session));
-        setQueueModalOpen(false);
-        setSelectedSession(null);
+    const handleRemoveSession = async (session: RoomSession) => {
+        if (session.type !== 'booking' || !session.id) {
+            await modal.showError("Cannot remove system schedules.", "Error");
+            return;
+        }
+
+        if (session.userId !== user?.User_ID) {
+            await modal.showError("You can only remove your own bookings.", "Permission Denied");
+            return;
+        }
+
+        try {
+            await api.delete(`/bookings/${session.id}`);
+            setSessions(prev => prev.filter(s => s !== session));
+            setQueueModalOpen(false);
+            setSelectedSession(null);
+            await modal.showSuccess('Booking removed.', 'Success');
+        } catch (error: any) {
+            console.error('Failed to remove booking:', error);
+            await modal.showError('Failed to remove booking', 'Error');
+        }
     };
 
     // Filtering for Rooms tab
@@ -376,12 +409,18 @@ export default function Room() {
                     user: 'labtech',
                     status: selectedSession.status,
                 } : null}
+                readOnly={selectedSession ? (
+                    // Read only if it's a schedule OR if it's a booking but not owned by current user
+                    selectedSession.type === 'schedule' ||
+                    (selectedSession.type === 'booking' && selectedSession.userId !== user?.User_ID)
+                ) : false}
             />
             {selectedViewRoom && (
                 <RoomDetailModal
                     isOpen={!!selectedViewRoom}
                     onClose={() => setSelectedViewRoom(null)}
                     room={selectedViewRoom}
+                    sessions={getSessionsByRoom(selectedViewRoom.Room_ID)}
                 />
             )}
         </div>

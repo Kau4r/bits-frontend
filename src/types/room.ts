@@ -29,3 +29,15 @@ export interface Room {
     Status: RoomStatus;
     Schedule?: RoomSchedule[]; // Optional array of schedules for this room
 }
+
+export interface RoomSession {
+    roomId: number;
+    roomName: string;
+    startTime: string; // ISO datetime
+    endTime: string;   // ISO datetime
+    status: 'pending' | 'approved' | 'rejected';
+    purpose?: string;
+    userId?: number;
+    id?: number;
+    type: 'booking' | 'schedule';
+}
