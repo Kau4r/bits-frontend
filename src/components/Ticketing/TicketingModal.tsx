@@ -49,6 +49,9 @@ export default function TicketingModal({
   const [assets, setAssets] = useState<Asset[]>([]);
   const [isLoadingAssets, setIsLoadingAssets] = useState(false);
 
+  // Local state for optimistic UI updates on technician assignment
+  const [localTechnician, setLocalTechnician] = useState<Ticket['Technician'] | null>(null);
+
   // Clear feedback after 3 seconds
   useEffect(() => {
     if (feedbackMessage) {
@@ -153,6 +156,7 @@ export default function TicketingModal({
         itemId: ticket.Item?.Item_ID,
         roomId: ticket.Room_ID || undefined,
       });
+      setLocalTechnician(ticket.Technician || null);
     }
 
     if (isCreating) {
@@ -160,6 +164,7 @@ export default function TicketingModal({
       setPriority('');
       setCategory('');
       setFormData({ reportProblem: '', location: '', itemId: undefined, roomId: undefined });
+      setLocalTechnician(null);
     }
   }, [ticket, isCreating]);
 
@@ -254,24 +259,30 @@ export default function TicketingModal({
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Technician Assigned</p>
                   <div className="flex items-center gap-2">
                     <p className="font-medium text-gray-900 dark:text-white">
-                      {ticket.Technician?.First_Name ? `${ticket.Technician.First_Name} ${ticket.Technician.Last_Name}` : 'None'}
+                      {localTechnician?.First_Name ? `${localTechnician.First_Name} ${localTechnician.Last_Name}` : 'None'}
                     </p>
 
                     {/* Unassign Button */}
-                    {['LAB_TECH', 'LAB_HEAD', 'ADMIN'].includes(user?.User_Role ?? '') && ticket.Technician?.User_ID && (
+                    {['LAB_TECH', 'LAB_HEAD', 'ADMIN'].includes(user?.User_Role ?? '') && localTechnician?.User_ID && (
                       <button
                         type="button"
                         onClick={async () => {
                           if (!ticket) return;
+                          // Optimistic update - clear technician immediately
+                          const previousTechnician = localTechnician;
+                          setLocalTechnician(null);
+                          setStatus('PENDING');
                           try {
                             const updated = await updateTicket(ticket.Ticket_ID, {
-                              Technician_ID: null as any, // Cast to any to bypass strict type check if needed, or update type
+                              Technician_ID: null as any,
                               Status: 'PENDING'
                             });
                             onUpdate(updated);
-                            setStatus('PENDING');
                             setFeedbackMessage({ text: 'Ticket unassigned successfully', type: 'success' });
                           } catch (err) {
+                            // Revert on error
+                            setLocalTechnician(previousTechnician);
+                            setStatus(ticket.Status);
                             console.error("Failed to unassign ticket", err);
                             setFeedbackMessage({ text: 'Failed to unassign ticket', type: 'error' });
                           }
@@ -285,20 +296,33 @@ export default function TicketingModal({
                 </div>
 
                 {/* Assign to Me Button */}
-                {['LAB_TECH', 'LAB_HEAD', 'ADMIN'].includes(user?.User_Role ?? '') && !ticket.Technician?.User_ID && ticket.Status !== 'RESOLVED' && (
+                {['LAB_TECH', 'LAB_HEAD', 'ADMIN'].includes(user?.User_Role ?? '') && !localTechnician?.User_ID && ticket.Status !== 'RESOLVED' && (
                   <button
                     type="button"
                     onClick={async () => {
                       if (!ticket || !user) return;
+                      // Optimistic update - assign immediately
+                      const newTechnician = {
+                        User_ID: user.User_ID,
+                        First_Name: user.First_Name,
+                        Last_Name: user.Last_Name,
+                        User_Role: user.User_Role,
+                        Email: user.Email,
+                        Is_Active: user.Is_Active,
+                      };
+                      setLocalTechnician(newTechnician);
+                      setStatus('IN_PROGRESS');
                       try {
                         const updated = await updateTicket(ticket.Ticket_ID, {
                           Status: 'IN_PROGRESS',
                           Technician_ID: user.User_ID
                         });
                         onUpdate(updated);
-                        setStatus('IN_PROGRESS'); // Update local state immediately
                         setFeedbackMessage({ text: 'Ticket assigned to you successfully', type: 'success' });
                       } catch (err) {
+                        // Revert on error
+                        setLocalTechnician(null);
+                        setStatus(ticket.Status);
                         console.error("Failed to assign ticket", err);
                         setFeedbackMessage({ text: 'Failed to assign ticket', type: 'error' });
                       }

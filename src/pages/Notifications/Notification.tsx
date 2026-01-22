@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import NotificationCard from '@/components/notifications/NotificationCard';
 import TableSearchInput from '@/components/Search';
 import { Bell } from 'lucide-react';
 import type { Notification, NotificationView, NotificationType } from '@/types/notification';
 import { getNotifications, markNotificationRead, type Notification as ApiNotification } from '@/services/notifications';
+import { useNotificationStream } from '@/hooks/useNotificationStream';
 
 const notificationTypes: NotificationType[] = ['System', 'Issue Report', 'Asset Request', 'Form Update'];
 
@@ -14,7 +15,7 @@ export default function NotificationPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
       const data = await getNotifications({ limit: 50 });
       // Map API notifications to frontend type
@@ -47,11 +48,14 @@ export default function NotificationPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Subscribe to real-time notifications (no toast here, Layout handles it)
+  useNotificationStream({ onNotification: fetchNotifications, showToast: false });
 
   useEffect(() => {
     fetchNotifications();
-  }, []);
+  }, [fetchNotifications]);
 
   // Filter notifications based on role
   const roleFilteredNotifications = notifications.filter(

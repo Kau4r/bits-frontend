@@ -2,7 +2,13 @@ import { useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
 
-export const useNotificationStream = () => {
+interface UseNotificationStreamOptions {
+    onNotification?: (data: unknown) => void;
+    showToast?: boolean;
+}
+
+export const useNotificationStream = (options: UseNotificationStreamOptions = {}) => {
+    const { onNotification, showToast = true } = options;
     const { token } = useAuth();
     const eventSourceRef = useRef<EventSource | null>(null);
 
@@ -36,15 +42,19 @@ export const useNotificationStream = () => {
                 // Handle valid notification
                 console.log('New Notification:', data);
 
-                // Show toast
-                toast(data.message, {
-                    icon: '🔔',
-                    duration: 5000,
-                    position: 'top-right'
-                });
+                // Show toast if enabled
+                if (showToast) {
+                    toast(data.message, {
+                        icon: '🔔',
+                        duration: 5000,
+                        position: 'top-right'
+                    });
+                }
 
-                // Logic to update global notification count can be added here
-                // or by refetching notifications
+                // Invoke callback if provided (for list refresh, etc.)
+                if (onNotification) {
+                    onNotification(data);
+                }
             } catch (err) {
                 // Ignore parsing errors for non-JSON heartbeats
             }
@@ -61,5 +71,5 @@ export const useNotificationStream = () => {
                 eventSourceRef.current = null;
             }
         };
-    }, [token]);
+    }, [token, onNotification, showToast]);
 };

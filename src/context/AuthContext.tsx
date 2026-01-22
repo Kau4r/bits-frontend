@@ -6,6 +6,7 @@ import api from '../services/api';
 interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
+  token: string | null;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string; user?: User }>;
   logout: () => void;
   userRole: User_Role | null;
@@ -93,6 +94,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       value={{
         isAuthenticated: !!user,
         user,
+        token: localStorage.getItem('token'),
         login,
         logout,
         userRole: user?.User_Role || null,
