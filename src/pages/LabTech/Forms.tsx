@@ -7,7 +7,7 @@ import { StatusSelect } from '../../components/labtech/StatusSelect';
 import { DeptSelect } from '../../components/labtech/DeptSelect';
 import type { FormRecord, FormStatus, FormType, FormDepartment } from '../../types/formtypes';
 import { formStatusColors, formStatusLabels, formDepartmentLabels } from '../../types/formtypes';
-import { getForms, createForm, updateForm as updateFormAPI, archiveForm as archiveFormAPI, transferForm } from '../../services/forms';
+import { getForms, createForm, updateForm as updateFormAPI, archiveForm as archiveFormAPI, transferForm, uploadFile } from '../../services/forms';
 import { useAuth } from '../../context/AuthContext';
 import { useModal } from '../../context/ModalContext';
 import { useNotifications } from '@/context/NotificationContext';
@@ -127,13 +127,24 @@ export default function Forms() {
     }
 
     try {
+      let fileUrl = undefined;
+      if (payload.file) {
+        try {
+          const uploadResult = await uploadFile(payload.file);
+          fileUrl = uploadResult.url;
+        } catch (error) {
+          console.error('File upload failed:', error);
+          await modal.showError('Failed to upload file. Continuing without attachment.', 'Warning');
+        }
+      }
+
       const createdForm = await createForm({
         creatorId: user.User_ID,
         formType: payload.type,
         title: payload.formId,
         content: payload.department,
         fileName: payload.file?.name,
-        fileUrl: undefined, // TODO: Implement file upload
+        fileUrl: fileUrl,
         fileType: payload.file?.type,
         department: payload.department as any
       });

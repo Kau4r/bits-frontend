@@ -16,6 +16,11 @@ export function ComboBox({ label, value, options, onChange, onRemove, readOnly }
 
     const containerRef = useRef<HTMLDivElement>(null);
 
+    // Sync internal state with external value prop
+    useEffect(() => {
+        setInputValue(value || "");
+    }, [value]);
+
     const handleSelect = (opt: string) => {
         setInputValue(opt);
         onChange(opt);

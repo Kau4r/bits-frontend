@@ -68,3 +68,21 @@ export const transferForm = async (id: number, department: FormDepartment, notes
 export const deleteForm = async (id: number): Promise<void> => {
     await api.delete(`/forms/${id}`);
 };
+
+// Upload file
+export const uploadFile = async (file: File): Promise<{ url: string; filename: string; mimetype: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const { data } = await api.post<{ url: string; filename: string; mimetype: string; storedFilename: string; size: number }>('/upload', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+    });
+
+    // Construct full URL
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    return {
+        ...data,
+        url: `${baseUrl}${data.url}`
+    };
+};
