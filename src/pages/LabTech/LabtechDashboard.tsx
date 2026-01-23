@@ -1,24 +1,42 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Card from '@/components/dashboard/Card';
 import BookingCard from '@/components/dashboard/BookingCard';
 import NotificationsCard from '@/components/dashboard/NotificationsCard';
 import { getDashboardMetrics, type DashboardMetrics } from '@/services/dashboard';
-import { ClipboardDocumentCheckIcon, WrenchScrewdriverIcon, DeviceTabletIcon } from '@heroicons/react/24/outline';
+import { ClipboardDocumentCheckIcon, WrenchScrewdriverIcon, DeviceTabletIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import { useNotifications } from '@/context/NotificationContext';
 
 export default function LabtechDashboard() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const { notifications } = useNotifications();
 
-  useEffect(() => {
-    const fetchMetrics = async () => {
-      try {
-        const data = await getDashboardMetrics();
-        setMetrics(data);
-      } catch (error) {
-        console.error("Failed to load dashboard metrics");
-      }
-    };
-    fetchMetrics();
+  const fetchMetrics = useCallback(async () => {
+    try {
+      const data = await getDashboardMetrics();
+      setMetrics(data);
+    } catch (error) {
+      console.error("Failed to load dashboard metrics");
+    }
   }, []);
+
+  // Initial load
+  useEffect(() => {
+    fetchMetrics();
+  }, [fetchMetrics]);
+
+  // Real-time updates
+  useEffect(() => {
+    if (notifications.length > 0) {
+      const latest = notifications[0];
+      // Refresh metrics if the notification is relevant
+      const isRelevant = /ticket|form|booking|inventory|item|room/i.test(latest.title + latest.message);
+
+      if (isRelevant) {
+        console.log('[Dashboard] Real-time update detected, refreshing metrics...');
+        fetchMetrics();
+      }
+    }
+  }, [notifications, fetchMetrics]);
 
   return (
     <div className="h-screen w-full p-4 flex flex-col pt-16 lg:pt-4">
@@ -28,7 +46,7 @@ export default function LabtechDashboard() {
         </h1>
 
         {/* Stats Row */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
           <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700 flex items-center gap-4">
             <div className="p-3 bg-purple-100 dark:bg-purple-900/30 text-purple-600 rounded-lg">
               <ClipboardDocumentCheckIcon className="w-6 h-6" />
@@ -56,6 +74,16 @@ export default function LabtechDashboard() {
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Borrowed Items</p>
               <p className="text-2xl font-bold text-gray-800 dark:text-white">{metrics?.counts.activeBorrowings || 0}</p>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700 flex items-center gap-4">
+            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-lg">
+              <DocumentTextIcon className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Pending Forms</p>
+              <p className="text-2xl font-bold text-gray-800 dark:text-white">{metrics?.counts.pendingForms || 0}</p>
             </div>
           </div>
         </div>

@@ -2,7 +2,7 @@ import { CheckCircleIcon, ExclamationCircleIcon, InformationCircleIcon } from '@
 import { useNotifications } from '@/context/NotificationContext';
 
 export default function NotificationsCard() {
-  const { notifications, loading } = useNotifications();
+  const { notifications, loading, markAsRead } = useNotifications();
 
   const getIcon = (type: string) => {
     switch (type) {
@@ -14,6 +14,8 @@ export default function NotificationsCard() {
         return <InformationCircleIcon className="h-5 w-5 text-blue-500" />;
     }
   };
+
+  const unreadNotifications = notifications.filter(n => !n.read);
 
   if (loading && notifications.length === 0) {
     return (
@@ -42,43 +44,42 @@ export default function NotificationsCard() {
   return (
     <div className="flex h-full flex-col">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Notifications</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Unread Notifications</h3>
         <button className="text-sm font-medium text-green-600 hover:text-green-500 dark:text-green-400 dark:hover:text-green-300">
           View All
         </button>
       </div>
 
-      {notifications.length === 0 ? (
+      {unreadNotifications.length === 0 ? (
         <div className="flex flex-1 items-center justify-center">
           <div className="text-center py-8">
             <InformationCircleIcon className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-            <p className="text-sm text-gray-500 dark:text-gray-400">No notifications</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">No unread notifications</p>
           </div>
         </div>
       ) : (
         <div className="flex flex-1 flex-col overflow-hidden">
           <div className="-mr-2 overflow-y-auto pr-2">
             <div className="space-y-2 pr-1">
-              {(notifications || []).map(({ id, title, message, type, time, read }) => (
+              {unreadNotifications.map(({ id, title, message, type, time }) => (
                 <div
                   key={id}
-                  className={`flex items-start space-x-3 rounded-lg p-3 shadow-sm ring-1 ring-gray-200/50 dark:ring-gray-700/50 ${read
-                      ? 'bg-gray-50 dark:bg-gray-700/30 opacity-75'
-                      : 'bg-white dark:bg-gray-800 border-l-4 border-l-blue-500' // Highlight unread
-                    }`}
+                  onClick={() => markAsRead(id)}
+                  className="cursor-pointer group flex items-start space-x-3 rounded-lg p-3 shadow-sm ring-1 ring-gray-200/50 dark:ring-gray-700/50 bg-white dark:bg-gray-800 border-l-4 border-l-blue-500 hover:bg-gray-50 dark:hover:bg-gray-700/80 transition-all"
+                  title="Click to mark as read"
                 >
                   <div className="mt-0.5 flex-shrink-0">
                     {getIcon(type)}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex justify-between items-start">
-                      <p className={`truncate text-sm font-medium ${read ? 'text-gray-600 dark:text-gray-400' : 'text-gray-900 dark:text-white'}`}>
+                      <p className="truncate text-sm font-medium text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                         {title}
                       </p>
-                      {!read && <span className="h-2 w-2 rounded-full bg-blue-500 flex-shrink-0 ml-2" />}
+                      <span className="h-2 w-2 rounded-full bg-blue-500 flex-shrink-0 ml-2" />
                     </div>
                     <p
-                      className="overflow-hidden text-xs text-gray-600 dark:text-gray-300"
+                      className="overflow-hidden text-xs text-gray-600 dark:text-gray-300 mt-1"
                       style={{
                         display: '-webkit-box',
                         WebkitLineClamp: 2,
@@ -88,7 +89,7 @@ export default function NotificationsCard() {
                     >
                       {message}
                     </p>
-                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{time}</p>
+                    <p className="mt-2 text-[10px] text-gray-400 dark:text-gray-500">{time}</p>
                   </div>
                 </div>
               ))}

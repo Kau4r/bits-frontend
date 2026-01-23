@@ -48,6 +48,7 @@ export default function TicketingModal({
   const [feedbackMessage, setFeedbackMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [isLoadingAssets, setIsLoadingAssets] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Local state for optimistic UI updates on technician assignment
   const [localTechnician, setLocalTechnician] = useState<Ticket['Technician'] | null>(null);
@@ -172,7 +173,9 @@ export default function TicketingModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
 
+    setIsSubmitting(true);
     try {
       // Find room ID if location matches a room name
       const selectedRoom = rooms.find(r => r.Name === formData.location);
@@ -197,12 +200,12 @@ export default function TicketingModal({
         });
         onUpdate(updatedTicket);
       }
-
+      onClose();
     } catch (err) {
       console.error('Error saving ticket', err);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    onClose();
   };
 
   return (
@@ -466,9 +469,10 @@ export default function TicketingModal({
               </button>
               <button
                 type="submit"
+                disabled={isSubmitting}
                 className="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50"
               >
-                {isCreating ? 'Create Ticket' : 'Update Ticket'}
+                {isSubmitting ? 'Saving...' : (isCreating ? 'Create Ticket' : 'Update Ticket')}
               </button>
             </div>
           </form>

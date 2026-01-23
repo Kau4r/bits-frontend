@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Card from '@/components/dashboard/Card';
 import BookingCard from '@/components/dashboard/BookingCard';
 import FormsCard from '@/components/dashboard/FormsCard';
@@ -6,21 +6,39 @@ import NotificationsCard from '@/components/dashboard/NotificationsCard';
 import ReportsCard from '@/components/dashboard/ReportsCard';
 import { getDashboardMetrics, type DashboardMetrics } from '@/services/dashboard';
 import { TicketIcon, WrenchIcon, CubeIcon } from '@heroicons/react/24/outline'; // Importing icons
+import { useNotifications } from '@/context/NotificationContext';
 
 export default function LabheadDashboard() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const { notifications } = useNotifications();
 
-  useEffect(() => {
-    const fetchMetrics = async () => {
-      try {
-        const data = await getDashboardMetrics();
-        setMetrics(data);
-      } catch (error) {
-        console.error("Failed to load dashboard metrics");
-      }
-    };
-    fetchMetrics();
+  const fetchMetrics = useCallback(async () => {
+    try {
+      const data = await getDashboardMetrics();
+      setMetrics(data);
+    } catch (error) {
+      console.error("Failed to load dashboard metrics");
+    }
   }, []);
+
+  // Initial load
+  useEffect(() => {
+    fetchMetrics();
+  }, [fetchMetrics]);
+
+  // Real-time updates
+  useEffect(() => {
+    if (notifications.length > 0) {
+      const latest = notifications[0];
+      // Refresh metrics if the notification is relevant to dashboard stats
+      const isRelevant = /ticket|form|booking|inventory|item|room/i.test(latest.title + latest.message);
+
+      if (isRelevant) {
+        console.log('[Dashboard] Real-time update detected, refreshing metrics...');
+        fetchMetrics();
+      }
+    }
+  }, [notifications, fetchMetrics]);
 
   return (
     <div className="h-screen w-full p-4 flex flex-col pt-16 lg:pt-4">
@@ -68,7 +86,11 @@ export default function LabheadDashboard() {
           {/* Top Row: Forms + Reports */}
           <div className="grid grid-cols-2 gap-4">
             <Card title="Forms" className="h-48">
-              <FormsCard pendingCount={metrics?.counts.pendingForms} />
+              <FormsCard
+                pendingCount={metrics?.counts.pendingForms}
+                approvedCount={metrics?.counts.approvedForms}
+                inReviewCount={metrics?.counts.inReviewForms}
+              />
             </Card>
             <Card title="Reports" className="h-48">
               <ReportsCard />

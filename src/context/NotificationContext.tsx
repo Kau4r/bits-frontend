@@ -6,6 +6,7 @@ import { getNotifications, getUnreadCount, markNotificationRead, markAllNotifica
 interface NotificationContextType {
     notifications: Notification[];
     unreadCount: number;
+    pendingTicketCount: number;
     loading: boolean;
     markAsRead: (id: number) => Promise<void>;
     markAllAsRead: () => Promise<void>;
@@ -27,7 +28,25 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const [unreadCount, setUnreadCount] = useState(0);
     const [loading, setLoading] = useState(true);
     const wsRef = useRef<WebSocket | null>(null);
+    const processedIdsRef = useRef(new Set<string>());
     const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const [pendingTicketCount, setPendingTicketCount] = useState(0);
+
+    const fetchTicketCount = useCallback(async () => {
+        if (!user || !token) return;
+        try {
+            const httpBase = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+            const res = await fetch(`${httpBase}/api/tickets/count?status=PENDING`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setPendingTicketCount(data.count || 0);
+            }
+        } catch (err) {
+            console.error('Error fetching ticket count:', err);
+        }
+    }, [user, token]);
 
     // Initial fetch
     const fetchInitialData = useCallback(async () => {
@@ -38,14 +57,20 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 getNotifications(),
                 getUnreadCount()
             ]);
-            setNotifications(Array.isArray(notifs) ? notifs : []);
+            const loadedNotifs = Array.isArray(notifs) ? notifs : [];
+            setNotifications(loadedNotifs);
             setUnreadCount(count);
+
+            // Populate ref with initial IDs to avoid toasting them if they come in again via WS immediately
+            loadedNotifs.forEach(n => processedIdsRef.current.add(String(n.id)));
+
+            fetchTicketCount();
         } catch (err) {
             console.error('Error fetching initial notifications:', err);
         } finally {
             setLoading(false);
         }
-    }, [user]);
+    }, [user, fetchTicketCount]);
 
     useEffect(() => {
         fetchInitialData();
@@ -87,29 +112,39 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
                     // Handle notification
                     const rawData = data;
+                    const notifId = String(rawData.id);
+
+                    // Strict Deduplication: Check if we've already processed this ID
+                    if (processedIdsRef.current.has(notifId)) {
+                        console.log('[WebSocket] Duplicate notification prevented (Ref check):', notifId);
+                        return;
+                    }
+                    processedIdsRef.current.add(notifId);
+
                     console.log('[WebSocket] New notification:', rawData);
 
-
+                    if (rawData.type && rawData.type.includes('TICKET')) {
+                        fetchTicketCount();
+                    }
 
                     // Normalize to match Notification interface
                     const newNotification: Notification = {
                         id: rawData.id,
-                        title: rawData.title,
-                        message: rawData.message,
-                        time: new Date(rawData.time).toLocaleTimeString(),
-                        timestamp: rawData.time,
+                        title: rawData.title || 'Notification',
+                        message: rawData.message || 'New update received',
+                        time: rawData.time ? new Date(rawData.time).toLocaleTimeString() : new Date().toLocaleTimeString(),
+                        timestamp: rawData.time || new Date().toISOString(),
                         read: false,
                         readAt: null,
-                        type: (rawData.type?.includes('ERROR') || rawData.type?.includes('REJECT')) ? 'warning' : 'info',
+                        type: (rawData.type && (rawData.type.includes('ERROR') || rawData.type.includes('REJECT'))) ? 'warning' : 'info',
                         user: rawData.user,
                         details: rawData.data || {}
                     };
 
                     // Check for duplicates using functional update to ensure thread safety
                     setNotifications(prev => {
-                        // Use String comparison to be safe against API types (number) vs WebSocket types (potentially string)
+                        // Secondary check just in case
                         if (prev.some(n => String(n.id) === String(newNotification.id))) {
-                            console.log('[WebSocket] Duplicate notification prevented:', newNotification.id);
                             return prev;
                         }
 
@@ -163,7 +198,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 wsRef.current.close(1000, 'Component unmounting');
             }
         };
-    }, [user, token]);
+    }, [user, token, fetchTicketCount]);
 
     const markAsRead = async (id: number) => {
         // Optimistic update
@@ -198,7 +233,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     };
 
     return (
-        <NotificationContext.Provider value={{ notifications, unreadCount, loading, markAsRead, markAllAsRead }}>
+        <NotificationContext.Provider value={{ notifications, unreadCount, pendingTicketCount, loading, markAsRead, markAllAsRead }}>
             {children}
         </NotificationContext.Provider>
     );

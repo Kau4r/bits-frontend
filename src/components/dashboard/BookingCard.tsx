@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { getBookings } from '@/services/booking';
-import type { Booking } from '@/types/booking';
+import type { Booking, BookingStatus } from '@/types/booking';
 import { CalendarIcon } from '@heroicons/react/24/outline';
 
-const statusColors = {
+const statusColors: Record<BookingStatus, string> = {
   APPROVED: 'text-green-400',
   PENDING: 'text-yellow-400',
   REJECTED: 'text-red-400',
+  CANCELLED: 'text-gray-400',
 };
 
 export default function BookingCard() {
@@ -108,8 +109,8 @@ export default function BookingCard() {
                     <p className="text-xs text-gray-400">
                       {formatDate(booking.Start_Time)} • {formatTime(booking.Start_Time, booking.End_Time)}
                     </p>
-                    <div className={`text-xs mt-1 ${statusColors[booking.Status]}`}>
-                      {booking.Status.charAt(0) + booking.Status.slice(1).toLowerCase()}
+                    <div className={`text-xs mt-1 ${statusColors[booking.Status] || 'text-gray-400'}`}>
+                      {booking.Status ? (booking.Status.charAt(0) + booking.Status.slice(1).toLowerCase()) : 'Unknown'}
                     </div>
                   </div>
                 </div>

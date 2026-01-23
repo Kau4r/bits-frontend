@@ -89,7 +89,7 @@ const Navbar = ({ collapsed, setCollapsed, isMobile }: { collapsed: boolean; set
   const { userRole, logout } = useAuth();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { unreadCount } = useNotifications();
+  const { unreadCount, pendingTicketCount } = useNotifications();
 
   if (!userRole || !roleRoutes[userRole as Role]) return null;
   const navItems = roleRoutes[userRole as Role];
@@ -161,6 +161,12 @@ const Navbar = ({ collapsed, setCollapsed, isMobile }: { collapsed: boolean; set
                         {item.label === 'Notifications' && unreadCount > 0 && (
                           <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
                             {unreadCount > 99 ? '99+' : unreadCount}
+                          </span>
+                        )}
+                        {/* Pending Tickets badge */}
+                        {item.label === 'Tickets' && pendingTicketCount > 0 && (
+                          <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                            {pendingTicketCount > 99 ? '99+' : pendingTicketCount}
                           </span>
                         )}
                       </span>

@@ -7,6 +7,8 @@ export interface DashboardMetrics {
         activeBookings?: number;
         brokenItems?: number;
         pendingForms?: number;
+        approvedForms?: number;
+        inReviewForms?: number;
         myAssignedTickets?: number;
         activeMaintenance?: number;
         activeBorrowings?: number;
