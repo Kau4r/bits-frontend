@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import type { User_Role } from '@/types/user';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -33,9 +32,9 @@ export default function Login() {
           role === "LAB_TECH"
             ? isMobile
               ? "/labtech-mobile"
-              : "/labtech-dashboard"
+              : "/"
             : role === "LAB_HEAD"
-              ? "/labhead-dashboard"
+              ? "/"
               : role === "FACULTY"
                 ? "/faculty/scheduling"
                 : role === "SECRETARY"

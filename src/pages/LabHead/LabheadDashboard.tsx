@@ -85,7 +85,7 @@ export default function LabheadDashboard() {
 
         {/* Right Side: Notifications full height */}
         <div className="h-full min-h-0">
-          <Card title="Notifications" className="h-full">
+          <Card className="h-full">
             <NotificationsCard />
           </Card>
         </div>

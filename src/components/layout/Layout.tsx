@@ -2,11 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import Navbar from "./Navbar";
 import { Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-
-import { useNotificationStream } from "@/hooks/useNotificationStream";
+import { Toaster } from 'react-hot-toast';
 
 const Layout = () => {
-  useNotificationStream(); // Initialize real-time notifications
   const [collapsed, setCollapsed] = useState(false);
   const { userRole, user, logout } = useAuth();
   const [isMobile, setIsMobile] = useState(false);
@@ -42,6 +40,7 @@ const Layout = () => {
 
   return (
     <div className="flex min-h-screen bg-white dark:bg-gray-900">
+      <Toaster position="top-right" reverseOrder={false} />
       {!hideSidebar && <Navbar collapsed={collapsed} setCollapsed={setCollapsed} isMobile={isMobile} />}
 
       <div className="flex-1 flex flex-col">

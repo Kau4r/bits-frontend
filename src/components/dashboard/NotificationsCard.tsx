@@ -1,28 +1,8 @@
-import { useState, useEffect } from 'react';
 import { CheckCircleIcon, ExclamationCircleIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
-import { getNotifications, type Notification } from '@/services/notifications';
+import { useNotifications } from '@/context/NotificationContext';
 
 export default function NotificationsCard() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const loadNotifications = async () => {
-      try {
-        const data = await getNotifications();
-        // Ensure we always set an array
-        setNotifications(Array.isArray(data) ? data : []);
-      } catch (err) {
-        console.error('Error fetching notifications:', err);
-        // On error, keep empty array
-        setNotifications([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadNotifications();
-  }, []);
+  const { notifications, loading } = useNotifications();
 
   const getIcon = (type: string) => {
     switch (type) {
@@ -35,7 +15,7 @@ export default function NotificationsCard() {
     }
   };
 
-  if (loading) {
+  if (loading && notifications.length === 0) {
     return (
       <div className="flex h-full flex-col">
         <div className="mb-3 flex items-center justify-between">
@@ -79,16 +59,24 @@ export default function NotificationsCard() {
         <div className="flex flex-1 flex-col overflow-hidden">
           <div className="-mr-2 overflow-y-auto pr-2">
             <div className="space-y-2 pr-1">
-              {(notifications || []).map(({ id, title, message, type, time }) => (
+              {(notifications || []).map(({ id, title, message, type, time, read }) => (
                 <div
                   key={id}
-                  className="flex items-start space-x-3 rounded-lg bg-white p-3 shadow-sm ring-1 ring-gray-200/50 dark:bg-gray-800 dark:ring-gray-700/50"
+                  className={`flex items-start space-x-3 rounded-lg p-3 shadow-sm ring-1 ring-gray-200/50 dark:ring-gray-700/50 ${read
+                      ? 'bg-gray-50 dark:bg-gray-700/30 opacity-75'
+                      : 'bg-white dark:bg-gray-800 border-l-4 border-l-blue-500' // Highlight unread
+                    }`}
                 >
                   <div className="mt-0.5 flex-shrink-0">
                     {getIcon(type)}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-gray-900 dark:text-white">{title}</p>
+                    <div className="flex justify-between items-start">
+                      <p className={`truncate text-sm font-medium ${read ? 'text-gray-600 dark:text-gray-400' : 'text-gray-900 dark:text-white'}`}>
+                        {title}
+                      </p>
+                      {!read && <span className="h-2 w-2 rounded-full bg-blue-500 flex-shrink-0 ml-2" />}
+                    </div>
                     <p
                       className="overflow-hidden text-xs text-gray-600 dark:text-gray-300"
                       style={{

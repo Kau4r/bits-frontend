@@ -137,11 +137,15 @@ function AppContent() {
   );
 }
 
+import { NotificationProvider } from './context/NotificationContext';
+
 function App() {
   return (
     <AuthProvider>
       <ModalProvider>
-        <AppContent />
+        <NotificationProvider>
+          <AppContent />
+        </NotificationProvider>
       </ModalProvider>
     </AuthProvider>
   );

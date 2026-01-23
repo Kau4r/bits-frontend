@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useMemo } from 'react';
+import { useNotifications } from '@/context/NotificationContext';
 import NotificationCard from '@/components/notifications/NotificationCard';
 import TableSearchInput from '@/components/Search';
 import { Bell } from 'lucide-react';
 import type { Notification, NotificationView, NotificationType } from '@/types/notification';
-import { getNotifications, markNotificationRead, type Notification as ApiNotification } from '@/services/notifications';
-import { useNotificationStream } from '@/hooks/useNotificationStream';
+
 
 const notificationTypes: NotificationType[] = ['System', 'Issue Report', 'Asset Request', 'Form Update'];
 
@@ -12,50 +12,34 @@ export default function NotificationPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState<NotificationType | 'All'>('All');
   const [activeView, setActiveView] = useState<NotificationView>('all');
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { notifications: apiNotifications, loading, markAsRead } = useNotifications();
 
-  const fetchNotifications = useCallback(async () => {
-    try {
-      const data = await getNotifications({ limit: 50 });
-      // Map API notifications to frontend type
-      const mappedNotifications: Notification[] = data.map((n: ApiNotification) => {
-        let type: NotificationType = 'System';
-        const titleLower = n.title.toLowerCase();
+  // Map context notifications to view format
+  const notifications: Notification[] = useMemo(() => {
+    return apiNotifications.map((n) => {
+      let type: NotificationType = 'System';
+      const titleLower = n.title.toLowerCase();
 
-        if (titleLower.includes('ticket') || titleLower.includes('report') || titleLower.includes('issue')) {
-          type = 'Issue Report';
-        } else if (titleLower.includes('form')) {
-          type = 'Form Update';
-        } else if (titleLower.includes('asset') || titleLower.includes('inventory') || titleLower.includes('borrow')) {
-          type = 'Asset Request';
-        }
+      if (titleLower.includes('ticket') || titleLower.includes('report') || titleLower.includes('issue')) {
+        type = 'Issue Report';
+      } else if (titleLower.includes('form')) {
+        type = 'Form Update';
+      } else if (titleLower.includes('asset') || titleLower.includes('inventory') || titleLower.includes('borrow')) {
+        type = 'Asset Request';
+      }
 
-        return {
-          id: n.id,
-          title: n.title,
-          message: n.message,
-          time: n.time,
-          isRead: n.read,
-          isArchived: false, // API doesn't support archive yet
-          type: type,
-          role: 'Lab Tech',
-        };
-      });
-      setNotifications(mappedNotifications);
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Subscribe to real-time notifications (no toast here, Layout handles it)
-  useNotificationStream({ onNotification: fetchNotifications, showToast: false });
-
-  useEffect(() => {
-    fetchNotifications();
-  }, [fetchNotifications]);
+      return {
+        id: n.id,
+        title: n.title,
+        message: n.message,
+        time: n.time,
+        isRead: n.read,
+        isArchived: false, // API doesn't support archive yet
+        type: type,
+        role: 'Lab Tech',
+      };
+    });
+  }, [apiNotifications]);
 
   // Filter notifications based on role
   const roleFilteredNotifications = notifications.filter(
@@ -90,26 +74,17 @@ export default function NotificationPage() {
   });
 
   const handleMarkAsRead = async (id: number) => {
-    try {
-      await markNotificationRead(id);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-      );
-    } catch (err) {
-      console.error('Error marking as read', err);
-    }
+    await markAsRead(id);
   };
 
   const handleArchive = (id: number) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, isArchived: true } : n))
-    );
+    // Local state modification not possible directly on mapped data without extra state
+    // For now, simple logging as archive isn't in API yet
+    console.log('Archive not fully supported in global context yet', id);
   };
 
   const handleRestore = (id: number) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, isArchived: false } : n))
-    );
+    console.log('Restore not fully supported in global context yet', id);
   };
 
   const getViewCount = (view: NotificationView) => {

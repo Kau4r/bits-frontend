@@ -48,3 +48,9 @@ export const markAllNotificationsRead = async (): Promise<{ count: number }> => 
     const { data } = await api.patch<{ success: boolean; count: number }>("/notifications/read-all");
     return data;
 };
+
+// Get unread notification count
+export const getUnreadCount = async (): Promise<number> => {
+    const { data } = await api.get<{ success: boolean; count: number }>("/notifications/unread-count");
+    return data.count;
+};

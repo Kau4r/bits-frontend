@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
+import { useNotifications } from '@/context/NotificationContext';
 
 const roleRoutes = {
   ADMIN: [
@@ -88,6 +89,7 @@ const Navbar = ({ collapsed, setCollapsed, isMobile }: { collapsed: boolean; set
   const { userRole, logout } = useAuth();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { unreadCount } = useNotifications();
 
   if (!userRole || !roleRoutes[userRole as Role]) return null;
   const navItems = roleRoutes[userRole as Role];
@@ -148,13 +150,23 @@ const Navbar = ({ collapsed, setCollapsed, isMobile }: { collapsed: boolean; set
                   }
                   end
                 >
-                  <span
-                    className={`text-indigo-600 group-hover:text-indigo-700 dark:text-indigo-400 ${collapsed && !isMobile ? "mx-auto" : ""}`}
-                    aria-hidden="true"
-                  >
-                    {navIcons[item.label] || <span className="w-6 h-6" />}
-                  </span>
-                  <span className={collapsed && !isMobile ? "sr-only" : ""}>{item.label}</span>
+                  {({ isActive }) => (
+                    <>
+                      <span
+                        className={`relative ${isActive ? "text-white" : "text-indigo-600 group-hover:text-indigo-700 dark:text-indigo-400"} ${collapsed && !isMobile ? "mx-auto" : ""}`}
+                        aria-hidden="true"
+                      >
+                        {navIcons[item.label] || <span className="w-6 h-6" />}
+                        {/* Notification badge */}
+                        {item.label === 'Notifications' && unreadCount > 0 && (
+                          <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                            {unreadCount > 99 ? '99+' : unreadCount}
+                          </span>
+                        )}
+                      </span>
+                      <span className={collapsed && !isMobile ? "sr-only" : ""}>{item.label}</span>
+                    </>
+                  )}
                 </NavLink>
               </li>
             ))}
