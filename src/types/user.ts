@@ -24,3 +24,25 @@ export type User_Role = typeof ROLES[keyof typeof ROLES];
 export interface UserWithPassword extends User {
     password: string;
 }
+
+export const LOG_TYPES = {
+    TICKET: 'TICKET',
+    SCHEDULE: 'SCHEDULE',
+    BORROWING: 'BORROWING',
+    SYSTEM: 'SYSTEM',
+    AUTH: 'AUTH',
+    BOOKING: 'BOOKING',
+    FORM: 'FORM',
+    ROOM: 'ROOM',
+    INVENTORY: 'INVENTORY',
+} as const;
+
+export type LogType = typeof LOG_TYPES[keyof typeof LOG_TYPES];
+
+export interface ActivityLog {
+    Log_ID: number;
+    Action: string;
+    Timestamp: string;
+    Details: string | null;
+    Log_Type?: LogType;
+}

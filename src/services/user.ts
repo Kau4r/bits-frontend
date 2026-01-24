@@ -1,5 +1,5 @@
 import api from "./api";
-import type { User, User_Role } from "@/types/user";
+import type { User, User_Role, ActivityLog } from "@/types/user";
 
 // Fetch all users
 export const fetchUsers = async (): Promise<User[]> => {
@@ -28,5 +28,11 @@ export const addUser = async (user: Omit<User, "User_ID">): Promise<User> => {
 // Update user
 export const updateUser = async (userId: number, user: Partial<Omit<User, "User_ID">>): Promise<User> => {
     const { data } = await api.put<User>(`/users/${userId}`, user);
+    return data;
+};
+
+// Fetch user activity history
+export const fetchUserActivity = async (userId: number): Promise<ActivityLog[]> => {
+    const { data } = await api.get<ActivityLog[]>(`/users/${userId}/history`);
     return data;
 };

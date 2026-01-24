@@ -1,4 +1,10 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
+import {
+    ExclamationTriangleIcon,
+    CheckCircleIcon,
+    XCircleIcon,
+    InformationCircleIcon,
+} from '@heroicons/react/24/outline';
 
 type ModalType = 'alert' | 'confirm' | 'error' | 'success';
 
@@ -41,9 +47,19 @@ export function ModalProvider({ children }: ModalProviderProps) {
         title: '',
         message: '',
     });
+    const [isVisible, setIsVisible] = useState(false);
+
+    useEffect(() => {
+        if (modal.isOpen) {
+            requestAnimationFrame(() => setIsVisible(true));
+        } else {
+            setIsVisible(false);
+        }
+    }, [modal.isOpen]);
 
     const closeModal = useCallback(() => {
-        setModal(prev => ({ ...prev, isOpen: false }));
+        setIsVisible(false);
+        setTimeout(() => setModal(prev => ({ ...prev, isOpen: false })), 150);
     }, []);
 
     const showAlert = useCallback((message: string, title: string = 'Notice') => {
@@ -55,7 +71,7 @@ export function ModalProvider({ children }: ModalProviderProps) {
                 message,
                 onConfirm: () => {
                     closeModal();
-                    resolve();
+                    setTimeout(resolve, 150);
                 },
                 confirmText: 'OK',
             });
@@ -71,13 +87,13 @@ export function ModalProvider({ children }: ModalProviderProps) {
                 message,
                 onConfirm: () => {
                     closeModal();
-                    resolve(true);
+                    setTimeout(() => resolve(true), 150);
                 },
                 onCancel: () => {
                     closeModal();
-                    resolve(false);
+                    setTimeout(() => resolve(false), 150);
                 },
-                confirmText: 'Yes',
+                confirmText: 'Confirm',
                 cancelText: 'Cancel',
             });
         });
@@ -92,7 +108,7 @@ export function ModalProvider({ children }: ModalProviderProps) {
                 message,
                 onConfirm: () => {
                     closeModal();
-                    resolve();
+                    setTimeout(resolve, 150);
                 },
                 confirmText: 'OK',
             });
@@ -108,67 +124,96 @@ export function ModalProvider({ children }: ModalProviderProps) {
                 message,
                 onConfirm: () => {
                     closeModal();
-                    resolve();
+                    setTimeout(resolve, 150);
                 },
                 confirmText: 'OK',
             });
         });
     }, [closeModal]);
 
-    const getIconAndColor = () => {
+    const getModalStyle = () => {
         switch (modal.type) {
             case 'error':
-                return { icon: '❌', bgColor: 'bg-red-500', borderColor: 'border-red-500' };
+                return {
+                    Icon: XCircleIcon,
+                    iconBg: 'bg-red-100 dark:bg-red-900/30',
+                    iconColor: 'text-red-600 dark:text-red-400',
+                    buttonClass: 'bg-red-600 hover:bg-red-700 focus:ring-red-500',
+                };
             case 'success':
-                return { icon: '✅', bgColor: 'bg-green-500', borderColor: 'border-green-500' };
+                return {
+                    Icon: CheckCircleIcon,
+                    iconBg: 'bg-green-100 dark:bg-green-900/30',
+                    iconColor: 'text-green-600 dark:text-green-400',
+                    buttonClass: 'bg-green-600 hover:bg-green-700 focus:ring-green-500',
+                };
             case 'confirm':
-                return { icon: '❓', bgColor: 'bg-blue-500', borderColor: 'border-blue-500' };
+                return {
+                    Icon: ExclamationTriangleIcon,
+                    iconBg: 'bg-amber-100 dark:bg-amber-900/30',
+                    iconColor: 'text-amber-600 dark:text-amber-400',
+                    buttonClass: 'bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500',
+                };
             default:
-                return { icon: 'ℹ️', bgColor: 'bg-blue-500', borderColor: 'border-blue-500' };
+                return {
+                    Icon: InformationCircleIcon,
+                    iconBg: 'bg-blue-100 dark:bg-blue-900/30',
+                    iconColor: 'text-blue-600 dark:text-blue-400',
+                    buttonClass: 'bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500',
+                };
         }
     };
 
-    const { icon, bgColor, borderColor } = getIconAndColor();
+    const { Icon, iconBg, iconColor, buttonClass } = getModalStyle();
 
     return (
         <ModalContext.Provider value={{ showAlert, showConfirm, showError, showSuccess }}>
             {children}
 
-            {/* Modal Overlay */}
             {modal.isOpen && (
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
                     {/* Backdrop */}
                     <div
-                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        className={`absolute inset-0 bg-black/50 transition-opacity duration-150 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
                         onClick={modal.onCancel || modal.onConfirm}
                     />
 
-                    {/* Modal Content */}
-                    <div className={`relative bg-gray-800 rounded-xl shadow-2xl border-2 ${borderColor} max-w-md w-full mx-4 transform transition-all animate-in fade-in zoom-in duration-200`}>
-                        {/* Header */}
-                        <div className={`${bgColor} rounded-t-lg px-6 py-4 flex items-center gap-3`}>
-                            <span className="text-2xl">{icon}</span>
-                            <h2 className="text-xl font-bold text-white">{modal.title}</h2>
+                    {/* Modal */}
+                    <div
+                        className={`relative w-full max-w-sm overflow-hidden rounded-xl bg-white shadow-xl transition-all duration-150 dark:bg-gray-800 ${
+                            isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
+                        }`}
+                    >
+                        <div className="p-6">
+                            {/* Icon */}
+                            <div className={`mx-auto flex h-12 w-12 items-center justify-center rounded-full ${iconBg}`}>
+                                <Icon className={`h-6 w-6 ${iconColor}`} />
+                            </div>
+
+                            {/* Content */}
+                            <div className="mt-4 text-center">
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                    {modal.title}
+                                </h3>
+                                <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                                    {modal.message}
+                                </p>
+                            </div>
                         </div>
 
-                        {/* Body */}
-                        <div className="px-6 py-5">
-                            <p className="text-gray-200 whitespace-pre-wrap">{modal.message}</p>
-                        </div>
-
-                        {/* Footer */}
-                        <div className="px-6 py-4 bg-gray-900/50 rounded-b-xl flex justify-end gap-3">
+                        {/* Actions */}
+                        <div className="flex gap-3 border-t border-gray-200 bg-gray-50 px-6 py-4 dark:border-gray-700 dark:bg-gray-800/50">
                             {modal.type === 'confirm' && modal.onCancel && (
                                 <button
                                     onClick={modal.onCancel}
-                                    className="px-5 py-2.5 bg-gray-600 hover:bg-gray-500 text-white font-medium rounded-lg transition-colors"
+                                    className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
                                 >
                                     {modal.cancelText}
                                 </button>
                             )}
                             <button
                                 onClick={modal.onConfirm}
-                                className={`px-5 py-2.5 ${modal.type === 'error' ? 'bg-red-600 hover:bg-red-500' : modal.type === 'success' ? 'bg-green-600 hover:bg-green-500' : 'bg-blue-600 hover:bg-blue-500'} text-white font-medium rounded-lg transition-colors`}
+                                className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${buttonClass}`}
                             >
                                 {modal.confirmText}
                             </button>
