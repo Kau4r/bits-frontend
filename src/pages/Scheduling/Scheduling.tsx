@@ -10,6 +10,7 @@ import interactionPlugin from '@fullcalendar/interaction';
 import dayjs from 'dayjs';
 import ReportIssueModal from '../../components/student/Modals/ReportIssue';
 import { getBookings, createBooking, updateBooking, updateBookingStatus } from "@/services/booking";
+import { getBorrowings } from "@/services/borrowing";
 import type { Booking } from '@/types/booking';
 import { useAuth } from '@/context/AuthContext';
 import { useModal } from '@/context/ModalContext';
@@ -144,8 +145,34 @@ export default function Scheduling() {
     loadBookings();
   }, [loadBookings]));
 
-  // Load borrowing requests (mock data for now, will be replaced with API call)
+  // Load borrowing requests from API for faculty users
   const loadBorrowingRequests = async () => {
+    try {
+      const data = await getBorrowings({ role: 'borrower' });
+      // Transform API response to BorrowingRequest format
+      const mapped: BorrowingRequest[] = data.map((b: any) => ({
+        id: b.Borrow_Item_ID,
+        item: {
+          Item_ID: b.Item?.Item_ID || 0,
+          Item_Type: b.Item?.Item_Type || 'Unknown',
+          Brand: b.Item?.Brand || 'Unknown',
+          Serial_Number: b.Item?.Serial_Number || '',
+        },
+        borrower: {
+          User_ID: b.Borrower?.User_ID || 0,
+          First_Name: b.Borrower?.First_Name || '',
+          Last_Name: b.Borrower?.Last_Name || '',
+        },
+        borrowDate: b.Borrow_Date,
+        returnDate: b.Return_Date,
+        purpose: b.Purpose || '',
+        status: b.Status,
+        createdAt: b.Created_At,
+      }));
+      setBorrowingRequests(mapped);
+    } catch (error) {
+      console.error('Failed to load borrowing requests:', error);
+    }
   };
 
   const updateCurrentDate = () => {
