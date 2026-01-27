@@ -1,6 +1,6 @@
 import { getRooms } from "@/services/room";
 import type { Room } from '@/types/room';
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import type { CalendarApi, DateSelectArg, EventDropArg } from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -17,6 +17,7 @@ import CalendarSidebar from '@/components/Scheduling/CalendarSidebar';
 import BookingPopover from '@/components/Scheduling/BookingPopover';
 import WarningModal from '@/components/Scheduling/WarningModal';
 import ConfirmModal from '@/components/Scheduling/ConfirmModal';
+import { useBookingEvents } from '@/hooks/useBookingEvents';
 
 export default function Scheduling() {
   const { user } = useAuth();
@@ -102,7 +103,7 @@ export default function Scheduling() {
     loadInitialData();
   }, []);
 
-  const loadBookings = async () => {
+  const loadBookings = useCallback(async () => {
     try {
       const bookings = await getBookings();
       const mapped = bookings
@@ -125,7 +126,14 @@ export default function Scheduling() {
     } catch (error) {
       console.error('Error loading bookings:', error);
     }
-  };
+  }, []);
+
+  // Subscribe to real-time booking events
+  useBookingEvents(useCallback((event) => {
+    console.log('[Scheduling] Received real-time booking event:', event.type);
+    // Reload bookings when any booking event is received
+    loadBookings();
+  }, [loadBookings]));
 
   const updateCurrentDate = () => {
     const api: CalendarApi | undefined = calendarRef.current?.getApi();

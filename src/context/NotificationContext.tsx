@@ -112,7 +112,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
                     // Handle notification
                     const rawData = data;
-                    const notifId = String(rawData.id);
+
+                    // Generate unique ID for real-time notifications that don't have one
+                    // Backend SSE notifications (like borrowing) may not have an ID
+                    const generatedId = rawData.id || `realtime-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                    const notifId = String(generatedId);
 
                     // Strict Deduplication: Check if we've already processed this ID
                     if (processedIdsRef.current.has(notifId)) {
@@ -129,16 +133,16 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
                     // Normalize to match Notification interface
                     const newNotification: Notification = {
-                        id: rawData.id,
-                        title: rawData.title || 'Notification',
+                        id: typeof generatedId === 'number' ? generatedId : parseInt(notifId.replace(/\D/g, '').slice(-9) || '0', 10) || Date.now(),
+                        title: rawData.title || rawData.type?.replace(/_/g, ' ') || 'Notification',
                         message: rawData.message || 'New update received',
                         time: rawData.time ? new Date(rawData.time).toLocaleTimeString() : new Date().toLocaleTimeString(),
-                        timestamp: rawData.time || new Date().toISOString(),
+                        timestamp: rawData.timestamp || rawData.time || new Date().toISOString(),
                         read: false,
                         readAt: null,
                         type: (rawData.type && (rawData.type.includes('ERROR') || rawData.type.includes('REJECT'))) ? 'warning' : 'info',
                         user: rawData.user,
-                        details: rawData.data || {}
+                        details: rawData.data || rawData.borrowing || rawData.booking || {}
                     };
 
                     // Check for duplicates using functional update to ensure thread safety
