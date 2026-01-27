@@ -9,7 +9,6 @@ import type { Item } from '../../types/inventory';
 import { getNotifications, type Notification } from '../../services/notifications';
 import { createBorrowing } from '../../services/borrowing';
 import ReportIssueModal from '../../components/student/Modals/ReportIssue';
-import MyBorrowingRequests from '../../components/borrowing/MyBorrowingRequests';
 
 const FacultyScheduling = () => {
   const navigate = useNavigate();
@@ -177,16 +176,8 @@ const FacultyScheduling = () => {
         </div>
       </nav>
 
-      <div className="flex-1 overflow-hidden p-4 flex gap-4">
-        {/* Calendar/Scheduling takes most of the space */}
-        <div className="flex-1 min-w-0">
-          <Scheduling />
-        </div>
-
-        {/* Right sidebar with My Requests */}
-        <div className="w-80 flex-shrink-0 overflow-y-auto">
-          <MyBorrowingRequests />
-        </div>
+      <div className="flex-1 overflow-hidden p-4">
+        <Scheduling />
       </div>
 
 
