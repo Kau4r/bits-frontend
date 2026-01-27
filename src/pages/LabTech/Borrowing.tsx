@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useBorrowingEvents } from '@/hooks/useBorrowingEvents';
 import RequestCard, { type BorrowingRequest } from '@/components/borrowing/RequestCard';
 import ApprovalModal from '@/components/borrowing/ApprovalModal';
 import RejectionModal from '@/components/borrowing/RejectionModal';
@@ -35,6 +36,11 @@ export default function Borrowing() {
     useEffect(() => {
         loadRequests();
     }, []);
+
+    // Listen for real-time updates
+    useBorrowingEvents(() => {
+        loadRequests();
+    });
 
     const loadRequests = async () => {
         try {
@@ -385,7 +391,8 @@ export default function Borrowing() {
                     borrower: approvalModal.request.borrower,
                 } : null}
                 availableItems={approvalModal.request ?
-                    inventoryItems.filter(item => item.Item_Type === approvalModal.request!.item.Item_Type && item.Item_ID).map(item => ({ Item_ID: item.Item_ID!, Item_Type: item.Item_Type, Brand: item.Brand, Serial_Number: item.Serial_Number }))
+                    inventoryItems.filter(item => item.Item_Type.toLowerCase() === approvalModal.request!.item.Item_Type.toLowerCase() && item.Item_ID)
+                        .map(item => ({ Item_ID: item.Item_ID!, Item_Type: item.Item_Type, Brand: item.Brand, Serial_Number: item.Serial_Number }))
                     : []}
                 isLoading={isLoading}
             />
