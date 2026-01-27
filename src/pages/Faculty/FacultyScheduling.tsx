@@ -4,10 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useModal } from '../../context/ModalContext';
-import { createBorrowing } from '../../services/borrowing';
 import { fetchInventory } from '../../services/inventory';
 import type { Item } from '../../types/inventory';
 import { getNotifications, type Notification } from '../../services/notifications';
+import ReportIssueModal from '../../components/student/Modals/ReportIssue';
 
 const FacultyScheduling = () => {
   const navigate = useNavigate();
@@ -17,10 +17,12 @@ const FacultyScheduling = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
 
+  // Report Issue Modal State
+  const [showReportIssueModal, setShowReportIssueModal] = useState(false);
+
   // Borrow Modal State
   const [isBorrowModalOpen, setIsBorrowModalOpen] = useState(false);
   const [inventoryItems, setInventoryItems] = useState<Item[]>([]);
-  const [selectedItemId, setSelectedItemId] = useState<string>('');
   const [selectedType, setSelectedType] = useState<string>('');
   const [isLoadingItems, setIsLoadingItems] = useState(false);
 
@@ -29,14 +31,8 @@ const FacultyScheduling = () => {
     if (isBorrowModalOpen) {
       loadItems();
       setSelectedType(''); // Reset type
-      setSelectedItemId(''); // Reset item
     }
   }, [isBorrowModalOpen]);
-
-  // Reset item selection when type changes
-  useEffect(() => {
-    setSelectedItemId('');
-  }, [selectedType]);
 
   const loadItems = async () => {
     setIsLoadingItems(true);
@@ -56,15 +52,10 @@ const FacultyScheduling = () => {
     }
   };
 
-  // Derived state for types and filtered items
+  // Derived state for types
   const uniqueTypes = useMemo(() => {
     return Array.from(new Set(inventoryItems.map(item => item.Item_Type))).sort();
   }, [inventoryItems]);
-
-  const filteredItems = useMemo(() => {
-    if (!selectedType) return [];
-    return inventoryItems.filter(item => item.Item_Type === selectedType);
-  }, [inventoryItems, selectedType]);
 
   const handleLogout = async () => {
     console.log('Logging out...');
@@ -72,28 +63,7 @@ const FacultyScheduling = () => {
     navigate('/login');
   };
 
-  const handleConfirmBorrow = async () => {
-    if (!user || !selectedItemId) return;
 
-    const itemId = parseInt(selectedItemId);
-    if (isNaN(itemId)) return;
-
-    try {
-      const result = await createBorrowing({
-        borrowerId: user.User_ID,
-        borroweeId: undefined,
-        items: [{ itemId, quantity: 1 }],
-        type: 'ITEM',
-        purpose: 'Faculty Test Borrow',
-        expectedReturnDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-      });
-      await modal.showSuccess(`Borrowing Success! Borrowing ID: ${result.Borrow_Item_ID}`, 'Success');
-      setIsBorrowModalOpen(false);
-    } catch (error: any) {
-      console.error(error);
-      await modal.showError(error.response?.data?.error || error.message, 'Borrowing Failed');
-    }
-  };
 
   const facultyName = user ? `${user.First_Name} ${user.Last_Name}` : "Faculty Member";
 
@@ -141,6 +111,13 @@ const FacultyScheduling = () => {
             </div>
 
             <div className="flex items-center space-x-6">
+              <button
+                onClick={() => setShowReportIssueModal(true)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-red-400 hover:bg-gray-700 hover:text-red-300 transition-colors"
+              >
+                <span>🚨</span>
+                <span className="text-sm font-medium">Report Issue</span>
+              </button>
 
               {/* Test Borrow Button */}
               <button
@@ -149,7 +126,7 @@ const FacultyScheduling = () => {
                 title="Test Borrow Item"
               >
                 <PlusCircle className="h-4 w-4" />
-                <span>Test Borrow</span>
+                <span>Borrow</span>
               </button>
 
               <div className="relative">
@@ -202,83 +179,223 @@ const FacultyScheduling = () => {
         <Scheduling />
       </div>
 
-      {/* Borrow Modal */}
+
+      {/* Enhanced Device Borrowing Request Modal */}
       {isBorrowModalOpen && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
-          <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6 border border-gray-700">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold text-white">Borrow Item</h2>
+          <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl p-6 border border-gray-700 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-2xl font-semibold text-white">📱 Request a Device</h2>
+                <p className="text-sm text-gray-400 mt-1">Fill out the form below to request a device. Your request will be reviewed by the department admin.</p>
+              </div>
               <button onClick={() => setIsBorrowModalOpen(false)} className="text-gray-400 hover:text-white">
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="space-y-4">
-              {/* Type Selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
-                  1. Select Item Type
-                </label>
-                {isLoadingItems ? (
-                  <div className="text-sm text-gray-400">Loading inventory...</div>
-                ) : (
-                  <select
-                    value={selectedType}
-                    onChange={(e) => setSelectedType(e.target.value)}
-                    className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  >
-                    <option value="">-- Select Type --</option>
-                    {uniqueTypes.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
-                )}
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.currentTarget);
+              const borrowDate = formData.get('borrowDate') as string;
+              const borrowTime = formData.get('borrowTime') as string;
+              const returnDate = formData.get('returnDate') as string;
+              const returnTime = formData.get('returnTime') as string;
+              const purpose = formData.get('purpose') as string;
+              const itemName = formData.get('itemName') as string;
+
+              // Validation
+              if (!selectedType || !itemName.trim() || !borrowDate || !borrowTime || !returnDate || !returnTime || !purpose.trim()) {
+                modal.showError('Please fill in all required fields', 'Validation Error');
+                return;
+              }
+
+              const borrowDateTime = new Date(`${borrowDate}T${borrowTime}`);
+              const returnDateTime = new Date(`${returnDate}T${returnTime}`);
+
+              if (returnDateTime <= borrowDateTime) {
+                modal.showError('Return date/time must be after borrow date/time', 'Validation Error');
+                return;
+              }
+
+              // TODO: Create device borrowing request via API
+              console.log('Device Borrowing Request:', {
+                itemType: selectedType,
+                itemName,
+                borrowDate: borrowDateTime.toISOString(),
+                returnDate: returnDateTime.toISOString(),
+                purpose,
+              });
+
+              modal.showSuccess('Device borrowing request submitted successfully!', 'Success');
+              setIsBorrowModalOpen(false);
+            }} className="space-y-5">
+              {/* Item Type & Specific Item */}
+              <div className="grid grid-cols-2 gap-4">
+                {/* Item Type */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Item Type <span className="text-red-400">*</span>
+                  </label>
+                  {isLoadingItems ? (
+                    <div className="text-sm text-gray-400">Loading available items...</div>
+                  ) : (
+                    <>
+                      <select
+                        value={selectedType}
+                        onChange={(e) => setSelectedType(e.target.value)}
+                        required
+                        className="w-full bg-gray-700 border border-gray-600 rounded-lg py-2.5 px-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      >
+                        <option value="">Select an item type</option>
+                        {uniqueTypes.map((type) => (
+                          <option key={type} value={type}>
+                            {type}
+                          </option>
+                        ))}
+                      </select>
+                      {selectedType && (
+                        <p className="text-xs text-gray-400 mt-1">
+                          {inventoryItems.filter(item => item.Item_Type === selectedType).length} item(s) available
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* Specific Item */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Select Specific Item <span className="text-red-400">*</span>
+                  </label>
+                  {selectedType ? (
+                    <>
+                      <select
+                        name="itemName"
+                        required
+                        className="w-full bg-gray-700 border border-gray-600 rounded-lg py-2.5 px-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      >
+                        <option value="">Select an item</option>
+                        {inventoryItems
+                          .filter(item => item.Item_Type === selectedType)
+                          .map((item) => (
+                            <option key={item.Item_ID} value={`${item.Brand} - ${item.Serial_Number}`}>
+                              {item.Brand} (SN: {item.Serial_Number})
+                            </option>
+                          ))}
+                      </select>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Choose from available {selectedType} items
+                      </p>
+                    </>
+                  ) : (
+                    <div className="w-full bg-gray-700 border border-gray-600 rounded-lg py-2.5 px-3 text-gray-500">
+                      Please select an item type first
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* Item Selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
-                  2. Select Item
-                </label>
-                <select
-                  value={selectedItemId}
-                  onChange={(e) => setSelectedItemId(e.target.value)}
-                  disabled={!selectedType}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <option value="">-- Select Specific Item --</option>
-                  {filteredItems.map((item) => (
-                    <option key={item.Item_ID} value={item.Item_ID}>
-                      {item.Brand} ({item.Item_Code})
-                    </option>
-                  ))}
-                </select>
-                {!selectedType && (
-                  <p className="text-xs text-gray-500 mt-1">Please select a type first.</p>
-                )}
+              {/* Borrow Date & Time */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Borrow Date <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    name="borrowDate"
+                    required
+                    min={new Date().toISOString().split('T')[0]}
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg py-2.5 px-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Borrow Time <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="time"
+                    name="borrowTime"
+                    required
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg py-2.5 px-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
               </div>
 
-              <div className="flex justify-end space-x-3 mt-6">
+              {/* Return Date & Time */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Return Date <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    name="returnDate"
+                    required
+                    min={new Date().toISOString().split('T')[0]}
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg py-2.5 px-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Return Time <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="time"
+                    name="returnTime"
+                    required
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg py-2.5 px-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              {/* Purpose / Reason */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Purpose / Reason <span className="text-red-400">*</span>
+                </label>
+                <textarea
+                  name="purpose"
+                  required
+                  rows={3}
+                  placeholder="Briefly describe why you need this device..."
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg py-2.5 px-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-700">
                 <button
+                  type="button"
                   onClick={() => setIsBorrowModalOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors"
+                  className="px-5 py-2.5 text-sm font-medium text-gray-300 hover:text-white bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={handleConfirmBorrow}
-                  disabled={!selectedItemId || isLoadingItems}
-                  className="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  type="submit"
+                  disabled={isLoadingItems}
+                  className="px-5 py-2.5 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
                 >
-                  Confirm Borrow
+                  <PlusCircle className="h-4 w-4" />
+                  Submit Request
                 </button>
               </div>
-            </div>
+            </form>
           </div>
         </div>
       )}
+      <ReportIssueModal
+        isOpen={showReportIssueModal}
+        onClose={() => setShowReportIssueModal(false)}
+        onSubmit={async (description, issueType, equipment) => {
+          console.log('Report Issue:', { description, issueType, equipment });
+          modal.showSuccess('Issue reported successfully', 'Success');
+        }}
+        room="General Facility"
+        pcNumber="N/A"
+      />
     </div>
   );
 };

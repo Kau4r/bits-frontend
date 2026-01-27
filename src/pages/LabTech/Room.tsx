@@ -257,6 +257,27 @@ export default function Room() {
 
                 {/* Search and Filters */}
                 <div className="flex flex-col md:flex-row gap-4 mb-6">
+                    {/* Tabs */}
+                    <div className="flex gap-1 mb-6 bg-gray-800 p-1 rounded-lg w-fit">
+                        <button
+                            onClick={() => setActiveTab('rooms')}
+                            className={`px-5 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'rooms'
+                                ? 'bg-blue-500 text-white'
+                                : 'text-gray-400 hover:text-white'
+                                }`}
+                        >
+                            Rooms
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('queue')}
+                            className={`px-5 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'queue'
+                                ? 'bg-blue-500 text-white'
+                                : 'text-gray-400 hover:text-white'
+                                }`}
+                        >
+                            Room Availability Queue
+                        </button>
+                    </div>
                     <div className="flex-1 relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">🔍</span>
                         <input
@@ -289,27 +310,7 @@ export default function Room() {
                     </select>
                 </div>
 
-                {/* Tabs */}
-                <div className="flex gap-1 mb-6 bg-gray-800 p-1 rounded-lg w-fit">
-                    <button
-                        onClick={() => setActiveTab('rooms')}
-                        className={`px-5 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'rooms'
-                            ? 'bg-blue-500 text-white'
-                            : 'text-gray-400 hover:text-white'
-                            }`}
-                    >
-                        Rooms
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('queue')}
-                        className={`px-5 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'queue'
-                            ? 'bg-blue-500 text-white'
-                            : 'text-gray-400 hover:text-white'
-                            }`}
-                    >
-                        Room Availability Queue
-                    </button>
-                </div>
+
             </div>
 
             {/* Scrollable Content Area */}
