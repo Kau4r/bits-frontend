@@ -18,6 +18,7 @@ import BookingPopover from '@/components/Scheduling/BookingPopover';
 import WarningModal from '@/components/Scheduling/WarningModal';
 import ConfirmModal from '@/components/Scheduling/ConfirmModal';
 import { useBookingEvents } from '@/hooks/useBookingEvents';
+import type { BorrowingRequest } from '@/components/borrowing/RequestCard';
 
 export default function Scheduling() {
   const { user } = useAuth();
@@ -34,6 +35,9 @@ export default function Scheduling() {
   const [selectedRooms, setSelectedRooms] = useState<number[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showReportIssueModal, setShowReportIssueModal] = useState(false);
+
+  // Borrowing requests state (for faculty users)
+  const [borrowingRequests, setBorrowingRequests] = useState<BorrowingRequest[]>([]);
 
   // Popover state
   const [showPopover, setShowPopover] = useState(false);
@@ -96,12 +100,17 @@ export default function Scheduling() {
         }
         setRooms(roomsData);
         await loadBookings();
+
+        // Load borrowing requests for faculty users
+        if (userRole === 'FACULTY') {
+          await loadBorrowingRequests();
+        }
       } catch (error) {
         console.error('Failed to load initial data:', error);
       }
     };
     loadInitialData();
-  }, []);
+  }, [userRole]);
 
   const loadBookings = useCallback(async () => {
     try {
@@ -134,6 +143,10 @@ export default function Scheduling() {
     // Reload bookings when any booking event is received
     loadBookings();
   }, [loadBookings]));
+
+  // Load borrowing requests (mock data for now, will be replaced with API call)
+  const loadBorrowingRequests = async () => {
+  };
 
   const updateCurrentDate = () => {
     const api: CalendarApi | undefined = calendarRef.current?.getApi();
@@ -507,8 +520,8 @@ export default function Scheduling() {
         onDateSelect={handleSidebarDateSelect}
         selectedDate={selectedDate}
         onCreateClick={handleCreateClick}
-        onReportIssueClick={() => setShowReportIssueModal(true)}
-        hideReportIssue={userRole === 'LAB_HEAD'}
+        borrowingRequests={borrowingRequests}
+        showBorrowingRequests={userRole === 'FACULTY'}
       />
 
       {/* Main Calendar Area */}
