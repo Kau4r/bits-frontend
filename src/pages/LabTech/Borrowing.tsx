@@ -3,7 +3,7 @@ import RequestCard, { type BorrowingRequest } from '@/components/borrowing/Reque
 import ApprovalModal from '@/components/borrowing/ApprovalModal';
 import RejectionModal from '@/components/borrowing/RejectionModal';
 import { useModal } from '@/context/ModalContext';
-import { getBorrowings, updateBorrowing } from '@/services/borrowing';
+import { getBorrowings, approveBorrowing, rejectBorrowing, returnBorrowing } from '@/services/borrowing';
 import { fetchInventory } from '@/services/inventory';
 import type { Item } from '@/types/inventory';
 
@@ -130,10 +130,7 @@ export default function Borrowing() {
 
         setIsLoading(true);
         try {
-            await updateBorrowing(approvalModal.request.id, {
-                status: 'APPROVED',
-                // TODO: Add approverId from auth context
-            });
+            await approveBorrowing(approvalModal.request.id);
 
             await modal.showSuccess('Request approved successfully!', 'Success');
             setApprovalModal({ isOpen: false, request: null });
@@ -151,10 +148,7 @@ export default function Borrowing() {
 
         setIsLoading(true);
         try {
-            await updateBorrowing(rejectionModal.request.id, {
-                status: 'REJECTED',
-                // TODO: Store rejection reason
-            });
+            await rejectBorrowing(rejectionModal.request.id, reason);
 
             await modal.showSuccess('Request rejected and borrower notified', 'Success');
             setRejectionModal({ isOpen: false, request: null });
@@ -170,9 +164,7 @@ export default function Borrowing() {
     const handleMarkReturned = async (id: number) => {
         setIsLoading(true);
         try {
-            await updateBorrowing(id, {
-                status: 'RETURNED',
-            });
+            await returnBorrowing(id);
 
             await modal.showSuccess('Device marked as returned', 'Success');
             await loadRequests(); // Reload data
