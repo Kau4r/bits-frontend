@@ -171,7 +171,7 @@ export default function Borrowing() {
     const handleMarkReturned = async (id: number) => {
         setIsLoading(true);
         try {
-            await returnBorrowing(id);
+            await returnBorrowing(id, { condition: 'AVAILABLE', remarks: '' });
 
             await modal.showSuccess('Device marked as returned', 'Success');
             await loadRequests(); // Reload data
