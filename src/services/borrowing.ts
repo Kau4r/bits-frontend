@@ -31,8 +31,8 @@ export const createBorrowing = async (dto: CreateBorrowingDTO): Promise<any> => 
 };
 
 // Approve a borrowing request (Lab Tech/Lab Head only)
-export const approveBorrowing = async (id: number): Promise<Borrowing> => {
-    const { data } = await api.patch<{ borrowing: Borrowing }>(`${API_BASE}/${id}/approve`);
+export const approveBorrowing = async (id: number, assignedItemId?: number): Promise<Borrowing> => {
+    const { data } = await api.patch<{ borrowing: Borrowing }>(`${API_BASE}/${id}/approve`, { assignedItemId });
     return data.borrowing;
 };
 

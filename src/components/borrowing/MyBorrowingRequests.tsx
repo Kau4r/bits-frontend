@@ -107,10 +107,10 @@ export default function MyBorrowingRequests() {
                                 <div className="flex justify-between items-center">
                                     <div>
                                         <p className="text-white font-medium text-sm">
-                                            {req.Item?.Item_Type || 'Unknown Item'}
+                                            {req.Item?.Item_Type || req.Requested_Item_Type || 'Unknown Item'}
                                         </p>
                                         <p className="text-gray-400 text-xs">
-                                            {req.Item?.Brand} • {req.Item?.Item_Code}
+                                            {req.Item ? `${req.Item.Brand} • ${req.Item.Item_Code}` : 'Specific Item Pending Assignment'}
                                         </p>
                                     </div>
                                     <span className="text-xs font-medium px-2 py-1 rounded-full bg-yellow-500/20 text-yellow-400">
@@ -135,10 +135,10 @@ export default function MyBorrowingRequests() {
                                 <div className="flex justify-between items-start">
                                     <div>
                                         <p className="text-white font-medium text-sm">
-                                            {req.Item?.Item_Type || 'Unknown Item'}
+                                            {req.Item?.Item_Type || req.Requested_Item_Type || 'Unknown Item'}
                                         </p>
                                         <p className="text-gray-400 text-xs">
-                                            {req.Item?.Brand} • {req.Item?.Item_Code}
+                                            {req.Item ? `${req.Item.Brand} • ${req.Item.Item_Code}` : 'Item Info Unavailable'}
                                         </p>
                                     </div>
                                     {req.Return_Date && <Countdown returnDate={req.Return_Date} />}

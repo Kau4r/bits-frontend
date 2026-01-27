@@ -46,23 +46,23 @@ export default function Borrowing() {
 
             // Map database Borrowing objects to BorrowingRequest format
             const mapped: BorrowingRequest[] = borrowings
-                .filter(b => b.Item) // Only show item borrowings (not computers)
+                .filter(b => b.Item || b.Requested_Item_Type) // Show item borrowings (assigned item OR requested type)
                 .map(b => ({
                     id: b.Borrow_Item_ID,
                     item: {
-                        Item_ID: b.Item!.Item_ID!,
-                        Item_Type: b.Item!.Item_Type,
-                        Brand: b.Item!.Brand,
-                        Serial_Number: b.Item!.Serial_Number,
+                        Item_ID: b.Item?.Item_ID || 0,
+                        Item_Type: b.Item?.Item_Type || b.Requested_Item_Type || 'Unknown',
+                        Brand: b.Item?.Brand || 'TBD',
+                        Serial_Number: b.Item?.Serial_Number || 'Not Assigned',
                     },
                     borrower: {
                         User_ID: b.Borrower_ID,
-                        First_Name: b.Item?.User?.First_Name || 'Unknown',
-                        Last_Name: b.Item?.User?.Last_Name || 'User',
+                        First_Name: b.Borrower?.First_Name || 'Unknown',
+                        Last_Name: b.Borrower?.Last_Name || 'User',
                     },
                     borrowDate: b.Borrow_Date,
                     returnDate: b.Return_Date || '',
-                    purpose: '', // TODO: Add purpose field to database
+                    purpose: b.Purpose || '',
                     status: b.Status,
                     createdAt: b.Borrow_Date,
                 }));
@@ -130,7 +130,7 @@ export default function Borrowing() {
 
         setIsLoading(true);
         try {
-            await approveBorrowing(approvalModal.request.id);
+            await approveBorrowing(approvalModal.request.id, assignedItemId);
 
             await modal.showSuccess('Request approved successfully!', 'Success');
             setApprovalModal({ isOpen: false, request: null });
