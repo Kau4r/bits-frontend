@@ -75,9 +75,10 @@ export default function Borrowing() {
 
             setRequests(mapped);
             // Filter for Items only (not Computers) and ensure they're borrowable and available
+            // Filter for Items only (not Computers) and ensure they're borrowable and available
             const itemsOnly = items.filter((item): item is Item =>
                 'Item_Type' in item &&
-                item.IsBorrowable &&
+                (item.IsBorrowable !== false) &&
                 item.Status === 'AVAILABLE'
             );
             setInventoryItems(itemsOnly);
