@@ -9,6 +9,7 @@ import type { Item } from '../../types/inventory';
 import { getNotifications, type Notification } from '../../services/notifications';
 import { createBorrowing } from '../../services/borrowing';
 import ReportIssueModal from '../../components/student/Modals/ReportIssue';
+import { useBorrowingEvents } from '../../hooks/useBorrowingEvents';
 
 const FacultyScheduling = () => {
   const navigate = useNavigate();
@@ -86,6 +87,16 @@ const FacultyScheduling = () => {
       setIsLoadingNotifications(false);
     }
   };
+
+  // Real-time updates for notifications
+  useBorrowingEvents(() => {
+    console.log('Received borrowing update, refreshing notifications...');
+    loadNotifications();
+    // Also refresh child components if needed by triggering a refetch or state update they listen to
+    // MyBorrowingRequests handles its own refresh? No, it needs a signal or we can force remount
+    // Actually, MyBorrowingRequests should also use the hook.
+    // For now, refreshing notifications ensures the bell updates.
+  });
 
   // Helper to format relative time
   const formatTime = (timestamp: string) => {
