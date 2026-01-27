@@ -39,7 +39,7 @@ export default function LabtechDashboard() {
   }, [notifications, fetchMetrics]);
 
   return (
-    <div className="h-screen w-full p-4 flex flex-col pt-16 lg:pt-4">
+    <div className="h-screen w-full p-4 flex flex-col lg:pt-4">
       <div className="mb-4 flex-shrink-0">
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
           Lab Technician Dashboard
