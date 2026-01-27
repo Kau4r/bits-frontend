@@ -230,6 +230,7 @@ const FacultyScheduling = () => {
                 await createBorrowing({
                   itemType: selectedType,
                   purpose,
+                  borrowDate: borrowDateTime.toISOString(),
                   expectedReturnDate: returnDateTime.toISOString()
                 });
 

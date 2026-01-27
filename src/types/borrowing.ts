@@ -43,6 +43,7 @@ export interface CreateBorrowingDTO {
     computers?: { computerId: number }[];
     type?: 'ITEM' | 'COMPUTER';
     purpose?: string;
+    borrowDate?: string | Date; // Requested pickup time
     expectedReturnDate?: string | Date;
 }
 
