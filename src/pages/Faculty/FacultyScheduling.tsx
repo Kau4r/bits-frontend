@@ -7,6 +7,7 @@ import { useModal } from '../../context/ModalContext';
 import { fetchInventory } from '../../services/inventory';
 import type { Item } from '../../types/inventory';
 import { getNotifications, type Notification } from '../../services/notifications';
+import { createBorrowing } from '../../services/borrowing';
 import ReportIssueModal from '../../components/student/Modals/ReportIssue';
 
 const FacultyScheduling = () => {
@@ -218,17 +219,30 @@ const FacultyScheduling = () => {
                 return;
               }
 
-              // TODO: Create device borrowing request via API
-              console.log('Device Borrowing Request:', {
-                itemType: selectedType,
-                itemName,
-                borrowDate: borrowDateTime.toISOString(),
-                returnDate: returnDateTime.toISOString(),
-                purpose,
-              });
+              // Find the selected item ID from the dropdown
+              const selectedItem = inventoryItems.find(
+                item => item.Item_Type === selectedType && `${item.Brand} - ${item.Serial_Number}` === itemName
+              );
 
-              modal.showSuccess('Device borrowing request submitted successfully!', 'Success');
-              setIsBorrowModalOpen(false);
+              if (!selectedItem || !selectedItem.Item_ID) {
+                modal.showError('Please select a valid item', 'Validation Error');
+                return;
+              }
+
+              // Call the borrowing API
+              try {
+                await createBorrowing({
+                  items: [{ itemId: selectedItem.Item_ID }],
+                  purpose,
+                  expectedReturnDate: returnDateTime.toISOString()
+                });
+
+                modal.showSuccess('Device borrowing request submitted successfully!', 'Success');
+                setIsBorrowModalOpen(false);
+              } catch (error: any) {
+                console.error('Borrowing error:', error);
+                modal.showError(error.response?.data?.error || 'Failed to submit borrowing request', 'Error');
+              }
             }} className="space-y-5">
               {/* Item Type & Specific Item */}
               <div className="grid grid-cols-2 gap-4">
