@@ -28,11 +28,11 @@ export interface Borrowing {
 
 // DTOs
 export interface CreateBorrowingDTO {
-    borrowerId: number;
+    borrowerId?: number;
     borroweeId?: number;
-    items?: { itemId: number; quantity: number }[];
+    items?: { itemId: number; quantity?: number }[];
     computers?: { computerId: number }[];
-    type: 'ITEM' | 'COMPUTER';
+    type?: 'ITEM' | 'COMPUTER';
     purpose?: string;
     expectedReturnDate?: string | Date;
 }

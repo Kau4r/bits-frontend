@@ -195,7 +195,7 @@ const FacultyScheduling = () => {
               </button>
             </div>
 
-            <form onSubmit={(e) => {
+            <form onSubmit={async (e) => {
               e.preventDefault();
               const formData = new FormData(e.currentTarget);
               const borrowDate = formData.get('borrowDate') as string;
@@ -232,7 +232,8 @@ const FacultyScheduling = () => {
               // Call the borrowing API
               try {
                 await createBorrowing({
-                  items: [{ itemId: selectedItem.Item_ID }],
+                  items: [{ itemId: selectedItem.Item_ID, quantity: 1 }],
+                  type: 'ITEM',
                   purpose,
                   expectedReturnDate: returnDateTime.toISOString()
                 });
