@@ -1,7 +1,7 @@
 import dayjs from 'dayjs'
 import { useState, useEffect } from 'react'
 import type { Room as RoomType, RoomStatus, RoomType as RoomTypeEnum, RoomSession } from '@/types/room'
-import { getRooms } from '@/services/room'
+import { getRooms, setRoomStudentAvailability } from '@/services/room'
 import api from '@/services/api'
 import { useModal } from '@/context/ModalContext'
 import QueueModal from './components/QueueModal'
@@ -197,13 +197,13 @@ export default function Room() {
             } else {
                 // CREATE LOGIC
                 // Call API to set room availability (with audit logging)
-                const response = await api.post(`/rooms/${selectedRoom.Room_ID}/student-room-schedule`, {
+                const response = await setRoomStudentAvailability(selectedRoom.Room_ID, {
                     startTime: requestedStart,
                     endTime: requestedEnd,
                     notes: `Student usage time set by staff`
                 });
 
-                if ((response.data as { success: boolean }).success) {
+                if (response.success) {
                     // Ideally we should reload to get the real ID and proper formatting
                     // For now, we'll force a reload of the page to simplify
                     window.location.reload();
