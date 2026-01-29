@@ -237,7 +237,7 @@ export default function UserDetails() {
             id="role-select"
             value={role}
             onChange={(e) => handleRoleChange(e.target.value as User_Role)}
-            className="rounded-lg border border-gray-300 bg-white py-1.5 pl-3 pr-8 text-sm font-medium text-gray-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+            className="rounded-lg border border-gray-300 bg-white py-1.5 pl-3 pr-8 text-sm font-medium text-gray-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
           >
             {Object.values(ROLES).map((r) => (
               <option key={r} value={r}>{formatRole(r)}</option>
@@ -277,7 +277,7 @@ export default function UserDetails() {
           )}
           <button
             onClick={async () => await modal.showAlert(`Password reset link would be sent to ${user.Email}`, 'Password Reset')}
-            className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+            className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
           >
             Reset Password
           </button>
@@ -301,7 +301,7 @@ export default function UserDetails() {
               <select
                 value={logTypeFilter}
                 onChange={(e) => setLogTypeFilter(e.target.value)}
-                className="rounded-lg border border-gray-300 bg-white py-1.5 pl-3 pr-8 text-sm text-gray-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                className="rounded-lg border border-gray-300 bg-white py-1.5 pl-3 pr-8 text-sm text-gray-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
               >
                 <option value="ALL">All Types</option>
                 {Object.values(LOG_TYPES).map((type) => (
@@ -311,7 +311,7 @@ export default function UserDetails() {
               <select
                 value={dateFilter}
                 onChange={(e) => setDateFilter(e.target.value as 'all' | '24h' | '7d' | '30d')}
-                className="rounded-lg border border-gray-300 bg-white py-1.5 pl-3 pr-8 text-sm text-gray-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                className="rounded-lg border border-gray-300 bg-white py-1.5 pl-3 pr-8 text-sm text-gray-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
               >
                 <option value="all">All Time</option>
                 <option value="24h">Last 24 Hours</option>
@@ -320,7 +320,7 @@ export default function UserDetails() {
               </select>
               <button
                 onClick={() => setSortOrder(prev => prev === 'newest' ? 'oldest' : 'newest')}
-                className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
                 title={`Currently showing ${sortOrder} first`}
               >
                 <ArrowsUpDownIcon className="h-4 w-4" />
@@ -331,7 +331,7 @@ export default function UserDetails() {
                 placeholder="Search activities..."
                 value={activitySearch}
                 onChange={(e) => setActivitySearch(e.target.value)}
-                className="w-48 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-500"
+                className="w-48 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400"
               />
             </div>
           )}
@@ -342,10 +342,10 @@ export default function UserDetails() {
             {[...Array(5)].map((_, i) => (
               <div key={i} className="flex animate-pulse items-center justify-between gap-3 rounded-md px-3 py-2">
                 <div className="flex-1">
-                  <div className="h-4 w-1/2 rounded bg-gray-200 dark:bg-gray-700" />
-                  <div className="mt-1 h-3 w-3/4 rounded bg-gray-200 dark:bg-gray-700" />
+                  <div className="h-4 w-1/2 rounded bg-gray-200 dark:bg-gray-800" />
+                  <div className="mt-1 h-3 w-3/4 rounded bg-gray-200 dark:bg-gray-800" />
                 </div>
-                <div className="h-3 w-16 rounded bg-gray-200 dark:bg-gray-700" />
+                <div className="h-3 w-16 rounded bg-gray-200 dark:bg-gray-800" />
               </div>
             ))}
           </div>

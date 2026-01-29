@@ -10,7 +10,7 @@ import { fetchInventory } from '@/services/inventory';
 import { getRooms } from '@/services/room';
 
 const InventoryMobilePage = () => {
-    const { user } = useAuth();
+    const { } = useAuth();
     const [isQrOpen, setIsQrOpen] = useState(false);
     const [inventory, setInventory] = useState<Item[]>([]);
     const [selectedItem, setSelectedItem] = useState<Item | null>(null);
@@ -215,7 +215,7 @@ const InventoryMobilePage = () => {
                                         ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
                                         : item.Status === 'DEFECTIVE'
                                             ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
-                                            : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                                            : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
                                     }`}
                             >
                                 {item.Status}

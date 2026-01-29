@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react"
-import { Eye } from 'lucide-react';
 import Table from "@/components/Table"
-import TableSearchInput from "@/components/Search"
+import Search from "@/components/Search"
 import TicketingModal from "@/components/Ticketing/TicketingModal"
 import { fetchTickets, archiveTicket, restoreTicket } from "@/services/tickets";
 import type { Ticket } from "@/types/tickets";
+import { PlusIcon, EyeIcon, FunnelIcon, InboxStackIcon, ArchiveBoxIcon } from "@heroicons/react/24/outline";
 
 export default function Tickets() {
     const [searchTerm, setSearchTerm] = useState('');
@@ -97,130 +97,213 @@ export default function Tickets() {
         }
     };
 
-    return (
-        <div className="p-4 space-y-4">
-            <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold">Tickets</h1>
+    const clearFilters = () => {
+        setSearchTerm('');
+        setSelectedStatus('All');
+    };
+
+    const hasActiveFilters = searchTerm || selectedStatus !== 'All';
+
+    const tableHeaders = [
+        { label: 'Reported By', key: 'reported_by' },
+        { label: 'Location', key: 'location' },
+        { label: 'Category', key: 'category' },
+        { label: 'Status', key: 'status' },
+        { label: 'Actions', align: 'center' as const }
+    ];
+
+    if (loading) {
+        return (
+            <div className="h-full w-full bg-white p-6 sm:px-8 lg:px-10 dark:bg-gray-900">
+                <div className="mb-6 flex items-center justify-between">
+                    <div>
+                        <div className="h-8 w-48 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
+                        <div className="mt-1 h-4 w-64 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
+                    </div>
+                </div>
+                <div className="space-y-4">
+                    {[...Array(5)].map((_, i) => (
+                        <div key={i} className="h-16 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-800" />
+                    ))}
+                </div>
             </div>
-            <div className="flex flex-col sm:flex-row gap-4 items-center">
-                <TableSearchInput
-                    searchTerm={searchTerm}
-                    onChange={setSearchTerm}
-                    placeholder="Search tickets..."
-                    showLabel={false}
-                />
-                <div className="w-full sm:w-48">
+        );
+    }
+
+    return (
+        <div className="flex h-full w-full flex-col bg-white p-6 sm:px-8 lg:px-10 dark:bg-gray-900">
+            {/* Header */}
+            <div className="mb-6 flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Issue Ticketing</h1>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Track and resolve technical issues and equipment reports</p>
+                </div>
+
+                <div className="flex items-center gap-4">
+                    {/* Status Toggle */}
+                    <div className="flex rounded-lg border border-gray-300 bg-white shadow-sm dark:border-gray-600 dark:bg-gray-800">
+                        <button
+                            onClick={() => setShowArchived(false)}
+                            className={`inline-flex items-center gap-2 rounded-l-lg px-4 py-2 text-sm font-medium transition-colors ${!showArchived
+                                ? 'bg-indigo-600 text-white'
+                                : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+                                }`}
+                        >
+                            <InboxStackIcon className="h-4 w-4" />
+                            Active
+                        </button>
+                        <button
+                            onClick={() => setShowArchived(true)}
+                            className={`inline-flex items-center gap-2 rounded-r-lg px-4 py-2 text-sm font-medium transition-colors ${showArchived
+                                ? 'bg-indigo-600 text-white'
+                                : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+                                }`}
+                        >
+                            <ArchiveBoxIcon className="h-4 w-4" />
+                            Archived
+                        </button>
+                    </div>
+
+                    <button
+                        onClick={() => {
+                            setSelectedTicket(null);
+                            setIsModalOpen(true);
+                        }}
+                        className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-500 hover:shadow-md focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none active:bg-indigo-700"
+                    >
+                        <PlusIcon className="h-5 w-5" />
+                        Report Issue
+                    </button>
+                </div>
+            </div>
+
+            {/* Filters Bar */}
+            <div className="mb-6 flex flex-wrap items-center gap-3">
+                {/* Search */}
+                <div className="min-w-[280px] flex-1">
+                    <Search
+                        searchTerm={searchTerm}
+                        onChange={setSearchTerm}
+                        showLabel={false}
+                        placeholder="Search tickets..."
+                    />
+                </div>
+
+                {/* Status Filter */}
+                <div className="relative">
                     <select
-                        id="status"
                         value={selectedStatus}
                         onChange={(e) => setSelectedStatus(e.target.value)}
-                        className="w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                        className="appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-4 pr-10 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
                     >
                         {statuses.map(status => (
-                            <option key={status} value={status}>{status}</option>
+                            <option key={status} value={status}>
+                                {status.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
+                            </option>
                         ))}
                     </select>
+                    <FunnelIcon className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 </div>
 
-                {/* Toggle Switch */}
-                <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
-                    <button
-                        onClick={() => setShowArchived(false)}
-                        className={`flex-1 px-4 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${!showArchived
-                            ? 'bg-white text-gray-900 shadow dark:bg-gray-700 dark:text-white'
-                            : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
-                            }`}
-                    >
-                        Active
-                    </button>
-                    <button
-                        onClick={() => setShowArchived(true)}
-                        className={`flex-1 px-4 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${showArchived
-                            ? 'bg-white text-gray-900 shadow dark:bg-gray-700 dark:text-white'
-                            : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
-                            }`}
-                    >
-                        Archived
-                    </button>
+                {/* Results Count */}
+                <div className="ml-auto flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                    <span className="font-semibold text-gray-900 dark:text-white">{filteredTickets.length}</span>
+                    <span>of {displayedTickets.length} {showArchived ? 'archived' : 'active'} tickets</span>
                 </div>
-
-                <button
-                    onClick={() => {
-                        setSelectedTicket(null)
-                        setIsModalOpen(true)
-                    }}
-                    className="w-full sm:w-auto rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:bg-indigo-700 dark:hover:bg-indigo-600"
-                >
-                    Report Issue
-                </button>
             </div>
-            <div className="mt-4">
-                <Table headers={['Reported By', 'Location', 'Category', 'Status', 'Actions']}>
-                    {loading ? (
-                        <div className="col-span-full text-center py-4 text-gray-500 dark:text-gray-400">
-                            Loading tickets...
-                        </div>
-                    ) : filteredTickets.length === 0 ? (
-                        <div className="col-span-full text-center py-4 text-gray-500 dark:text-gray-400">
-                            {showArchived ? 'No archived tickets found' : 'No active tickets found'}
+
+            <div className="flex-1 min-h-0">
+                <Table headers={tableHeaders} columnWidths="2fr 1.5fr 1fr 1.5fr 1fr">
+                    {filteredTickets.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center flex-1 w-full min-h-full" data-full-row>
+                            <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-full mb-4">
+                                {showArchived ? (
+                                    <ArchiveBoxIcon className="h-12 w-12 text-gray-400" />
+                                ) : (
+                                    <InboxStackIcon className="h-12 w-12 text-gray-400" />
+                                )}
+                            </div>
+                            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
+                                {hasActiveFilters ? "No tickets match your filters" : `No ${showArchived ? 'archived' : 'active'} tickets`}
+                            </h3>
+                            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 text-center max-w-sm px-6">
+                                {hasActiveFilters
+                                    ? "Try adjusting your search or filter criteria"
+                                    : showArchived
+                                        ? "Archived reports are stored here for long-term tracking."
+                                        : "You're all caught up! New issue reports from staff and students will appear here."}
+                            </p>
+                            {hasActiveFilters && (
+                                <button
+                                    onClick={clearFilters}
+                                    className="mt-6 inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
+                                >
+                                    Clear Filters
+                                </button>
+                            )}
                         </div>
                     ) : (
                         filteredTickets.map(ticket => (
-                            <div
+                            <button
                                 key={ticket.Ticket_ID}
-                                className="px-6 py-4 items-center text-center hover:bg-gray-50 dark:hover:bg-gray-800"
-                                style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '1rem' }}
+                                type="button"
+                                onClick={() => handleViewTicket(ticket)}
+                                className="group grid w-full cursor-pointer items-center px-6 py-4 text-left transition-all duration-150 hover:bg-indigo-50/50 focus:bg-indigo-50 focus:outline-none dark:hover:bg-indigo-900/10 dark:focus:bg-indigo-900/20"
+                                style={{ gridTemplateColumns: '2fr 1.5fr 1fr 1.5fr 1fr' }}
                             >
-                                <div className="text-left">
-                                    <p className="font-medium">{ticket.Reported_By.First_Name}</p>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                                        {ticket.Reported_By.User_Role} • {new Date(ticket.Created_At).toLocaleDateString()}
+                                <div>
+                                    <p className="font-semibold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                                        {ticket.Reported_By.First_Name} {ticket.Reported_By.Last_Name}
+                                    </p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        {ticket.Reported_By.User_Role.replace('_', ' ')} • {new Date(ticket.Created_At).toLocaleDateString()}
                                     </p>
                                 </div>
-                                <div className="text-sm">{ticket.Location || ticket.Room?.Name || '-'}</div>
-                                <div className="text-sm">
-                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                                <div className="text-sm text-gray-600 dark:text-gray-300">{ticket.Location || ticket.Room?.Name || '-'}</div>
+                                <div>
+                                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300">
                                         {ticket.Category || 'Uncategorized'}
                                     </span>
                                 </div>
                                 <div>
-                                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${ticket.Status === 'PENDING'
-                                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
+                                    <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full ${ticket.Status === 'PENDING'
+                                        ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
                                         : ticket.Status === 'IN_PROGRESS'
-                                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
-                                            : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                                            : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                                         }`}>
-                                        {ticket.Status}
+                                        <span className={`h-1.5 w-1.5 rounded-full mr-1.5 ${ticket.Status === 'PENDING' ? 'bg-yellow-500' : ticket.Status === 'IN_PROGRESS' ? 'bg-blue-500' : 'bg-green-500'}`} />
+                                        {ticket.Status.replace('_', ' ')}
                                     </span>
                                     {ticket.Technician?.User_ID && (
-                                        <p className="text-xs text-gray-500 mt-1">Tech: {ticket.Technician.First_Name}</p>
+                                        <p className="text-[10px] text-gray-500 mt-1 dark:text-gray-400">Assignee: {ticket.Technician.First_Name}</p>
                                     )}
                                 </div>
-                                <div className="flex items-center justify-center gap-2">
+                                <div className="flex items-center justify-center gap-2" onClick={(e) => e.stopPropagation()}>
                                     <button
                                         onClick={() => handleViewTicket(ticket)}
-                                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-full transition-colors dark:text-blue-400 dark:hover:bg-blue-900/30"
+                                        className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-all dark:hover:bg-indigo-900/30 dark:hover:text-indigo-400"
                                         title="View Details"
                                     >
-                                        <Eye className="w-5 h-5" />
+                                        <EyeIcon className="w-5 h-5" />
                                     </button>
                                     {showArchived ? (
                                         <button
                                             onClick={() => handleRestoreTicket(ticket.Ticket_ID)}
-                                            className="px-3 py-1 text-sm text-white bg-green-500 rounded hover:bg-green-600"
+                                            className="px-3 py-1 text-xs font-bold text-green-700 bg-green-100 rounded-full hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400"
                                         >
                                             Restore
                                         </button>
                                     ) : ticket.Status === 'RESOLVED' ? (
                                         <button
                                             onClick={() => handleArchiveTicket(ticket.Ticket_ID)}
-                                            className="px-3 py-1 text-sm text-white bg-gray-500 rounded hover:bg-gray-600"
+                                            className="px-3 py-1 text-xs font-bold text-gray-700 bg-gray-100 rounded-full hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300"
                                         >
                                             Archive
                                         </button>
                                     ) : null}
                                 </div>
-                            </div>
+                            </button>
                         ))
                     )}
                 </Table>

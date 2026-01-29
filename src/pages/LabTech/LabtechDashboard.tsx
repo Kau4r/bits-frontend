@@ -39,61 +39,64 @@ export default function LabtechDashboard() {
   }, [notifications, fetchMetrics]);
 
   return (
-    <div className="h-screen w-full p-4 flex flex-col lg:pt-4">
-      <div className="mb-4 flex-shrink-0">
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
-          Lab Technician Dashboard
-        </h1>
+    <div className="h-full w-full bg-white p-6 sm:px-8 lg:px-10 dark:bg-gray-900 overflow-y-auto">
+      <div className="mb-6 flex-shrink-0">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Lab Technician Dashboard
+          </h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Overview of your assigned tasks, maintenance activities, and system alerts</p>
+        </div>
 
         {/* Stats Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700 flex items-center gap-4">
-            <div className="p-3 bg-purple-100 dark:bg-purple-900/30 text-purple-600 rounded-lg">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+          <div className="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex items-center gap-4 transition-all hover:shadow-md">
+            <div className="p-3 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-lg">
               <ClipboardDocumentCheckIcon className="w-6 h-6" />
             </div>
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">My Assigned Tickets</p>
-              <p className="text-2xl font-bold text-gray-800 dark:text-white">{metrics?.counts.myAssignedTickets || 0}</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{metrics?.counts.myAssignedTickets || 0}</p>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700 flex items-center gap-4">
-            <div className="p-3 bg-orange-100 dark:bg-orange-900/30 text-orange-600 rounded-lg">
+          <div className="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex items-center gap-4 transition-all hover:shadow-md">
+            <div className="p-3 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-lg">
               <WrenchScrewdriverIcon className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Active Maintenance</p>
-              <p className="text-2xl font-bold text-gray-800 dark:text-white">{metrics?.counts.activeMaintenance || 0}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Maintenance</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{metrics?.counts.activeMaintenance || 0}</p>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700 flex items-center gap-4">
-            <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 rounded-lg">
+          <div className="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex items-center gap-4 transition-all hover:shadow-md">
+            <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg">
               <DeviceTabletIcon className="w-6 h-6" />
             </div>
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Borrowed Items</p>
-              <p className="text-2xl font-bold text-gray-800 dark:text-white">{metrics?.counts.activeBorrowings || 0}</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{metrics?.counts.activeBorrowings || 0}</p>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700 flex items-center gap-4">
-            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-lg">
+          <div className="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex items-center gap-4 transition-all hover:shadow-md">
+            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg">
               <DocumentTextIcon className="w-6 h-6" />
             </div>
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Pending Forms</p>
-              <p className="text-2xl font-bold text-gray-800 dark:text-white">{metrics?.counts.pendingForms || 0}</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{metrics?.counts.pendingForms || 0}</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-0">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0 mb-6">
         {/* Left Side (2 columns wide) */}
-        <div className="lg:col-span-2 flex flex-col gap-4 h-full min-h-0">
+        <div className="lg:col-span-2 flex flex-col gap-6 h-full min-h-0">
           <div className="flex-1 min-h-0">
-            <Card title="Room Schedule" className="h-full">
+            <Card title="Room Schedule" className="h-full shadow-sm rounded-xl">
               <BookingCard />
             </Card>
           </div>
@@ -101,7 +104,7 @@ export default function LabtechDashboard() {
 
         {/* Right Side: Notifications full height */}
         <div className="h-full min-h-0">
-          <Card className="h-full">
+          <Card className="h-full shadow-sm rounded-xl">
             <NotificationsCard />
           </Card>
         </div>
