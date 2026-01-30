@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useNotifications } from '@/context/NotificationContext';
 import NotificationCard from '@/components/notifications/NotificationCard';
-import TableSearchInput from '@/components/Search';
-import { Bell } from 'lucide-react';
+import Search from '@/components/Search';
+import { FunnelIcon, BellIcon, InboxIcon, ArchiveBoxIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import type { Notification, NotificationView, NotificationType } from '@/types/notification';
 
 
@@ -64,7 +64,7 @@ export default function NotificationPage() {
 
     // Search filter
     const matchesSearch = Object.values(notification).some((value) =>
-      value.toString().toLowerCase().includes(searchTerm.toLowerCase())
+      value?.toString().toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     // Type filter
@@ -78,8 +78,6 @@ export default function NotificationPage() {
   };
 
   const handleArchive = (id: number) => {
-    // Local state modification not possible directly on mapped data without extra state
-    // For now, simple logging as archive isn't in API yet
     console.log('Archive not fully supported in global context yet', id);
   };
 
@@ -100,77 +98,107 @@ export default function NotificationPage() {
     }).length;
   };
 
+  const clearFilters = () => {
+    setSearchTerm('');
+    setSelectedType('All');
+  };
+
+  const hasActiveFilters = searchTerm || selectedType !== 'All';
+
   if (loading) {
-    return <div className="p-8 text-center text-gray-500">Loading notifications...</div>;
+    return (
+      <div className="h-full w-full bg-white p-6 sm:px-8 lg:px-10 dark:bg-gray-900">
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <div className="h-8 w-48 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
+            <div className="mt-1 h-4 w-64 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
+          </div>
+        </div>
+        <div className="space-y-4">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-24 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-800" />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="p-4">
-      <div className="sticky top-0 z-10 pb-4">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold dark:text-white">Notifications</h1>
+    <div className="flex h-full w-full flex-col bg-white p-6 sm:px-8 lg:px-10 dark:bg-gray-900">
+      {/* Header */}
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Notifications</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Stay updated with system activities, asset requests, and issue reports</p>
         </div>
 
-        {/* Filter Bar */}
-        <div className="flex flex-col sm:flex-row gap-4 items-center">
-          <TableSearchInput
+        {/* View Tabs Toggle */}
+        <div className="flex rounded-lg border border-gray-300 bg-white shadow-sm dark:border-gray-600 dark:bg-gray-800">
+          <button
+            onClick={() => setActiveView('all')}
+            className={`inline-flex items-center gap-2 rounded-l-lg px-4 py-2 text-sm font-medium transition-colors ${activeView === 'all'
+              ? 'bg-indigo-600 text-white'
+              : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+              }`}
+          >
+            <InboxIcon className="h-4 w-4" />
+            Inbox ({getViewCount('all')})
+          </button>
+          <button
+            onClick={() => setActiveView('read')}
+            className={`inline-flex items-center gap-2 border-x border-gray-300 px-4 py-2 text-sm font-medium transition-colors dark:border-gray-600 ${activeView === 'read'
+              ? 'bg-indigo-600 text-white'
+              : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+              }`}
+          >
+            <CheckCircleIcon className="h-4 w-4" />
+            Read ({getViewCount('read')})
+          </button>
+          <button
+            onClick={() => setActiveView('archived')}
+            className={`inline-flex items-center gap-2 rounded-r-lg px-4 py-2 text-sm font-medium transition-colors ${activeView === 'archived'
+              ? 'bg-indigo-600 text-white'
+              : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+              }`}
+          >
+            <ArchiveBoxIcon className="h-4 w-4" />
+            Archived ({getViewCount('archived')})
+          </button>
+        </div>
+      </div>
+
+      {/* Filters Bar */}
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        {/* Search */}
+        <div className="min-w-[280px] flex-1">
+          <Search
             searchTerm={searchTerm}
             onChange={setSearchTerm}
-            placeholder="Search..."
             showLabel={false}
+            placeholder="Search notifications..."
           />
+        </div>
 
-          {/* Type Filter */}
-          <div className="flex items-center gap-2">
-            <select
-              value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value as NotificationType | 'All')}
-              className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-            >
-              <option value="All">All Types</option>
-              {notificationTypes.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* View Tabs */}
-          <div className="flex items-center gap-1 ml-auto">
-            <button
-              onClick={() => setActiveView('all')}
-              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeView === 'all'
-                ? 'bg-indigo-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
-                }`}
-            >
-              Inbox ({getViewCount('all')})
-            </button>
-            <button
-              onClick={() => setActiveView('read')}
-              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeView === 'read'
-                ? 'bg-indigo-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
-                }`}
-            >
-              Read ({getViewCount('read')})
-            </button>
-            <button
-              onClick={() => setActiveView('archived')}
-              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeView === 'archived'
-                ? 'bg-indigo-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
-                }`}
-            >
-              Archived ({getViewCount('archived')})
-            </button>
-          </div>
+        {/* Type Filter */}
+        <div className="relative">
+          <select
+            value={selectedType}
+            onChange={(e) => setSelectedType(e.target.value as NotificationType | 'All')}
+            className="appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-4 pr-10 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
+          >
+            <option value="All">All Types</option>
+            {notificationTypes.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
+          <FunnelIcon className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         </div>
       </div>
 
       {/* Notifications List */}
-      <div className="mt-4 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+      <div className="flex-1 min-h-0 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
         {filteredNotifications.length > 0 ? (
           filteredNotifications.map((notification) => (
             <NotificationCard
@@ -182,18 +210,28 @@ export default function NotificationPage() {
             />
           ))
         ) : (
-          <div className="text-center py-10">
-            <Bell className="mx-auto h-12 w-12 text-gray-400" />
+          <div className="flex flex-col items-center justify-center py-20">
+            <BellIcon className="h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
-              No notifications
+              {hasActiveFilters ? "No notifications match your filters" : `No ${activeView === 'all' ? 'new' : activeView} notifications`}
             </h3>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              {activeView === 'all'
-                ? 'You have no new notifications.'
-                : activeView === 'read'
-                  ? 'No read notifications.'
-                  : 'No archived notifications.'}
+              {hasActiveFilters
+                ? "Try adjusting your search or filter criteria"
+                : activeView === 'all'
+                  ? "You're all caught up! Check back later for updates."
+                  : activeView === 'read'
+                    ? "Read notifications will appear here."
+                    : "Archived notifications are stored for later reference."}
             </p>
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="mt-4 inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
+              >
+                Clear Filters
+              </button>
+            )}
           </div>
         )}
       </div>

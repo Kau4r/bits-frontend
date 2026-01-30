@@ -135,19 +135,33 @@ export default function QueueModal({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center" onClick={onClose}>
+        <div
+            className="fixed inset-0 bg-black/40 grid place-items-center p-4 z-50"
+            onClick={onClose}
+        >
             <div
-                className="bg-gray-800 rounded-lg w-full max-w-lg p-6 shadow-xl"
+                className="w-full max-w-lg rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-6 shadow-xl"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <h2 className="text-2xl font-bold text-white mb-1">
-                    {isEditing ? 'Edit Room' : 'Add Room'}
-                </h2>
-                <p className="text-blue-400 text-sm mb-6">Select a Room to add in the Queue</p>
+                <div className="flex justify-between items-center mb-1">
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                        {isEditing ? 'Edit Room' : 'Add Room'}
+                    </h2>
+                    <button
+                        onClick={onClose}
+                        className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
+                        aria-label="Close"
+                    >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">Select a Room to add in the Queue</p>
 
                 {error && (
-                    <div className="mb-4 p-3 bg-red-500/20 text-red-400 rounded-lg text-sm">
+                    <div className="mb-4 p-3 bg-red-50 dark:bg-red-500/20 text-red-600 dark:text-red-400 rounded-lg text-sm border border-red-200 dark:border-red-500/50">
                         {error}
                     </div>
                 )}
@@ -156,7 +170,7 @@ export default function QueueModal({
                 <div className="grid grid-cols-2 gap-4 mb-6">
                     {/* Start Time Dropdown */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Start Time
                         </label>
                         <div className="relative">
@@ -168,13 +182,13 @@ export default function QueueModal({
                                     setEndDropdownOpen(false);
                                 }}
                                 disabled={readOnly}
-                                className={`w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-left text-white flex justify-between items-center ${readOnly ? 'opacity-60 cursor-not-allowed' : 'hover:border-gray-500'}`}
+                                className={`w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-left text-gray-900 dark:text-white flex justify-between items-center text-sm ${readOnly ? 'opacity-60 cursor-not-allowed' : 'hover:border-gray-400 dark:hover:border-gray-500'}`}
                             >
                                 {startTime ? formatTimeDisplay(startTime) : 'Select time'}
                                 {!readOnly && <span className="text-gray-400">▼</span>}
                             </button>
                             {startDropdownOpen && (
-                                <div className="absolute z-10 mt-1 w-full bg-gray-700 border border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                                <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-48 overflow-y-auto">
                                     {timeSlots.map((time) => {
                                         const occupied = isTimeOccupied(time);
                                         return (
@@ -190,10 +204,10 @@ export default function QueueModal({
                                                     }
                                                 }}
                                                 className={`w-full px-4 py-2 text-left text-sm ${occupied
-                                                    ? 'bg-red-500/30 text-red-300'
+                                                    ? 'bg-red-50 text-red-600 dark:bg-red-500/30 dark:text-red-300'
                                                     : time === startTime
-                                                        ? 'bg-gray-600 text-white'
-                                                        : 'text-gray-200 hover:bg-gray-600'
+                                                        ? 'bg-blue-50 text-blue-600 dark:bg-blue-600 dark:text-white'
+                                                        : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
                                                     }`}
                                             >
                                                 {formatTimeDisplay(time)}
@@ -207,7 +221,7 @@ export default function QueueModal({
 
                     {/* End Time Dropdown */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             End Time
                         </label>
                         <div className="relative">
@@ -219,13 +233,13 @@ export default function QueueModal({
                                     setStartDropdownOpen(false);
                                 }}
                                 disabled={readOnly}
-                                className={`w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-left text-white flex justify-between items-center ${readOnly ? 'opacity-60 cursor-not-allowed' : 'hover:border-gray-500'}`}
+                                className={`w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-left text-gray-900 dark:text-white flex justify-between items-center text-sm ${readOnly ? 'opacity-60 cursor-not-allowed' : 'hover:border-gray-400 dark:hover:border-gray-500'}`}
                             >
                                 {endTime ? formatTimeDisplay(endTime) : 'Select time'}
                                 {!readOnly && <span className="text-gray-400">▼</span>}
                             </button>
                             {endDropdownOpen && (
-                                <div className="absolute z-10 mt-1 w-full bg-gray-700 border border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                                <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-48 overflow-y-auto">
                                     {getEndTimeOptions().map((time) => {
                                         const occupied = isTimeOccupied(time, true);
                                         return (
@@ -237,10 +251,10 @@ export default function QueueModal({
                                                     setEndDropdownOpen(false);
                                                 }}
                                                 className={`w-full px-4 py-2 text-left text-sm ${occupied
-                                                    ? 'bg-red-500/30 text-red-300'
+                                                    ? 'bg-red-50 text-red-600 dark:bg-red-500/30 dark:text-red-300'
                                                     : time === endTime
-                                                        ? 'bg-gray-600 text-white'
-                                                        : 'text-gray-200 hover:bg-gray-600'
+                                                        ? 'bg-blue-50 text-blue-600 dark:bg-blue-600 dark:text-white'
+                                                        : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
                                                     }`}
                                             >
                                                 {formatTimeDisplay(time)}
@@ -255,12 +269,12 @@ export default function QueueModal({
 
                 {/* Available Rooms Grid */}
                 <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-300 mb-3">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Available Rooms for Current Time
                     </label>
                     <div className="grid grid-cols-4 gap-3">
                         {availableRooms.length === 0 ? (
-                            <p className="col-span-4 text-center text-gray-500 py-4">
+                            <p className="col-span-4 text-center text-gray-500 dark:text-gray-400 py-4 text-sm">
                                 No rooms available for this category
                             </p>
                         ) : (
@@ -270,10 +284,11 @@ export default function QueueModal({
                                     type="button"
                                     onClick={() => setSelectedRoom(room.Name)}
                                     disabled={isEditing}
-                                    className={`px-4 py-3 rounded-lg border-2 text-sm font-medium transition-colors ${selectedRoom === room.Name
-                                        ? 'border-blue-500 bg-blue-500/20 text-blue-300'
-                                        : 'border-gray-600 bg-gray-700 text-gray-300 hover:border-gray-500'
+                                    className={`px-2 py-2.5 rounded-md border text-sm font-medium transition-colors truncate ${selectedRoom === room.Name
+                                        ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-600/20 dark:text-blue-300'
+                                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-700'
                                         } ${isEditing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    title={room.Name}
                                 >
                                     {room.Name}
                                 </button>
@@ -283,11 +298,11 @@ export default function QueueModal({
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex justify-end gap-3">
+                <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                     <button
                         type="button"
                         onClick={onClose}
-                        className="px-6 py-2 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
+                        className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                     >
                         Cancel
                     </button>
@@ -295,7 +310,7 @@ export default function QueueModal({
                         <button
                             type="button"
                             onClick={() => selectedQueueItem && onRemove(selectedQueueItem)}
-                            className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                         >
                             Remove
                         </button>
@@ -304,7 +319,7 @@ export default function QueueModal({
                         <button
                             type="button"
                             onClick={handleSubmit}
-                            className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                         >
                             Confirm
                         </button>

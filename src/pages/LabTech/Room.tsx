@@ -9,6 +9,8 @@ import RoomDetailModal from './components/RoomDetailModal'
 import RoomCard from './components/RoomCard'
 import TimeSlotGrid from './components/TimeSlotGrid'
 import { useAuth } from '@/context/AuthContext'
+import Search from '@/components/Search'
+import { FunnelIcon, CalendarDaysIcon, BuildingOfficeIcon, PlusIcon } from '@heroicons/react/24/outline'
 
 
 type TabType = 'rooms' | 'queue';
@@ -166,7 +168,7 @@ export default function Room() {
         }
     };
 
-    const handleQueueRoom = async (startTime: string, endTime: string, roomName: string) => {
+    const handleQueueRoom = async (startTime: string, endTime: string, _roomName: string) => {
         if (!selectedRoom) return;
 
         const today = dayjs().startOf('day');
@@ -249,80 +251,108 @@ export default function Room() {
     });
 
     return (
-        <div className="flex flex-col h-screen bg-gray-900 overflow-hidden">
-            {/* Fixed Header Section */}
-            <div className="flex-shrink-0 p-6 pb-0">
-                {/* Page Header */}
-                <h1 className="text-3xl font-bold text-white mb-6">Rooms</h1>
+        <div className="h-full w-full bg-white p-6 sm:px-8 lg:px-10 dark:bg-gray-900">
+            {/* Header */}
+            <div className="mb-6 flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Rooms</h1>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">View and manage laboratory room availability and schedules</p>
+                </div>
 
-                {/* Search and Filters */}
-                <div className="flex flex-col md:flex-row gap-4 mb-6">
-                    {/* Tabs */}
-                    <div className="flex gap-1 mb-6 bg-gray-800 p-1 rounded-lg w-fit">
-                        <button
-                            onClick={() => setActiveTab('rooms')}
-                            className={`px-5 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'rooms'
-                                ? 'bg-blue-500 text-white'
-                                : 'text-gray-400 hover:text-white'
-                                }`}
-                        >
-                            Rooms
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('queue')}
-                            className={`px-5 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'queue'
-                                ? 'bg-blue-500 text-white'
-                                : 'text-gray-400 hover:text-white'
-                                }`}
-                        >
-                            Room Availability Queue
-                        </button>
-                    </div>
-                    <div className="flex-1 relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">🔍</span>
-                        <input
-                            type="text"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            placeholder="Search Rooms..."
-                            className="w-full pl-10 pr-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500"
-                        />
-                    </div>
+                {/* Tabs Toggle - Styled like UserPage Status Toggle */}
+                <div className="flex rounded-lg border border-gray-300 bg-white shadow-sm dark:border-gray-600 dark:bg-gray-800">
+                    <button
+                        onClick={() => setActiveTab('rooms')}
+                        className={`inline-flex items-center gap-2 rounded-l-lg px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'rooms'
+                            ? 'bg-blue-600 text-white'
+                            : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+                            }`}
+                    >
+                        <BuildingOfficeIcon className="h-4 w-4" />
+                        Rooms
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('queue')}
+                        className={`inline-flex items-center gap-2 rounded-r-lg px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'queue'
+                            ? 'bg-blue-600 text-white'
+                            : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+                            }`}
+                    >
+                        <CalendarDaysIcon className="h-4 w-4" />
+                        Room Availability Queue
+                    </button>
+                </div>
+            </div>
+
+            {/* Filters Bar */}
+            <div className="mb-6 flex flex-wrap items-center gap-3">
+                {/* Search */}
+                <div className="min-w-[280px] flex-1">
+                    <Search
+                        searchTerm={searchTerm}
+                        onChange={setSearchTerm}
+                        showLabel={false}
+                        placeholder="Search rooms..."
+                    />
+                </div>
+
+                {/* Type Filter */}
+                <div className="relative">
                     <select
                         value={typeFilter}
                         onChange={(e) => setTypeFilter(e.target.value as TypeFilterType)}
-                        className="px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-gray-300 focus:outline-none focus:border-indigo-500"
+                        className="appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-4 pr-10 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
                     >
                         <option value="All Types">All Types</option>
                         <option value="LECTURE">Lecture Room</option>
                         <option value="CONSULTATION">Consultation Room</option>
                         <option value="LAB">Lab</option>
                     </select>
+                    <FunnelIcon className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                </div>
+
+                {/* Status Filter */}
+                <div className="relative">
                     <select
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value as StatusFilterType)}
-                        className="px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-gray-300 focus:outline-none focus:border-indigo-500"
+                        className="appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-4 pr-10 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
                     >
                         <option value="All Status">All Status</option>
                         <option value="AVAILABLE">Available</option>
                         <option value="IN_USE">In Use</option>
                         <option value="MAINTENANCE">Maintenance</option>
                     </select>
+                    <FunnelIcon className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 </div>
 
-
+                {/* Results Count */}
+                <div className="ml-auto flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                    <span className="font-semibold text-gray-900 dark:text-white">
+                        {activeTab === 'rooms' ? filteredRooms.length : labRooms.length}
+                    </span>
+                    <span>of {activeTab === 'rooms' ? rooms.length : labRooms.length} rooms</span>
+                </div>
             </div>
 
-            {/* Scrollable Content Area */}
-            <div className="flex-1 overflow-y-auto px-6 pb-6">
+            {/* Main Content Area */}
+            <div className="flex-1">
                 {activeTab === 'rooms' ? (
-                    /* Rooms Grid - All room types */
+                    /* Rooms Grid */
                     isLoading ? (
-                        <div className="flex items-center justify-center h-64">
-                            <div className="text-gray-400">Loading rooms...</div>
+                        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                            {[...Array(8)].map((_, i) => (
+                                <div key={i} className="h-48 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-800" />
+                            ))}
+                        </div>
+                    ) : filteredRooms.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12">
+                            <BuildingOfficeIcon className="h-12 w-12 text-gray-400" />
+                            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No rooms found</h3>
+                            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Try adjusting your search or filter criteria</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                             {filteredRooms.map((room) => (
                                 <RoomCard
                                     key={room.Room_ID}
@@ -334,34 +364,37 @@ export default function Room() {
                                     onViewDetails={() => setSelectedViewRoom(room)}
                                 />
                             ))}
-                            {filteredRooms.length === 0 && (
-                                <div className="col-span-full text-center text-gray-500 py-12">
-                                    No rooms found matching your criteria.
-                                </div>
-                            )}
                         </div>
                     )
                 ) : (
-                    /* Room Availability Queue - Show LAB rooms with time slots */
-                    <div className="space-y-8">
+                    /* Room Availability Queue */
+                    <div className="space-y-6">
                         {isLoading ? (
-                            <div className="flex items-center justify-center h-32">
-                                <div className="text-gray-400">Loading lab rooms...</div>
+                            <div className="space-y-4">
+                                {[...Array(3)].map((_, i) => (
+                                    <div key={i} className="h-64 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-800" />
+                                ))}
                             </div>
                         ) : labRooms.length > 0 ? (
                             labRooms.map((room) => {
                                 const roomSessions = getSessionsByRoom(room.Room_ID);
 
                                 return (
-                                    <div key={room.Room_ID} className="bg-gray-800 rounded-lg p-4">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <h2 className="text-xl font-bold text-white">
-                                                {room.Name}
-                                            </h2>
-                                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${room.Status === 'AVAILABLE'
-                                                ? 'bg-green-500/20 text-green-400'
-                                                : 'bg-yellow-500/20 text-yellow-400'
+                                    <div key={room.Room_ID} className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                                        <div className="flex items-center justify-between mb-6">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+                                                    <BuildingOfficeIcon className="h-6 w-6" />
+                                                </div>
+                                                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                                                    {room.Name}
+                                                </h2>
+                                            </div>
+                                            <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${room.Status === 'AVAILABLE'
+                                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                                : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
                                                 }`}>
+                                                <span className={`h-1.5 w-1.5 rounded-full ${room.Status === 'AVAILABLE' ? 'bg-green-500' : 'bg-yellow-500'}`} />
                                                 {room.Status}
                                             </span>
                                         </div>
@@ -373,20 +406,23 @@ export default function Room() {
                                         />
 
                                         {/* Add Time Slot Button */}
-                                        <div className="mt-4 flex justify-center">
+                                        <div className="mt-6 flex justify-center">
                                             <button
                                                 onClick={() => handleAddTimeSlot(room, '09:00', '10:00')}
-                                                className="px-4 py-2 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
+                                                className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-all hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-600"
                                             >
-                                                + Add Student Usage Time
+                                                <PlusIcon className="h-5 w-5" />
+                                                Add Student Usage Time
                                             </button>
                                         </div>
                                     </div>
                                 );
                             })
                         ) : (
-                            <div className="text-center text-gray-500 py-12">
-                                No LAB rooms found. Create rooms with Room Type = LAB to see them here.
+                            <div className="flex flex-col items-center justify-center py-12">
+                                <BuildingOfficeIcon className="h-12 w-12 text-gray-400" />
+                                <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No LAB rooms found</h3>
+                                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Create rooms with Room Type = LAB to see them here</p>
                             </div>
                         )}
                     </div>
@@ -401,8 +437,8 @@ export default function Room() {
                     setSelectedRoom(null);
                 }}
                 onQueue={handleQueueRoom}
-                onRemove={selectedSession ? () => handleRemoveSession(selectedSession) : () => { }}
-                availableRooms={selectedRoom ? [selectedRoom] : []}
+                onRemove={selectedSession ? () => handleRemoveSession(selectedSession!) : () => { }}
+                availableRooms={selectedRoom ? [selectedRoom] as RoomType[] : []}
                 selectedQueueItem={selectedSession ? {
                     roomName: selectedSession.roomName,
                     startTime: selectedSession.startTime,
@@ -420,8 +456,8 @@ export default function Room() {
                 <RoomDetailModal
                     isOpen={!!selectedViewRoom}
                     onClose={() => setSelectedViewRoom(null)}
-                    room={selectedViewRoom}
-                    sessions={getSessionsByRoom(selectedViewRoom.Room_ID)}
+                    room={selectedViewRoom!}
+                    sessions={getSessionsByRoom(selectedViewRoom!.Room_ID)}
                 />
             )}
         </div>

@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { type Item } from '@/types/inventory'
-import { PlusIcon } from '@heroicons/react/24/outline'
-import Table from '@/components/Table'
+import { PlusIcon, FunnelIcon } from '@heroicons/react/24/outline'
+import Table, { type SortConfig, type SortDirection } from '@/components/Table'
 import ItemModal from '@/components/inventory/ItemModal'
 import Search from '@/components/Search'
 import { getRooms } from "@/services/room";
@@ -21,6 +21,7 @@ const InventoryPage = () => {
   const [modalMode, setModalMode] = useState<'view' | 'edit' | 'add'>('view')
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
   const [rooms, setRooms] = useState<Room[]>([])
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'item_code', direction: 'asc' })
 
   // Responsive state
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -59,27 +60,77 @@ const InventoryPage = () => {
     loadInventory()
   }, [])
 
+  const handleSort = (key: string) => {
+    setSortConfig(prev => {
+      if (prev.key === key) {
+        const nextDirection: SortDirection =
+          prev.direction === 'asc' ? 'desc' :
+            prev.direction === 'desc' ? null : 'asc'
+        return { key, direction: nextDirection }
+      }
+      return { key, direction: 'asc' }
+    })
+  }
+
   // If mobile, render the mobile view immediately
   if (isMobile) {
     return <InventoryMobilePage />;
   }
 
   // const archiveStatuses: Item['Status'][] = ['AVAILABLE', 'BORROWED'];
-  const filteredInventory = inventory.filter(item => {
-    // const isArchive = archiveStatuses.includes(item.Status);
-    const matchesSearch = (item.Brand + item.Item_Code + (item.Item_Type ?? ''))
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase());
-    const matchesType = selectedType === 'All Types' || item.Item_Type === selectedType;
+  const filteredAndSortedInventory = useMemo(() => {
+    let result = inventory.filter(item => {
+      const matchesSearch = (item.Brand + item.Item_Code + (item.Item_Type ?? ''))
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
+      const matchesType = selectedType === 'All Types' || item.Item_Type === selectedType;
 
-    const matchesStatus =
-      selectedStatus === 'All Status' || item.Status?.toLowerCase() === selectedStatus.toLowerCase();
+      const matchesStatus =
+        selectedStatus === 'All Status' || item.Status?.toLowerCase() === selectedStatus.toLowerCase();
 
-    // Remove the (isArchive || selectedStatus !== 'All Status') or else replace with a condition
-    // that allows all items to show when selectedStatus === 'All Status'
+      return matchesSearch && matchesType && matchesStatus;
+    });
 
-    return matchesSearch && matchesType && matchesStatus;
-  });
+    if (sortConfig.direction) {
+      result = [...result].sort((a, b) => {
+        let aValue: any = ''
+        let bValue: any = ''
+
+        switch (sortConfig.key) {
+          case 'item_code':
+            aValue = a.Item_Code?.toLowerCase() || ''
+            bValue = b.Item_Code?.toLowerCase() || ''
+            break
+          case 'brand':
+            aValue = a.Brand?.toLowerCase() || ''
+            bValue = b.Brand?.toLowerCase() || ''
+            break
+          case 'type':
+            aValue = a.Item_Type?.toLowerCase() || ''
+            bValue = b.Item_Type?.toLowerCase() || ''
+            break
+          case 'status':
+            aValue = a.Status?.toLowerCase() || ''
+            bValue = b.Status?.toLowerCase() || ''
+            break
+          case 'room':
+            aValue = (a.Room?.Name || (a as any).Computers?.[0]?.Room?.Name || '').toLowerCase()
+            bValue = (b.Room?.Name || (b as any).Computers?.[0]?.Room?.Name || '').toLowerCase()
+            break
+          case 'updated':
+            aValue = a.Updated_At ? new Date(a.Updated_At).getTime() : 0
+            bValue = b.Updated_At ? new Date(b.Updated_At).getTime() : 0
+            break
+        }
+
+        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1
+        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1
+        return 0
+      })
+    }
+
+    return result
+  }, [inventory, searchTerm, selectedType, selectedStatus, sortConfig])
 
 
   const handleSaveItem = async (
@@ -209,18 +260,50 @@ const InventoryPage = () => {
     }
   };
 
+  const tableHeaders = [
+    { label: 'Asset Code', key: 'item_code' },
+    { label: 'Brand', key: 'brand' },
+    { label: 'Item Type', key: 'type' },
+    { label: 'Status', key: 'status' },
+    { label: 'Room Name', key: 'room' },
+    { label: 'Last Updated', key: 'updated' },
+  ]
+
 
 
   return (
-    <div className="px-6 py-4 sm:px-8 lg:px-10">
-      <div className="mb-4 flex items-end justify-between gap-6">
-        <Search searchTerm={searchTerm} onChange={setSearchTerm} showLabel={false} />
-        <div className="flex gap-3">
-          {/* Type dropdown */}
+    <div className="flex h-full w-full flex-col bg-white p-6 sm:px-8 lg:px-10 dark:bg-gray-900">
+      {/* Header */}
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Inventory Management</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Track and manage laboratory equipment and assets</p>
+        </div>
+        <button
+          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-500 hover:shadow-md focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none active:bg-indigo-700"
+          onClick={() => {
+            setModalMode('add')
+            setIsModalOpen(true)
+          }}
+        >
+          <PlusIcon className="h-5 w-5" />
+          Add Item
+        </button>
+      </div>
+
+      {/* Filters Bar */}
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        {/* Search */}
+        <div className="min-w-[280px] flex-1">
+          <Search searchTerm={searchTerm} onChange={setSearchTerm} showLabel={false} placeholder="Search by brand, code, or type..." />
+        </div>
+
+        {/* Type Filter */}
+        <div className="relative">
           <select
             value={selectedType}
             onChange={(e) => setSelectedType(e.target.value)}
-            className="rounded-lg border px-3 pr-7 py-2 text-gray-800 dark:bg-slate-900 dark:text-white w-auto"
+            className="appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-4 pr-10 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
           >
             <option key="all-types" value="All Types">All Types</option>
             {[...new Set(inventory.map(item => item.Item_Type).filter(Boolean))].map(type => (
@@ -229,11 +312,15 @@ const InventoryPage = () => {
               </option>
             ))}
           </select>
+          <FunnelIcon className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        </div>
 
+        {/* Status Filter */}
+        <div className="relative">
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="rounded-lg border px-3 pr-7 py-2 text-gray-800 dark:bg-slate-900 dark:text-white w-auto"
+            className="appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-4 pr-10 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
           >
             <option value="All Status">
               All Status ({inventory.length})
@@ -247,65 +334,82 @@ const InventoryPage = () => {
               );
             })}
           </select>
+          <FunnelIcon className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        </div>
 
-          <button
-            className="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none dark:bg-indigo-700 dark:hover:bg-indigo-600"
-            onClick={() => {
-              setModalMode('add')
-              setIsModalOpen(true)
-            }}
-          >
-            <PlusIcon className="mr-2 h-5 w-5" />
-            Add Item
-          </button>
+        {/* Results Count */}
+        <div className="ml-auto flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+          <span className="font-semibold text-gray-900 dark:text-white">{filteredAndSortedInventory.length}</span>
+          <span>of {inventory.length} items</span>
         </div>
       </div>
 
-      <Table headers={['Asset Code', 'Brand', 'Item Type', 'Status', 'Room Name', 'Last Updated']}>
-        {filteredInventory
-          .map(item => {
-            if (!item) return null;
-            return (
-              <div
+      <div className="flex-1 min-h-0">
+        <Table
+          headers={tableHeaders}
+          sortConfig={sortConfig}
+          onSort={handleSort}
+          columnWidths="1.5fr 1fr 1fr 1fr 1fr 1fr"
+        >
+          {filteredAndSortedInventory.length === 0 ? (
+            <div className="flex flex-col items-center justify-center flex-1 w-full min-h-full" data-full-row>
+              <FunnelIcon className="h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
+                No items match your filters
+              </h3>
+              <button
+                onClick={() => { setSearchTerm(''); setSelectedType('All Types'); setSelectedStatus('All Status'); }}
+                className="mt-4 inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
+              >
+                Clear Filters
+              </button>
+            </div>
+          ) : (
+            filteredAndSortedInventory.map((item) => (
+              <button
                 key={item.Item_ID}
+                type="button"
+                className="group grid w-full cursor-pointer items-center px-6 py-4 text-left transition-all duration-150 hover:bg-indigo-50/50 focus:bg-indigo-50 focus:outline-none dark:hover:bg-indigo-900/10 dark:focus:bg-indigo-900/20"
+                style={{ gridTemplateColumns: '1.5fr 1fr 1fr 1fr 1fr 1fr' }}
                 onClick={() => {
-                  setSelectedItem({ ...item }); // clone to break reference
+                  setSelectedItem({ ...item });
                   setModalMode('view');
                   setIsModalOpen(true);
                 }}
-                className="grid cursor-pointer grid-cols-6 items-center gap-x-4 px-6 py-4 transition-colors duration-150 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
-                <div className="truncate text-base font-semibold text-gray-800 dark:text-white">
+                <div className="truncate text-sm font-semibold text-gray-900 group-hover:text-indigo-600 dark:text-white dark:group-hover:text-indigo-400">
                   {item.Item_Code ?? '—'}
                 </div>
-                <div className="text-base text-white dark:text-gray-300"><strong>{item.Brand ?? '—'}</strong></div>
+                <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {item.Brand ?? '—'}
+                </div>
                 <div>
-                  <span className="inline-flex items-center justify-center gap-1.5 rounded-full bg-blue-100 px-3 py-1.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                  <span className="inline-flex items-center justify-center gap-1.5 rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-800 dark:bg-blue-900/50 dark:text-blue-200">
                     {item.Item_Type ?? '—'}
                   </span>
                 </div>
-                <div>
+                <div className="flex justify-center">
                   <span
-                    className={`inline-flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${item.Status === "AVAILABLE"
-                      ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                    className={`inline-flex items-center justify-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${item.Status === "AVAILABLE"
+                      ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400"
                       : item.Status === "BORROWED"
-                        ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                        ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-400"
                         : item.Status === "DEFECTIVE"
-                          ? "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200"
+                          ? "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-400"
                           : item.Status === "LOST"
-                            ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                            ? "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400"
                             : item.Status === "REPLACED"
-                              ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                              : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
+                              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400"
+                              : "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
                       }`}
                   >
                     {(item.Status ?? "AVAILABLE").charAt(0).toUpperCase() + (item.Status ?? "AVAILABLE").slice(1).toLowerCase()}
                   </span>
                 </div>
-                <div className="text-sm text-gray-700 dark:text-gray-300">
+                <div className="text-sm text-gray-600 dark:text-gray-400">
                   {item.Room?.Name ?? ((item as any).Computers?.[0]?.Room?.Name) ?? '—'}
                 </div>
-                <div className="text-sm text-gray-700 dark:text-gray-300">
+                <div className="text-sm text-gray-600 dark:text-gray-400">
                   {item.Updated_At
                     ? new Date(item.Updated_At).toLocaleDateString(undefined, {
                       year: 'numeric',
@@ -314,12 +418,11 @@ const InventoryPage = () => {
                     })
                     : '—'}
                 </div>
-              </div>
-            )
-          }
+              </button>
+            ))
           )}
-
-      </Table>
+        </Table>
+      </div>
 
       <ItemModal
         isOpen={isModalOpen}
