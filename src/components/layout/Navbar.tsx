@@ -25,6 +25,7 @@ const roleRoutes = {
     { label: 'Scheduling', path: '/labhead-scheduling' },
     { label: 'Rooms', path: '/labtech/room' },
     { label: 'Inventory', path: '/inventory' },
+    { label: 'Borrowing', path: '/labtech/borrowing' },
     { label: 'Forms', path: '/forms' },
     { label: 'Lab Tech View', path: '/labtechview' },
   ],

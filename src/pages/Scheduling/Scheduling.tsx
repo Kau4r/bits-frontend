@@ -1,6 +1,6 @@
 import { getRooms } from "@/services/room";
 import type { Room } from '@/types/room';
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import type { CalendarApi, DateSelectArg, EventDropArg } from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -10,6 +10,7 @@ import interactionPlugin from '@fullcalendar/interaction';
 import dayjs from 'dayjs';
 import ReportIssueModal from '../../components/student/Modals/ReportIssue';
 import { getBookings, createBooking, updateBooking, updateBookingStatus } from "@/services/booking";
+import { getBorrowings } from "@/services/borrowing";
 import type { Booking } from '@/types/booking';
 import { useAuth } from '@/context/AuthContext';
 import { useModal } from '@/context/ModalContext';
@@ -17,6 +18,7 @@ import CalendarSidebar from '@/components/Scheduling/CalendarSidebar';
 import BookingPopover from '@/components/Scheduling/BookingPopover';
 import WarningModal from '@/components/Scheduling/WarningModal';
 import ConfirmModal from '@/components/Scheduling/ConfirmModal';
+import { useBookingEvents } from '@/hooks/useBookingEvents';
 import type { BorrowingRequest } from '@/components/borrowing/RequestCard';
 
 export default function Scheduling() {
@@ -111,7 +113,7 @@ export default function Scheduling() {
     loadInitialData();
   }, [userRole]);
 
-  const loadBookings = async () => {
+  const loadBookings = useCallback(async () => {
     try {
       const bookings = await getBookings();
       const mapped = bookings
@@ -134,10 +136,43 @@ export default function Scheduling() {
     } catch (error) {
       console.error('Error loading bookings:', error);
     }
-  };
+  }, []);
 
-  // Load borrowing requests (mock data for now, will be replaced with API call)
+  // Subscribe to real-time booking events
+  useBookingEvents(useCallback((event) => {
+    console.log('[Scheduling] Received real-time booking event:', event.type);
+    // Reload bookings when any booking event is received
+    loadBookings();
+  }, [loadBookings]));
+
+  // Load borrowing requests from API for faculty users
   const loadBorrowingRequests = async () => {
+    try {
+      const data = await getBorrowings({ role: 'borrower' });
+      // Transform API response to BorrowingRequest format
+      const mapped: BorrowingRequest[] = data.map((b: any) => ({
+        id: b.Borrow_Item_ID,
+        item: {
+          Item_ID: b.Item?.Item_ID || 0,
+          Item_Type: b.Item?.Item_Type || 'Unknown',
+          Brand: b.Item?.Brand || 'Unknown',
+          Serial_Number: b.Item?.Serial_Number || '',
+        },
+        borrower: {
+          User_ID: b.Borrower?.User_ID || 0,
+          First_Name: b.Borrower?.First_Name || '',
+          Last_Name: b.Borrower?.Last_Name || '',
+        },
+        borrowDate: b.Borrow_Date,
+        returnDate: b.Return_Date,
+        purpose: b.Purpose || '',
+        status: b.Status,
+        createdAt: b.Created_At,
+      }));
+      setBorrowingRequests(mapped);
+    } catch (error) {
+      console.error('Failed to load borrowing requests:', error);
+    }
   };
 
   const updateCurrentDate = () => {

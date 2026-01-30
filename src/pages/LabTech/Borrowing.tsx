@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
+import { useBorrowingEvents } from '@/hooks/useBorrowingEvents';
 import RequestCard, { type BorrowingRequest } from '@/components/borrowing/RequestCard';
 import ApprovalModal from '@/components/borrowing/ApprovalModal';
 import RejectionModal from '@/components/borrowing/RejectionModal';
 import { useModal } from '@/context/ModalContext';
-import { getBorrowings, updateBorrowing } from '@/services/borrowing';
+import { getBorrowings, approveBorrowing, rejectBorrowing, returnBorrowing } from '@/services/borrowing';
 import { fetchInventory } from '@/services/inventory';
 import type { Item } from '@/types/inventory';
 import Search from '@/components/Search';
@@ -48,6 +49,11 @@ export default function Borrowing() {
         loadRequests();
     }, []);
 
+    // Listen for real-time updates
+    useBorrowingEvents(() => {
+        loadRequests();
+    });
+
     const loadRequests = async () => {
         try {
             setIsLoading(true);
@@ -57,31 +63,33 @@ export default function Borrowing() {
             ]);
 
             const mapped: BorrowingRequest[] = borrowings
-                .filter(b => b.Item)
+                .filter(b => b.Item || b.Requested_Item_Type) // Show item borrowings (assigned item OR requested type)
                 .map(b => ({
                     id: b.Borrow_Item_ID,
                     item: {
-                        Item_ID: b.Item!.Item_ID!,
-                        Item_Type: b.Item!.Item_Type,
-                        Brand: b.Item!.Brand,
-                        Serial_Number: b.Item!.Serial_Number,
+                        Item_ID: b.Item?.Item_ID || 0,
+                        Item_Type: b.Item?.Item_Type || b.Requested_Item_Type || 'Unknown',
+                        Brand: b.Item?.Brand || 'TBD',
+                        Serial_Number: b.Item?.Serial_Number || 'Not Assigned',
                     },
                     borrower: {
                         User_ID: b.Borrower_ID,
-                        First_Name: b.Item?.User?.First_Name || 'Unknown',
-                        Last_Name: b.Item?.User?.Last_Name || 'User',
+                        First_Name: b.Borrower?.First_Name || 'Unknown',
+                        Last_Name: b.Borrower?.Last_Name || 'User',
                     },
                     borrowDate: b.Borrow_Date,
                     returnDate: b.Return_Date || '',
-                    purpose: '',
+                    purpose: b.Purpose || '',
                     status: b.Status,
                     createdAt: b.Borrow_Date,
                 }));
 
             setRequests(mapped);
+            // Filter for Items only (not Computers) and ensure they're borrowable and available
+            // Filter for Items only (not Computers) and ensure they're borrowable and available
             const itemsOnly = items.filter((item): item is Item =>
                 'Item_Type' in item &&
-                item.IsBorrowable &&
+                (item.IsBorrowable !== false) &&
                 item.Status === 'AVAILABLE'
             );
             setInventoryItems(itemsOnly);
@@ -150,7 +158,8 @@ export default function Borrowing() {
         if (!approvalModal.request) return;
         setIsLoading(true);
         try {
-            await updateBorrowing(approvalModal.request.id, { status: 'APPROVED' });
+            await approveBorrowing(approvalModal.request.id, assignedItemId);
+
             await modal.showSuccess('Request approved successfully!', 'Success');
             setApprovalModal({ isOpen: false, request: null });
             await loadRequests();
@@ -165,7 +174,8 @@ export default function Borrowing() {
         if (!rejectionModal.request) return;
         setIsLoading(true);
         try {
-            await updateBorrowing(rejectionModal.request.id, { status: 'REJECTED' });
+            await rejectBorrowing(rejectionModal.request.id, reason);
+
             await modal.showSuccess('Request rejected and borrower notified', 'Success');
             setRejectionModal({ isOpen: false, request: null });
             await loadRequests();
@@ -179,7 +189,8 @@ export default function Borrowing() {
     const handleMarkReturned = async (id: number) => {
         setIsLoading(true);
         try {
-            await updateBorrowing(id, { status: 'RETURNED' });
+            await returnBorrowing(id, { condition: 'AVAILABLE', remarks: '' });
+
             await modal.showSuccess('Device marked as returned', 'Success');
             await loadRequests();
         } catch (error) {
@@ -403,7 +414,8 @@ export default function Borrowing() {
                     borrower: approvalModal.request.borrower,
                 } : null}
                 availableItems={approvalModal.request ?
-                    inventoryItems.filter(item => item.Item_Type === approvalModal.request!.item.Item_Type && item.Item_ID).map(item => ({ Item_ID: item.Item_ID!, Item_Type: item.Item_Type, Brand: item.Brand, Serial_Number: item.Serial_Number }))
+                    inventoryItems.filter(item => item.Item_Type.toLowerCase() === approvalModal.request!.item.Item_Type.toLowerCase() && item.Item_ID)
+                        .map(item => ({ Item_ID: item.Item_ID!, Item_Type: item.Item_Type, Brand: item.Brand, Serial_Number: item.Serial_Number }))
                     : []}
                 isLoading={isLoading}
             />

@@ -21,19 +21,29 @@ export interface Borrowing {
     Borrowee_ID: number;
     Item?: Item;
     Computer?: Computer;
+    Requested_Item_Type?: string; // Faculty requests by type
+    Purpose?: string;
     Borrow_Date: string;
     Return_Date?: string;
     Status: BorrowingStatus;
+    Borrower?: {
+        User_ID: number;
+        First_Name: string;
+        Last_Name: string;
+        Email?: string;
+    };
 }
 
 // DTOs
 export interface CreateBorrowingDTO {
-    borrowerId: number;
+    borrowerId?: number;
     borroweeId?: number;
-    items?: { itemId: number; quantity: number }[];
+    itemType?: string; // NEW: Request by item type (Lab Tech assigns specific item)
+    items?: { itemId: number; quantity?: number }[];
     computers?: { computerId: number }[];
-    type: 'ITEM' | 'COMPUTER';
+    type?: 'ITEM' | 'COMPUTER';
     purpose?: string;
+    borrowDate?: string | Date; // Requested pickup time
     expectedReturnDate?: string | Date;
 }
 

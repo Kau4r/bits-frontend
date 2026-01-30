@@ -28,3 +28,8 @@ export const updateRoom = async (id: number, room: RoomUpdateInput): Promise<Roo
     const { data } = await api.put<{ message: string; room: Room }>(`/rooms/${id}`, room);
     return data.room;
 };
+// Set room availability for students
+export const setRoomStudentAvailability = async (id: number, data: { startTime: string; endTime: string; notes?: string }): Promise<any> => {
+    const response = await api.post(`/rooms/${id}/student-availability`, data);
+    return response.data;
+};

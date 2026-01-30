@@ -7,7 +7,9 @@ import { useModal } from '../../context/ModalContext';
 import { fetchInventory } from '../../services/inventory';
 import type { Item } from '../../types/inventory';
 import { getNotifications, type Notification } from '../../services/notifications';
+import { createBorrowing } from '../../services/borrowing';
 import ReportIssueModal from '../../components/student/Modals/ReportIssue';
+import { useBorrowingEvents } from '../../hooks/useBorrowingEvents';
 
 const FacultyScheduling = () => {
   const navigate = useNavigate();
@@ -85,6 +87,16 @@ const FacultyScheduling = () => {
       setIsLoadingNotifications(false);
     }
   };
+
+  // Real-time updates for notifications
+  useBorrowingEvents(() => {
+    console.log('Received borrowing update, refreshing notifications...');
+    loadNotifications();
+    // Also refresh child components if needed by triggering a refetch or state update they listen to
+    // MyBorrowingRequests handles its own refresh? No, it needs a signal or we can force remount
+    // Actually, MyBorrowingRequests should also use the hook.
+    // For now, refreshing notifications ensures the bell updates.
+  });
 
   // Helper to format relative time
   const formatTime = (timestamp: string) => {
@@ -194,7 +206,7 @@ const FacultyScheduling = () => {
               </button>
             </div>
 
-            <form onSubmit={(e) => {
+            <form onSubmit={async (e) => {
               e.preventDefault();
               const formData = new FormData(e.currentTarget);
               const borrowDate = formData.get('borrowDate') as string;
@@ -202,10 +214,9 @@ const FacultyScheduling = () => {
               const returnDate = formData.get('returnDate') as string;
               const returnTime = formData.get('returnTime') as string;
               const purpose = formData.get('purpose') as string;
-              const itemName = formData.get('itemName') as string;
 
-              // Validation
-              if (!selectedType || !itemName.trim() || !borrowDate || !borrowTime || !returnDate || !returnTime || !purpose.trim()) {
+              // Validation - only need item type now, not specific item
+              if (!selectedType || !borrowDate || !borrowTime || !returnDate || !returnTime || !purpose.trim()) {
                 modal.showError('Please fill in all required fields', 'Validation Error');
                 return;
               }
@@ -218,82 +229,59 @@ const FacultyScheduling = () => {
                 return;
               }
 
-              // TODO: Create device borrowing request via API
-              console.log('Device Borrowing Request:', {
-                itemType: selectedType,
-                itemName,
-                borrowDate: borrowDateTime.toISOString(),
-                returnDate: returnDateTime.toISOString(),
-                purpose,
-              });
+              // Check if there are any items of this type available
+              const availableCount = inventoryItems.filter(item => item.Item_Type === selectedType).length;
+              if (availableCount === 0) {
+                modal.showError(`No ${selectedType} items currently available`, 'Validation Error');
+                return;
+              }
 
-              modal.showSuccess('Device borrowing request submitted successfully!', 'Success');
-              setIsBorrowModalOpen(false);
+              // Call the borrowing API with itemType (Lab Tech will assign specific item)
+              try {
+                await createBorrowing({
+                  itemType: selectedType,
+                  purpose,
+                  borrowDate: borrowDateTime.toISOString(),
+                  expectedReturnDate: returnDateTime.toISOString()
+                });
+
+                modal.showSuccess('Borrowing request submitted! A Lab Tech will assign a specific item.', 'Success');
+                setIsBorrowModalOpen(false);
+                setSelectedType(''); // Reset form
+              } catch (error: any) {
+                console.error('Borrowing error:', error);
+                modal.showError(error.response?.data?.error || 'Failed to submit borrowing request', 'Error');
+              }
             }} className="space-y-5">
-              {/* Item Type & Specific Item */}
-              <div className="grid grid-cols-2 gap-4">
-                {/* Item Type */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Item Type <span className="text-red-400">*</span>
-                  </label>
-                  {isLoadingItems ? (
-                    <div className="text-sm text-gray-400">Loading available items...</div>
-                  ) : (
-                    <>
-                      <select
-                        value={selectedType}
-                        onChange={(e) => setSelectedType(e.target.value)}
-                        required
-                        className="w-full bg-gray-700 border border-gray-600 rounded-lg py-2.5 px-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                      >
-                        <option value="">Select an item type</option>
-                        {uniqueTypes.map((type) => (
-                          <option key={type} value={type}>
-                            {type}
-                          </option>
-                        ))}
-                      </select>
-                      {selectedType && (
-                        <p className="text-xs text-gray-400 mt-1">
-                          {inventoryItems.filter(item => item.Item_Type === selectedType).length} item(s) available
-                        </p>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                {/* Specific Item */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Select Specific Item <span className="text-red-400">*</span>
-                  </label>
-                  {selectedType ? (
-                    <>
-                      <select
-                        name="itemName"
-                        required
-                        className="w-full bg-gray-700 border border-gray-600 rounded-lg py-2.5 px-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                      >
-                        <option value="">Select an item</option>
-                        {inventoryItems
-                          .filter(item => item.Item_Type === selectedType)
-                          .map((item) => (
-                            <option key={item.Item_ID} value={`${item.Brand} - ${item.Serial_Number}`}>
-                              {item.Brand} (SN: {item.Serial_Number})
-                            </option>
-                          ))}
-                      </select>
-                      <p className="text-xs text-gray-400 mt-1">
-                        Choose from available {selectedType} items
+              {/* Item Type */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Item Type <span className="text-red-400">*</span>
+                </label>
+                {isLoadingItems ? (
+                  <div className="text-sm text-gray-400">Loading available items...</div>
+                ) : (
+                  <>
+                    <select
+                      value={selectedType}
+                      onChange={(e) => setSelectedType(e.target.value)}
+                      required
+                      className="w-full bg-gray-700 border border-gray-600 rounded-lg py-2.5 px-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    >
+                      <option value="">Select an item type</option>
+                      {uniqueTypes.map((type) => (
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
+                      ))}
+                    </select>
+                    {selectedType && (
+                      <p className="text-xs text-green-400 mt-1">
+                        ✓ {inventoryItems.filter(item => item.Item_Type === selectedType).length} {selectedType}(s) available - Lab Tech will assign a specific item
                       </p>
-                    </>
-                  ) : (
-                    <div className="w-full bg-gray-700 border border-gray-600 rounded-lg py-2.5 px-3 text-gray-500">
-                      Please select an item type first
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </>
+                )}
               </div>
 
               {/* Borrow Date & Time */}
