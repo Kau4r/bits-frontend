@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { CheckCircleIcon, ExclamationCircleIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 import { useNotifications } from '@/context/NotificationContext';
 
@@ -45,9 +46,12 @@ export default function NotificationsCard() {
     <div className="flex h-full flex-col">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Unread Notifications</h3>
-        <button className="text-sm font-medium text-green-600 hover:text-green-500 dark:text-green-400 dark:hover:text-green-300">
+        <Link
+          to="/notification"
+          className="text-sm font-medium text-green-600 hover:text-green-500 dark:text-green-400 dark:hover:text-green-300"
+        >
           View All
-        </button>
+        </Link>
       </div>
 
       {unreadNotifications.length === 0 ? (

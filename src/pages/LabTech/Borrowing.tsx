@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useBorrowingEvents } from '@/hooks/useBorrowingEvents';
 import RequestCard, { type BorrowingRequest } from '@/components/borrowing/RequestCard';
 import ApprovalModal from '@/components/borrowing/ApprovalModal';
@@ -158,7 +158,7 @@ export default function Borrowing() {
         if (!approvalModal.request) return;
         setIsLoading(true);
         try {
-            await approveBorrowing(approvalModal.request.id, assignedItemId);
+            await approveBorrowing(approvalModal.request.id, approvalModal.request.item.Item_ID);
 
             await modal.showSuccess('Request approved successfully!', 'Success');
             setApprovalModal({ isOpen: false, request: null });
@@ -174,7 +174,7 @@ export default function Borrowing() {
         if (!rejectionModal.request) return;
         setIsLoading(true);
         try {
-            await rejectBorrowing(rejectionModal.request.id, reason);
+            await rejectBorrowing(rejectionModal.request.id, reason, rejectionModal.request.item.Item_ID);
 
             await modal.showSuccess('Request rejected and borrower notified', 'Success');
             setRejectionModal({ isOpen: false, request: null });

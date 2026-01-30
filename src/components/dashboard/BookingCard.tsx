@@ -21,7 +21,7 @@ export default function BookingCard() {
         // Show most recent bookings first, limit to 8
         const sorted = data
           .sort((a, b) => new Date(b.Created_At).getTime() - new Date(a.Created_At).getTime())
-          .slice(0, 6);
+          .slice(0, 50);
         setBookings(sorted);
       } catch (err) {
         console.error('Error fetching bookings:', err);

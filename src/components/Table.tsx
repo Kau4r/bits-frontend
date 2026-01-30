@@ -73,7 +73,7 @@ const Table = ({ headers, children, sortConfig, onSort, columnWidths }: TablePro
       const justifyClass = align === 'left' ? 'justify-start' : align === 'right' ? 'justify-end' : 'justify-center'
 
       return (
-        <div key={idx} className={`flex items-center px-6 py-4 ${justifyClass}`}>
+        <div key={idx} className={`flex items-center px-6 py-4 min-w-0 ${justifyClass}`}>
           {cell}
         </div>
       )

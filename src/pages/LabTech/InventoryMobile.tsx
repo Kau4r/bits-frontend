@@ -228,20 +228,32 @@ const InventoryMobilePage = () => {
 
             {isQrOpen && (
                 <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+                    className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
+                    onClick={() => setIsQrOpen(false)}
                 >
                     <div
-                        className="bg-white dark:bg-gray-900 p-4 rounded-md"
+                        className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-xl border border-gray-200 dark:border-gray-700 max-w-sm w-full"
                         onClick={e => e.stopPropagation()}
                     >
-                        <button
-                            className="mb-2 text-sm text-gray-500 dark:text-gray-300"
-                            onClick={() => setIsQrOpen(false)}
-                        >
-                            Close
-                        </button>
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Scan QR Code</h3>
+                            <button
+                                onClick={() => setIsQrOpen(false)}
+                                className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
 
-                        <video ref={videoRef} className="w-64 h-64 border rounded-md" />
+                        <div className="flex justify-center">
+                            <video ref={videoRef} className="w-full aspect-square object-cover border border-gray-200 dark:border-gray-700 rounded-lg bg-black" />
+                        </div>
+
+                        <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">
+                            Point your camera at a QR code to scan
+                        </p>
                     </div>
                 </div>
             )}
