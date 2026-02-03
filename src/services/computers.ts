@@ -22,15 +22,16 @@ export interface Computer {
     Status: 'AVAILABLE' | 'IN_USE' | 'MAINTENANCE' | 'DECOMMISSIONED';
     Room_ID: number | null;
     Room: ComputerRoom | null;
-    Items: ComputerItem[];
+    Item: ComputerItem[];
     Created_At: string;
     Updated_At: string;
 }
 
 export interface CreateComputerItem {
     itemType: 'KEYBOARD' | 'MOUSE' | 'MONITOR' | 'SYSTEM_UNIT';
-    brand?: string;
-    serialNumber?: string;
+    itemId?: number; // Existing item ID to link
+    brand?: string; // For creating new items (deprecated - use itemId instead)
+    serialNumber?: string; // For creating new items (deprecated - use itemId instead)
 }
 
 export interface CreateComputerPayload {

@@ -4,6 +4,7 @@ import { fetchComputers, createComputer, updateComputer, deleteComputer, type Co
 import api from '@/services/api';
 import { useModal } from '@/context/ModalContext';
 import Table from '@/components/Table';
+import InventoryItemCombobox from '@/components/labtech/InventoryItemCombobox';
 
 // Asset/Item type from inventory
 interface RoomAsset {
@@ -48,9 +49,21 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
     // Add Computer Dialog State
     const [showAddDialog, setShowAddDialog] = useState(false);
     const [newComputerName, setNewComputerName] = useState('');
-    const [newItems, setNewItems] = useState<{ itemType: string; brand: string; serialNumber: string }[]>(
-        ITEM_TYPES.map(type => ({ itemType: type, brand: '', serialNumber: '' }))
-    );
+    interface InventoryItem {
+        Item_ID: number;
+        Item_Code: string;
+        Item_Type: string;
+        Brand: string | null;
+        Serial_Number: string | null;
+        Status: string;
+    }
+
+    const [selectedItems, setSelectedItems] = useState<Record<string, InventoryItem | null>>({
+        KEYBOARD: null,
+        MOUSE: null,
+        MONITOR: null,
+        SYSTEM_UNIT: null,
+    });
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Edit Computer Dialog State
@@ -88,7 +101,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
 
             // Also gather items from computers in this room
             const computerItems: RoomAsset[] = computers.flatMap(computer =>
-                computer.Items.map(item => ({
+                computer.Item.map(item => ({
                     Item_ID: item.Item_ID,
                     Item_Code: item.Item_Code,
                     Item_Type: item.Item_Type,
@@ -138,16 +151,24 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
             return;
         }
 
+        // Check if at least one component is selected
+        const hasAnyComponent = Object.values(selectedItems).some(item => item !== null);
+        if (!hasAnyComponent) {
+            setError('Please select at least one component');
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             const payload: CreateComputerPayload = {
                 name: newComputerName,
                 roomId: room.Room_ID,
-                items: newItems.map(item => ({
-                    itemType: item.itemType as 'KEYBOARD' | 'MOUSE' | 'MONITOR' | 'SYSTEM_UNIT',
-                    brand: item.brand || undefined,
-                    serialNumber: item.serialNumber || undefined,
-                }))
+                items: Object.entries(selectedItems)
+                    .filter(([_, item]) => item !== null)
+                    .map(([itemType, item]) => ({
+                        itemType: itemType as 'KEYBOARD' | 'MOUSE' | 'MONITOR' | 'SYSTEM_UNIT',
+                        itemId: item!.Item_ID, // Use existing item ID
+                    }))
             };
 
             await createComputer(payload);
@@ -155,7 +176,12 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
 
             // Reset form
             setNewComputerName('');
-            setNewItems(ITEM_TYPES.map(type => ({ itemType: type, brand: '', serialNumber: '' })));
+            setSelectedItems({
+                KEYBOARD: null,
+                MOUSE: null,
+                MONITOR: null,
+                SYSTEM_UNIT: null,
+            });
             setShowAddDialog(false);
         } catch (err) {
             console.error('Failed to create computer:', err);
@@ -171,7 +197,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
         setEditStatus(pc.Status);
         // Map existing items or create placeholders for missing types
         const existingItems = ITEM_TYPES.map(type => {
-            const existing = pc.Items.find(i => i.Item_Type === type);
+            const existing = pc.Item.find(i => i.Item_Type === type);
             return {
                 itemId: existing?.Item_ID,
                 itemType: type,
@@ -221,12 +247,6 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
             console.error('Failed to delete computer:', err);
             setError('Failed to delete computer');
         }
-    };
-
-    const updateNewItem = (index: number, field: 'brand' | 'serialNumber', value: string) => {
-        setNewItems(prev => prev.map((item, i) =>
-            i === index ? { ...item, [field]: value } : item
-        ));
     };
 
     const updateEditItem = (index: number, field: 'brand' | 'serialNumber', value: string) => {
@@ -391,16 +411,16 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                                 {/* Items count / Click to edit hint */}
                                                 <div className="border-t border-gray-700 pt-2 mt-auto">
                                                     <p className="text-[10px] text-gray-500 font-medium">
-                                                        {pc.Items.length} component{pc.Items.length !== 1 ? 's' : ''} • Click to edit
+                                                        {pc.Item.length} component{pc.Item.length !== 1 ? 's' : ''} • Click to edit
                                                     </p>
                                                 </div>
 
                                                 {/* Hover Tooltip - Component Details */}
-                                                {isHovered && pc.Items.length > 0 && (
+                                                {isHovered && pc.Item.length > 0 && (
                                                     <div className="absolute left-full ml-2 top-0 z-20 bg-gray-800 border border-gray-600 rounded-lg p-3 shadow-xl min-w-[200px]">
                                                         <p className="text-xs font-bold text-white mb-2">Components:</p>
                                                         <div className="space-y-1.5">
-                                                            {pc.Items.map(item => (
+                                                            {pc.Item.map(item => (
                                                                 <div key={item.Item_ID} className="text-xs">
                                                                     <span className="text-gray-400">{formatItemType(item.Item_Type)}:</span>
                                                                     <span className="text-white ml-1">{item.Brand || 'N/A'}</span>
@@ -605,28 +625,15 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                         {/* Components */}
                         <div className="space-y-4">
                             <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Components</p>
-                            {newItems.map((item, index) => (
-                                <div key={item.itemType} className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
-                                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
-                                        {formatItemType(item.itemType)}
-                                    </p>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <input
-                                            type="text"
-                                            value={item.brand}
-                                            onChange={(e) => updateNewItem(index, 'brand', e.target.value)}
-                                            placeholder="Brand"
-                                            className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        />
-                                        <input
-                                            type="text"
-                                            value={item.serialNumber}
-                                            onChange={(e) => updateNewItem(index, 'serialNumber', e.target.value)}
-                                            placeholder="Serial Number"
-                                            className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        />
-                                    </div>
-                                </div>
+                            {ITEM_TYPES.map((itemType) => (
+                                <InventoryItemCombobox
+                                    key={itemType}
+                                    itemType={itemType}
+                                    label={formatItemType(itemType)}
+                                    value={selectedItems[itemType]}
+                                    onChange={(item) => setSelectedItems(prev => ({ ...prev, [itemType]: item }))}
+                                    placeholder={`Select ${formatItemType(itemType).toLowerCase()} from inventory...`}
+                                />
                             ))}
                         </div>
 
