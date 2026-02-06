@@ -15,6 +15,8 @@ interface CalendarSidebarProps {
     onCreateClick: () => void;
     borrowingRequests?: BorrowingRequest[];
     showBorrowingRequests?: boolean;
+    myBookings?: any[];
+    onBookingClick?: (booking: any) => void;
 }
 
 export default function CalendarSidebar({
@@ -27,30 +29,37 @@ export default function CalendarSidebar({
     onCreateClick,
     borrowingRequests = [],
     showBorrowingRequests = false,
+    myBookings = [],
+    onBookingClick,
 }: CalendarSidebarProps) {
     const allSelected = rooms.length > 0 && selectedRooms.length === rooms.length;
 
     // Calculate stats for borrowing requests
-    const pendingCount = borrowingRequests.filter(r => r.status === 'PENDING').length;
-    const activeCount = borrowingRequests.filter(r => r.status === 'APPROVED' || r.status === 'BORROWED').length;
+    const pendingBorrowCount = borrowingRequests.filter(r => r.status === 'PENDING').length;
+    const activeBorrowCount = borrowingRequests.filter(r => r.status === 'APPROVED' || r.status === 'BORROWED').length;
+
+    // Calculate stats for schedule requests (bookings)
+    const requestedSchedules = myBookings.filter(b => b.extendedProps.status === 'PENDING').length;
+    const acceptedSchedules = myBookings.filter(b => b.extendedProps.status === 'APPROVED').length;
 
     // Collapse state
     const [isRoomsCollapsed, setIsRoomsCollapsed] = useState(false);
     const [isRequestsCollapsed, setIsRequestsCollapsed] = useState(false);
+    const [isSchedulesCollapsed, setIsSchedulesCollapsed] = useState(false);
 
     return (
         <div className="w-64 h-full bg-gray-900 border-r border-gray-700 flex flex-col p-4">
             {/* Create Button */}
             <button
                 onClick={onCreateClick}
-                className="flex items-center gap-3 px-4 py-3 mb-6 rounded-2xl bg-gray-800 hover:bg-gray-700 border border-gray-600 shadow-lg transition-all group"
+                className="flex items-center gap-3 px-4 py-3 mb-6 rounded-2xl bg-gray-800 hover:bg-gray-700 border border-gray-600 shadow-lg transition-all group flex-shrink-0"
             >
                 <span className="text-2xl text-indigo-400 group-hover:scale-110 transition-transform">+</span>
                 <span className="text-white font-medium">Create</span>
             </button>
 
             {/* Mini Calendar */}
-            <div className="mb-6 calendar-dark">
+            <div className="mb-6 calendar-dark flex-shrink-0">
                 <Calendar
                     onChange={(value) => {
                         if (value instanceof Date) {
@@ -73,7 +82,7 @@ export default function CalendarSidebar({
             </div>
 
             {/* Rooms Section */}
-            <div className="">
+            <div className="mb-6 flex-shrink-0">
                 <div className="flex items-center justify-between mb-3">
                     <span className="text-sm font-medium text-gray-300">Rooms</span>
                     <button
@@ -119,65 +128,65 @@ export default function CalendarSidebar({
                 )}
             </div>
 
-            {/* Borrowing Requests Section */}
-            {showBorrowingRequests && (
-                <div className="">
-                    <div className="flex items-center justify-between mb-3">
-                        <span className="text-sm font-medium text-gray-300">My Requests</span>
+            {/* Schedule Requests (Bookings) Section */}
+            {myBookings.length > 0 && (
+                <div className="flex-1 min-h-0 flex flex-col mb-6">
+                    <div className="flex items-center justify-between mb-3 flex-shrink-0">
+                        <span className="text-sm font-medium text-gray-300">My Schedules</span>
                         <div className="flex items-center gap-2">
-                            {borrowingRequests.length > 0 && (
-                                <span className="text-xs text-gray-500">{borrowingRequests.length}</span>
-                            )}
+                            <span className="text-xs text-gray-500">{myBookings.length}</span>
                             <button
-                                onClick={() => setIsRequestsCollapsed(!isRequestsCollapsed)}
+                                onClick={() => setIsSchedulesCollapsed(!isSchedulesCollapsed)}
                                 className="text-gray-500 hover:text-white text-lg transition-transform"
-                                style={{ transform: isRequestsCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}
+                                style={{ transform: isSchedulesCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}
                             >
                                 ▼
                             </button>
                         </div>
                     </div>
 
-                    {!isRequestsCollapsed && (
+                    {!isSchedulesCollapsed && (
                         <>
-                            {/* Stats Summary */}
-                            {borrowingRequests.length > 0 && (
-                                <div className="grid grid-cols-2 gap-2 mb-3">
-                                    <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2">
-                                        <div className="text-xs text-yellow-400">Pending</div>
-                                        <div className="text-lg font-bold text-yellow-300">{pendingCount}</div>
-                                    </div>
-                                    <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-2">
-                                        <div className="text-xs text-green-400">Active</div>
-                                        <div className="text-lg font-bold text-green-300">{activeCount}</div>
-                                    </div>
+                            <div className="grid grid-cols-2 gap-2 mb-3 flex-shrink-0">
+                                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2">
+                                    <div className="text-xs text-yellow-400">Requested</div>
+                                    <div className="text-lg font-bold text-yellow-300">{requestedSchedules}</div>
                                 </div>
-                            )}
-
-                            {/* Request Cards */}
-                            <div className="space-y-2 max-h-60 overflow-y-auto">
-                                {borrowingRequests.length > 0 ? (
-                                    borrowingRequests.slice(0, 5).map((request) => (
-                                        <RequestCard key={request.id} request={request} variant="compact" />
-                                    ))
-                                ) : (
-                                    <div className="text-center py-4">
-                                        <div className="text-gray-500 text-sm">No requests yet</div>
-                                        <div className="text-xs text-gray-600 mt-1">Click "Borrow" to borrow an item</div>
-                                    </div>
-                                )}
+                                <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-2">
+                                    <div className="text-xs text-green-400">Accepted</div>
+                                    <div className="text-lg font-bold text-green-300">{acceptedSchedules}</div>
+                                </div>
                             </div>
 
-                            {borrowingRequests.length > 5 && (
-                                <button className="w-full mt-2 text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
-                                    View All ({borrowingRequests.length})
-                                </button>
-                            )}
+                            <div className="space-y-2 flex-1 overflow-y-auto custom-scrollbar min-h-0">
+                                {myBookings
+                                    .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
+                                    .map((booking) => (
+                                        <div
+                                            key={booking.id}
+                                            onClick={() => onBookingClick?.(booking)}
+                                            className="bg-gray-800/50 p-2 rounded border border-gray-700/50 flex flex-col gap-1 cursor-pointer hover:bg-gray-800 transition-colors"
+                                        >
+                                            <div className="flex justify-between items-start">
+                                                <span className="text-xs font-medium text-gray-200 truncate pr-2">{booking.title}</span>
+                                                <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase tracking-wider ${booking.extendedProps.status === 'APPROVED' ? 'bg-green-900/30 text-green-400' :
+                                                    booking.extendedProps.status === 'PENDING' ? 'bg-yellow-900/30 text-yellow-400' :
+                                                        'bg-gray-700 text-gray-400'
+                                                    }`}>
+                                                    {booking.extendedProps.status === 'APPROVED' ? 'ACC' : booking.extendedProps.status === 'PENDING' ? 'REQ' : booking.extendedProps.status.substring(0, 3)}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between text-[10px] text-gray-500">
+                                                <span>{new Date(booking.start).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                                                <span>{booking.extendedProps.roomName}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                            </div>
                         </>
                     )}
                 </div>
             )}
-
         </div>
     );
 }

@@ -531,7 +531,7 @@ export default function Scheduling() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-900">
+    <div className="flex h-full bg-gray-900">
       {/* Left Sidebar */}
       <CalendarSidebar
         rooms={rooms}
@@ -549,6 +549,34 @@ export default function Scheduling() {
         onCreateClick={handleCreateClick}
         borrowingRequests={borrowingRequests}
         showBorrowingRequests={userRole === 'FACULTY'}
+        myBookings={events.filter(e => e.extendedProps.createdById === currentUserId)}
+        onBookingClick={(booking) => {
+          const start = new Date(booking.start);
+          const end = new Date(booking.end);
+
+          setViewingBooking({
+            id: booking.id,
+            title: booking.title,
+            description: booking.extendedProps.description || '',
+            roomId: booking.extendedProps.roomId,
+            roomName: booking.extendedProps.roomName || 'Unknown',
+            date: dayjs(start).format('YYYY-MM-DD'),
+            startTime: dayjs(start).format('HH:mm'),
+            endTime: dayjs(end).format('HH:mm'),
+            createdBy: booking.extendedProps.createdBy || 'Unknown',
+            createdById: booking.extendedProps.createdById,
+            status: booking.extendedProps.status || 'PENDING',
+          });
+          setCanEditBooking(booking.extendedProps.createdById === currentUserId || userRole === 'ADMIN');
+
+          // Center the popover
+          setPopoverPosition({
+            x: window.innerWidth / 2,
+            y: window.innerHeight / 2
+          });
+          setPopoverTimes({ start, end });
+          setShowPopover(true);
+        }}
       />
 
       {/* Main Calendar Area */}
@@ -627,11 +655,12 @@ export default function Scheduling() {
               );
             }}
             slotMinTime="07:00:00"
-            slotMaxTime="19:00:00"
+            slotMaxTime="22:00:00"
             height="100%"
             datesSet={updateCurrentDate}
             dayHeaderFormat={{ weekday: 'short', day: 'numeric' }}
             nowIndicator={true}
+            expandRows={true}
             slotLabelFormat={{ hour: 'numeric', minute: '2-digit', hour12: true }}
           />
         </div>

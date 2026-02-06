@@ -135,19 +135,19 @@ export default function LabTechDetailPanel({ labTech }: Props) {
   };
 
   return (
-    <div className="flex-1 overflow-auto gap-4">
-      <header className="mb-6 bg-gray-800 rounded-xl shadow p-6 flex flex-col gap-2">
+    <div className="flex-1 overflow-auto gap-4 custom-scrollbar h-full pr-2">
+      <header className="mb-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 flex flex-col gap-2 transition-colors">
         <div className="flex items-center gap-4">
-          <span className="rounded-full bg-blue-900 w-12 h-12 flex items-center justify-center text-2xl font-bold text-white">
+          <span className="rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-200 w-16 h-16 flex items-center justify-center text-2xl font-bold">
             {labTech.name.charAt(0)}
           </span>
           <div>
-            <h1 className="text-2xl font-bold">{labTech.name}</h1>
-            <p className="text-lg text-blue-200">{labTech.id} &nbsp;|&nbsp; {labTech.email || labTech.department || 'Lab Technician'}</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{labTech.name}</h1>
+            <p className="text-lg text-gray-500 dark:text-gray-400">{labTech.id} &nbsp;|&nbsp; {labTech.email || labTech.department || 'Lab Technician'}</p>
             <span
               className={`mt-2 inline-block px-3 py-1 text-sm font-semibold rounded-full ${labTech.status === 'Active'
-                ? 'bg-green-600 text-green-100'
-                : 'bg-gray-600 text-gray-200'
+                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
                 }`}
             >
               {labTech.status}
@@ -156,131 +156,109 @@ export default function LabTechDetailPanel({ labTech }: Props) {
         </div>
       </header>
 
-      <nav className="mb-6 flex border-b border-gray-700 gap-4">
-        {['Tickets', 'Reports'].map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`relative pb-2 text-base font-semibold outline-none transition-colors ${activeTab === tab
-              ? 'text-blue-400'
-              : 'text-gray-400 hover:text-blue-300'
-              }`}
-          >
-            {tab}
-            {activeTab === tab && (
-              <span className="absolute left-1/2 -translate-x-1/2 -bottom-0 h-1 w-12 bg-blue-600 rounded-full" />
-            )}
-          </button>
-        ))}
+      <nav className="mb-6 flex border-b border-gray-200 dark:border-gray-700 gap-6">
+        <button
+          onClick={() => setActiveTab('Tickets')}
+          className={`relative pb-3 text-sm font-medium outline-none transition-colors ${activeTab === 'Tickets'
+            ? 'text-indigo-600 dark:text-indigo-400'
+            : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+            }`}
+        >
+          Tickets
+          <span className="ml-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full text-xs">
+            {inProgressTickets.length + resolvedTickets.length}
+          </span>
+          {activeTab === 'Tickets' && (
+            <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-indigo-600 dark:bg-indigo-400" />
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab('Reports')}
+          className={`relative pb-3 text-sm font-medium outline-none transition-colors ${activeTab === 'Reports'
+            ? 'text-indigo-600 dark:text-indigo-400'
+            : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+            }`}
+        >
+          Reports
+          <span className="ml-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full text-xs">
+            {reports.length}
+          </span>
+          {activeTab === 'Reports' && (
+            <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-indigo-600 dark:bg-indigo-400" />
+          )}
+        </button>
       </nav>
 
       {activeTab === 'Tickets' && (
-        <section>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Assigned Tickets</h2>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <div className="bg-yellow-900/20 border border-yellow-700/50 p-4 rounded-xl flex items-center justify-between">
-              <div>
-                <p className="text-yellow-400 text-sm font-medium">In Progress</p>
-                <p className="text-3xl font-bold text-white mt-1">{inProgressTickets.length}</p>
-              </div>
-              <div className="h-10 w-10 bg-yellow-900/40 rounded-full flex items-center justify-center">
-                <svg className="w-6 h-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-            </div>
-
-            <div className="bg-green-900/20 border border-green-700/50 p-4 rounded-xl flex items-center justify-between">
-              <div>
-                <p className="text-green-400 text-sm font-medium">Resolved</p>
-                <p className="text-3xl font-bold text-white mt-1">{resolvedTickets.length}</p>
-              </div>
-              <div className="h-10 w-10 bg-green-900/40 rounded-full flex items-center justify-center">
-                <svg className="w-6 h-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-            </div>
-          </div>
-
+        <section className="animate-fade-in">
           {isLoadingTickets ? (
             <div className="flex justify-center p-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 dark:border-indigo-400"></div>
             </div>
           ) : tickets.length === 0 ? (
-            <div className="text-center py-10 text-gray-500 bg-gray-900/50 rounded-lg">
+            <div className="text-center py-10 text-gray-500 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
               <p>No active tickets assigned.</p>
             </div>
           ) : (
-            <div className="space-y-6">
-              {/* In Progress Section */}
-              {inProgressTickets.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-medium text-gray-400 mb-3 flex items-center">
-                    <span className="w-2 h-2 bg-yellow-500 rounded-full mr-2"></span>
-                    In Progress
-                  </h3>
-                  <div className="space-y-3">
-                    {inProgressTickets.map(ticket => (
-                      <div key={ticket.Ticket_ID} className="p-4 bg-gray-800/50 rounded-lg border-l-4 border-yellow-500 hover:bg-gray-800 transition-colors">
-                        <div className="flex justify-between items-start mb-2">
-                          <h4 className="font-medium text-white">{ticket.Report_Problem}</h4>
-                          <span className="text-xs bg-yellow-900/30 text-yellow-300 px-2 py-1 rounded">
-                            {ticket.Priority}
-                          </span>
-                        </div>
-                        <div className="text-sm text-gray-400 flex justify-between">
-                          <span>{ticket.Location} {ticket.Room ? `(${ticket.Room.Name})` : ''}</span>
-                          <span>{new Date(ticket.Created_At).toLocaleDateString()}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Resolved Section */}
-              {resolvedTickets.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-medium text-gray-400 mb-3 flex items-center">
-                    <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-                    Resolved
-                  </h3>
-                  <div className="space-y-3">
-                    {resolvedTickets.map(ticket => (
-                      <div key={ticket.Ticket_ID} className="p-4 bg-gray-800/50 rounded-lg border-l-4 border-green-500 opacity-75 hover:opacity-100 transition-opacity">
-                        <div className="flex justify-between items-start mb-2">
-                          <h4 className="font-medium text-gray-300">{ticket.Report_Problem}</h4>
-                          <span className="text-xs bg-green-900/30 text-green-300 px-2 py-1 rounded">
-                            RESOLVED
-                          </span>
-                        </div>
-                        <div className="text-sm text-gray-500 flex justify-between">
-                          <span>{ticket.Location}</span>
-                          <span>{new Date(ticket.Updated_At).toLocaleDateString()}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+            <div className="overflow-hidden border border-gray-200 dark:border-gray-700 rounded-lg">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-800">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Priority</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Issue</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Location</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                  {/* Combine and sort tickets if needed, or map sections. Let's map In Progress then Resolved for now */}
+                  {[...inProgressTickets, ...resolvedTickets].map((ticket) => (
+                    <tr key={ticket.Ticket_ID} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${ticket.Priority === 'HIGH' || ticket.Priority === 'CRITICAL' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' :
+                            ticket.Priority === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
+                              'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+                          }`}>
+                          {ticket.Priority}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
+                        <div className="max-w-xs truncate" title={ticket.Report_Problem}>{ticket.Report_Problem}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                        {ticket.Location} {ticket.Room ? `(${ticket.Room.Name})` : ''}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                        {new Date(ticket.Created_At).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${ticket.Status === 'RESOLVED'
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
+                          }`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${ticket.Status === 'RESOLVED' ? 'bg-green-500' : 'bg-yellow-500'}`} />
+                          {ticket.Status.replace('_', ' ')}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </section>
       )}
 
       {activeTab === 'Reports' && (
-        <section>
+        <section className="animate-fade-in">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Weekly Reports</h2>
-            <span className="text-sm text-gray-400">{reports.length} reports found</span>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Weekly Reports</h2>
+            <span className="text-sm text-gray-500 dark:text-gray-400">{reports.length} reports found</span>
           </div>
 
           {reports.length === 0 ? (
-            <div className="text-center py-10 text-gray-500">
+            <div className="text-center py-10 text-gray-500 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
               <p>No reports submitted yet.</p>
             </div>
           ) : (
@@ -288,27 +266,32 @@ export default function LabTechDetailPanel({ labTech }: Props) {
               {reports.map((report) => (
                 <div
                   key={report.id}
-                  className="bg-gray-800/50 rounded-lg overflow-hidden border border-gray-700/50 hover:border-blue-500/50 transition-colors"
+                  className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors shadow-sm"
                 >
                   <button
                     onClick={() => toggleReport(report.id)}
                     className="w-full text-left p-4 flex justify-between items-center focus:outline-none"
                   >
                     <div>
-                      <h3 className="font-medium text-lg">
+                      <h3 className="font-medium text-lg text-gray-900 dark:text-white">
                         Weekly Report: {formatDate(report.weekStartDate)} - {formatDate(report.weekEndDate)}
                       </h3>
-                      <p className="text-sm text-gray-400 mt-1">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                         Submitted on {new Date(report.submittedAt).toLocaleString()}
                       </p>
                     </div>
-                    {/* ... (rest of report item UI) */}
+                    <svg
+                      className={`w-5 h-5 text-gray-400 transition-transform ${expandedReport === report.id ? 'rotate-180' : ''}`}
+                      fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
                   </button>
 
                   {expandedReport === report.id && (
-                    <div className="px-4 pb-4 pt-2 border-t border-gray-700/50 animate-fade-in">
-                      {/* ... (expanded report details) */}
-                      <p className="text-gray-400 p-4">Report details placeholder...</p>
+                    <div className="px-4 pb-4 pt-2 border-t border-gray-100 dark:border-gray-700">
+                      <p className="text-gray-600 dark:text-gray-300 p-2 text-sm">{report.notes || 'No specific notes provided.'}</p>
+                      {/* Detailed task view integration goes here */}
                     </div>
                   )}
                 </div>

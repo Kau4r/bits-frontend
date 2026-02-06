@@ -41,11 +41,12 @@ export default function LabheadDashboard() {
   }, [notifications, fetchMetrics]);
 
   return (
-    <div className="h-screen w-full p-4 flex flex-col pt-16 lg:pt-4">
-      <div className="mb-4 flex-shrink-0">
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
+    <div className="h-full w-full bg-white p-6 sm:px-8 lg:px-10 dark:bg-gray-900 flex flex-col">
+      <div className="mb-6 flex-shrink-0">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
           Good Day, Labhead
         </h1>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Overview of lab operations, tickets, and inventory status</p>
         {/* New Stats Row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
           <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700 flex items-center gap-4">

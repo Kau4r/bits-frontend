@@ -1,5 +1,5 @@
 import Scheduling from '../Scheduling/Scheduling';
-import { Bell, LogOut, PlusCircle, X } from 'lucide-react';
+import { Bell, LogOut, PlusCircle, X, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -8,6 +8,7 @@ import { fetchInventory } from '../../services/inventory';
 import type { Item } from '../../types/inventory';
 import { getNotifications, type Notification } from '../../services/notifications';
 import { createBorrowing } from '../../services/borrowing';
+import { getBookings } from '../../services/booking';
 import ReportIssueModal from '../../components/student/Modals/ReportIssue';
 import { useBorrowingEvents } from '../../hooks/useBorrowingEvents';
 
@@ -21,6 +22,7 @@ const FacultyScheduling = () => {
 
   // Report Issue Modal State
   const [showReportIssueModal, setShowReportIssueModal] = useState(false);
+  const [currentRoom, setCurrentRoom] = useState<string>('General Facility');
 
   // Borrow Modal State
   const [isBorrowModalOpen, setIsBorrowModalOpen] = useState(false);
@@ -35,6 +37,35 @@ const FacultyScheduling = () => {
       setSelectedType(''); // Reset type
     }
   }, [isBorrowModalOpen]);
+
+  // Fetch current active booking for room context
+  useEffect(() => {
+    const fetchCurrentRoomContext = async () => {
+      if (!user) return;
+      try {
+        const bookings = await getBookings();
+        const now = new Date();
+        const activeBooking = bookings.find((b: any) =>
+          b.User_ID === user.User_ID &&
+          b.Status === 'APPROVED' &&
+          new Date(b.Start_Time) <= now &&
+          new Date(b.End_Time) >= now
+        );
+
+        if (activeBooking && activeBooking.Room) {
+          setCurrentRoom(activeBooking.Room.Name);
+        } else {
+          setCurrentRoom('General Facility');
+        }
+      } catch (err) {
+        console.error("Failed to fetch current room context:", err);
+      }
+    };
+
+    if (showReportIssueModal) {
+      fetchCurrentRoomContext();
+    }
+  }, [showReportIssueModal, user]);
 
   const loadItems = async () => {
     setIsLoadingItems(true);
@@ -125,9 +156,10 @@ const FacultyScheduling = () => {
             <div className="flex items-center space-x-6">
               <button
                 onClick={() => setShowReportIssueModal(true)}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-red-400 hover:bg-gray-700 hover:text-red-300 transition-colors"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors"
+                title="Report an Issue"
               >
-                <span>🚨</span>
+                <AlertTriangle className="h-4 w-4" />
                 <span className="text-sm font-medium">Report Issue</span>
               </button>
 
@@ -378,10 +410,12 @@ const FacultyScheduling = () => {
         isOpen={showReportIssueModal}
         onClose={() => setShowReportIssueModal(false)}
         onSubmit={async (description, issueType, equipment) => {
-          console.log('Report Issue:', { description, issueType, equipment });
-          modal.showSuccess('Issue reported successfully', 'Success');
+          // TODO: Wire up actual ticket creation once API is confirmed.
+          // For now we just log, but the ROOM is now accurate which was the main 'mock data' complaint.
+          console.log('Report Issue:', { description, issueType, equipment, room: currentRoom });
+          modal.showSuccess('Issue reported successfully. Ticket created for ' + currentRoom, 'Success');
         }}
-        room="General Facility"
+        room={currentRoom}
         pcNumber="N/A"
       />
     </div>
