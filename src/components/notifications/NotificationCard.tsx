@@ -35,7 +35,7 @@ export default function NotificationCard({
     <div
       className={`group relative p-4 rounded-xl border ${notification.isRead
           ? 'bg-white dark:bg-gray-800'
-          : 'bg-blue-50/60 dark:bg-blue-900/30'
+          : 'bg-blue-50 dark:bg-blue-900/30'
         } border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all`}
     >
       <div className="flex items-start gap-4">

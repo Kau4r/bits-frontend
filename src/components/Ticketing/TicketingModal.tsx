@@ -236,7 +236,7 @@ export default function TicketingModal({
 
           {/* Ticket Meta Info */}
           {ticket && !isCreating && (
-            <div className="mb-6 grid grid-cols-2 gap-4 rounded-lg bg-gray-50 p-4 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+            <div className="mb-6 grid grid-cols-2 gap-4 rounded-lg bg-gray-100 dark:bg-gray-800 p-4 border border-gray-200 dark:border-gray-700">
               <div>
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Date Reported</p>
                 <p className="font-medium text-gray-900 dark:text-white mt-1">

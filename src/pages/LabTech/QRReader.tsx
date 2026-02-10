@@ -57,9 +57,9 @@ const QrScanner = ({ inventory, onOpenItem }: Props) => {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-            <div className="bg-white dark:bg-gray-900 p-4 rounded-md">
+            <div className="bg-white dark:bg-gray-900 p-4 rounded-md border border-gray-200 dark:border-gray-700">
                 <button
-                    className="mb-2 text-sm text-gray-500"
+                    className="mb-2 text-sm text-gray-600 dark:text-gray-500 hover:text-gray-900 dark:hover:text-gray-300"
                     onClick={stopScan}
                 >
                     Close
@@ -67,7 +67,7 @@ const QrScanner = ({ inventory, onOpenItem }: Props) => {
 
                 <video
                     ref={videoRef}
-                    className="w-64 h-64 border rounded-md"
+                    className="w-64 h-64 border border-gray-200 dark:border-gray-700 rounded-md"
                     autoPlay
                     muted
                     playsInline

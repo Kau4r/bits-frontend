@@ -39,7 +39,7 @@ export default function AddShortcutModal({ isOpen, onClose, onAddShortcut }: Add
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-1">
+            <label htmlFor="name" className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">
               Name
             </label>
             <div className="relative">
@@ -56,7 +56,7 @@ export default function AddShortcutModal({ isOpen, onClose, onAddShortcut }: Add
           </div>
           
           <div>
-            <label htmlFor="url" className="block text-sm font-medium text-gray-300 mb-1">
+            <label htmlFor="url" className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">
               URL
             </label>
             <div className="relative">

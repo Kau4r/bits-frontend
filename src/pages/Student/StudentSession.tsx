@@ -27,7 +27,7 @@ export default function StudentSession() {
       <div className="p-4 sm:px-8 lg:px-10">
         <button
           onClick={() => navigate("/student-pc-view")}
-          className="text-gray-300 hover:text-white transition-colors"
+          className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
         >
           ← Go to PC View
         </button>
@@ -46,7 +46,7 @@ export default function StudentSession() {
             <div className="flex flex-col items-center gap-3 select-none">
               <div className="flex  gap-3">
                 <img src="/bit.png" alt="BITS" className="w-14 h-14" />
-                <h1 className="text-4xl sm:text-5xl font-semibold text-white tracking-tight">
+                <h1 className="text-4xl sm:text-5xl font-semibold text-gray-900 dark:text-white tracking-tight">
                   BITS
                 </h1>
               </div>
@@ -57,7 +57,7 @@ export default function StudentSession() {
           <div className="w-full flex flex-col justify-center">
             {/* Search Bar */}
             <div className="w-full max-w-4xl mx-auto">
-              <div className="flex items-center gap-3 bg-slate-800/80 border border-slate-700 rounded-2xl px-4 py-3 shadow-sm focus-within:border-blue-500">
+              <div className="flex items-center gap-3 bg-gray-100 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-2xl px-4 py-3 shadow-sm focus-within:border-blue-500">
                 <svg
                   className="w-5 h-5 text-gray-400"
                   viewBox="0 0 24 24"
@@ -79,7 +79,7 @@ export default function StudentSession() {
                   }}
                   placeholder="Search with Google or enter address"
                   className="
-          flex-1 bg-transparent text-gray-200 placeholder:text-gray-500
+          flex-1 bg-transparent text-gray-900 dark:text-gray-200 placeholder:text-gray-500
           outline-none ring-0 border-0
         "
                 />

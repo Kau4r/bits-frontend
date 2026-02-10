@@ -342,10 +342,10 @@ export default function UserDetails() {
             {[...Array(5)].map((_, i) => (
               <div key={i} className="flex animate-pulse items-center justify-between gap-3 rounded-md px-3 py-2">
                 <div className="flex-1">
-                  <div className="h-4 w-1/2 rounded bg-gray-200 dark:bg-gray-800" />
-                  <div className="mt-1 h-3 w-3/4 rounded bg-gray-200 dark:bg-gray-800" />
+                  <div className="h-4 w-1/2 rounded bg-gray-200 dark:bg-gray-700" />
+                  <div className="mt-1 h-3 w-3/4 rounded bg-gray-200 dark:bg-gray-700" />
                 </div>
-                <div className="h-3 w-16 rounded bg-gray-200 dark:bg-gray-800" />
+                <div className="h-3 w-16 rounded bg-gray-200 dark:bg-gray-700" />
               </div>
             ))}
           </div>

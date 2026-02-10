@@ -144,7 +144,7 @@ export default function Login() {
 
           {/* Error message */}
           {error && (
-            <div className="bg-red-50 border-l-4 border-red-500 p-4 mt-4">
+            <div className="bg-red-50 dark:bg-red-500/20 border-l-4 border-red-500 p-4 mt-4">
               <div className="flex items-center">
                 <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
                 <p className="ml-3 text-sm text-red-700 dark:text-red-200">{error}</p>

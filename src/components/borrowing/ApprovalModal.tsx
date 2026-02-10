@@ -58,7 +58,7 @@ export default function ApprovalModal({
 
                 <form onSubmit={handleSubmit} className="space-y-5">
                     {/* Request Details */}
-                    <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 space-y-2 border border-gray-100 dark:border-gray-700">
+                    <div className="bg-gray-100 dark:bg-gray-800/50 rounded-lg p-4 space-y-2 border border-gray-200 dark:border-gray-700">
                         <div>
                             <span className="text-xs text-gray-500 dark:text-gray-400">Borrower:</span>
                             <div className="text-sm text-gray-900 dark:text-white font-medium">{request.borrower.First_Name} {request.borrower.Last_Name}</div>

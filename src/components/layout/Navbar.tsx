@@ -106,8 +106,9 @@ const Navbar = ({ collapsed, setCollapsed, isMobile }: { collapsed: boolean; set
   const { unreadCount, pendingTicketCount } = useNotifications();
   const [isDark, setIsDark] = useState(() => {
     if (typeof window !== 'undefined') {
-      return document.documentElement.classList.contains('dark') ||
-        (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      const saved = localStorage.getItem('theme');
+      if (saved) return saved === 'dark';
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
     }
     return false;
   });

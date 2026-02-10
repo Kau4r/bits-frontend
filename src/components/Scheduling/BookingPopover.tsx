@@ -217,10 +217,8 @@ export default function BookingPopover({
         position: 'relative',
         width: 400,
         maxHeight: '90vh',
-        backgroundColor: '#1f2937',
         borderRadius: '0.75rem',
         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-        border: '1px solid #4b5563',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
@@ -232,19 +230,19 @@ export default function BookingPopover({
 
         return (
             <div style={overlayStyle} onClick={onClose}>
-                <div ref={popoverRef} style={modalStyle} onClick={e => e.stopPropagation()}>
+                <div ref={popoverRef} style={modalStyle} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700" onClick={e => e.stopPropagation()}>
                     {/* Header */}
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
-                        <h3 className="font-semibold text-white">Booking Details</h3>
-                        <button onClick={onClose} className="text-gray-400 hover:text-white text-xl leading-none">×</button>
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                        <h3 className="font-semibold text-gray-900 dark:text-white">Booking Details</h3>
+                        <button onClick={onClose} className="text-gray-400 hover:text-gray-900 dark:hover:text-white text-xl leading-none">×</button>
                     </div>
 
                     {/* Details */}
                     <div className="p-4 space-y-4 overflow-y-auto">
                         <div>
-                            <div className="text-xl font-semibold text-white">{viewingBooking.title}</div>
+                            <div className="text-xl font-semibold text-gray-900 dark:text-white">{viewingBooking.title}</div>
                             {viewingBooking.description && (
-                                <div className="text-sm text-gray-400 mt-1">{viewingBooking.description}</div>
+                                <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">{viewingBooking.description}</div>
                             )}
                         </div>
 
@@ -254,29 +252,29 @@ export default function BookingPopover({
                             </span>
                         </div>
 
-                        <div className="bg-gray-700/50 rounded-lg p-3 space-y-2">
+                        <div className="bg-gray-100 dark:bg-gray-700/50 rounded-lg p-3 space-y-2">
                             <div className="flex items-center gap-2 text-sm">
-                                <span className="text-gray-400">👤</span>
-                                <span className="text-white font-medium">{viewingBooking.createdBy}</span>
+                                <span className="text-gray-600 dark:text-gray-400">👤</span>
+                                <span className="text-gray-900 dark:text-white font-medium">{viewingBooking.createdBy}</span>
                             </div>
                             <div className="flex items-center gap-2 text-sm">
-                                <span className="text-gray-400">🏠</span>
-                                <span className="text-gray-300">{viewingBooking.roomName}</span>
+                                <span className="text-gray-600 dark:text-gray-400">🏠</span>
+                                <span className="text-gray-800 dark:text-gray-300">{viewingBooking.roomName}</span>
                             </div>
                             <div className="flex items-center gap-2 text-sm">
-                                <span className="text-gray-400">📅</span>
-                                <span className="text-gray-300">{dayjs(viewingBooking.date).format('dddd, MMMM D, YYYY')}</span>
+                                <span className="text-gray-600 dark:text-gray-400">📅</span>
+                                <span className="text-gray-800 dark:text-gray-300">{dayjs(viewingBooking.date).format('dddd, MMMM D, YYYY')}</span>
                             </div>
                             <div className="flex items-center gap-2 text-sm">
-                                <span className="text-gray-400">🕐</span>
-                                <span className="text-gray-300">
+                                <span className="text-gray-600 dark:text-gray-400">🕐</span>
+                                <span className="text-gray-800 dark:text-gray-300">
                                     {formatTimeDisplay(viewingBooking.startTime)} – {formatTimeDisplay(viewingBooking.endTime)}
                                 </span>
                             </div>
                         </div>
 
                         {canApprove && viewingBooking.status === 'PENDING' && (
-                            <div className="flex gap-3 pt-2 border-t border-gray-700">
+                            <div className="flex gap-3 pt-2 border-t border-gray-200 dark:border-gray-700">
                                 <button
                                     onClick={() => onReject?.(viewingBooking.id)}
                                     disabled={isSubmitting}
@@ -295,7 +293,7 @@ export default function BookingPopover({
                         )}
 
                         <div className="flex justify-end pt-2">
-                            <button onClick={onClose} className="px-4 py-2 text-sm text-gray-300 hover:text-white">Close</button>
+                            <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">Close</button>
                         </div>
                     </div>
                 </div>
@@ -306,54 +304,54 @@ export default function BookingPopover({
     // CREATE / EDIT MODE
     return (
         <div style={overlayStyle} onClick={onClose}>
-            <div ref={popoverRef} style={modalStyle} onClick={e => e.stopPropagation()}>
+            <div ref={popoverRef} style={modalStyle} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700" onClick={e => e.stopPropagation()}>
                 {/* Header */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
-                    <h3 className="font-semibold text-white">{isEditMode ? 'Edit Booking' : 'New Booking'}</h3>
-                    <button onClick={onClose} className="text-gray-400 hover:text-white text-xl leading-none">×</button>
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                    <h3 className="font-semibold text-gray-900 dark:text-white">{isEditMode ? 'Edit Booking' : 'New Booking'}</h3>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-900 dark:hover:text-white text-xl leading-none">×</button>
                 </div>
 
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="p-4 space-y-4 overflow-y-auto">
                     {/* Event Title */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1">Event Title</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Event Title</label>
                         <input
                             ref={inputRef}
                             type="text"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-600 rounded-lg bg-gray-700 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
                             required
                         />
                     </div>
 
                     {/* Event Description */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1">Event Description</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Event Description</label>
                         <textarea
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             rows={2}
-                            className="w-full px-3 py-2 border border-gray-600 rounded-lg bg-gray-700 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none"
                         />
                     </div>
 
                     {/* Room */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1">Room</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Room</label>
                         <div className="relative">
                             <button
                                 type="button"
                                 onClick={() => setShowRoomDropdown(!showRoomDropdown)}
-                                className="w-auto px-4 py-2 border border-gray-600 rounded-lg bg-gray-700 text-white text-left flex items-center gap-2 hover:bg-gray-600"
+                                className="w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-left flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-600"
                             >
                                 <span className="text-lg">+</span>
                                 <span>{selectedRoom?.Name || 'Add Room'}</span>
                             </button>
 
                             {showRoomDropdown && (
-                                <div className="absolute top-full left-0 mt-1 bg-gray-700 border border-gray-600 rounded-lg shadow-lg z-10 min-w-[200px]">
+                                <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg z-10 min-w-[200px]">
                                     {rooms.map((room) => (
                                         <button
                                             key={room.Room_ID}
@@ -362,7 +360,7 @@ export default function BookingPopover({
                                                 setRoomId(room.Room_ID);
                                                 setShowRoomDropdown(false);
                                             }}
-                                            className={`w-full px-4 py-2 text-left hover:bg-gray-600 first:rounded-t-lg last:rounded-b-lg ${roomId === room.Room_ID ? 'bg-indigo-900/30 text-indigo-400' : 'text-gray-300'}`}
+                                            className={`w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-600 first:rounded-t-lg last:rounded-b-lg ${roomId === room.Room_ID ? 'bg-indigo-900/30 text-indigo-400' : 'text-gray-900 dark:text-gray-300'}`}
                                         >
                                             {room.Name}
                                         </button>
@@ -374,12 +372,12 @@ export default function BookingPopover({
 
                     {/* Date */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1">Date</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date</label>
                         <input
                             type="date"
                             value={date}
                             onChange={(e) => setDate(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-600 rounded-lg bg-gray-700 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
                             required
                         />
                     </div>
@@ -387,11 +385,11 @@ export default function BookingPopover({
                     {/* Time Range */}
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-1">Start Time</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Time</label>
                             <select
                                 value={startTimeValue}
                                 onChange={(e) => setStartTimeValue(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-600 rounded-lg bg-gray-700 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
                             >
                                 {TIME_OPTIONS.map((t) => (
                                     <option key={`start-${t}`} value={t}>{formatTimeDisplay(t)}</option>
@@ -399,11 +397,11 @@ export default function BookingPopover({
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-1">End Time</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Time</label>
                             <select
                                 value={endTimeValue}
                                 onChange={(e) => setEndTimeValue(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-600 rounded-lg bg-gray-700 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
                             >
                                 {TIME_OPTIONS.map((t) => (
                                     <option key={`end-${t}`} value={t}>{formatTimeDisplay(t)}</option>
@@ -420,14 +418,14 @@ export default function BookingPopover({
                                 id="repeat"
                                 checked={repeat}
                                 onChange={(e) => setRepeat(e.target.checked)}
-                                className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-indigo-600 focus:ring-indigo-500"
+                                className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-indigo-600 focus:ring-indigo-500"
                             />
-                            <label htmlFor="repeat" className="text-sm text-gray-300">Repeat Event</label>
+                            <label htmlFor="repeat" className="text-sm text-gray-700 dark:text-gray-300">Repeat Event</label>
                         </div>
                     )}
 
                     {/* Actions */}
-                    <div className="flex justify-between gap-3 pt-4 border-t border-gray-700">
+                    <div className="flex justify-between gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                         {/* Remove button - only in edit mode */}
                         {isEditMode && viewingBooking && onRemove ? (
                             <button
@@ -446,7 +444,7 @@ export default function BookingPopover({
                         ) : <div />}
 
                         <div className="flex gap-3">
-                            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-300 hover:text-white">
+                            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
                                 Cancel
                             </button>
                             <button

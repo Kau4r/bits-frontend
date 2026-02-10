@@ -75,25 +75,25 @@ export default function MyBorrowingRequests() {
 
     if (isLoading) {
         return (
-            <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-                <h3 className="text-lg font-semibold text-white mb-3">📦 My Borrowing Requests</h3>
-                <p className="text-gray-400 text-sm">Loading...</p>
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">📦 My Borrowing Requests</h3>
+                <p className="text-gray-600 dark:text-gray-400 text-sm">Loading...</p>
             </div>
         );
     }
 
     if (requests.length === 0) {
         return (
-            <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-                <h3 className="text-lg font-semibold text-white mb-3">📦 My Borrowing Requests</h3>
-                <p className="text-gray-400 text-sm text-center py-4">No borrowing requests yet</p>
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">📦 My Borrowing Requests</h3>
+                <p className="text-gray-600 dark:text-gray-400 text-sm text-center py-4">No borrowing requests yet</p>
             </div>
         );
     }
 
     return (
-        <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-            <h3 className="text-lg font-semibold text-white mb-4">📦 My Borrowing Requests</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">📦 My Borrowing Requests</h3>
 
             {/* Pending Requests */}
             {pendingRequests.length > 0 && (
@@ -103,13 +103,13 @@ export default function MyBorrowingRequests() {
                     </h4>
                     <div className="space-y-2">
                         {pendingRequests.map((req) => (
-                            <div key={req.Borrow_Item_ID} className="bg-gray-700/50 rounded-lg p-3 border border-yellow-500/30">
+                            <div key={req.Borrow_Item_ID} className="bg-gray-100 dark:bg-gray-700/50 rounded-lg p-3 border border-yellow-500/30">
                                 <div className="flex justify-between items-center">
                                     <div>
-                                        <p className="text-white font-medium text-sm">
+                                        <p className="text-gray-900 dark:text-white font-medium text-sm">
                                             {req.Item?.Item_Type || req.Requested_Item_Type || 'Unknown Item'}
                                         </p>
-                                        <p className="text-gray-400 text-xs">
+                                        <p className="text-gray-600 dark:text-gray-400 text-xs">
                                             {req.Item ? `${req.Item.Brand} • ${req.Item.Item_Code}` : 'Specific Item Pending Assignment'}
                                         </p>
                                     </div>
@@ -131,20 +131,20 @@ export default function MyBorrowingRequests() {
                     </h4>
                     <div className="space-y-2">
                         {activeLoans.map((req) => (
-                            <div key={req.Borrow_Item_ID} className="bg-gray-700/50 rounded-lg p-3 border border-green-500/30">
+                            <div key={req.Borrow_Item_ID} className="bg-gray-100 dark:bg-gray-700/50 rounded-lg p-3 border border-green-500/30">
                                 <div className="flex justify-between items-start">
                                     <div>
-                                        <p className="text-white font-medium text-sm">
+                                        <p className="text-gray-900 dark:text-white font-medium text-sm">
                                             {req.Item?.Item_Type || req.Requested_Item_Type || 'Unknown Item'}
                                         </p>
-                                        <p className="text-gray-400 text-xs">
+                                        <p className="text-gray-600 dark:text-gray-400 text-xs">
                                             {req.Item ? `${req.Item.Brand} • ${req.Item.Item_Code}` : 'Item Info Unavailable'}
                                         </p>
                                     </div>
                                     {req.Return_Date && <Countdown returnDate={req.Return_Date} />}
                                 </div>
                                 {req.Return_Date && (
-                                    <p className="text-gray-500 text-xs mt-2">
+                                    <p className="text-gray-600 dark:text-gray-500 text-xs mt-2">
                                         Return by: {new Date(req.Return_Date).toLocaleString()}
                                     </p>
                                 )}

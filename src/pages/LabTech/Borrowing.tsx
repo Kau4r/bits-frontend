@@ -379,7 +379,7 @@ export default function Borrowing() {
                     </div>
                 ) : (
                     <div className="flex flex-col items-center justify-center py-24 text-center">
-                        <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-full mb-4">
+                        <div className="p-4 bg-gray-100 dark:bg-gray-800/50 rounded-full mb-4">
                             <InboxArrowDownIcon className="h-12 w-12 text-gray-400" />
                         </div>
                         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">

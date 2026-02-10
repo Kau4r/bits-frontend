@@ -52,6 +52,7 @@ export default function RoomPage() {
           Capacity: room.Capacity,
           Room_Type: room.Room_Type,
           Status: room.Status || "AVAILABLE",
+          ...(room.Room_Type === 'LAB' && room.Lab_Type ? { Lab_Type: room.Lab_Type } : {}),
           Created_By: user.User_ID,
         };
         const newRoom = await createRoom(payload);
@@ -63,6 +64,7 @@ export default function RoomPage() {
           Capacity: room.Capacity,
           Room_Type: room.Room_Type,
           Status: room.Status,
+          ...(room.Room_Type === 'LAB' ? { Lab_Type: room.Lab_Type || undefined } : { Lab_Type: null }),
           Updated_By: user.User_ID,
         };
 
@@ -108,21 +110,21 @@ export default function RoomPage() {
       <div className="h-full w-full bg-white p-6 sm:px-8 lg:px-10 dark:bg-gray-900">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <div className="h-8 w-48 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
-            <div className="mt-1 h-4 w-64 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
+            <div className="h-8 w-48 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+            <div className="mt-1 h-4 w-64 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
           </div>
-          <div className="h-10 w-32 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
+          <div className="h-10 w-32 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
         </div>
         <div className="mb-6 flex flex-wrap items-center gap-3">
-          <div className="h-10 w-64 flex-1 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
-          <div className="h-10 w-32 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
-          <div className="h-10 w-24 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
+          <div className="h-10 w-64 flex-1 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+          <div className="h-10 w-32 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+          <div className="h-10 w-24 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
         </div>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {[...Array(8)].map((_, i) => (
             <div
               key={i}
-              className="h-48 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-800"
+              className="h-48 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-700"
             />
           ))}
         </div>
@@ -182,7 +184,7 @@ export default function RoomPage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as RoomStatus | 'ALL')}
-            className="appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-4 pr-10 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-600"
+            className="appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-4 pr-10 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
           >
             <option value="ALL">All Status</option>
             {roomStatuses.map((status) => (
@@ -216,7 +218,7 @@ export default function RoomPage() {
                 setSearchTerm('');
                 setStatusFilter('ALL');
               }}
-              className="mt-4 inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-600"
+              className="mt-4 inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
             >
               Clear Filters
             </button>

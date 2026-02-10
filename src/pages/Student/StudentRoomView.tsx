@@ -103,7 +103,7 @@ export default function StudentRoomView() {
             <div className="p-4 sm:px-8 lg:px-10 flex justify-end">
                 <button
                     onClick={() => navigate("/student-pc-view")}
-                    className="text-gray-300 hover:text-white transition-colors"
+                    className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
                 >
                     Back to PC view →
                 </button>
@@ -115,11 +115,11 @@ export default function StudentRoomView() {
                 />
             </div>
             <div className="flex-1 overflow-auto p-4 sm:px-8 lg:px-10">
-                <h2 className="text-2xl font-bold text-white mb-6">Opened Laboratories</h2>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Opened Laboratories</h2>
 
                 {isLoadingLabs ? (
                     <div className="flex items-center justify-center py-12">
-                        <div className="text-gray-400">Loading opened laboratories...</div>
+                        <div className="text-gray-600 dark:text-gray-400">Loading opened laboratories...</div>
                     </div>
                 ) : openedLabs.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -128,17 +128,17 @@ export default function StudentRoomView() {
                         ))}
                     </div>
                 ) : (
-                    <div className="text-center py-12 bg-gray-800 rounded-lg">
-                        <p className="text-gray-400 text-lg">No laboratories currently opened</p>
+                    <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg">
+                        <p className="text-gray-600 dark:text-gray-400 text-lg">No laboratories currently opened</p>
                         <p className="text-gray-500 text-sm mt-2">Check back later or contact lab staff</p>
                     </div>
                 )}
 
-                <h2 className="text-2xl font-bold text-white mt-12 mb-6">Lecture Rooms</h2>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-12 mb-6">Lecture Rooms</h2>
 
                 {isLoadingLectures ? (
                     <div className="flex items-center justify-center py-12">
-                        <div className="text-gray-400">Loading lecture rooms...</div>
+                        <div className="text-gray-600 dark:text-gray-400">Loading lecture rooms...</div>
                     </div>
                 ) : lectureRooms.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -147,8 +147,8 @@ export default function StudentRoomView() {
                         ))}
                     </div>
                 ) : (
-                    <div className="text-center py-12 bg-gray-800 rounded-lg">
-                        <p className="text-gray-400 text-lg">No lecture rooms available</p>
+                    <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg">
+                        <p className="text-gray-600 dark:text-gray-400 text-lg">No lecture rooms available</p>
                         <p className="text-gray-500 text-sm mt-2">Please check with administration</p>
                     </div>
                 )}

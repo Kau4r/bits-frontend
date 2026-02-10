@@ -141,15 +141,15 @@ const FacultyScheduling = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-900 relative">
+    <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900 relative">
       {/* Navigation Bar */}
-      <nav className="bg-gray-800 shadow-sm">
+      <nav className="bg-white dark:bg-gray-800 shadow-sm">
         <div className="w-full px-6">
           <div className="flex justify-between items-center h-18">
             <div className="flex items-center space-x-6">
               <h1 className="text-4xl font-bold text-[#4338CA]">BITS</h1>
-              <div className="text-gray text-lg">
-                Hello, <span className="text-gray font-medium">{facultyName}</span>
+              <div className="text-gray-900 dark:text-gray-200 text-lg">
+                Hello, <span className="text-gray-900 dark:text-gray-200 font-medium">{facultyName}</span>
               </div>
             </div>
 
@@ -176,28 +176,28 @@ const FacultyScheduling = () => {
               <div className="relative">
                 <button
                   onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                  className="p-1 rounded-full text-gray-400 hover:text-white transition-colors focus:outline-none"
+                  className="p-1 rounded-full text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors focus:outline-none"
                 >
                   <Bell className="h-6 w-6" />
                 </button>
                 {isNotificationOpen && (
-                  <div className="origin-top-right absolute right-0 mt-2 w-72 rounded-md shadow-lg bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
+                  <div className="origin-top-right absolute right-0 mt-2 w-72 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
                     <div className="py-1">
-                      <div className="px-4 py-2 border-b border-gray-700">
-                        <p className="text-sm font-medium text-white">Notifications</p>
+                      <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">Notifications</p>
                       </div>
                       {isLoadingNotifications ? (
-                        <div className="px-4 py-3 text-sm text-gray-400">Loading...</div>
+                        <div className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">Loading...</div>
                       ) : notifications.length > 0 ? (
                         notifications.map(notification => (
-                          <div key={notification.id} className={`px-4 py-3 hover:bg-gray-700 ${!notification.read ? 'border-l-2 border-indigo-500' : ''}`}>
-                            <p className="text-sm font-medium text-white">{notification.title}</p>
-                            <p className="text-sm text-gray-300">{notification.message || 'No details'}</p>
-                            <p className="text-xs text-gray-400 mt-1">{formatTime(notification.timestamp)}</p>
+                          <div key={notification.id} className={`px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 ${!notification.read ? 'border-l-2 border-indigo-500' : ''}`}>
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">{notification.title}</p>
+                            <p className="text-sm text-gray-800 dark:text-gray-300">{notification.message || 'No details'}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{formatTime(notification.timestamp)}</p>
                           </div>
                         ))
                       ) : (
-                        <div className="px-4 py-3 text-sm text-gray-400">No new notifications</div>
+                        <div className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">No new notifications</div>
                       )}
                     </div>
                   </div>
@@ -207,7 +207,7 @@ const FacultyScheduling = () => {
               <div className="flex items-center justify-center">
                 <button
                   onClick={handleLogout}
-                  className="flex items-center justify-center text-gray-400 hover:text-white transition-colors px-3 py-2 rounded-md hover:bg-gray-700 space-x-2"
+                  className="flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 space-x-2"
                   title="Log out"
                 >
                   <LogOut className="h-5 w-5 flex-shrink-0" />
@@ -227,13 +227,13 @@ const FacultyScheduling = () => {
       {/* Enhanced Device Borrowing Request Modal */}
       {isBorrowModalOpen && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
-          <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl p-6 border border-gray-700 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl p-6 border border-gray-200 dark:border-gray-700 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <div>
-                <h2 className="text-2xl font-semibold text-white">📱 Request a Device</h2>
-                <p className="text-sm text-gray-400 mt-1">Fill out the form below to request a device. Your request will be reviewed by the department admin.</p>
+                <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">📱 Request a Device</h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Fill out the form below to request a device. Your request will be reviewed by the department admin.</p>
               </div>
-              <button onClick={() => setIsBorrowModalOpen(false)} className="text-gray-400 hover:text-white">
+              <button onClick={() => setIsBorrowModalOpen(false)} className="text-gray-400 hover:text-gray-900 dark:hover:text-white">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -287,18 +287,18 @@ const FacultyScheduling = () => {
             }} className="space-y-5">
               {/* Item Type */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Item Type <span className="text-red-400">*</span>
                 </label>
                 {isLoadingItems ? (
-                  <div className="text-sm text-gray-400">Loading available items...</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">Loading available items...</div>
                 ) : (
                   <>
                     <select
                       value={selectedType}
                       onChange={(e) => setSelectedType(e.target.value)}
                       required
-                      className="w-full bg-gray-700 border border-gray-600 rounded-lg py-2.5 px-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg py-2.5 px-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     >
                       <option value="">Select an item type</option>
                       {uniqueTypes.map((type) => (
@@ -308,7 +308,7 @@ const FacultyScheduling = () => {
                       ))}
                     </select>
                     {selectedType && (
-                      <p className="text-xs text-green-400 mt-1">
+                      <p className="text-xs text-green-600 dark:text-green-400 mt-1">
                         ✓ {inventoryItems.filter(item => item.Item_Type === selectedType).length} {selectedType}(s) available - Lab Tech will assign a specific item
                       </p>
                     )}
@@ -319,7 +319,7 @@ const FacultyScheduling = () => {
               {/* Borrow Date & Time */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Borrow Date <span className="text-red-400">*</span>
                   </label>
                   <input
@@ -327,18 +327,18 @@ const FacultyScheduling = () => {
                     name="borrowDate"
                     required
                     min={new Date().toISOString().split('T')[0]}
-                    className="w-full bg-gray-700 border border-gray-600 rounded-lg py-2.5 px-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg py-2.5 px-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Borrow Time <span className="text-red-400">*</span>
                   </label>
                   <input
                     type="time"
                     name="borrowTime"
                     required
-                    className="w-full bg-gray-700 border border-gray-600 rounded-lg py-2.5 px-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg py-2.5 px-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   />
                 </div>
               </div>
@@ -346,7 +346,7 @@ const FacultyScheduling = () => {
               {/* Return Date & Time */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Return Date <span className="text-red-400">*</span>
                   </label>
                   <input
@@ -354,25 +354,25 @@ const FacultyScheduling = () => {
                     name="returnDate"
                     required
                     min={new Date().toISOString().split('T')[0]}
-                    className="w-full bg-gray-700 border border-gray-600 rounded-lg py-2.5 px-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg py-2.5 px-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Return Time <span className="text-red-400">*</span>
                   </label>
                   <input
                     type="time"
                     name="returnTime"
                     required
-                    className="w-full bg-gray-700 border border-gray-600 rounded-lg py-2.5 px-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg py-2.5 px-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   />
                 </div>
               </div>
 
               {/* Purpose / Reason */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Purpose / Reason <span className="text-red-400">*</span>
                 </label>
                 <textarea
@@ -380,16 +380,16 @@ const FacultyScheduling = () => {
                   required
                   rows={3}
                   placeholder="Briefly describe why you need this device..."
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg py-2.5 px-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+                  className="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg py-2.5 px-3 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
                 />
               </div>
 
               {/* Action Buttons */}
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-700">
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                 <button
                   type="button"
                   onClick={() => setIsBorrowModalOpen(false)}
-                  className="px-5 py-2.5 text-sm font-medium text-gray-300 hover:text-white bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+                  className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded-lg transition-colors"
                 >
                   Cancel
                 </button>

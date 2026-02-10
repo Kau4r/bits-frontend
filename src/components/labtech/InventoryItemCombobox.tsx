@@ -147,7 +147,7 @@ export default function InventoryItemCombobox({
                     {/* Items List */}
                     <div className="overflow-y-auto flex-1">
                         {isLoading ? (
-                            <div className="p-4 text-center text-gray-500 text-sm">
+                            <div className="p-4 text-center text-gray-600 dark:text-gray-500 text-sm">
                                 Loading...
                             </div>
                         ) : error ? (
@@ -155,7 +155,7 @@ export default function InventoryItemCombobox({
                                 {error}
                             </div>
                         ) : filteredItems.length === 0 ? (
-                            <div className="p-4 text-center text-gray-500 text-sm">
+                            <div className="p-4 text-center text-gray-600 dark:text-gray-500 text-sm">
                                 {search ? 'No items match your search' : 'No available items'}
                             </div>
                         ) : (
@@ -164,18 +164,18 @@ export default function InventoryItemCombobox({
                                     key={item.Item_ID}
                                     type="button"
                                     onClick={() => handleSelect(item)}
-                                    className="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                                    className="w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-b border-gray-200 dark:border-gray-700 last:border-b-0"
                                 >
                                     <div className="flex justify-between items-start">
                                         <div>
                                             <div className="font-medium text-gray-900 dark:text-white">
                                                 {item.Brand || 'Unknown Brand'}
                                             </div>
-                                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                                            <div className="text-sm text-gray-600 dark:text-gray-400">
                                                 S/N: {item.Serial_Number || 'N/A'}
                                             </div>
                                         </div>
-                                        <div className="text-xs text-gray-400 font-mono">
+                                        <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">
                                             {item.Item_Code}
                                         </div>
                                     </div>

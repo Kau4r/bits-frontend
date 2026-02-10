@@ -216,7 +216,7 @@ export default function Tickets() {
                 <Table headers={tableHeaders} columnWidths="2fr 1.5fr 1fr 1.5fr 1fr">
                     {filteredTickets.length === 0 ? (
                         <div className="flex flex-col items-center justify-center flex-1 w-full min-h-full" data-full-row>
-                            <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-full mb-4">
+                            <div className="p-4 bg-gray-100 dark:bg-gray-800/50 rounded-full mb-4">
                                 {showArchived ? (
                                     <ArchiveBoxIcon className="h-12 w-12 text-gray-400" />
                                 ) : (

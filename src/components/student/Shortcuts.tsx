@@ -91,11 +91,11 @@ export default function Shortcuts() {
       name,
       // Letter avatar for user-added shortcuts
       icon: (
-        <span className="text-gray-200 text-xl font-semibold leading-none">
+        <span className="text-gray-800 dark:text-gray-200 text-xl font-semibold leading-none">
           {letter}
         </span>
       ),
-      bg: "bg-slate-800 hover:bg-slate-700",
+      bg: "bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700",
       url: normalized,
     };
     setShortcuts([...shortcuts, newShortcut]);
@@ -112,14 +112,14 @@ export default function Shortcuts() {
         {shortcuts.map((s) => (
           <div key={s.id} className="group flex flex-col items-center">
             <div
-              className={`w-16 h-16 ${s.bg} rounded-xl flex items-center justify-center mb-2 
+              className={`w-16 h-16 ${s.bg} rounded-xl flex items-center justify-center mb-2
                 transition-all duration-200 transform group-hover:-translate-y-1 cursor-pointer
-                border border-slate-700`}
+                border border-gray-200 dark:border-slate-700`}
               onClick={() => handleShortcutClick(s.url)}
             >
               {s.icon}
             </div>
-            <span className="text-sm font-medium text-gray-300 text-center truncate w-20">
+            <span className="text-sm font-medium text-gray-600 dark:text-gray-300 text-center truncate w-20">
               {s.name}
             </span>
           </div>
@@ -128,14 +128,14 @@ export default function Shortcuts() {
         {/* Add Shortcut tile */}
         <div className="group flex flex-col items-center">
           <div
-            className="w-16 h-16 bg-slate-800 hover:bg-slate-700 rounded-xl flex items-center justify-center mb-2 
+            className="w-16 h-16 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-xl flex items-center justify-center mb-2
               transition-all duration-200 transform group-hover:-translate-y-1 cursor-pointer
-              border-2 border-dashed border-slate-600"
+              border-2 border-dashed border-gray-300 dark:border-slate-600"
             onClick={() => setIsAddShortcutOpen(true)}
           >
             <FaPlus className="text-gray-400" size={20} />
           </div>
-          <span className="text-sm font-medium text-gray-300 text-center">
+          <span className="text-sm font-medium text-gray-600 dark:text-gray-300 text-center">
             Add Shortcut
           </span>
         </div>

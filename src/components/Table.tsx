@@ -88,7 +88,7 @@ const Table = ({ headers, children, sortConfig, onSort, columnWidths }: TablePro
         ...(element.props.style || {})
       },
       // Remove the original px-6 py-4 since cells now have it
-      className: `${element.props.className?.replace(/px-6|py-4/g, '').trim() || ''} border-b border-gray-100 dark:border-gray-700/50`.trim(),
+      className: `${element.props.className?.replace(/px-6|py-4/g, '').trim() || ''} border-b border-gray-200 dark:border-gray-700/50`.trim(),
       children: alignedCells
     })
   })
@@ -128,7 +128,7 @@ const Table = ({ headers, children, sortConfig, onSort, columnWidths }: TablePro
           </div>
 
           {/* Rows */}
-          <div className="flex-1 border-gray-100 dark:border-gray-700/50 flex flex-col">
+          <div className="flex-1 border-gray-200 dark:border-gray-700/50 flex flex-col">
             {processedChildren}
           </div>
         </div>

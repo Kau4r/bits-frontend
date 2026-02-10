@@ -389,7 +389,7 @@ export default function Forms() {
           <Table headers={tableHeaders} columnWidths="4fr 2fr 2fr 2fr 2fr">
             {filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center flex-1 w-full min-h-full" data-full-row>
-                <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-full mb-4">
+                <div className="p-4 bg-gray-100 dark:bg-gray-800/50 rounded-full mb-4">
                   {showArchived ? (
                     <ArchiveBoxIcon className="h-12 w-12 text-gray-400" />
                   ) : (
@@ -455,11 +455,11 @@ export default function Forms() {
                   </div>
                 </button>,
                 expandedRow === f.id && (
-                  <div key={`${f.id}-exp`} data-full-row className="p-6 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+                  <div key={`${f.id}-exp`} data-full-row className="p-6 bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                       <div className="lg:col-span-1">
                         <div className="bg-white dark:bg-gray-900 p-5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm h-full">
-                          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-5 flex items-center gap-2">
+                          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-300 mb-5 flex items-center gap-2">
                             <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
@@ -478,8 +478,8 @@ export default function Forms() {
                       <div className="lg:col-span-2 space-y-5">
                         {/* Save Actions Logic */}
                         {editedForms[f.id] && (
-                          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex items-center justify-between animate-fadeIn">
-                            <div className="text-sm text-blue-800 dark:text-blue-200 font-medium">
+                          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-800 rounded-lg p-4 flex items-center justify-between animate-fadeIn">
+                            <div className="text-sm text-blue-900 dark:text-blue-200 font-medium">
                               You have unsaved changes ({Object.keys(editedForms[f.id]!).length})
                             </div>
                             <div className="flex gap-2">
@@ -511,7 +511,7 @@ export default function Forms() {
                         )}
 
                         <div className="bg-white dark:bg-gray-900 p-5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
-                          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
+                          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-300 mb-4 flex items-center gap-2">
                             <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
@@ -527,7 +527,7 @@ export default function Forms() {
                         </div>
 
                         <div className="bg-white dark:bg-gray-900 p-5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
-                          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
+                          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-300 mb-4 flex items-center gap-2">
                             <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                             </svg>
@@ -543,7 +543,7 @@ export default function Forms() {
                         </div>
 
                         <div className="bg-white dark:bg-gray-900 p-5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
-                          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
+                          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-300 mb-4 flex items-center gap-2">
                             <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-7a2 2 0 012-2h2m3-4H9a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-1m-1 4l-3 3m0 0l-3-3m3 3V3" />
                             </svg>

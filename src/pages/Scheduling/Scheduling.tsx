@@ -60,6 +60,18 @@ export default function Scheduling() {
   } | null>(null);
   const [canEditBooking, setCanEditBooking] = useState(false);
 
+  // Tooltip state for hover preview
+  const [tooltipInfo, setTooltipInfo] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    title: string;
+    roomName: string;
+    time: string;
+    createdBy: string;
+    status: string;
+  }>({ visible: false, x: 0, y: 0, title: '', roomName: '', time: '', createdBy: '', status: '' });
+
   // Warning modal state
   const [warningModal, setWarningModal] = useState<{
     isOpen: boolean;
@@ -531,7 +543,7 @@ export default function Scheduling() {
   };
 
   return (
-    <div className="flex h-full bg-gray-900">
+    <div className="flex h-full bg-gray-50 dark:bg-gray-900">
       {/* Left Sidebar */}
       <CalendarSidebar
         rooms={rooms}
@@ -582,27 +594,27 @@ export default function Scheduling() {
       {/* Main Calendar Area */}
       <div className="flex-1 flex flex-col min-h-0">
         {/* Top Navigation */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-4">
             <button
               onClick={goToToday}
-              className="px-4 py-1.5 text-sm border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-800 transition-colors"
+              className="px-4 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             >
               Today
             </button>
             <div className="flex items-center gap-1">
-              <button onClick={goToPrev} className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-full">
+              <button onClick={goToPrev} className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full">
                 ‹
               </button>
-              <button onClick={goToNext} className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-full">
+              <button onClick={goToNext} className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full">
                 ›
               </button>
             </div>
-            <h1 className="text-xl font-medium text-white">{currentDate}</h1>
+            <h1 className="text-xl font-medium text-gray-900 dark:text-white">{currentDate}</h1>
           </div>
 
           {/* View Selector */}
-          <div className="flex bg-gray-800 rounded-lg p-1">
+          <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
             {(['timeGridDay', 'timeGridWeek', 'dayGridMonth', 'listWeek'] as const).map((view) => (
               <button
                 key={view}
@@ -611,8 +623,8 @@ export default function Scheduling() {
                   calendarRef.current?.getApi()?.changeView(view);
                 }}
                 className={`px-3 py-1.5 text-sm rounded-md transition-colors ${calendarView === view
-                  ? 'bg-gray-700 text-white'
-                  : 'text-gray-400 hover:text-white'
+                  ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
                   }`}
               >
                 {view === 'timeGridDay' ? 'Day' : view === 'timeGridWeek' ? 'Week' : view === 'dayGridMonth' ? 'Month' : 'List'}
@@ -635,6 +647,21 @@ export default function Scheduling() {
             select={handleDateSelect}
             eventClick={handleEventClick}
             eventDrop={handleEventDrop}
+            eventMouseEnter={(info) => {
+              const rect = info.el.getBoundingClientRect();
+              const ep = info.event.extendedProps;
+              setTooltipInfo({
+                visible: true,
+                x: rect.left + rect.width / 2,
+                y: rect.top - 8,
+                title: info.event.title,
+                roomName: ep.roomName || 'Unknown',
+                time: `${dayjs(info.event.start).format('h:mm A')} – ${dayjs(info.event.end).format('h:mm A')}`,
+                createdBy: ep.createdBy || 'Unknown',
+                status: ep.status || 'PENDING',
+              });
+            }}
+            eventMouseLeave={() => setTooltipInfo(prev => ({ ...prev, visible: false }))}
             events={filteredEvents}
             eventBackgroundColor="#4f46e5"
             eventBorderColor="transparent"
@@ -650,7 +677,7 @@ export default function Scheduling() {
                   style={{ borderLeft: `3px solid ${statusColor[status] || '#6366f1'}` }}
                 >
                   <div className="font-medium truncate">{event.title}</div>
-                  <div className="text-gray-300 opacity-75">{timeText}</div>
+                  <div className="text-gray-500 dark:text-gray-300 opacity-75">{timeText}</div>
                 </div>
               );
             }}
@@ -769,6 +796,31 @@ export default function Scheduling() {
           newEnd: pendingDrag.newEnd,
         } : undefined}
       />
+
+      {/* Hover Tooltip */}
+      {tooltipInfo.visible && (
+        <div
+          className="fixed z-50 pointer-events-none transform -translate-x-1/2 -translate-y-full"
+          style={{ left: tooltipInfo.x, top: tooltipInfo.y }}
+        >
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg px-3 py-2 text-xs max-w-xs">
+            <div className="font-semibold text-gray-900 dark:text-white truncate">{tooltipInfo.title}</div>
+            <div className="flex items-center gap-1.5 mt-1 text-gray-600 dark:text-gray-400">
+              <span>{tooltipInfo.roomName}</span>
+              <span className="text-gray-300 dark:text-gray-600">|</span>
+              <span>{tooltipInfo.time}</span>
+            </div>
+            <div className="flex items-center justify-between mt-1">
+              <span className="text-gray-500 dark:text-gray-400">{tooltipInfo.createdBy}</span>
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: statusColor[tooltipInfo.status] || '#6366f1' }} />
+                <span className="text-gray-500 dark:text-gray-400 capitalize">{tooltipInfo.status.toLowerCase()}</span>
+              </span>
+            </div>
+          </div>
+          <div className="w-2 h-2 bg-white dark:bg-gray-800 border-b border-r border-gray-200 dark:border-gray-700 transform rotate-45 mx-auto -mt-1" />
+        </div>
+      )}
     </div>
   );
 }

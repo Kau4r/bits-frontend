@@ -128,17 +128,17 @@ const InventoryMobilePage = () => {
             <div className="flex items-center gap-2">
                 <Search searchTerm={searchTerm} onChange={setSearchTerm} showLabel={false} />
                 <button
-                    className="p-2 bg-gray-200 rounded-md dark:bg-gray-800"
+                    className="p-2 bg-gray-100 dark:bg-gray-800 rounded-md"
                     onClick={() => setIsQrOpen(true)}
                 >
-                    <QrCodeIcon className="w-5 h-5 text-gray-700 dark:text-gray-200" />
+                    <QrCodeIcon className="w-5 h-5 text-gray-900 dark:text-gray-200" />
                 </button>
 
                 <button
-                    className="p-2 bg-gray-200 rounded-md dark:bg-gray-800 flex items-center gap-1"
+                    className="p-2 bg-gray-100 dark:bg-gray-800 rounded-md flex items-center gap-1"
                     onClick={() => setIsFilterOpen(!isFilterOpen)}
                 >
-                    <FunnelIcon className="w-5 h-5" />
+                    <FunnelIcon className="w-5 h-5 text-gray-900 dark:text-gray-200" />
                 </button>
             </div>
 
@@ -150,9 +150,9 @@ const InventoryMobilePage = () => {
                         onClick={e => e.stopPropagation()}
                     >
                         <div>
-                            <label className="text-sm font-medium">Type</label>
+                            <label className="text-sm font-medium text-gray-900 dark:text-white">Type</label>
                             <select
-                                className="w-full rounded-md border px-3 py-2 dark:bg-gray-800 dark:text-white"
+                                className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                                 value={selectedType}
                                 onChange={e => setSelectedType(e.target.value)}
                             >
@@ -163,9 +163,9 @@ const InventoryMobilePage = () => {
                             </select>
                         </div>
                         <div>
-                            <label className="text-sm font-medium">Status</label>
+                            <label className="text-sm font-medium text-gray-900 dark:text-white">Status</label>
                             <select
-                                className="w-full rounded-md border px-3 py-2 dark:bg-gray-800 dark:text-white"
+                                className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                                 value={selectedStatus}
                                 onChange={e => setSelectedStatus(e.target.value)}
                             >
@@ -200,11 +200,11 @@ const InventoryMobilePage = () => {
                     <div
                         key={`${item.Item_ID}-${item.Item_Code}`}
                         onClick={() => { setSelectedItem({ ...item }); setModalMode('view'); setIsModalOpen(true); }}
-                        className="p-4 border rounded-lg shadow-sm bg-white dark:bg-slate-900 cursor-pointer"
+                        className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-slate-900 cursor-pointer"
                     >
                         <div className="flex justify-between items-start mb-2">
-                            <span className="font-semibold text-gray-800 dark:text-white">{item.Item_Code}</span>
-                            <span className="text-xs px-2 py-1 rounded-full bg-gray-200 dark:bg-gray-800">{item.Item_Type}</span>
+                            <span className="font-semibold text-gray-900 dark:text-white">{item.Item_Code}</span>
+                            <span className="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">{item.Item_Type}</span>
                         </div>
                         <div className="text-sm text-gray-600 dark:text-gray-300">{item.Brand}</div>
                         <div className="flex justify-between mt-2">
@@ -220,7 +220,7 @@ const InventoryMobilePage = () => {
                             >
                                 {item.Status}
                             </span>
-                            <span className="text-xs text-gray-500 dark:text-gray-400">{item.Room?.Name ?? '—'}</span>
+                            <span className="text-xs text-gray-600 dark:text-gray-400">{item.Room?.Name ?? '—'}</span>
                         </div>
                     </div>
                 ))}

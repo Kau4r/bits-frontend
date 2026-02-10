@@ -8,7 +8,7 @@ export const RowPreview: React.FC<{
 }> = ({ url, name, type }) => {
   if (!url) {
     return (
-      <div className="w-16 h-16 grid place-items-center rounded border border-dashed border-gray-300 dark:border-gray-700 text-xs text-gray-500">
+      <div className="w-16 h-16 grid place-items-center rounded border border-dashed border-gray-300 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-500">
         No file
       </div>
     );

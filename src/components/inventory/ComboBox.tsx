@@ -89,7 +89,7 @@ export function ComboBox({ label, value, options, onChange, onRemove, readOnly }
 
     return (
         <div className="flex flex-col relative" ref={containerRef}>
-            <label className="mb-1 text-sm font-medium">{label}</label>
+            <label className="mb-1 text-sm font-medium text-gray-900 dark:text-white">{label}</label>
             <div className="flex gap-2">
                 <input
                     type="text"
@@ -103,7 +103,7 @@ export function ComboBox({ label, value, options, onChange, onRemove, readOnly }
                     onFocus={() => setOpen(true)}
                     onKeyDown={handleKeyDown}
                     placeholder={`Select or add ${label.toLowerCase()}...`}
-                    className="flex-1 rounded-md border px-3 py-2 dark:bg-gray-800 dark:text-white"
+                    className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 />
                 <button
                     type="button"
@@ -111,7 +111,7 @@ export function ComboBox({ label, value, options, onChange, onRemove, readOnly }
                     disabled={!value || readOnly}
                     className={`rounded px-2 py-1 ${value && !readOnly
                         ? "bg-red-600 text-white"
-                        : "bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-700"
+                        : "bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400"
                         }`}
                 >
                     Delete
@@ -119,15 +119,15 @@ export function ComboBox({ label, value, options, onChange, onRemove, readOnly }
             </div>
 
             {open && !readOnly && (
-                <div className="absolute top-full left-0 mt-1 max-h-40 w-full overflow-y-auto rounded border bg-white dark:bg-gray-800 shadow-lg z-10">
+                <div className="absolute top-full left-0 mt-1 max-h-40 w-full overflow-y-auto rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-lg z-10">
                     {displayedOptions.map((opt, idx) => {
                         const isAddNew = opt === inputValue.trim() && !options.includes(opt);
                         return (
                             <div
                                 key={opt}
                                 onClick={() => isAddNew ? handleAdd() : handleSelect(opt)}
-                                className={`px-3 py-1 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 ${highlightedIndex === idx ? "bg-gray-200 dark:bg-gray-700" : ""
-                                    } ${isAddNew ? "text-blue-600" : ""}`}
+                                className={`px-3 py-1 cursor-pointer text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 ${highlightedIndex === idx ? "bg-gray-200 dark:bg-gray-700" : ""
+                                    } ${isAddNew ? "text-blue-600 dark:text-blue-400" : ""}`}
                             >
                                 {isAddNew ? `+ Add "${opt}"` : opt}
                             </div>

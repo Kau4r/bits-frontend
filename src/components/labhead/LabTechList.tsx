@@ -90,7 +90,7 @@ export default function LabTechList({ selectedTech, onSelect }: Props) {
 
   if (error) {
     return (
-      <div className="w-72 p-4 rounded-lg bg-red-50 text-red-500 border border-red-200 text-sm">
+      <div className="w-72 p-4 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-500 dark:text-red-300 border border-red-200 dark:border-red-800 text-sm">
         {error}
       </div>
     );
@@ -115,7 +115,7 @@ export default function LabTechList({ selectedTech, onSelect }: Props) {
       {/* Dense List */}
       <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1" aria-label="Lab Technicians List">
         {filteredTechs.length === 0 ? (
-          <p className="text-gray-400 text-xs text-center py-8">No matching technicians</p>
+          <p className="text-gray-500 dark:text-gray-400 text-xs text-center py-8">No matching technicians</p>
         ) : (
           filteredTechs.map((tech) => (
             <div

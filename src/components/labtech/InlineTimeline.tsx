@@ -25,8 +25,8 @@ export const InlineTimeline: React.FC<TimelineProps> = ({ steps, current, comple
           const { isCompleted, isCurrent } = getStepStatus(step);
 
           // Determine colors
-          let circleClass = 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-300';
-          let textClass = 'text-gray-500 dark:text-gray-400';
+          let circleClass = 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300';
+          let textClass = 'text-gray-600 dark:text-gray-400';
 
           if (isCompleted && !isCurrent) {
             // Completed department - GREEN

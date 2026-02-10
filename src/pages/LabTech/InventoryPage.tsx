@@ -353,7 +353,9 @@ const InventoryPage = () => {
         >
           {filteredAndSortedInventory.length === 0 ? (
             <div className="flex flex-col items-center justify-center flex-1 w-full min-h-full" data-full-row>
-              <FunnelIcon className="h-12 w-12 text-gray-400" />
+              <div className="p-4 bg-gray-100 dark:bg-gray-800/50 rounded-full mb-4">
+                <FunnelIcon className="h-12 w-12 text-gray-400" />
+              </div>
               <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
                 No items match your filters
               </h3>

@@ -196,7 +196,7 @@ export default function LabTechDetailPanel({ labTech }: Props) {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 dark:border-indigo-400"></div>
             </div>
           ) : tickets.length === 0 ? (
-            <div className="text-center py-10 text-gray-500 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
+            <div className="text-center py-10 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
               <p>No active tickets assigned.</p>
             </div>
           ) : (
@@ -281,7 +281,7 @@ export default function LabTechDetailPanel({ labTech }: Props) {
                       </p>
                     </div>
                     <svg
-                      className={`w-5 h-5 text-gray-400 transition-transform ${expandedReport === report.id ? 'rotate-180' : ''}`}
+                      className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${expandedReport === report.id ? 'rotate-180' : ''}`}
                       fill="none" viewBox="0 0 24 24" stroke="currentColor"
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />

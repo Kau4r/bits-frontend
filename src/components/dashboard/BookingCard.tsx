@@ -53,17 +53,17 @@ export default function BookingCard() {
     return (
       <div className="h-full flex flex-col">
         <div className="flex items-center justify-between mb-3">
-          <div className="h-4 w-24 bg-gray-700 rounded animate-pulse" />
-          <div className="h-5 w-20 bg-gray-700 rounded-full animate-pulse" />
+          <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+          <div className="h-5 w-20 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" />
         </div>
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="p-3 bg-gray-700/30 rounded-lg animate-pulse">
+            <div key={i} className="p-3 bg-gray-100 dark:bg-gray-700/30 rounded-lg animate-pulse">
               <div className="flex items-start space-x-3">
-                <div className="w-9 h-9 bg-gray-700 rounded-lg" />
+                <div className="w-9 h-9 bg-gray-200 dark:bg-gray-700 rounded-lg" />
                 <div className="flex-1">
-                  <div className="h-4 w-32 bg-gray-700 rounded mb-2" />
-                  <div className="h-3 w-24 bg-gray-700 rounded" />
+                  <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
+                  <div className="h-3 w-24 bg-gray-200 dark:bg-gray-700 rounded" />
                 </div>
               </div>
             </div>
@@ -76,7 +76,7 @@ export default function BookingCard() {
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-medium text-gray-300">Recent Bookings</h3>
+        <h3 className="text-sm font-medium text-gray-600 dark:text-gray-300">Recent Bookings</h3>
         {pendingCount > 0 && (
           <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded-full">
             {pendingCount} pending approval
@@ -87,14 +87,14 @@ export default function BookingCard() {
       {bookings.length === 0 ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center py-8">
-            <CalendarIcon className="h-12 w-12 text-gray-600 mx-auto mb-3" />
-            <p className="text-sm text-gray-400">No bookings yet</p>
+            <CalendarIcon className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+            <p className="text-sm text-gray-500 dark:text-gray-400">No bookings yet</p>
           </div>
         </div>
       ) : (
         <div className="space-y-2 overflow-y-auto flex-1 pr-2 -mr-2">
           {bookings.map((booking) => (
-            <div key={booking.Booked_Room_ID} className="p-3 bg-gray-700/30 rounded-lg hover:bg-gray-700/50 transition-colors">
+            <div key={booking.Booked_Room_ID} className="p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors">
               <div className="flex justify-between items-start">
                 <div className="flex items-start space-x-3">
                   <div className="flex-shrink-0 p-2 bg-blue-500/10 rounded-lg">
@@ -103,10 +103,10 @@ export default function BookingCard() {
                     </svg>
                   </div>
                   <div>
-                    <h4 className="text-sm font-medium text-white">
+                    <h4 className="text-sm font-medium text-gray-900 dark:text-white">
                       {booking.Room?.Name || `Room ${booking.Room_ID}`}
                     </h4>
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
                       {formatDate(booking.Start_Time)} • {formatTime(booking.Start_Time, booking.End_Time)}
                     </p>
                     <div className={`text-xs mt-1 ${statusColors[booking.Status] || 'text-gray-400'}`}>

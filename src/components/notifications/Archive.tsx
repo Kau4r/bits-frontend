@@ -14,8 +14,8 @@ export default function Archive({ isArchived, onClick }: ArchiveProps) {
             }}
             title={isArchived ? 'Restore' : 'Archive'}
             className={`rounded-full p-1.5 transition ${isArchived
-                    ? 'hover:bg-green-100 dark:hover:bg-green-800 text-green-600 dark:text-green-400'
-                    : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400'
+                    ? 'hover:bg-green-50 dark:hover:bg-green-800 text-green-600 dark:text-green-400'
+                    : 'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400'
                 }`}
         >
             {isArchived ? (

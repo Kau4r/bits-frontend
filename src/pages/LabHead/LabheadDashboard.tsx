@@ -55,7 +55,7 @@ export default function LabheadDashboard() {
             </div>
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Pending Tickets</p>
-              <p className="text-2xl font-bold text-gray-800 dark:text-white">{metrics?.counts.pendingTickets || 0}</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{metrics?.counts.pendingTickets || 0}</p>
             </div>
           </div>
 
@@ -65,7 +65,7 @@ export default function LabheadDashboard() {
             </div>
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Low Inventory</p>
-              <p className="text-2xl font-bold text-gray-800 dark:text-white">{metrics?.counts.brokenItems || 0}</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{metrics?.counts.brokenItems || 0}</p>
             </div>
           </div>
 
@@ -75,7 +75,7 @@ export default function LabheadDashboard() {
             </div>
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Active Bookings</p>
-              <p className="text-2xl font-bold text-gray-800 dark:text-white">{metrics?.counts.activeBookings || 0}</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{metrics?.counts.activeBookings || 0}</p>
             </div>
           </div>
         </div>

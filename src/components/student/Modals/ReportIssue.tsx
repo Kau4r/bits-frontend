@@ -114,7 +114,7 @@ export default function ReportIssueModal({
           </div>
           
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-300 mb-1">
+            <label htmlFor="description" className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">
               Description
             </label>
             <textarea

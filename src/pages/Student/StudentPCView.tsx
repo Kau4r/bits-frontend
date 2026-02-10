@@ -25,13 +25,13 @@ export default function StudentPCView() {
             <div className="p-4 sm:px-8 lg:px-10 flex justify-between items-center">
                 <button
                     onClick={() => navigate('/student-room-view')}
-                    className="text-gray-300 hover:text-white transition-colors flex items-center"
+                    className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors flex items-center"
                 >
                     ← Go to Room
                 </button>
                 <button
                     onClick={() => navigate('/student-session')}
-                    className="text-gray-300 hover:text-white transition-colors flex items-center"
+                    className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors flex items-center"
                 >
                     Go to Session →
                 </button>

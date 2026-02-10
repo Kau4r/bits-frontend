@@ -47,7 +47,7 @@ export default function ConfirmModal({
                                     {title}
                                 </Dialog.Title>
                                 <div className="mt-2">
-                                    <p className="text-sm text-gray-500 dark:text-gray-300">
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">
                                         {message}
                                     </p>
                                 </div>
