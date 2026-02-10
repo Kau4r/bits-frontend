@@ -1,4 +1,6 @@
 export type RoomType = 'CONSULTATION' | 'LECTURE' | 'LAB';
+export type LabType = 'WINDOWS' | 'MAC';
+export type LabCategory = LabType | 'UNASSIGNED';
 export type RoomStatus = 'AVAILABLE' | 'IN_USE' | 'MAINTENANCE' | 'OCCUPIED' | 'RESERVED';
 
 export const statusColors: Record<RoomStatus, string> = {
@@ -27,6 +29,7 @@ export interface Room {
     Capacity: number;
     Room_Type: RoomType;
     Status: RoomStatus;
+    Lab_Type?: LabType | null;
     Schedule?: RoomSchedule[]; // Optional array of schedules for this room
 }
 
@@ -37,6 +40,7 @@ export interface RoomSession {
     endTime: string;   // ISO datetime
     status: 'pending' | 'approved' | 'rejected';
     purpose?: string;
+    bookedByName?: string;
     userId?: number;
     id?: number;
     type: 'booking' | 'schedule';

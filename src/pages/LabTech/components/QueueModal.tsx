@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import type { Room } from '@/types/room'
+import type { Room, RoomSession } from '@/types/room'
 
 interface RoomQueueItem {
+    roomId: number;
     roomName: string;
     startTime: string;
     endTime: string;
@@ -12,22 +13,24 @@ interface RoomQueueItem {
 interface QueueModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onQueue: (startTime: string, endTime: string, roomName: string) => Promise<void> | void;
+    onQueue: (startTime: string, endTime: string, roomId: number) => Promise<void> | void;
     onRemove: (item: RoomQueueItem) => void;
     availableRooms: Room[];
+    categorySessions?: RoomSession[];
+    editingSessionId?: number;
+    initialStartTime?: string;
+    initialEndTime?: string;
     selectedQueueItem: RoomQueueItem | null;
-    occupiedSlots?: { roomName: string; startTime: string; endTime: string }[];
+    fullyBookedSlots?: { startMinutes: number; endMinutes: number }[];
     readOnly?: boolean;
 }
 
-// Generate 30-minute time slots
+// Generate 30-minute time slots including 21:30
 const generateTimeSlots = () => {
     const slots: string[] = [];
     for (let h = 7; h <= 21; h++) {
         slots.push(`${h.toString().padStart(2, '0')}:00`);
-        if (h < 21) {
-            slots.push(`${h.toString().padStart(2, '0')}:30`);
-        }
+        slots.push(`${h.toString().padStart(2, '0')}:30`);
     }
     return slots;
 };
@@ -47,14 +50,18 @@ export default function QueueModal({
     onQueue,
     onRemove,
     availableRooms,
+    categorySessions = [],
+    editingSessionId,
+    initialStartTime,
+    initialEndTime,
     selectedQueueItem,
-    occupiedSlots = [],
+    fullyBookedSlots = [],
     readOnly = false,
 }: QueueModalProps) {
 
     const [startTime, setStartTime] = useState('')
     const [endTime, setEndTime] = useState('')
-    const [selectedRoom, setSelectedRoom] = useState<string | null>(null)
+    const [selectedRoom, setSelectedRoom] = useState<number | null>(null)
     const [error, setError] = useState('')
     const [startDropdownOpen, setStartDropdownOpen] = useState(false)
     const [endDropdownOpen, setEndDropdownOpen] = useState(false)
@@ -66,38 +73,50 @@ export default function QueueModal({
             const endDate = new Date(selectedQueueItem.endTime);
             setStartTime(`${startDate.getHours().toString().padStart(2, '0')}:${startDate.getMinutes().toString().padStart(2, '0')}`);
             setEndTime(`${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}`);
-            setSelectedRoom(selectedQueueItem.roomName);
+            setSelectedRoom(selectedQueueItem.roomId);
         } else {
-            setStartTime('09:00');
-            setEndTime('10:30');
+            setStartTime(initialStartTime || '09:00');
+            setEndTime(initialEndTime || '10:30');
             // Pre-select the first room from availableRooms when adding new
             if (availableRooms.length > 0) {
-                setSelectedRoom(availableRooms[0].Name);
+                setSelectedRoom(availableRooms[0].Room_ID);
             } else {
                 setSelectedRoom(null);
             }
         }
         setError('');
-    }, [selectedQueueItem, isOpen, availableRooms]);
+    }, [selectedQueueItem, isOpen, availableRooms, initialStartTime, initialEndTime]);
 
     const isEditing = !!selectedQueueItem;
     // If readOnly, we are just viewing details
 
+    // Check if a specific room is booked for the selected time range
+    const isRoomBooked = (roomId: number): boolean => {
+        if (!categorySessions || !startTime || !endTime) return false;
+        const startMinutes = parseInt(startTime.split(':')[0]) * 60 + parseInt(startTime.split(':')[1]);
+        const endMinutes = parseInt(endTime.split(':')[0]) * 60 + parseInt(endTime.split(':')[1]);
 
-    // Check if a time slot is occupied for any room
+        return categorySessions
+            .filter(s => s.roomId === roomId && s.id !== editingSessionId)
+            .some(s => {
+                const sStart = new Date(s.startTime);
+                const sEnd = new Date(s.endTime);
+                const sStartMin = sStart.getHours() * 60 + sStart.getMinutes();
+                const sEndMin = sEnd.getHours() * 60 + sEnd.getMinutes();
+                return startMinutes < sEndMin && endMinutes > sStartMin;
+            });
+    };
+
+    // Check if a time slot is fully booked across all rooms
     const isTimeOccupied = (time: string, isEndTime: boolean = false) => {
+        if (!fullyBookedSlots) return false;
         const timeMinutes = parseInt(time.split(':')[0]) * 60 + parseInt(time.split(':')[1]);
 
-        return occupiedSlots.some(slot => {
-            const slotStart = new Date(slot.startTime);
-            const slotEnd = new Date(slot.endTime);
-            const startMinutes = slotStart.getHours() * 60 + slotStart.getMinutes();
-            const endMinutes = slotEnd.getHours() * 60 + slotEnd.getMinutes();
-
+        return fullyBookedSlots.some(slot => {
             if (isEndTime) {
-                return timeMinutes > startMinutes && timeMinutes <= endMinutes;
+                return timeMinutes > slot.startMinutes && timeMinutes <= slot.endMinutes;
             }
-            return timeMinutes >= startMinutes && timeMinutes < endMinutes;
+            return timeMinutes >= slot.startMinutes && timeMinutes < slot.endMinutes;
         });
     };
 
@@ -278,21 +297,28 @@ export default function QueueModal({
                                 No rooms available for this category
                             </p>
                         ) : (
-                            availableRooms.map((room) => (
-                                <button
-                                    key={room.Room_ID}
-                                    type="button"
-                                    onClick={() => setSelectedRoom(room.Name)}
-                                    disabled={isEditing}
-                                    className={`px-2 py-2.5 rounded-md border text-sm font-medium transition-colors truncate ${selectedRoom === room.Name
-                                        ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-600/20 dark:text-blue-300'
-                                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-700'
+                            availableRooms.map((room) => {
+                                const booked = isRoomBooked(room.Room_ID);
+                                return (
+                                    <button
+                                        key={room.Room_ID}
+                                        type="button"
+                                        onClick={() => !booked && !isEditing && setSelectedRoom(room.Room_ID)}
+                                        disabled={isEditing || booked}
+                                        className={`px-2 py-2.5 rounded-md border text-sm font-medium transition-colors truncate ${
+                                            booked
+                                                ? 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed dark:border-gray-700 dark:bg-gray-800 dark:text-gray-600'
+                                                : selectedRoom === room.Room_ID
+                                                    ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-600/20 dark:text-blue-300'
+                                                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-700'
                                         } ${isEditing ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                    title={room.Name}
-                                >
-                                    {room.Name}
-                                </button>
-                            ))
+                                        title={booked ? `${room.Name} — Booked` : room.Name}
+                                    >
+                                        {room.Name}
+                                        {booked && <span className="block text-xs text-gray-400">Booked</span>}
+                                    </button>
+                                );
+                            })
                         )}
                     </div>
                 </div>

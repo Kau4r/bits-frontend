@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom'
-import type { Room } from '@/types/room'
+import type { Room, LabType } from '@/types/room'
 import { useState, useEffect } from 'react'
 
 // RoomModal props
@@ -25,6 +25,7 @@ export default function RoomModal({
     Room_Type: initialData?.Room_Type ?? 'LECTURE',
     Status: initialData?.Status ?? 'AVAILABLE',
     Capacity: initialData?.Capacity ?? 30,
+    Lab_Type: initialData?.Lab_Type ?? undefined,
   })
 
   const readOnly = mode === 'view'
@@ -37,19 +38,24 @@ export default function RoomModal({
         Room_Type: initialData.Room_Type ?? 'LECTURE',
         Status: initialData.Status ?? 'AVAILABLE',
         Capacity: initialData.Capacity ?? 30,
+        Lab_Type: initialData.Lab_Type ?? undefined,
       })
     }
   }, [initialData])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
-    setRoom((prev) => ({
-      ...prev,
-      [name]:
-        name === 'Capacity'
-          ? Number(value)
-          : value,
-    }))
+    setRoom((prev) => {
+      const updated = {
+        ...prev,
+        [name]: name === 'Capacity' ? Number(value) : value,
+      };
+      // Clear Lab_Type when switching away from LAB
+      if (name === 'Room_Type' && value !== 'LAB') {
+        updated.Lab_Type = undefined;
+      }
+      return updated;
+    })
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -73,7 +79,7 @@ export default function RoomModal({
       onClick={handleClose}
     >
       <div
-        className="relative w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 px-8 dark:border-gray-700 dark:bg-slate-900"
+        className="relative w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 px-8 dark:border-gray-700 dark:bg-gray-800"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-6 flex items-center justify-between">
@@ -128,6 +134,26 @@ export default function RoomModal({
             </select>
           </div>
 
+          {room.Room_Type === 'LAB' && (
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Lab Type {mode === 'add' && <span className="text-red-500">*</span>}
+              </label>
+              <select
+                name="Lab_Type"
+                value={room.Lab_Type || ''}
+                onChange={handleChange}
+                disabled={readOnly}
+                required={mode === 'add'}
+                className={`w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white ${readOnly ? 'bg-gray-100 dark:bg-gray-800' : ''}`}
+              >
+                <option value="">Select Lab Type</option>
+                <option value="WINDOWS">Windows</option>
+                <option value="MAC">Mac</option>
+              </select>
+            </div>
+          )}
+
           <div>
             <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
               Status
@@ -169,7 +195,7 @@ export default function RoomModal({
               <button
                 type="button"
                 onClick={handleClose}
-                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:bg-slate-900 dark:text-white dark:hover:bg-gray-800"
+                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
               >
                 Cancel
               </button>

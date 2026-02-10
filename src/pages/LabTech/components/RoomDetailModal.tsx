@@ -357,9 +357,9 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                     <div className="text-gray-400">Loading computers...</div>
                                 </div>
                             ) : computers.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-gray-700 rounded-xl">
-                                    <p className="text-gray-500 text-lg mb-2">No computers in this room</p>
-                                    <p className="text-gray-600 text-sm">Click "Add Computer" to get started</p>
+                                <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl">
+                                    <p className="text-gray-600 dark:text-gray-500 text-lg mb-2">No computers in this room</p>
+                                    <p className="text-gray-500 dark:text-gray-600 text-sm">Click "Add Computer" to get started</p>
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
@@ -377,7 +377,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                                 {/* Delete button (appears on hover) */}
                                                 <button
                                                     onClick={(e) => handleDeleteComputer(pc.Computer_ID, e)}
-                                                    className="absolute top-2 right-2 p-1 text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                                    className="absolute top-2 right-2 p-1 text-gray-500 dark:text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity z-10"
                                                     title="Delete computer"
                                                 >
                                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -409,7 +409,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                                 </div>
 
                                                 {/* Items count / Click to edit hint */}
-                                                <div className="border-t border-gray-700 pt-2 mt-auto">
+                                                <div className="border-t border-gray-200 dark:border-gray-700 pt-2 mt-auto">
                                                     <p className="text-[10px] text-gray-500 font-medium">
                                                         {pc.Item.length} component{pc.Item.length !== 1 ? 's' : ''} • Click to edit
                                                     </p>
@@ -417,13 +417,13 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
 
                                                 {/* Hover Tooltip - Component Details */}
                                                 {isHovered && pc.Item.length > 0 && (
-                                                    <div className="absolute left-full ml-2 top-0 z-20 bg-gray-800 border border-gray-600 rounded-lg p-3 shadow-xl min-w-[200px]">
-                                                        <p className="text-xs font-bold text-white mb-2">Components:</p>
+                                                    <div className="absolute left-full ml-2 top-0 z-20 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg p-3 shadow-xl min-w-[200px]">
+                                                        <p className="text-xs font-bold text-gray-900 dark:text-white mb-2">Components:</p>
                                                         <div className="space-y-1.5">
                                                             {pc.Item.map(item => (
                                                                 <div key={item.Item_ID} className="text-xs">
-                                                                    <span className="text-gray-400">{formatItemType(item.Item_Type)}:</span>
-                                                                    <span className="text-white ml-1">{item.Brand || 'N/A'}</span>
+                                                                    <span className="text-gray-600 dark:text-gray-400">{formatItemType(item.Item_Type)}:</span>
+                                                                    <span className="text-gray-900 dark:text-white ml-1">{item.Brand || 'N/A'}</span>
                                                                     {item.Serial_Number && (
                                                                         <span className="text-gray-500 ml-1">({item.Serial_Number})</span>
                                                                     )}
@@ -444,12 +444,12 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                         <div className="flex-1 flex flex-col min-h-0 p-6">
                             {isLoadingAssets ? (
                                 <div className="flex items-center justify-center h-48">
-                                    <div className="text-gray-400">Loading assets...</div>
+                                    <div className="text-gray-600 dark:text-gray-400">Loading assets...</div>
                                 </div>
                             ) : assets.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-gray-700 rounded-xl">
-                                    <p className="text-gray-500 text-lg mb-2">No assets in this room</p>
-                                    <p className="text-gray-600 text-sm">Add computers or inventory items to see them here</p>
+                                <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl">
+                                    <p className="text-gray-600 dark:text-gray-500 text-lg mb-2">No assets in this room</p>
+                                    <p className="text-gray-500 dark:text-gray-600 text-sm">Add computers or inventory items to see them here</p>
                                 </div>
                             ) : (
                                 <Table
@@ -519,7 +519,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                     <div className="relative space-y-4 min-h-[100px]">
                                         <div className="h-24 bg-gray-50 dark:bg-gray-800/30 rounded-lg relative border border-gray-200 dark:border-gray-700">
                                             {sessions.length === 0 ? (
-                                                <div className="flex items-center justify-center h-full text-gray-500 italic">
+                                                <div className="flex items-center justify-center h-full text-gray-600 dark:text-gray-500 italic">
                                                     No schedules or bookings for today
                                                 </div>
                                             ) : (
@@ -565,7 +565,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                                                     : 'bg-green-500/10 border-green-500/30'}
                                                             `}>
                                                                 <div className="flex justify-between items-start mb-1 gap-1">
-                                                                    <span className="text-[10px] text-gray-300 truncate">
+                                                                    <span className="text-[10px] text-gray-600 dark:text-gray-300 truncate">
                                                                         {start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} -
                                                                         {end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                                     </span>
@@ -574,7 +574,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                                                         {isSchedule ? 'Class' : 'Booking'}
                                                                     </span>
                                                                 </div>
-                                                                <p className={`text-sm font-medium truncate ${isSchedule ? 'text-blue-200' : 'text-green-200'}`}>
+                                                                <p className={`text-sm font-medium truncate ${isSchedule ? 'text-blue-600 dark:text-blue-200' : 'text-green-600 dark:text-green-200'}`}>
                                                                     {session.purpose}
                                                                 </p>
                                                             </div>

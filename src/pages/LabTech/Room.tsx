@@ -1,6 +1,6 @@
 import dayjs from 'dayjs'
 import { useState, useEffect } from 'react'
-import type { Room as RoomType, RoomStatus, RoomType as RoomTypeEnum, RoomSession } from '@/types/room'
+import type { Room as RoomType, RoomStatus, RoomType as RoomTypeEnum, RoomSession, LabType, LabCategory } from '@/types/room'
 import { getRooms, setRoomStudentAvailability } from '@/services/room'
 import api from '@/services/api'
 import { useModal } from '@/context/ModalContext'
@@ -10,7 +10,7 @@ import RoomCard from './components/RoomCard'
 import TimeSlotGrid from './components/TimeSlotGrid'
 import { useAuth } from '@/context/AuthContext'
 import Search from '@/components/Search'
-import { FunnelIcon, CalendarDaysIcon, BuildingOfficeIcon, PlusIcon } from '@heroicons/react/24/outline'
+import { FunnelIcon, CalendarDaysIcon, BuildingOfficeIcon } from '@heroicons/react/24/outline'
 
 
 type TabType = 'rooms' | 'queue';
@@ -41,6 +41,11 @@ export default function Room() {
     const [selectedSession, setSelectedSession] = useState<RoomSession | null>(null);
     const [selectedViewRoom, setSelectedViewRoom] = useState<RoomType | null>(null);
 
+    const [selectedCategory, setSelectedCategory] = useState<LabCategory | null>(null);
+    const [selectedSlotStart, setSelectedSlotStart] = useState('');
+    const [selectedSlotEnd, setSelectedSlotEnd] = useState('');
+    const [slotDetailSessions, setSlotDetailSessions] = useState<RoomSession[] | null>(null);
+
     // Fetch rooms from API
     useEffect(() => {
         const loadRooms = async () => {
@@ -59,6 +64,42 @@ export default function Room() {
 
     // Get only LAB rooms for the queue tab
     const labRooms = rooms.filter(r => r.Room_Type === 'LAB');
+
+    // Category splitting
+    const windowsLabs = labRooms.filter(r => r.Lab_Type === 'WINDOWS');
+    const macLabs = labRooms.filter(r => r.Lab_Type === 'MAC');
+    const unassignedLabs = labRooms.filter(r => !r.Lab_Type);
+
+    const getSessionsByCategory = (categoryRooms: RoomType[]) => {
+        const roomIds = new Set(categoryRooms.map(r => r.Room_ID));
+        return sessions.filter(s => roomIds.has(s.roomId));
+    };
+
+    // Compute available now count for a category
+    const getAvailableNowCount = (categoryRooms: RoomType[], categorySessions: RoomSession[]) => {
+        const now = dayjs();
+        return categoryRooms.filter(room => {
+            if (room.Status !== 'AVAILABLE') return false;
+            const hasActiveBooking = categorySessions.some(s =>
+                s.roomId === room.Room_ID &&
+                dayjs(s.startTime).isBefore(now) &&
+                dayjs(s.endTime).isAfter(now)
+            );
+            return !hasActiveBooking;
+        }).length;
+    };
+
+    const getRoomsForCategory = (category: LabCategory | null): RoomType[] => {
+        if (!category) return [];
+        if (category === 'WINDOWS') return windowsLabs;
+        if (category === 'MAC') return macLabs;
+        return unassignedLabs;
+    };
+
+    const getSessionsForCategory = (category: LabCategory | null): RoomSession[] => {
+        if (!category) return [];
+        return getSessionsByCategory(getRoomsForCategory(category));
+    };
 
     // Fetch existing schedules and approved bookings for LAB rooms when rooms are loaded
     useEffect(() => {
@@ -115,6 +156,7 @@ export default function Room() {
                         Room?: { Name: string };
                         User_ID?: number;
                         Created_By?: number;
+                        User?: { First_Name: string; Last_Name: string };
                     }>;
 
                     // Convert to RoomSession format and filter for today
@@ -131,7 +173,10 @@ export default function Room() {
                                 purpose: booking.Purpose || 'Booked',
                                 id: booking.Booked_Room_ID,
                                 type: 'booking',
-                                userId: booking.User_ID || booking.Created_By
+                                userId: booking.User_ID || booking.Created_By,
+                                bookedByName: booking.User
+                                    ? `${booking.User.First_Name} ${booking.User.Last_Name}`.trim()
+                                    : 'Unknown',
                             });
                         }
                     });
@@ -146,31 +191,44 @@ export default function Room() {
         loadSchedulesAndBookings();
     }, [labRooms.length]); // Re-run when labRooms changes
 
-    // Get sessions for a specific room
-    const getSessionsByRoom = (roomId: number) => {
-        return sessions.filter(s => s.roomId === roomId);
+    // Compute fully booked slots for the selected category's time picker
+    const computeFullyBookedSlots = (): { startMinutes: number; endMinutes: number }[] => {
+        if (!selectedCategory) return [];
+        const categoryRooms = getRoomsForCategory(selectedCategory);
+        const categorySessions = getSessionsForCategory(selectedCategory);
+        const totalRooms = categoryRooms.length;
+        if (totalRooms === 0) return [];
+
+        const slots: { startMinutes: number; endMinutes: number }[] = [];
+        // Check each 30-min slot from 7:00 to 21:00
+        for (let m = 7 * 60; m < 21 * 60 + 30; m += 30) {
+            const occupiedRoomIds = new Set<number>();
+            categorySessions.forEach(s => {
+                const sStart = new Date(s.startTime);
+                const sEnd = new Date(s.endTime);
+                const sStartMin = sStart.getHours() * 60 + sStart.getMinutes();
+                const sEndMin = sEnd.getHours() * 60 + sEnd.getMinutes();
+                if (m >= sStartMin && m < sEndMin) {
+                    occupiedRoomIds.add(s.roomId);
+                }
+            });
+            if (occupiedRoomIds.size >= totalRooms) {
+                slots.push({ startMinutes: m, endMinutes: m + 30 });
+            }
+        }
+        return slots;
     };
 
-    const handleAddTimeSlot = (room: RoomType, _startTime: string, _endTime: string) => {
-        setSelectedRoom(room);
+    const handleAddTimeSlot = (category: LabCategory, startTime: string, endTime: string) => {
+        setSelectedCategory(category);
+        setSelectedSlotStart(startTime);
+        setSelectedSlotEnd(endTime);
+        setSelectedRoom(null);
         setSelectedSession(null);
         setQueueModalOpen(true);
     };
 
-    const handleSessionClick = (session: { roomName: string; startTime: string; endTime: string; status: 'pending' | 'approved' | 'rejected' }) => {
-        // Find the full session
-        const fullSession = sessions.find(s => s.roomName === session.roomName && s.startTime === session.startTime);
-        if (fullSession) {
-            setSelectedSession(fullSession);
-            const room = labRooms.find(r => r.Room_ID === fullSession.roomId);
-            setSelectedRoom(room || null);
-            setQueueModalOpen(true);
-        }
-    };
-
-    const handleQueueRoom = async (startTime: string, endTime: string, _roomName: string) => {
-        if (!selectedRoom) return;
-
+    const handleQueueRoom = async (startTime: string, endTime: string, roomId: number) => {
         const today = dayjs().startOf('day');
         const requestedStart = today.hour(Number(startTime.split(':')[0])).minute(Number(startTime.split(':')[1])).toISOString();
         const requestedEnd = today.hour(Number(endTime.split(':')[0])).minute(Number(endTime.split(':')[1])).toISOString();
@@ -184,8 +242,8 @@ export default function Room() {
                 }
 
                 await api.patch(`/bookings/${selectedSession.id}`, {
-                    startTime: requestedStart,
-                    endTime: requestedEnd
+                    Start_Time: requestedStart,
+                    End_Time: requestedEnd
                 });
 
                 setSessions(prev => prev.map(s =>
@@ -197,17 +255,14 @@ export default function Room() {
                 setQueueModalOpen(false);
                 await modal.showSuccess('Booking updated successfully.', 'Success');
             } else {
-                // CREATE LOGIC
-                // Call API to set room availability (with audit logging)
-                const response = await setRoomStudentAvailability(selectedRoom.Room_ID, {
+                // CREATE LOGIC — use roomId directly
+                const response = await setRoomStudentAvailability(roomId, {
                     startTime: requestedStart,
                     endTime: requestedEnd,
                     notes: `Student usage time set by staff`
                 });
 
                 if (response.success) {
-                    // Ideally we should reload to get the real ID and proper formatting
-                    // For now, we'll force a reload of the page to simplify
                     window.location.reload();
                 }
             }
@@ -239,6 +294,10 @@ export default function Room() {
             console.error('Failed to remove booking:', error);
             await modal.showError('Failed to remove booking', 'Error');
         }
+    };
+
+    const handleSlotDetail = (_startTime: string, detailSessions: RoomSession[]) => {
+        setSlotDetailSessions(detailSessions);
     };
 
     // Filtering for Rooms tab
@@ -376,48 +435,55 @@ export default function Room() {
                                 ))}
                             </div>
                         ) : labRooms.length > 0 ? (
-                            labRooms.map((room) => {
-                                const roomSessions = getSessionsByRoom(room.Room_ID);
+                            <>
+                                {([
+                                    { key: 'WINDOWS' as LabCategory, label: 'Windows Laboratories', rooms: windowsLabs, icon: '\u{1F5A5}\uFE0F' },
+                                    { key: 'MAC' as LabCategory, label: 'Mac Laboratories', rooms: macLabs, icon: '\u{1F34E}' },
+                                    { key: 'UNASSIGNED' as LabCategory, label: 'Unassigned Laboratories', rooms: unassignedLabs, icon: '\u2753' },
+                                ] as const)
+                                    .filter(cat => cat.rooms.length > 0)
+                                    .map(({ key, label, rooms: categoryRooms, icon }) => {
+                                        const categorySessions = getSessionsByCategory(categoryRooms);
+                                        const availableNow = getAvailableNowCount(categoryRooms, categorySessions);
 
-                                return (
-                                    <div key={room.Room_ID} className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                                        <div className="flex items-center justify-between mb-6">
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
-                                                    <BuildingOfficeIcon className="h-6 w-6" />
+                                        return (
+                                            <div key={key} className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                                                <div className="flex items-center justify-between mb-6">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 text-lg">
+                                                            {icon}
+                                                        </div>
+                                                        <div>
+                                                            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                                                                {label}
+                                                            </h2>
+                                                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                                                {categoryRooms.length} room{categoryRooms.length !== 1 ? 's' : ''}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                                        <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                                                        {availableNow} Available now
+                                                    </span>
                                                 </div>
-                                                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                                                    {room.Name}
-                                                </h2>
-                                            </div>
-                                            <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${room.Status === 'AVAILABLE'
-                                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                                : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                                                }`}>
-                                                <span className={`h-1.5 w-1.5 rounded-full ${room.Status === 'AVAILABLE' ? 'bg-green-500' : 'bg-yellow-500'}`} />
-                                                {room.Status}
-                                            </span>
-                                        </div>
-                                        <TimeSlotGrid
-                                            sessions={roomSessions}
-                                            totalRoomsInCategory={1}
-                                            onAddRoom={(start, end) => handleAddTimeSlot(room, start, end)}
-                                            onSessionClick={handleSessionClick}
-                                        />
 
-                                        {/* Add Time Slot Button */}
-                                        <div className="mt-6 flex justify-center">
-                                            <button
-                                                onClick={() => handleAddTimeSlot(room, '09:00', '10:00')}
-                                                className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-all hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-600"
-                                            >
-                                                <PlusIcon className="h-5 w-5" />
-                                                Add Student Usage Time
-                                            </button>
-                                        </div>
-                                    </div>
-                                );
-                            })
+                                                {key === 'UNASSIGNED' && (
+                                                    <div className="mb-4 rounded-lg bg-yellow-50 border border-yellow-200 p-3 text-sm text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-700 dark:text-yellow-300">
+                                                        These rooms need a Lab Type assigned via Room Management.
+                                                    </div>
+                                                )}
+
+                                                <TimeSlotGrid
+                                                    sessions={categorySessions}
+                                                    totalRoomsInCategory={categoryRooms.length}
+                                                    onAddRoom={(start, end) => handleAddTimeSlot(key, start, end)}
+                                                    onSlotDetail={handleSlotDetail}
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                            </>
                         ) : (
                             <div className="flex flex-col items-center justify-center py-12">
                                 <BuildingOfficeIcon className="h-12 w-12 text-gray-400" />
@@ -435,11 +501,17 @@ export default function Room() {
                     setQueueModalOpen(false);
                     setSelectedSession(null);
                     setSelectedRoom(null);
+                    setSelectedCategory(null);
                 }}
                 onQueue={handleQueueRoom}
                 onRemove={selectedSession ? () => handleRemoveSession(selectedSession!) : () => { }}
-                availableRooms={selectedRoom ? [selectedRoom] as RoomType[] : []}
+                availableRooms={getRoomsForCategory(selectedCategory)}
+                categorySessions={getSessionsForCategory(selectedCategory)}
+                editingSessionId={selectedSession?.id}
+                initialStartTime={selectedSlotStart}
+                initialEndTime={selectedSlotEnd}
                 selectedQueueItem={selectedSession ? {
+                    roomId: selectedSession.roomId,
                     roomName: selectedSession.roomName,
                     startTime: selectedSession.startTime,
                     endTime: selectedSession.endTime,
@@ -447,17 +519,85 @@ export default function Room() {
                     status: selectedSession.status,
                 } : null}
                 readOnly={selectedSession ? (
-                    // Read only if it's a schedule OR if it's a booking but not owned by current user
                     selectedSession.type === 'schedule' ||
                     (selectedSession.type === 'booking' && selectedSession.userId !== user?.User_ID)
                 ) : false}
+                fullyBookedSlots={computeFullyBookedSlots()}
             />
+
+            {slotDetailSessions && (
+                <div
+                    className="fixed inset-0 bg-black/40 grid place-items-center p-4 z-50"
+                    onClick={() => setSlotDetailSessions(null)}
+                >
+                    <div
+                        className="w-full max-w-md rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-6 shadow-xl"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Slot Bookings</h3>
+                            <button
+                                onClick={() => setSlotDetailSessions(null)}
+                                className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div className="space-y-3 max-h-64 overflow-y-auto">
+                            {slotDetailSessions.map((session, idx) => (
+                                <div key={idx} className="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <p className="font-medium text-gray-900 dark:text-white">{session.roomName}</p>
+                                            <p className="text-sm text-gray-500 dark:text-gray-400">{session.purpose || 'Booked'}</p>
+                                            {session.bookedByName && (
+                                                <p className="text-xs text-gray-400 dark:text-gray-500">by {session.bookedByName}</p>
+                                            )}
+                                        </div>
+                                        {session.type === 'booking' && session.userId === user?.User_ID && (
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => {
+                                                        setSlotDetailSessions(null);
+                                                        setSelectedSession(session);
+                                                        const room = labRooms.find(r => r.Room_ID === session.roomId);
+                                                        if (room) {
+                                                            const cat: LabCategory = room.Lab_Type || 'UNASSIGNED';
+                                                            setSelectedCategory(cat);
+                                                        }
+                                                        setQueueModalOpen(true);
+                                                    }}
+                                                    className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                                                >
+                                                    Edit
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setSlotDetailSessions(null);
+                                                        handleRemoveSession(session);
+                                                    }}
+                                                    className="text-xs text-red-600 hover:text-red-800 dark:text-red-400"
+                                                >
+                                                    Remove
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {selectedViewRoom && (
                 <RoomDetailModal
                     isOpen={!!selectedViewRoom}
                     onClose={() => setSelectedViewRoom(null)}
                     room={selectedViewRoom!}
-                    sessions={getSessionsByRoom(selectedViewRoom!.Room_ID)}
+                    sessions={getSessionsByCategory([selectedViewRoom!])}
                 />
             )}
         </div>
