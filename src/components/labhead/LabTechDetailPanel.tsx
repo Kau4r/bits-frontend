@@ -56,9 +56,9 @@ export default function LabTechDetailPanel({ labTech }: Props) {
     loadTickets();
   }, [labTech.dbId]);
 
-  // Fetch reports when labTech changes or Reports tab is opened
+  // Fetch reports when labTech changes
   useEffect(() => {
-    if (activeTab !== 'Reports' || !labTech.dbId) return;
+    if (!labTech.dbId) return;
     const loadReports = async () => {
       try {
         setIsLoadingReports(true);
@@ -71,7 +71,7 @@ export default function LabTechDetailPanel({ labTech }: Props) {
       }
     };
     loadReports();
-  }, [activeTab, labTech.dbId]);
+  }, [labTech.dbId]);
 
   const inProgressTickets = tickets.filter(t => t.Status === 'IN_PROGRESS');
   const resolvedTickets = tickets.filter(t => t.Status === 'RESOLVED');
