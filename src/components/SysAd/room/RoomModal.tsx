@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom'
-import type { Room, LabType } from '@/types/room'
+import type { Room } from '@/types/room'
 import { useState, useEffect } from 'react'
 
 // RoomModal props

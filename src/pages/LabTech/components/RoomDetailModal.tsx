@@ -346,7 +346,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
 
                             {/* Error Message */}
                             {error && (
-                                <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 text-sm">
+                                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm dark:bg-red-500/20 dark:border-red-500/50 dark:text-red-400">
                                     {error}
                                 </div>
                             )}
@@ -390,9 +390,9 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                                         statusColor === 'yellow' ? 'bg-yellow-500' :
                                                             statusColor === 'red' ? 'bg-red-500' : 'bg-gray-500'
                                                         }`} />
-                                                    <span className={`text-xs font-medium ${statusColor === 'green' ? 'text-green-400' :
-                                                        statusColor === 'yellow' ? 'text-yellow-400' :
-                                                            statusColor === 'red' ? 'text-red-400' : 'text-gray-400'
+                                                    <span className={`text-xs font-medium ${statusColor === 'green' ? 'text-green-600 dark:text-green-400' :
+                                                        statusColor === 'yellow' ? 'text-yellow-600 dark:text-yellow-400' :
+                                                            statusColor === 'red' ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'
                                                         }`}>
                                                         {getStatusLabel(pc.Status)}
                                                     </span>
@@ -475,16 +475,16 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                             <div className="text-sm text-gray-400 font-mono w-full truncate" title={asset.Serial_Number || ''}>{asset.Serial_Number || '-'}</div>
                                             <div className="text-sm w-full truncate">
                                                 {asset.ComputerName ? (
-                                                    <span className="text-blue-400" title={asset.ComputerName}>{asset.ComputerName}</span>
+                                                    <span className="text-blue-600 dark:text-blue-400" title={asset.ComputerName}>{asset.ComputerName}</span>
                                                 ) : (
                                                     <span className="text-gray-500">-</span>
                                                 )}
                                             </div>
                                             <div>
-                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${asset.Status === 'AVAILABLE' ? 'bg-green-500/20 text-green-400' :
-                                                    asset.Status === 'BORROWED' ? 'bg-blue-500/20 text-blue-400' :
-                                                        asset.Status === 'DEFECTIVE' ? 'bg-red-500/20 text-red-400' :
-                                                            'bg-gray-500/20 text-gray-400'
+                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${asset.Status === 'AVAILABLE' ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' :
+                                                    asset.Status === 'BORROWED' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' :
+                                                        asset.Status === 'DEFECTIVE' ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400' :
+                                                            'bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-gray-400'
                                                     }`}>
                                                     {asset.Status}
                                                 </span>

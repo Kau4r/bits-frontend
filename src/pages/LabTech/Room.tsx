@@ -1,6 +1,6 @@
 import dayjs from 'dayjs'
 import { useState, useEffect } from 'react'
-import type { Room as RoomType, RoomStatus, RoomType as RoomTypeEnum, RoomSession, LabType, LabCategory } from '@/types/room'
+import type { Room as RoomType, RoomStatus, RoomType as RoomTypeEnum, RoomSession, LabCategory } from '@/types/room'
 import { getRooms, setRoomStudentAvailability } from '@/services/room'
 import api from '@/services/api'
 import { useModal } from '@/context/ModalContext'
@@ -37,7 +37,7 @@ export default function Room() {
 
     const [sessions, setSessions] = useState<RoomSession[]>([]);
     const [queueModalOpen, setQueueModalOpen] = useState(false);
-    const [selectedRoom, setSelectedRoom] = useState<RoomType | null>(null);
+    const [, setSelectedRoom] = useState<RoomType | null>(null);
     const [selectedSession, setSelectedSession] = useState<RoomSession | null>(null);
     const [selectedViewRoom, setSelectedViewRoom] = useState<RoomType | null>(null);
 

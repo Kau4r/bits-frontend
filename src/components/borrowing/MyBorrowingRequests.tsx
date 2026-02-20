@@ -42,8 +42,8 @@ const Countdown = ({ returnDate }: CountdownProps) => {
 
     return (
         <span className={`text-xs font-medium px-2 py-1 rounded-full ${isOverdue
-            ? 'bg-red-500/20 text-red-400'
-            : 'bg-green-500/20 text-green-400'
+            ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400'
+            : 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
             }`}>
             {isOverdue ? '⚠️ ' : '⏱️ '}{timeLeft}
         </span>
@@ -98,7 +98,7 @@ export default function MyBorrowingRequests() {
             {/* Pending Requests */}
             {pendingRequests.length > 0 && (
                 <div className="mb-4">
-                    <h4 className="text-sm font-medium text-yellow-400 mb-2 flex items-center gap-2">
+                    <h4 className="text-sm font-medium text-yellow-600 dark:text-yellow-400 mb-2 flex items-center gap-2">
                         <span>⏳</span> Pending Approval ({pendingRequests.length})
                     </h4>
                     <div className="space-y-2">
@@ -113,7 +113,7 @@ export default function MyBorrowingRequests() {
                                             {req.Item ? `${req.Item.Brand} • ${req.Item.Item_Code}` : 'Specific Item Pending Assignment'}
                                         </p>
                                     </div>
-                                    <span className="text-xs font-medium px-2 py-1 rounded-full bg-yellow-500/20 text-yellow-400">
+                                    <span className="text-xs font-medium px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400">
                                         Pending
                                     </span>
                                 </div>
@@ -126,7 +126,7 @@ export default function MyBorrowingRequests() {
             {/* Active Loans */}
             {activeLoans.length > 0 && (
                 <div>
-                    <h4 className="text-sm font-medium text-green-400 mb-2 flex items-center gap-2">
+                    <h4 className="text-sm font-medium text-green-600 dark:text-green-400 mb-2 flex items-center gap-2">
                         <span>✅</span> Active Loans ({activeLoans.length})
                     </h4>
                     <div className="space-y-2">

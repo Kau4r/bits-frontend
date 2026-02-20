@@ -30,12 +30,12 @@ interface RequestCardProps {
 }
 
 const statusColors: Record<BorrowingStatus, string> = {
-    PENDING: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-    APPROVED: 'bg-green-500/20 text-green-400 border-green-500/30',
-    REJECTED: 'bg-red-500/20 text-red-400 border-red-500/30',
-    BORROWED: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-    RETURNED: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
-    OVERDUE: 'bg-red-500/20 text-red-400 border-red-500/30',
+    PENDING: 'bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-500/20 dark:text-yellow-400 dark:border-yellow-500/30',
+    APPROVED: 'bg-green-100 text-green-700 border-green-300 dark:bg-green-500/20 dark:text-green-400 dark:border-green-500/30',
+    REJECTED: 'bg-red-100 text-red-700 border-red-300 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30',
+    BORROWED: 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/30',
+    RETURNED: 'bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-500/20 dark:text-gray-400 dark:border-gray-500/30',
+    OVERDUE: 'bg-red-100 text-red-700 border-red-300 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30',
 };
 
 const statusIcons: Record<BorrowingStatus, string> = {
@@ -142,13 +142,13 @@ export default function RequestCard({
                 <div className="flex gap-2 mt-4">
                     <button
                         onClick={() => onReject?.(request.id)}
-                        className="flex-1 px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg border border-red-500/30 transition-colors text-sm font-medium"
+                        className="flex-1 px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg border border-red-300 dark:bg-red-600/20 dark:hover:bg-red-600/30 dark:text-red-400 dark:border-red-500/30 transition-colors text-sm font-medium"
                     >
                         ✗ Reject
                     </button>
                     <button
                         onClick={() => onApprove?.(request.id)}
-                        className="flex-1 px-4 py-2 bg-green-600/20 hover:bg-green-600/30 text-green-400 rounded-lg border border-green-500/30 transition-colors text-sm font-medium"
+                        className="flex-1 px-4 py-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg border border-green-300 dark:bg-green-600/20 dark:hover:bg-green-600/30 dark:text-green-400 dark:border-green-500/30 transition-colors text-sm font-medium"
                     >
                         ✓ Accept
                     </button>

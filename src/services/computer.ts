@@ -54,7 +54,7 @@ export interface UpdateComputerData {
  */
 export const getComputers = async (roomId?: number): Promise<Computer[]> => {
     const params = roomId ? { roomId } : {};
-    const response = await api.get('/computers', { params });
+    const response = await api.get<Computer[]>('/computers', { params });
     return response.data;
 };
 
@@ -62,7 +62,7 @@ export const getComputers = async (roomId?: number): Promise<Computer[]> => {
  * Get a single computer by ID
  */
 export const getComputerById = async (id: number): Promise<Computer> => {
-    const response = await api.get(`/computers/${id}`);
+    const response = await api.get<Computer>(`/computers/${id}`);
     return response.data;
 };
 
@@ -70,7 +70,7 @@ export const getComputerById = async (id: number): Promise<Computer> => {
  * Get a computer by MAC address
  */
 export const getComputerByMac = async (macAddress: string): Promise<Computer> => {
-    const response = await api.get(`/computers/by-mac/${macAddress}`);
+    const response = await api.get<Computer>(`/computers/by-mac/${macAddress}`);
     return response.data;
 };
 
@@ -78,7 +78,7 @@ export const getComputerByMac = async (macAddress: string): Promise<Computer> =>
  * Create a new computer
  */
 export const createComputer = async (data: CreateComputerData): Promise<Computer> => {
-    const response = await api.post('/computers', data);
+    const response = await api.post<Computer>('/computers', data);
     return response.data;
 };
 
@@ -86,7 +86,7 @@ export const createComputer = async (data: CreateComputerData): Promise<Computer
  * Update an existing computer
  */
 export const updateComputer = async (id: number, data: UpdateComputerData): Promise<Computer> => {
-    const response = await api.put(`/computers/${id}`, data);
+    const response = await api.put<Computer>(`/computers/${id}`, data);
     return response.data;
 };
 

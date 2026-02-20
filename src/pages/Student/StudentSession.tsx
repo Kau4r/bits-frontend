@@ -34,7 +34,7 @@ export default function StudentSession() {
       </div>
 
       <div className="px-4 sm:px-8 lg:px-10">
-        <SessionBar room="LB 467" pcNumber="14" />
+        <SessionBar />
       </div>
 
       <div className="flex-1 overflow-auto flex flex-col">

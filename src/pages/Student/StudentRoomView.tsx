@@ -109,10 +109,7 @@ export default function StudentRoomView() {
                 </button>
             </div>
             <div className="px-4 sm:px-8 lg:px-10">
-                <SessionBar
-                    room="Select a room"
-                    pcNumber="N/A"
-                />
+                <SessionBar />
             </div>
             <div className="flex-1 overflow-auto p-4 sm:px-8 lg:px-10">
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Opened Laboratories</h2>

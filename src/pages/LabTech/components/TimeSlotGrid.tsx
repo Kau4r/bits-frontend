@@ -67,7 +67,7 @@ function TimeRow({ slots, sessions, totalRoomsInCategory, onAddRoom, onSlotDetai
                 {slots.map((slot) => (
                     <div
                         key={slot}
-                        className="flex-1 min-w-[60px] px-1 py-1 text-center text-xs text-gray-400 border border-gray-700 bg-gray-800"
+                        className="flex-1 min-w-[60px] px-1 py-1 text-center text-xs text-gray-600 border border-gray-300 bg-gray-100 dark:text-gray-400 dark:border-gray-700 dark:bg-gray-800"
                     >
                         {formatTime(slot)}
                     </div>
@@ -82,7 +82,6 @@ function TimeRow({ slots, sessions, totalRoomsInCategory, onAddRoom, onSlotDetai
                     const occupiedRoomsCount = occupiedRoomIds.size;
                     const isFull = occupiedRoomsCount >= totalRoomsInCategory;
                     const isPartial = occupiedRoomsCount > 0 && !isFull;
-                    const isEmpty = occupiedRoomsCount === 0;
                     const endTime = getEndTime(slot);
 
                     if (isFull) {
@@ -102,14 +101,14 @@ function TimeRow({ slots, sessions, totalRoomsInCategory, onAddRoom, onSlotDetai
                         return (
                             <div
                                 key={slot}
-                                className="flex-1 min-w-[60px] flex items-center justify-center text-xs py-2 rounded cursor-pointer bg-blue-500/30 border border-blue-500/50 text-blue-300 hover:bg-blue-500/40 transition-colors relative group"
+                                className="flex-1 min-w-[60px] flex items-center justify-center text-xs py-2 rounded cursor-pointer bg-blue-500/10 border border-blue-500/30 text-blue-600 hover:bg-blue-500/20 dark:bg-blue-500/30 dark:border-blue-500/50 dark:text-blue-300 dark:hover:bg-blue-500/40 transition-colors relative group"
                                 onClick={() => onAddRoom(slot, endTime)}
                                 title={`${occupiedRoomsCount}/${totalRoomsInCategory} rooms booked — click to add`}
                             >
                                 {occupiedRoomsCount}/{totalRoomsInCategory}
                                 {onSlotDetail && (
                                     <button
-                                        className="absolute right-0.5 top-0.5 opacity-0 group-hover:opacity-100 text-blue-300 hover:text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] bg-blue-600/50"
+                                        className="absolute right-0.5 top-0.5 opacity-0 group-hover:opacity-100 text-blue-600 hover:text-blue-800 dark:text-blue-300 dark:hover:text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] bg-blue-500/20 dark:bg-blue-600/50"
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             onSlotDetail(slot, slotSessions);
@@ -127,7 +126,7 @@ function TimeRow({ slots, sessions, totalRoomsInCategory, onAddRoom, onSlotDetai
                     return (
                         <div
                             key={slot}
-                            className="flex-1 min-w-[60px] flex items-center justify-center text-xs py-2 rounded cursor-pointer bg-gray-700 border border-gray-600 hover:bg-gray-600 text-gray-300 transition-colors"
+                            className="flex-1 min-w-[60px] flex items-center justify-center text-xs py-2 rounded cursor-pointer bg-gray-100 border border-gray-300 hover:bg-gray-200 text-gray-500 dark:bg-gray-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:text-gray-300 transition-colors"
                             onClick={() => onAddRoom(slot, endTime)}
                         >
                             + Add

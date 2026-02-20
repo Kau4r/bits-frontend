@@ -9,7 +9,7 @@ export const AddFormDialog: React.FC<{
 }> = ({ open, onClose, onCreate, existing = [] }) => {
   const [type, setType] = useState<FormType>('WRF');
   const [department, setDepartment] = useState('Registrar');
-  const [status, setStatus] = useState<FormStatus>('Pending');
+  const [status, setStatus] = useState<FormStatus>('PENDING');
   const [file, setFile] = useState<File | undefined>();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -18,7 +18,7 @@ export const AddFormDialog: React.FC<{
     if (!open) {
       setType('WRF');
       setDepartment('Registrar');
-      setStatus('Pending');
+      setStatus('PENDING');
       setFile(undefined);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -130,10 +130,10 @@ export const AddFormDialog: React.FC<{
                 onChange={(e) => setStatus(e.target.value as FormStatus)}
                 className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-2 text-sm"
               >
-                <option value="Pending">Pending</option>
-                <option value="In Review">In Review</option>
-                <option value="Approved">Approved</option>
-                <option value="Rejected">Rejected</option>
+                <option value="PENDING">Pending</option>
+                <option value="IN_REVIEW">In Review</option>
+                <option value="APPROVED">Approved</option>
+                <option value="REJECTED">Rejected</option>
               </select>
             </div>
 

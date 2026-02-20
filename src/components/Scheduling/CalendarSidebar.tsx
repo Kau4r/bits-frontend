@@ -2,7 +2,6 @@ import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import type { Room } from '@/types/room';
 import type { BorrowingRequest } from '@/components/borrowing/RequestCard';
-import RequestCard from '@/components/borrowing/RequestCard';
 import { useState } from 'react';
 
 interface CalendarSidebarProps {
@@ -28,15 +27,11 @@ export default function CalendarSidebar({
     selectedDate,
     onCreateClick,
     borrowingRequests = [],
-    showBorrowingRequests = false,
+    showBorrowingRequests: _showBorrowingRequests = false,
     myBookings = [],
     onBookingClick,
 }: CalendarSidebarProps) {
     const allSelected = rooms.length > 0 && selectedRooms.length === rooms.length;
-
-    // Calculate stats for borrowing requests
-    const pendingBorrowCount = borrowingRequests.filter(r => r.status === 'PENDING').length;
-    const activeBorrowCount = borrowingRequests.filter(r => r.status === 'APPROVED' || r.status === 'BORROWED').length;
 
     // Calculate stats for schedule requests (bookings)
     const requestedSchedules = myBookings.filter(b => b.extendedProps.status === 'PENDING').length;
@@ -44,7 +39,6 @@ export default function CalendarSidebar({
 
     // Collapse state
     const [isRoomsCollapsed, setIsRoomsCollapsed] = useState(false);
-    const [isRequestsCollapsed, setIsRequestsCollapsed] = useState(false);
     const [isSchedulesCollapsed, setIsSchedulesCollapsed] = useState(false);
 
     return (

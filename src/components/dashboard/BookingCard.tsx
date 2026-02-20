@@ -78,7 +78,7 @@ export default function BookingCard() {
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-medium text-gray-600 dark:text-gray-300">Recent Bookings</h3>
         {pendingCount > 0 && (
-          <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded-full">
+          <span className="text-xs bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400 px-2 py-1 rounded-full">
             {pendingCount} pending approval
           </span>
         )}

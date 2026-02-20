@@ -174,7 +174,7 @@ export default function Borrowing() {
         if (!rejectionModal.request) return;
         setIsLoading(true);
         try {
-            await rejectBorrowing(rejectionModal.request.id, reason, rejectionModal.request.item.Item_ID);
+            await rejectBorrowing(rejectionModal.request.id);
 
             await modal.showSuccess('Request rejected and borrower notified', 'Success');
             setRejectionModal({ isOpen: false, request: null });
