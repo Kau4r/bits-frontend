@@ -1,14 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { CheckCircleIcon, ClockIcon, EyeIcon } from '@heroicons/react/24/outline';
-
-type FormStatusConfig = {
-  id: number;
-  name: string;
-  count: number;
-  icon: typeof CheckCircleIcon;
-  color: string;
-  bg: string;
-};
 
 interface FormsCardProps {
   pendingCount?: number;
@@ -17,43 +8,27 @@ interface FormsCardProps {
 }
 
 export default function FormsCard({ pendingCount = 0, approvedCount = 0, inReviewCount = 0 }: FormsCardProps) {
-  // Update state when prop changes
+  const [counts, setCounts] = useState({ approved: 0, pending: 0, inReview: 0 });
+
   useEffect(() => {
-    setStatuses(prev => prev.map(s => {
-      if (s.name === 'Pending') return { ...s, count: pendingCount };
-      if (s.name === 'Approved') return { ...s, count: approvedCount };
-      if (s.name === 'In Review') return { ...s, count: inReviewCount };
-      return s;
-    }));
+    setCounts({ approved: approvedCount, pending: pendingCount, inReview: inReviewCount });
   }, [pendingCount, approvedCount, inReviewCount]);
 
-  const [statuses, setStatuses] = useState<FormStatusConfig[]>([
-    { id: 1, name: 'Approved', count: 0, icon: CheckCircleIcon, color: 'text-green-500 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-900/20' },
-    { id: 2, name: 'Pending', count: 0, icon: ClockIcon, color: 'text-yellow-500 dark:text-yellow-400', bg: 'bg-yellow-100 dark:bg-yellow-900/20' },
-    { id: 3, name: 'In Review', count: 0, icon: EyeIcon, color: 'text-blue-500 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/20' },
-  ]);
-  // No internal fetching needed as data comes from props
-  // If we need Approved/In Review counts, we should add them to dashboard metrics API later
-
-
-
+  const items = [
+    { label: 'Approved', count: counts.approved, icon: CheckCircleIcon, dotColor: 'bg-green-500', textColor: 'text-green-600 dark:text-green-400' },
+    { label: 'Pending', count: counts.pending, icon: ClockIcon, dotColor: 'bg-yellow-500', textColor: 'text-yellow-600 dark:text-yellow-400' },
+    { label: 'In Review', count: counts.inReview, icon: EyeIcon, dotColor: 'bg-blue-500', textColor: 'text-blue-600 dark:text-blue-400' },
+  ];
 
   return (
-    <div className="grid grid-cols-3 gap-3">
-      {statuses.map(({ id, name, count, icon: Icon, color, bg }) => (
-        <div
-          key={id}
-          className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm ring-1 ring-gray-200/50 dark:border-gray-700 dark:bg-gray-800 dark:ring-gray-700/50"
-        >
-          <div className="flex items-center justify-between">
-            <div className={`rounded-lg p-2 ${bg} ${color}`}>
-              <Icon className="h-4 w-4" />
-            </div>
-            <div className="text-right">
-              <div className="text-lg font-semibold text-gray-900 dark:text-white">{count}</div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">{name}</div>
-            </div>
+    <div className="flex flex-col gap-3">
+      {items.map(({ label, count, dotColor, textColor }) => (
+        <div key={label} className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <span className={`h-2.5 w-2.5 rounded-full ${dotColor}`} />
+            <span className="text-sm text-gray-600 dark:text-gray-300">{label}</span>
           </div>
+          <span className={`text-lg font-bold ${textColor}`}>{count}</span>
         </div>
       ))}
     </div>

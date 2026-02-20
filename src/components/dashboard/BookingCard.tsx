@@ -4,10 +4,17 @@ import type { Booking, BookingStatus } from '@/types/booking';
 import { CalendarIcon } from '@heroicons/react/24/outline';
 
 const statusColors: Record<BookingStatus, string> = {
-  APPROVED: 'text-green-400',
-  PENDING: 'text-yellow-400',
-  REJECTED: 'text-red-400',
-  CANCELLED: 'text-gray-400',
+  APPROVED: 'text-green-600 dark:text-green-400',
+  PENDING: 'text-yellow-600 dark:text-yellow-400',
+  REJECTED: 'text-red-600 dark:text-red-400',
+  CANCELLED: 'text-gray-500 dark:text-gray-400',
+};
+
+const statusDots: Record<BookingStatus, string> = {
+  APPROVED: 'bg-green-500',
+  PENDING: 'bg-yellow-500',
+  REJECTED: 'bg-red-500',
+  CANCELLED: 'bg-gray-400',
 };
 
 export default function BookingCard() {
@@ -52,19 +59,18 @@ export default function BookingCard() {
   if (loading) {
     return (
       <div className="h-full flex flex-col">
-        <div className="flex items-center justify-between mb-3">
-          <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-          <div className="h-5 w-20 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" />
-        </div>
+        {pendingCount > 0 && (
+          <div className="flex justify-end mb-3">
+            <div className="h-5 w-28 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" />
+          </div>
+        )}
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="p-3 bg-gray-100 dark:bg-gray-700/30 rounded-lg animate-pulse">
-              <div className="flex items-start space-x-3">
-                <div className="w-9 h-9 bg-gray-200 dark:bg-gray-700 rounded-lg" />
-                <div className="flex-1">
-                  <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
-                  <div className="h-3 w-24 bg-gray-200 dark:bg-gray-700 rounded" />
-                </div>
+            <div key={i} className="flex items-center gap-3 p-2.5 animate-pulse">
+              <div className="h-2.5 w-2.5 rounded-full bg-gray-200 dark:bg-gray-700 flex-shrink-0" />
+              <div className="flex-1">
+                <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded mb-1.5" />
+                <div className="h-3 w-40 bg-gray-200 dark:bg-gray-700 rounded" />
               </div>
             </div>
           ))}
@@ -75,48 +81,38 @@ export default function BookingCard() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-medium text-gray-600 dark:text-gray-300">Recent Bookings</h3>
-        {pendingCount > 0 && (
-          <span className="text-xs bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400 px-2 py-1 rounded-full">
-            {pendingCount} pending approval
+      {pendingCount > 0 && (
+        <div className="flex justify-end mb-2">
+          <span className="text-xs bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400 px-2.5 py-1 rounded-full font-medium">
+            {pendingCount} pending
           </span>
-        )}
-      </div>
+        </div>
+      )}
 
       {bookings.length === 0 ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center py-8">
-            <CalendarIcon className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+            <CalendarIcon className="h-10 w-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
             <p className="text-sm text-gray-500 dark:text-gray-400">No bookings yet</p>
           </div>
         </div>
       ) : (
-        <div className="space-y-2 overflow-y-auto flex-1 pr-2 -mr-2">
+        <div className="space-y-1 overflow-y-auto flex-1 pr-1 -mr-1">
           {bookings.map((booking) => (
-            <div key={booking.Booked_Room_ID} className="p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors">
-              <div className="flex justify-between items-start">
-                <div className="flex items-start space-x-3">
-                  <div className="flex-shrink-0 p-2 bg-blue-500/10 rounded-lg">
-                    <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-900 dark:text-white">
-                      {booking.Room?.Name || `Room ${booking.Room_ID}`}
-                    </h4>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {formatDate(booking.Start_Time)} • {formatTime(booking.Start_Time, booking.End_Time)}
-                    </p>
-                    <div className={`text-xs mt-1 ${statusColors[booking.Status] || 'text-gray-400'}`}>
-                      {booking.Status ? (booking.Status.charAt(0) + booking.Status.slice(1).toLowerCase()) : 'Unknown'}
-                    </div>
-                  </div>
+            <div key={booking.Booked_Room_ID} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group">
+              <span className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${statusDots[booking.Status] || 'bg-gray-400'}`} />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                    {booking.Room?.Name || `Room ${booking.Room_ID}`}
+                  </h4>
+                  <span className={`text-xs font-medium ml-2 ${statusColors[booking.Status] || 'text-gray-400'}`}>
+                    {booking.Status ? (booking.Status.charAt(0) + booking.Status.slice(1).toLowerCase()) : 'Unknown'}
+                  </span>
                 </div>
-                <button className="text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors">
-                  View
-                </button>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {formatDate(booking.Start_Time)} &middot; {formatTime(booking.Start_Time, booking.End_Time)}
+                </p>
               </div>
             </div>
           ))}

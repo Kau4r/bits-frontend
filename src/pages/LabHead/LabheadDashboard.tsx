@@ -86,14 +86,14 @@ export default function LabheadDashboard() {
         <div className="lg:col-span-2 flex flex-col gap-4 h-full min-h-0">
           {/* Top Row: Forms + Reports */}
           <div className="grid grid-cols-2 gap-4">
-            <Card title="Forms" className="h-48">
+            <Card title="Forms">
               <FormsCard
                 pendingCount={metrics?.counts.pendingForms}
                 approvedCount={metrics?.counts.approvedForms}
                 inReviewCount={metrics?.counts.inReviewForms}
               />
             </Card>
-            <Card title="Reports" className="h-48">
+            <Card title="Reports">
               <ReportsCard />
             </Card>
           </div>
