@@ -28,6 +28,7 @@ import { ROLES } from './types/user';
 import InventoryMobile from './pages/LabTech/InventoryMobile';
 import Borrowing from './pages/LabTech/Borrowing';
 import MonitoringDashboard from './pages/Monitoring/MonitoringDashboard';
+import Reports from './pages/LabTech/Reports';
 
 // 🔒 Protects routes based on auth + role
 const ProtectedRoute = ({ children, roles }: { children: JSX.Element, roles: string[] }) => {
@@ -108,6 +109,7 @@ function AppContent() {
         <Route path="/tickets" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Ticket /></ProtectedRoute>} />
         <Route path="/notification" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Notification /></ProtectedRoute>} />
         <Route path="/monitoring" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><MonitoringDashboard /></ProtectedRoute>} />
+        <Route path="/reports" element={<ProtectedRoute roles={[ROLES.LAB_TECH]}><Reports /></ProtectedRoute>} />
 
         <Route path="/labhead-scheduling" element={<ProtectedRoute roles={[ROLES.LAB_HEAD]}><LabheadScheduling /></ProtectedRoute>} />
 
