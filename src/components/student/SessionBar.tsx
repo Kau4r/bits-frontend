@@ -7,28 +7,55 @@ import { useHeartbeat } from '@/context/HeartbeatContext';
 import { useHeartbeatInterval } from '@/hooks/useHeartbeat';
 import { ComputerSelector } from './ComputerSelector';
 import { endSession } from '@/services/heartbeat';
+import { createTicket } from '@/services/tickets';
 
 interface SessionBarProps {
   timeSlot?: string;
-  onReportIssue?: (description: string, issueType: string, equipment: string) => Promise<void>;
+  onReportIssue?: (description: string, issueType: string, equipment: string, pcNumber: string) => Promise<void>;
   onEndSession?: () => void; // optional; if not provided, SessionBar will logout by itself
   isLoading?: boolean;
 }
 
 export default function SessionBar({
   timeSlot = '9:00 - 10:30',
-  onReportIssue = async () => {},
+  onReportIssue,
   onEndSession,
   isLoading = false
 }: SessionBarProps) {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { computer, isDetecting, detectionFailed, sessionId, stopHeartbeat } = useHeartbeat();
   useHeartbeatInterval(); // Start heartbeat interval
 
   const pcNumber = computer?.Name || 'Unknown';
   const roomName = computer?.Room?.Name || 'Unknown Room';
+  const roomId = (computer?.Room as any)?.Room_ID as number | undefined;
+
+  // Default ticket creation for students — creates a real ticket and notifies LabTechs via backend
+  const handleReportIssue = async (description: string, issueType: string, equipment: string, editedPcNumber: string) => {
+    if (onReportIssue) {
+      return onReportIssue(description, issueType, equipment, editedPcNumber);
+    }
+
+    if (!user?.User_ID) return;
+
+    const categoryMap: Record<string, 'HARDWARE' | 'SOFTWARE' | 'FACILITY' | 'OTHER'> = {
+      hardware: 'HARDWARE',
+      software: 'SOFTWARE',
+      network: 'FACILITY',
+      other: 'OTHER',
+    };
+
+    await createTicket({
+      Reported_By_ID: user.User_ID,
+      Report_Problem: description,
+      Location: `${equipment} — PC: ${editedPcNumber} | Room: ${roomName}`,
+      Room_ID: roomId,
+      Category: categoryMap[issueType] ?? 'OTHER',
+      Status: 'PENDING',
+    });
+  };
 
   const handleEndSessionClick = async () => {
     if (isLoading) return;
@@ -67,9 +94,9 @@ export default function SessionBar({
   }
 
   // Show computer selector if detection failed
-  if (detectionFailed) {
-    return <ComputerSelector />;
-  }
+  // if (detectionFailed) {
+  //   return <ComputerSelector />;
+  // }
 
   return (
     <div className="flex flex-col md:flex-row justify-between items-stretch gap-3 md:gap-4 bg-gray-100 dark:bg-slate-800 rounded-xl p-3 md:p-4 w-full border border-gray-200 dark:border-slate-700">
@@ -99,7 +126,7 @@ export default function SessionBar({
           <FiAlertTriangle className="h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
           <span className="whitespace-nowrap">Report Issue</span>
         </button>
-        <button 
+        <button
           onClick={handleEndSessionClick}
           disabled={isLoading}
           className="bg-red-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg hover:bg-red-700 transition-all duration-200 hover:shadow-sm font-medium flex items-center justify-center gap-1.5 sm:gap-2 text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed"
@@ -119,7 +146,7 @@ export default function SessionBar({
       <ReportIssueModal
         isOpen={isReportModalOpen}
         onClose={() => setIsReportModalOpen(false)}
-        onSubmit={onReportIssue}
+        onSubmit={handleReportIssue}
         room={roomName}
         pcNumber={pcNumber}
       />

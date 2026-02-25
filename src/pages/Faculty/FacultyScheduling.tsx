@@ -11,6 +11,7 @@ import { createBorrowing } from '../../services/borrowing';
 import { getBookings } from '../../services/booking';
 import ReportIssueModal from '../../components/student/Modals/ReportIssue';
 import { useBorrowingEvents } from '../../hooks/useBorrowingEvents';
+import { createTicket } from '../../services/tickets';
 
 const FacultyScheduling = () => {
   const navigate = useNavigate();
@@ -409,11 +410,25 @@ const FacultyScheduling = () => {
       <ReportIssueModal
         isOpen={showReportIssueModal}
         onClose={() => setShowReportIssueModal(false)}
-        onSubmit={async (description, issueType, equipment) => {
-          // TODO: Wire up actual ticket creation once API is confirmed.
-          // For now we just log, but the ROOM is now accurate which was the main 'mock data' complaint.
-          console.log('Report Issue:', { description, issueType, equipment, room: currentRoom });
-          modal.showSuccess('Issue reported successfully. Ticket created for ' + currentRoom, 'Success');
+        onSubmit={async (description, issueType, equipment, pcNumber) => {
+          if (!user?.User_ID) return;
+
+          const categoryMap: Record<string, 'HARDWARE' | 'SOFTWARE' | 'FACILITY' | 'OTHER'> = {
+            hardware: 'HARDWARE',
+            software: 'SOFTWARE',
+            network: 'FACILITY',
+            other: 'OTHER',
+          };
+
+          await createTicket({
+            Reported_By_ID: user.User_ID,
+            Report_Problem: description,
+            Location: `${equipment} — PC: ${pcNumber} | Room: ${currentRoom}`,
+            Category: categoryMap[issueType] ?? 'OTHER',
+            Status: 'PENDING',
+          });
+
+          modal.showSuccess(`Ticket submitted for ${currentRoom}. A Lab Tech will be notified.`, 'Issue Reported');
         }}
         room={currentRoom}
         pcNumber="N/A"

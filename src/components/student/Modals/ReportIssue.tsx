@@ -3,32 +3,34 @@ import { useState } from 'react';
 interface ReportIssueModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (description: string, issueType: string, equipment: string) => Promise<void>;
+  onSubmit: (description: string, issueType: string, equipment: string, pcNumber: string) => Promise<void>;
   room: string;
   pcNumber: string;
 }
 
-export default function ReportIssueModal({ 
-  isOpen, 
-  onClose, 
-  onSubmit, 
-  room, 
-  pcNumber 
+export default function ReportIssueModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  room,
+  pcNumber
 }: ReportIssueModalProps) {
   const [description, setDescription] = useState('');
   const [issueType, setIssueType] = useState('hardware');
   const [equipment, setEquipment] = useState('monitor');
+  const [editablePcNumber, setEditablePcNumber] = useState(pcNumber);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!description || !equipment) return;
-    
+
     setIsSubmitting(true);
     try {
-      await onSubmit(description, issueType, equipment);
+      await onSubmit(description, issueType, equipment, editablePcNumber);
       setDescription('');
       setEquipment('monitor');
+      setEditablePcNumber(pcNumber);
       onClose();
     } finally {
       setIsSubmitting(false);
@@ -53,7 +55,7 @@ export default function ReportIssueModal({
             &times;
           </button>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -72,9 +74,11 @@ export default function ReportIssueModal({
             </label>
             <input
               type="text"
-              value={pcNumber}
-              readOnly
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-gray-100 dark:bg-gray-700 dark:text-gray-300 cursor-not-allowed"
+              value={editablePcNumber}
+              onChange={(e) => setEditablePcNumber(e.target.value)}
+              placeholder="Enter PC number"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+              disabled={isSubmitting}
             />
           </div>
           <div className="mb-4">
@@ -112,7 +116,7 @@ export default function ReportIssueModal({
               <option value="headset">Headset</option>
             </select>
           </div>
-          
+
           <div>
             <label htmlFor="description" className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">
               Description
@@ -128,9 +132,9 @@ export default function ReportIssueModal({
               disabled={isSubmitting}
             />
           </div>
-          
 
-          
+
+
           <div className="flex justify-end space-x-3 pt-2">
             <button
               type="button"
@@ -145,7 +149,7 @@ export default function ReportIssueModal({
               className="flex items-center justify-center w-full rounded-lg border border-transparent bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isSubmitting || !description || !equipment}
             >
-{isSubmitting ? 'Submitting...' : 'Submit'}
+              {isSubmitting ? 'Submitting...' : 'Submit'}
             </button>
           </div>
         </form>
