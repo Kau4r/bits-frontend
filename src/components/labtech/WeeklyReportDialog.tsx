@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { WeeklyReport, ReportCreateInput, ReportUpdateInput, ReportTask, ReportTasks, AutoPopulateResponse } from '@/types/report';
+import type { WeeklyReport, ReportCreateInput, ReportUpdateInput, ReportTask, ReportTasks } from '@/types/report';
 import { taskCategoryOptions } from '@/types/report';
 import { getAutoPopulateTickets } from '@/services/reports';
 

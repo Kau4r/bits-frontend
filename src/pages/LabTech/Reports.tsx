@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/context/AuthContext';
 import {
   getReports,
   createReport,
@@ -11,7 +10,6 @@ import { reportStatusLabels, reportStatusColors } from '@/types/report';
 import { WeeklyReportDialog } from '@/components/labtech/WeeklyReportDialog';
 
 export default function Reports() {
-  const { user } = useAuth();
   const [reports, setReports] = useState<WeeklyReport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);

@@ -26,8 +26,6 @@ export default function CalendarSidebar({
     onDateSelect,
     selectedDate,
     onCreateClick,
-    borrowingRequests = [],
-    showBorrowingRequests: _showBorrowingRequests = false,
     myBookings = [],
     onBookingClick,
 }: CalendarSidebarProps) {

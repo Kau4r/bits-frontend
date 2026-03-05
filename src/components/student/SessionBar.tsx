@@ -5,7 +5,6 @@ import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useHeartbeat } from '@/context/HeartbeatContext';
 import { useHeartbeatInterval } from '@/hooks/useHeartbeat';
-import { ComputerSelector } from './ComputerSelector';
 import { endSession } from '@/services/heartbeat';
 import { createTicket } from '@/services/tickets';
 
@@ -25,7 +24,7 @@ export default function SessionBar({
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const { computer, isDetecting, detectionFailed, sessionId, stopHeartbeat } = useHeartbeat();
+  const { computer, isDetecting, sessionId, stopHeartbeat } = useHeartbeat();
   useHeartbeatInterval(); // Start heartbeat interval
 
   const pcNumber = computer?.Name || 'Unknown';
