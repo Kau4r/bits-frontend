@@ -1,3 +1,5 @@
+import { createPortal } from 'react-dom';
+
 interface RejectionModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -37,65 +39,78 @@ export default function RejectionModal({
         onConfirm(reason);
     };
 
-    return (
+    return createPortal(
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={onClose}>
             <div
-                className="w-full max-w-md bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-6"
+                className="w-full max-w-md rounded-xl bg-white dark:bg-gray-900 shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[90vh]"
                 onClick={e => e.stopPropagation()}
             >
-                <div className="mb-6 flex justify-between items-start">
+                {/* Header */}
+                <div className="px-6 py-4 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
                     <div>
-                        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Reject Request</h2>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Reject Request</h2>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                             Provide a reason for rejecting this request. The borrower will be notified.
                         </p>
                     </div>
+                    <button
+                        onClick={onClose}
+                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                        aria-label="Close"
+                    >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-5">
-                    {/* Request Details */}
-                    <div className="bg-gray-100 dark:bg-gray-800/50 rounded-lg p-4 space-y-2 border border-gray-200 dark:border-gray-700">
-                        <div>
-                            <span className="text-xs text-gray-500 dark:text-gray-400">Borrower:</span>
-                            <div className="text-sm text-gray-900 dark:text-white font-medium">{request.borrower.First_Name} {request.borrower.Last_Name}</div>
+                {/* Body */}
+                <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+                    <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+                        {/* Request Details */}
+                        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-2 border border-gray-200 dark:border-gray-700">
+                            <div>
+                                <span className="text-xs text-gray-500 dark:text-gray-400">Borrower:</span>
+                                <div className="text-sm text-gray-900 dark:text-white font-medium">{request.borrower.First_Name} {request.borrower.Last_Name}</div>
+                            </div>
+                            <div>
+                                <span className="text-xs text-gray-500 dark:text-gray-400">Requested Item:</span>
+                                <div className="text-sm text-gray-900 dark:text-white font-medium">{request.item.Item_Type} - {request.item.Brand}</div>
+                            </div>
                         </div>
-                        <div>
-                            <span className="text-xs text-gray-500 dark:text-gray-400">Requested Item:</span>
-                            <div className="text-sm text-gray-900 dark:text-white font-medium">{request.item.Item_Type} - {request.item.Brand}</div>
+
+                        {/* Rejection Reason */}
+                        <div className="flex flex-col">
+                            <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Reason for Rejection <span className="text-red-500">*</span>
+                            </label>
+                            <textarea
+                                name="reason"
+                                required
+                                rows={4}
+                                placeholder="Please provide a clear reason for rejecting this request..."
+                                className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                            />
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                This reason will be sent to the faculty member
+                            </p>
                         </div>
                     </div>
 
-                    {/* Rejection Reason */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Reason for Rejection <span className="text-red-500">*</span>
-                        </label>
-                        <textarea
-                            name="reason"
-                            required
-                            rows={4}
-                            placeholder="Please provide a clear reason for rejecting this request..."
-                            className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg py-2.5 px-3 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 dark:focus:ring-red-500 resize-none"
-                        />
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            This reason will be sent to the faculty member
-                        </p>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    {/* Footer */}
+                    <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
                         <button
                             type="button"
                             onClick={onClose}
                             disabled={isLoading}
-                            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+                            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-50"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                            className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
                         >
                             {isLoading ? (
                                 <>
@@ -109,6 +124,7 @@ export default function RejectionModal({
                     </div>
                 </form>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

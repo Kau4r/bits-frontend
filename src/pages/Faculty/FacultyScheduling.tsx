@@ -1,5 +1,5 @@
 import Scheduling from '../Scheduling/Scheduling';
-import { Bell, LogOut, PlusCircle, X, AlertTriangle } from 'lucide-react';
+import { Bell, LogOut, PlusCircle, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -227,18 +227,29 @@ const FacultyScheduling = () => {
 
       {/* Enhanced Device Borrowing Request Modal */}
       {isBorrowModalOpen && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl p-6 border border-gray-200 dark:border-gray-700 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={() => setIsBorrowModalOpen(false)}>
+          <div
+            className="w-full max-w-2xl rounded-xl bg-white dark:bg-gray-900 shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="px-6 py-4 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
               <div>
-                <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">📱 Request a Device</h2>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Fill out the form below to request a device. Your request will be reviewed by the department admin.</p>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">📱 Request a Device</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Fill out the form below to request a device. Your request will be reviewed by the department admin.</p>
               </div>
-              <button onClick={() => setIsBorrowModalOpen(false)} className="text-gray-400 hover:text-gray-900 dark:hover:text-white">
-                <X className="h-5 w-5" />
+              <button
+                onClick={() => setIsBorrowModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                aria-label="Close"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
 
+            {/* Body + Footer wrapped in form */}
             <form onSubmit={async (e) => {
               e.preventDefault();
               const formData = new FormData(e.currentTarget);
@@ -285,119 +296,122 @@ const FacultyScheduling = () => {
                 console.error('Borrowing error:', error);
                 modal.showError(error.response?.data?.error || 'Failed to submit borrowing request', 'Error');
               }
-            }} className="space-y-5">
-              {/* Item Type */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Item Type <span className="text-red-400">*</span>
-                </label>
-                {isLoadingItems ? (
-                  <div className="text-sm text-gray-600 dark:text-gray-400">Loading available items...</div>
-                ) : (
-                  <>
-                    <select
-                      value={selectedType}
-                      onChange={(e) => setSelectedType(e.target.value)}
+            }} className="flex flex-col flex-1 overflow-hidden">
+              {/* Scrollable Body */}
+              <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+                {/* Item Type */}
+                <div className="flex flex-col">
+                  <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Item Type <span className="text-red-500">*</span>
+                  </label>
+                  {isLoadingItems ? (
+                    <div className="text-sm text-gray-600 dark:text-gray-400">Loading available items...</div>
+                  ) : (
+                    <>
+                      <select
+                        value={selectedType}
+                        onChange={(e) => setSelectedType(e.target.value)}
+                        required
+                        className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">Select an item type</option>
+                        {uniqueTypes.map((type) => (
+                          <option key={type} value={type}>
+                            {type}
+                          </option>
+                        ))}
+                      </select>
+                      {selectedType && (
+                        <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                          ✓ {inventoryItems.filter(item => item.Item_Type === selectedType).length} {selectedType}(s) available - Lab Tech will assign a specific item
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* Borrow Date & Time */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex flex-col">
+                    <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Borrow Date <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      name="borrowDate"
                       required
-                      className="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg py-2.5 px-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    >
-                      <option value="">Select an item type</option>
-                      {uniqueTypes.map((type) => (
-                        <option key={type} value={type}>
-                          {type}
-                        </option>
-                      ))}
-                    </select>
-                    {selectedType && (
-                      <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                        ✓ {inventoryItems.filter(item => item.Item_Type === selectedType).length} {selectedType}(s) available - Lab Tech will assign a specific item
-                      </p>
-                    )}
-                  </>
-                )}
-              </div>
+                      min={new Date().toISOString().split('T')[0]}
+                      className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Borrow Time <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="time"
+                      name="borrowTime"
+                      required
+                      className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
 
-              {/* Borrow Date & Time */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Borrow Date <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    name="borrowDate"
-                    required
-                    min={new Date().toISOString().split('T')[0]}
-                    className="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg py-2.5 px-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
+                {/* Return Date & Time */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex flex-col">
+                    <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Return Date <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      name="returnDate"
+                      required
+                      min={new Date().toISOString().split('T')[0]}
+                      className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Return Time <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="time"
+                      name="returnTime"
+                      required
+                      className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Borrow Time <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="time"
-                    name="borrowTime"
-                    required
-                    className="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg py-2.5 px-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
 
-              {/* Return Date & Time */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Return Date <span className="text-red-400">*</span>
+                {/* Purpose / Reason */}
+                <div className="flex flex-col">
+                  <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Purpose / Reason <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="date"
-                    name="returnDate"
+                  <textarea
+                    name="purpose"
                     required
-                    min={new Date().toISOString().split('T')[0]}
-                    className="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg py-2.5 px-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Return Time <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="time"
-                    name="returnTime"
-                    required
-                    className="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg py-2.5 px-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    rows={3}
+                    placeholder="Briefly describe why you need this device..."
+                    className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
                   />
                 </div>
               </div>
 
-              {/* Purpose / Reason */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Purpose / Reason <span className="text-red-400">*</span>
-                </label>
-                <textarea
-                  name="purpose"
-                  required
-                  rows={3}
-                  placeholder="Briefly describe why you need this device..."
-                  className="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg py-2.5 px-3 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
-                />
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+              {/* Footer */}
+              <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setIsBorrowModalOpen(false)}
-                  className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded-lg transition-colors"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isLoadingItems}
-                  className="px-5 py-2.5 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                  className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
                 >
                   <PlusCircle className="h-4 w-4" />
                   Submit Request
