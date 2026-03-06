@@ -425,3 +425,33 @@ html {
   --fc-cell-bg-color: #1f2937;
   --fc-cell-text-color: #f3f4f6;
 }
+
+/* ---------------------------------- */
+/* Computer Use Queue Time Indicator  */
+/* ---------------------------------- */
+
+.current-time-slot {
+  border: 2px solid #22d3ee !important;
+  box-shadow: 0 0 10px rgba(34, 211, 238, 0.3) !important;
+  animation: pulse-glow 1.5s ease-in-out infinite;
+  position: relative;
+  z-index: 10;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 10px rgba(34, 211, 238, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(34, 211, 238, 0.5); }
+}
+
+.current-time-label {
+  color: #22d3ee;
+  font-weight: bold;
+  font-size: 0.75rem;
+  text-align: center;
+  position: absolute;
+  top: -20px;
+  left: 0;
+  right: 0;
+  white-space: nowrap;
+  text-shadow: 0 0 4px rgba(0,0,0,0.5); /* For visibility over grid borders */
+}

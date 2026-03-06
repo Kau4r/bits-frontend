@@ -41,6 +41,7 @@ export default function Room() {
     const [selectedSession, setSelectedSession] = useState<RoomSession | null>(null);
     const [selectedViewRoom, setSelectedViewRoom] = useState<RoomType | null>(null);
 
+
     const [selectedCategory, setSelectedCategory] = useState<LabCategory | null>(null);
     const [selectedSlotStart, setSelectedSlotStart] = useState('');
     const [selectedSlotEnd, setSelectedSlotEnd] = useState('');
@@ -284,6 +285,9 @@ export default function Room() {
             return;
         }
 
+        const confirmed = await modal.showConfirm("Are you sure you want to remove this booking?", "Confirm Removal");
+        if (!confirmed) return;
+
         try {
             await api.delete(`/bookings/${session.id}`);
             setSessions(prev => prev.filter(s => s !== session));
@@ -338,61 +342,63 @@ export default function Room() {
                             }`}
                     >
                         <CalendarDaysIcon className="h-4 w-4" />
-                        Room Availability Queue
+                        Computer Use Queue
                     </button>
                 </div>
             </div>
 
-            {/* Filters Bar */}
-            <div className="mb-6 flex flex-wrap items-center gap-3">
-                {/* Search */}
-                <div className="min-w-[280px] flex-1">
-                    <Search
-                        searchTerm={searchTerm}
-                        onChange={setSearchTerm}
-                        showLabel={false}
-                        placeholder="Search rooms..."
-                    />
-                </div>
+            {/* Filters Bar / Queue Header */}
+            {activeTab === 'rooms' && (
+                <div className="mb-6 flex flex-wrap items-center gap-3">
+                    {/* Search */}
+                    <div className="min-w-[280px] flex-1">
+                        <Search
+                            searchTerm={searchTerm}
+                            onChange={setSearchTerm}
+                            showLabel={false}
+                            placeholder="Search rooms..."
+                        />
+                    </div>
 
-                {/* Type Filter */}
-                <div className="relative">
-                    <select
-                        value={typeFilter}
-                        onChange={(e) => setTypeFilter(e.target.value as TypeFilterType)}
-                        className="appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-4 pr-10 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
-                    >
-                        <option value="All Types">All Types</option>
-                        <option value="LECTURE">Lecture Room</option>
-                        <option value="CONSULTATION">Consultation Room</option>
-                        <option value="LAB">Lab</option>
-                    </select>
-                    <FunnelIcon className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                </div>
+                    {/* Type Filter */}
+                    <div className="relative">
+                        <select
+                            value={typeFilter}
+                            onChange={(e) => setTypeFilter(e.target.value as TypeFilterType)}
+                            className="appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-4 pr-10 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
+                        >
+                            <option value="All Types">All Types</option>
+                            <option value="LECTURE">Lecture Room</option>
+                            <option value="CONSULTATION">Consultation Room</option>
+                            <option value="LAB">Lab</option>
+                        </select>
+                        <FunnelIcon className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                    </div>
 
-                {/* Status Filter */}
-                <div className="relative">
-                    <select
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value as StatusFilterType)}
-                        className="appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-4 pr-10 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
-                    >
-                        <option value="All Status">All Status</option>
-                        <option value="AVAILABLE">Available</option>
-                        <option value="IN_USE">In Use</option>
-                        <option value="MAINTENANCE">Maintenance</option>
-                    </select>
-                    <FunnelIcon className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                </div>
+                    {/* Status Filter */}
+                    <div className="relative">
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value as StatusFilterType)}
+                            className="appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-4 pr-10 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
+                        >
+                            <option value="All Status">All Status</option>
+                            <option value="AVAILABLE">Available</option>
+                            <option value="IN_USE">In Use</option>
+                            <option value="MAINTENANCE">Maintenance</option>
+                        </select>
+                        <FunnelIcon className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                    </div>
 
-                {/* Results Count */}
-                <div className="ml-auto flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                    <span className="font-semibold text-gray-900 dark:text-white">
-                        {activeTab === 'rooms' ? filteredRooms.length : labRooms.length}
-                    </span>
-                    <span>of {activeTab === 'rooms' ? rooms.length : labRooms.length} rooms</span>
+                    {/* Results Count */}
+                    <div className="ml-auto flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                        <span className="font-semibold text-gray-900 dark:text-white">
+                            {filteredRooms.length}
+                        </span>
+                        <span>of {rooms.length} rooms</span>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Main Content Area */}
             <div className="flex-1">
@@ -458,13 +464,13 @@ export default function Room() {
                                                                 {label}
                                                             </h2>
                                                             <p className="text-sm text-gray-500 dark:text-gray-400">
-                                                                {categoryRooms.length} room{categoryRooms.length !== 1 ? 's' : ''}
+                                                                {categoryRooms.length} room{categoryRooms.length !== 1 ? 's' : ''} shown
                                                             </p>
                                                         </div>
                                                     </div>
                                                     <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
                                                         <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                                                        {availableNow} Available now
+                                                        {availableNow} room(s) available now
                                                     </span>
                                                 </div>
 
@@ -475,10 +481,12 @@ export default function Room() {
                                                 )}
 
                                                 <TimeSlotGrid
-                                                    sessions={categorySessions}
-                                                    totalRoomsInCategory={categoryRooms.length}
+                                                    // Only display valid computer queue slots opened by lab staff
+                                                    sessions={categorySessions.filter(s => s.type === 'booking' && s.purpose === 'Student Usage')}
+                                                    categoryRooms={categoryRooms}
                                                     onAddRoom={(start, end) => handleAddTimeSlot(key, start, end)}
                                                     onSlotDetail={handleSlotDetail}
+                                                    testTimeOverride={new Date('2024-03-07T15:00:00')} // Uncomment to test a specific time
                                                 />
                                             </div>
                                         );
@@ -551,9 +559,17 @@ export default function Room() {
                                     <div className="flex justify-between items-start">
                                         <div>
                                             <p className="font-medium text-gray-900 dark:text-white">{session.roomName}</p>
-                                            <p className="text-sm text-gray-500 dark:text-gray-400">{session.purpose || 'Booked'}</p>
-                                            {session.bookedByName && (
-                                                <p className="text-xs text-gray-400 dark:text-gray-500">by {session.bookedByName}</p>
+                                            {session.type === 'schedule' ? (
+                                                <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">Class Schedule</p>
+                                            ) : session.type === 'booking' && session.purpose !== 'Student Usage' ? (
+                                                <p className="text-sm text-gray-500 dark:text-gray-400 italic">Unavailable</p>
+                                            ) : (
+                                                <>
+                                                    <p className="text-sm text-gray-500 dark:text-gray-400">{session.purpose || 'Booked'}</p>
+                                                    {session.bookedByName && (
+                                                        <p className="text-xs text-gray-400 dark:text-gray-500">by {session.bookedByName}</p>
+                                                    )}
+                                                </>
                                             )}
                                         </div>
                                         {session.type === 'booking' && session.userId === user?.User_ID && (
