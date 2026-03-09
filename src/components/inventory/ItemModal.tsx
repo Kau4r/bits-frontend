@@ -1,4 +1,4 @@
-import { Download } from "lucide-react";
+import { Download, Printer } from "lucide-react";
 import ReactQRCode from "react-qr-code";
 import { createPortal } from "react-dom";
 import { useState, useEffect, useRef } from "react";
@@ -37,6 +37,21 @@ interface ItemModalProps {
   userId?: number;
 }
 
+// Utility function to format date as dd/mm/yyyy
+const formatDate = (isoDate: string | null | undefined): string => {
+  if (!isoDate) return "N/A";
+  try {
+    const date = new Date(isoDate);
+    if (isNaN(date.getTime())) return "N/A";
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  } catch {
+    return "N/A";
+  }
+};
+
 export default function ItemModal({
   isOpen,
   onClose,
@@ -48,6 +63,7 @@ export default function ItemModal({
 }: ItemModalProps) {
   const modal = useModal();
   const formRef = useRef<HTMLFormElement>(null);
+  const labelRef = useRef<HTMLDivElement>(null);
 
   const [mode, setMode] = useState(initMode);
   const [quantity, setQuantity] = useState(1);
@@ -176,41 +192,222 @@ export default function ItemModal({
     }
   };
 
-  const handleDownloadQRCode = () => {
+  const handleDownloadQRCode = async () => {
     const svgEl = document.getElementById("qrCode");
     if (!svgEl || !(svgEl instanceof SVGSVGElement)) return;
 
-    const serializer = new XMLSerializer();
-    const svgString = serializer.serializeToString(svgEl);
-
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
-    const img = new Image();
+    if (!ctx) return;
 
+    // Create label with QR + Asset Code + Date (same format as print)
+    const scale = 3;
+    const width = 1650;
+    const height = 400;
+    canvas.width = width * scale;
+    canvas.height = height * scale;
+    ctx.scale(scale, scale);
+
+    // Background
+    ctx.fillStyle = "#1f2937";
+    ctx.fillRect(0, 0, width, height);
+
+    const serializer = new XMLSerializer();
+    const svgString = serializer.serializeToString(svgEl);
     const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
     const url = URL.createObjectURL(svgBlob);
 
-    img.onload = () => {
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx?.drawImage(img, 0, 0);
-      const pngUrl = canvas.toDataURL("image/png");
+    const img = new Image();
 
-      const downloadLink = document.createElement("a");
-      downloadLink.href = pngUrl;
-      downloadLink.download = `${formData.serialNumber || "item"}.png`;
-      downloadLink.click();
+    await new Promise((resolve) => {
+      img.onload = () => {
+        // QR code size and position
+        const qrSize = 300;
+        const qrX = 80;
+        const qrY = (height - qrSize) / 2;
 
-      URL.revokeObjectURL(url);
-    };
+        // Draw QR code
+        ctx.drawImage(img, qrX, qrY, qrSize, qrSize);
 
-    img.src = url;
+        // Text position
+        const textX = qrX + qrSize + 100;
+        const centerY = height / 2;
+
+        // Draw Asset Code label
+        ctx.fillStyle = "#9ca3af";
+        ctx.font = "28px Arial";
+        ctx.fillText("Asset Code:", textX, centerY - 60);
+
+        // Draw Asset Code value
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 48px monospace";
+        ctx.fillText(item?.Item_Code || "Not Available", textX, centerY - 10);
+
+        // Draw Created label
+        ctx.fillStyle = "#9ca3af";
+        ctx.font = "24px Arial";
+        ctx.fillText("Created:", textX, centerY + 50);
+
+        // Draw Created date
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "28px monospace";
+        ctx.fillText(formatDate(item?.Updated_At), textX, centerY + 90);
+
+        URL.revokeObjectURL(url);
+        resolve(null);
+      };
+      img.src = url;
+    });
+
+    const pngUrl = canvas.toDataURL("image/png");
+    const downloadLink = document.createElement("a");
+    downloadLink.href = pngUrl;
+    downloadLink.download = `label-${item?.Item_Code || formData.serialNumber || "item"}.png`;
+    downloadLink.click();
+  };
+
+  const handlePrintLabel = async () => {
+    const labelElement = labelRef.current;
+    if (!labelElement) return;
+
+    // Create a canvas to render the entire label
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // Smaller print size - about half of letter size width
+    const scale = 3;
+    const width = 800; // Smaller width for compact label
+    const height = 250; // Proportional height
+    canvas.width = width * scale;
+    canvas.height = height * scale;
+    ctx.scale(scale, scale);
+
+    // Background
+    ctx.fillStyle = "#1f2937";
+    ctx.fillRect(0, 0, width, height);
+
+    // Get QR code SVG
+    const svgEl = document.getElementById("qrCode");
+    if (svgEl && svgEl instanceof SVGSVGElement) {
+      const serializer = new XMLSerializer();
+      const svgString = serializer.serializeToString(svgEl);
+      const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(svgBlob);
+
+      const qrImg = new Image();
+
+      await new Promise((resolve) => {
+        qrImg.onload = () => {
+          // QR code size and position (centered vertically, left aligned)
+          const qrSize = 180;
+          const qrX = 40;
+          const qrY = (height - qrSize) / 2;
+
+          // Draw QR code on the left
+          ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+
+          // Text starts after QR code with some padding
+          const textX = qrX + qrSize + 50;
+          const centerY = height / 2;
+
+          // Draw Asset Code label
+          ctx.fillStyle = "#9ca3af";
+          ctx.font = "18px Arial";
+          ctx.fillText("Asset Code:", textX, centerY - 40);
+
+          // Draw Asset Code value
+          ctx.fillStyle = "#ffffff";
+          ctx.font = "bold 32px monospace";
+          ctx.fillText(item?.Item_Code || "Not Available", textX, centerY - 5);
+
+          // Draw Created label
+          ctx.fillStyle = "#9ca3af";
+          ctx.font = "16px Arial";
+          ctx.fillText("Updated:", textX, centerY + 35);
+
+          // Draw Created date
+          ctx.fillStyle = "#ffffff";
+          ctx.font = "20px monospace";
+          ctx.fillText(formatDate(item?.Updated_At), textX, centerY + 60);
+
+          URL.revokeObjectURL(url);
+          resolve(null);
+        };
+        qrImg.src = url;
+      });
+    }
+
+    const pngUrl = canvas.toDataURL("image/png");
+
+    // Trigger print dialog with smaller label
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Print Label - ${item?.Item_Code || "Item"}</title>
+            <style>
+              @page { 
+                size: auto;
+                margin: 0.5in;
+              }
+              * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+              }
+              body { 
+                margin: 0; 
+                padding: 20px;
+                display: flex;
+                justify-content: flex-start;
+                align-items: flex-start;
+                min-height: 100vh;
+                background: white;
+              }
+              img { 
+                max-width: 600px;
+                height: auto;
+                display: block;
+              }
+              @media print {
+                body {
+                  background: white;
+                  padding: 0;
+                }
+                img {
+                  max-width: 600px;
+                  page-break-inside: avoid;
+                }
+              }
+            </style>
+          </head>
+          <body>
+            <img src="${pngUrl}" alt="Asset Label" />
+            <script>
+              window.onload = () => {
+                setTimeout(() => {
+                  window.print();
+                }, 250);
+              };
+              window.onafterprint = () => {
+                setTimeout(() => window.close(), 100);
+              };
+            </script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    }
   };
 
   if (!isOpen) return null;
 
   const readOnly = mode === "view";
   const modeTitle = mode === "add" ? "Add Item" : mode === "edit" ? "Edit Item" : "View Item";
+  const showAssetInfo = (mode === "view" || mode === "edit") && item;
 
   return createPortal(
     <div
@@ -240,25 +437,64 @@ export default function ItemModal({
         {/* Form Content - Scrollable */}
         <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
           <div className="flex-1 overflow-y-auto px-6 py-4">
-            {/* QR Code for View/Edit */}
-            {(mode === "view" || mode === "edit") && formData.serialNumber && (
-              <div className="flex items-center justify-center gap-4 mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <ReactQRCode
-                  id="qrCode"
-                  value={formData.serialNumber}
-                  size={120}
-                  level="H"
-                  bgColor="#1f2937"
-                  fgColor="#fff"
-                />
-                <button
-                  type="button"
-                  onClick={handleDownloadQRCode}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
-                >
-                  <Download className="w-4 h-4" />
-                  Download
-                </button>
+            {/* QR Code with Asset Info for View/Edit */}
+            {showAssetInfo && formData.serialNumber && (
+              <div
+                ref={labelRef}
+                id="printable-label"
+                className="flex items-center justify-between gap-6 mb-6 p-6 bg-gray-50 dark:bg-gray-800 rounded-lg"
+              >
+                {/* QR Code */}
+                <div className="flex-shrink-0">
+                  <ReactQRCode
+                    id="qrCode"
+                    value={formData.serialNumber}
+                    size={120}
+                    level="H"
+                    bgColor="#1f2937"
+                    fgColor="#fff"
+                  />
+                </div>
+
+                {/* Asset Information */}
+                <div className="flex-1 flex flex-col gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                      Asset Code:
+                    </p>
+                    <p className="text-lg font-bold text-gray-900 dark:text-white font-mono">
+                      {item?.Item_Code || "Not Available"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                      Updated:
+                    </p>
+                    <p className="text-sm text-gray-700 dark:text-gray-300 font-mono">
+                      {formatDate(item?.Updated_At)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={handleDownloadQRCode}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePrintLabel}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+                  >
+                    <Printer className="w-4 h-4" />
+                    Print Label
+                  </button>
+                </div>
               </div>
             )}
 
