@@ -11,6 +11,21 @@ interface RoomModalProps {
   onEditMode?: () => void;
 }
 
+// Helper function to get default capacity based on room type
+const getDefaultCapacity = (roomType: string): number => {
+  switch (roomType) {
+    case 'CONSULTATION':
+      return 5;
+    case 'CONFERENCE':
+      return 10;
+    case 'LECTURE':
+      return 40;
+    case 'LAB':
+      return 30;
+    default:
+      return 30;
+  }
+};
 
 export default function RoomModal({
   mode,
@@ -24,7 +39,7 @@ export default function RoomModal({
     Name: initialData?.Name ?? '',
     Room_Type: initialData?.Room_Type ?? 'LECTURE',
     Status: initialData?.Status ?? 'AVAILABLE',
-    Capacity: initialData?.Capacity ?? 30,
+    Capacity: initialData?.Capacity ?? getDefaultCapacity(initialData?.Room_Type ?? 'LECTURE'),
     Lab_Type: initialData?.Lab_Type ?? undefined,
   })
 
@@ -37,7 +52,7 @@ export default function RoomModal({
         Name: initialData.Name ?? '',
         Room_Type: initialData.Room_Type ?? 'LECTURE',
         Status: initialData.Status ?? 'AVAILABLE',
-        Capacity: initialData.Capacity ?? 30,
+        Capacity: initialData.Capacity ?? getDefaultCapacity(initialData.Room_Type ?? 'LECTURE'),
         Lab_Type: initialData.Lab_Type ?? undefined,
       })
     }
@@ -50,10 +65,19 @@ export default function RoomModal({
         ...prev,
         [name]: name === 'Capacity' ? Number(value) : value,
       };
-      // Clear Lab_Type when switching away from LAB
-      if (name === 'Room_Type' && value !== 'LAB') {
-        updated.Lab_Type = undefined;
+
+      // Handle room type changes
+      if (name === 'Room_Type') {
+        // Clear Lab_Type when switching away from LAB
+        if (value !== 'LAB') {
+          updated.Lab_Type = undefined;
+        }
+        // Set default capacity for the new room type (only in add mode)
+        if (mode === 'add') {
+          updated.Capacity = getDefaultCapacity(value);
+        }
       }
+
       return updated;
     })
   }
@@ -131,6 +155,7 @@ export default function RoomModal({
                   className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60"
                 >
                   <option value="CONSULTATION">Consultation</option>
+                  <option value="CONFERENCE">Conference</option>
                   <option value="LECTURE">Lecture</option>
                   <option value="LAB">Lab</option>
                 </select>
@@ -186,8 +211,12 @@ export default function RoomModal({
                   onChange={handleChange}
                   required
                   readOnly={readOnly}
+                  min={1}
                   className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60"
                 />
+                <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                  Default capacity: {getDefaultCapacity(room.Room_Type)} (can be customized)
+                </p>
               </div>
             </div>
           </div>
