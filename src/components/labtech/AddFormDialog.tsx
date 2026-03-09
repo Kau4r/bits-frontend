@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import type { FormStatus, FormType, FormRecord } from '@/types/formtypes';
+import type { FormStatus, FormType, FormRecord, FormDepartment } from '@/types/formtypes';
+import { formDepartmentLabels, getDepartmentsForType } from '@/types/formtypes';
 
 export const AddFormDialog: React.FC<{
   open: boolean;
@@ -8,23 +9,35 @@ export const AddFormDialog: React.FC<{
   existing?: FormRecord[];
 }> = ({ open, onClose, onCreate, existing = [] }) => {
   const [type, setType] = useState<FormType>('WRF');
-  const [department, setDepartment] = useState('Registrar');
+  const [department, setDepartment] = useState<FormDepartment>('REQUESTOR');
   const [status, setStatus] = useState<FormStatus>('PENDING');
+  const [requesterName, setRequesterName] = useState('');
+  const [remarks, setRemarks] = useState('');
   const [file, setFile] = useState<File | undefined>();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Get departments for the selected form type
+  const departments = useMemo(() => getDepartmentsForType(type), [type]);
 
   // Reset form when dialog is closed
   useEffect(() => {
     if (!open) {
       setType('WRF');
-      setDepartment('Registrar');
+      setDepartment('REQUESTOR');
       setStatus('PENDING');
+      setRequesterName('');
+      setRemarks('');
       setFile(undefined);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
     }
   }, [open]);
+
+  // Reset department when form type changes
+  useEffect(() => {
+    setDepartment('REQUESTOR');
+  }, [type]);
 
   const nextId = useMemo(() => {
     const prefix = type;
@@ -48,7 +61,9 @@ export const AddFormDialog: React.FC<{
       status,
       department,
       file,
-      isArchived: false
+      isArchived: false,
+      requesterName: requesterName || undefined,
+      remarks: remarks || undefined,
     });
     onClose();
   };
@@ -111,13 +126,14 @@ export const AddFormDialog: React.FC<{
               </label>
               <select
                 value={department}
-                onChange={(e) => setDepartment(e.target.value)}
+                onChange={(e) => setDepartment(e.target.value as FormDepartment)}
                 className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-2 text-sm"
               >
-                <option value="Registrar">Registrar</option>
-                <option value="Finance">Finance</option>
-                <option value="DCISM">DCISM</option>
-                <option value="Laboratory">Laboratory</option>
+                {departments.map((dept) => (
+                  <option key={dept} value={dept}>
+                    {formDepartmentLabels[dept]}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -148,6 +164,34 @@ export const AddFormDialog: React.FC<{
                 className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white p-2 text-sm cursor-not-allowed"
               />
             </div>
+          </div>
+
+          {/* Requester Name */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Requester Name
+            </label>
+            <input
+              type="text"
+              value={requesterName}
+              onChange={(e) => setRequesterName(e.target.value)}
+              placeholder="Name of the person requesting"
+              className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-2 text-sm"
+            />
+          </div>
+
+          {/* Remarks */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Remarks / Notes
+            </label>
+            <textarea
+              value={remarks}
+              onChange={(e) => setRemarks(e.target.value)}
+              placeholder="Any additional notes or context..."
+              rows={3}
+              className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-2 text-sm resize-none"
+            />
           </div>
 
           <div>
@@ -213,8 +257,8 @@ export const AddFormDialog: React.FC<{
               type="submit"
               disabled={!file}
               className={`px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${file
-                  ? 'bg-blue-600 hover:bg-blue-700'
-                  : 'bg-blue-400 cursor-not-allowed'
+                ? 'bg-blue-600 hover:bg-blue-700'
+                : 'bg-blue-400 cursor-not-allowed'
                 }`}
             >
               Track Form

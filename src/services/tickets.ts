@@ -6,6 +6,7 @@ export interface TicketFilters {
     status?: TicketStatus;
     technicianId?: number;
     excludeStatus?: TicketStatus;
+    unassigned?: boolean;
 }
 
 // Fetch all tickets with optional filters
@@ -44,6 +45,11 @@ export const archiveTicket = async (ticketId: number): Promise<Ticket> => {
 export const restoreTicket = async (ticketId: number): Promise<Ticket> => {
     const { data } = await api.put<Ticket>(`${"/tickets"}/${ticketId}`, { Archived: false });
     return data;
+};
+
+// Assign or reassign ticket to a technician
+export const assignTicket = async (ticketId: number, technicianId: number): Promise<Ticket> => {
+    return updateTicket(ticketId, { Technician_ID: technicianId });
 };
 
 // Delete ticket

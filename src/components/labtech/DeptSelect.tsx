@@ -1,17 +1,21 @@
 // src/components/labtech/DeptSelect.tsx
 import React from 'react';
-import type { FormDepartment } from '../../types/formtypes';
-import { formDepartmentLabels } from '../../types/formtypes';
+import type { FormDepartment, FormType } from '../../types/formtypes';
+import { formDepartmentLabels, getDepartmentsForType } from '../../types/formtypes';
 
 interface DeptSelectProps {
   value: FormDepartment | string;
   onChange: (value: FormDepartment) => void;
+  formType?: FormType;
   className?: string;
 }
 
-const departments: FormDepartment[] = ['REGISTRAR', 'FINANCE', 'DCISM', 'LABORATORY'];
+export const DeptSelect: React.FC<DeptSelectProps> = ({ value, onChange, formType, className = '' }) => {
+  // If formType is specified, only show departments for that type; otherwise show all
+  const departments: FormDepartment[] = formType
+    ? getDepartmentsForType(formType)
+    : (['REQUESTOR', 'DEPARTMENT_HEAD', 'DEAN_OFFICE', 'TNS', 'PURCHASING', 'PPFO', 'COMPLETED'] as FormDepartment[]);
 
-export const DeptSelect: React.FC<DeptSelectProps> = ({ value, onChange, className = '' }) => {
   return (
     <div className={`relative ${className}`}>
       <select

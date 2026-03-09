@@ -1,7 +1,14 @@
 // Form types matching backend schema
 export type FormType = 'WRF' | 'RIS';
 export type FormStatus = 'PENDING' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED' | 'ARCHIVED';
-export type FormDepartment = 'REGISTRAR' | 'FINANCE' | 'DCISM' | 'LABORATORY';
+export type FormDepartment =
+  | 'REQUESTOR'
+  | 'DEPARTMENT_HEAD'
+  | 'DEAN_OFFICE'
+  | 'TNS'
+  | 'PURCHASING'
+  | 'PPFO'
+  | 'COMPLETED';
 
 // Display labels for UI
 export const formTypeLabels: Record<FormType, string> = {
@@ -18,10 +25,44 @@ export const formStatusLabels: Record<FormStatus, string> = {
 };
 
 export const formDepartmentLabels: Record<FormDepartment, string> = {
-  REGISTRAR: 'Registrar',
-  FINANCE: 'Finance',
-  DCISM: 'DCISM',
-  LABORATORY: 'Laboratory',
+  REQUESTOR: 'Requestor',
+  DEPARTMENT_HEAD: 'Department Head',
+  DEAN_OFFICE: 'Dean Office',
+  TNS: 'TNS',
+  PURCHASING: 'Purchasing',
+  PPFO: 'PPFO',
+  COMPLETED: 'Completed',
+};
+
+// Departments available per form type
+export const risDepartments: FormDepartment[] = [
+  'REQUESTOR',
+  'DEPARTMENT_HEAD',
+  'DEAN_OFFICE',
+  'TNS',
+  'PURCHASING',
+  'COMPLETED',
+];
+
+export const wrfDepartments: FormDepartment[] = [
+  'REQUESTOR',
+  'DEPARTMENT_HEAD',
+  'PPFO',
+  'COMPLETED',
+];
+
+// Timeline steps per form type (display labels for the InlineTimeline)
+export const risTimelineSteps = ['Requestor', 'Department Head', 'Dean Office', 'TNS', 'Purchasing', 'Completed'];
+export const wrfTimelineSteps = ['Requestor', 'Department Head', 'PPFO', 'Completed'];
+
+// Get departments for a given form type
+export const getDepartmentsForType = (formType: FormType): FormDepartment[] => {
+  return formType === 'RIS' ? risDepartments : wrfDepartments;
+};
+
+// Get timeline steps for a given form type
+export const getTimelineStepsForType = (formType: FormType): string[] => {
+  return formType === 'RIS' ? risTimelineSteps : wrfTimelineSteps;
 };
 
 // Status chip colors
@@ -70,6 +111,8 @@ export interface Form {
   Creator?: FormUser;
   Approver?: FormUser | null;
   History?: FormHistory[];
+  Requester_Name?: string | null;
+  Remarks?: string | null;
 }
 
 // Legacy type for backward compatibility during migration
@@ -85,4 +128,6 @@ export interface FormRecord {
   attachmentType?: 'pdf' | 'image' | 'docx' | 'doc';
   isArchived: boolean;
   history?: Array<{ dept: string; at: string }>;
+  requesterName?: string;
+  remarks?: string;
 }

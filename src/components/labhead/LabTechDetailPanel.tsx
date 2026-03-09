@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { fetchTickets } from '@/services/tickets';
+import AssignTicketDropdown from '@/components/labhead/AssignTicketDropdown';
 import { getReports, reviewReport } from '@/services/reports';
 import type { Ticket } from '@/types/tickets';
 import type { WeeklyReport } from '@/types/report';
@@ -22,9 +23,10 @@ type LabTech = {
 
 interface Props {
   labTech: LabTech;
+  onTicketReassigned?: () => void;
 }
 
-export default function LabTechDetailPanel({ labTech }: Props) {
+export default function LabTechDetailPanel({ labTech, onTicketReassigned }: Props) {
   const [activeTab, setActiveTab] = useState('Tickets');
   const [expandedReport, setExpandedReport] = useState<number | null>(null);
 
@@ -44,7 +46,6 @@ export default function LabTechDetailPanel({ labTech }: Props) {
         setIsLoadingTickets(true);
         const fetchedTickets = await fetchTickets({
           technicianId: labTech.dbId,
-          excludeStatus: 'PENDING',
         });
         setTickets(fetchedTickets);
       } catch (error) {
@@ -73,6 +74,7 @@ export default function LabTechDetailPanel({ labTech }: Props) {
     loadReports();
   }, [labTech.dbId]);
 
+  const pendingTickets = tickets.filter(t => t.Status === 'PENDING');
   const inProgressTickets = tickets.filter(t => t.Status === 'IN_PROGRESS');
   const resolvedTickets = tickets.filter(t => t.Status === 'RESOLVED');
 
@@ -104,11 +106,10 @@ export default function LabTechDetailPanel({ labTech }: Props) {
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{labTech.name}</h1>
             <p className="text-lg text-gray-500 dark:text-gray-400">{labTech.id} &nbsp;|&nbsp; {labTech.email || labTech.department || 'Lab Technician'}</p>
             <span
-              className={`mt-2 inline-block px-3 py-1 text-sm font-semibold rounded-full ${
-                labTech.status === 'Active'
-                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                  : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-              }`}
+              className={`mt-2 inline-block px-3 py-1 text-sm font-semibold rounded-full ${labTech.status === 'Active'
+                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                }`}
             >
               {labTech.status}
             </span>
@@ -119,15 +120,14 @@ export default function LabTechDetailPanel({ labTech }: Props) {
       <nav className="mb-6 flex border-b border-gray-200 dark:border-gray-700 gap-6">
         <button
           onClick={() => setActiveTab('Tickets')}
-          className={`relative pb-3 text-sm font-medium outline-none transition-colors ${
-            activeTab === 'Tickets'
-              ? 'text-indigo-600 dark:text-indigo-400'
-              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-          }`}
+          className={`relative pb-3 text-sm font-medium outline-none transition-colors ${activeTab === 'Tickets'
+            ? 'text-indigo-600 dark:text-indigo-400'
+            : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+            }`}
         >
           Tickets
           <span className="ml-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full text-xs">
-            {inProgressTickets.length + resolvedTickets.length}
+            {pendingTickets.length + inProgressTickets.length + resolvedTickets.length}
           </span>
           {activeTab === 'Tickets' && (
             <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-indigo-600 dark:bg-indigo-400" />
@@ -135,11 +135,10 @@ export default function LabTechDetailPanel({ labTech }: Props) {
         </button>
         <button
           onClick={() => setActiveTab('Reports')}
-          className={`relative pb-3 text-sm font-medium outline-none transition-colors ${
-            activeTab === 'Reports'
-              ? 'text-indigo-600 dark:text-indigo-400'
-              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-          }`}
+          className={`relative pb-3 text-sm font-medium outline-none transition-colors ${activeTab === 'Reports'
+            ? 'text-indigo-600 dark:text-indigo-400'
+            : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+            }`}
         >
           Reports
           <span className="ml-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full text-xs">
@@ -171,17 +170,17 @@ export default function LabTechDetailPanel({ labTech }: Props) {
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Location</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                  {[...inProgressTickets, ...resolvedTickets].map((ticket) => (
+                  {[...pendingTickets, ...inProgressTickets, ...resolvedTickets].map((ticket) => (
                     <tr key={ticket.Ticket_ID} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                          ticket.Priority === 'HIGH' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' :
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${ticket.Priority === 'HIGH' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' :
                           ticket.Priority === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
-                          'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
-                        }`}>
+                            'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+                          }`}>
                           {ticket.Priority}
                         </span>
                       </td>
@@ -195,14 +194,27 @@ export default function LabTechDetailPanel({ labTech }: Props) {
                         {new Date(ticket.Created_At).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          ticket.Status === 'RESOLVED'
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${ticket.Status === 'RESOLVED'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                          : ticket.Status === 'IN_PROGRESS'
+                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
                             : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
-                        }`}>
-                          <span className={`h-1.5 w-1.5 rounded-full ${ticket.Status === 'RESOLVED' ? 'bg-green-500' : 'bg-yellow-500'}`} />
+                          }`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${ticket.Status === 'RESOLVED' ? 'bg-green-500' : ticket.Status === 'IN_PROGRESS' ? 'bg-blue-500' : 'bg-yellow-500'}`} />
                           {ticket.Status.replace('_', ' ')}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <AssignTicketDropdown
+                          ticketId={ticket.Ticket_ID}
+                          currentTechnicianId={ticket.Technician_ID ?? undefined}
+                          onAssigned={() => {
+                            // Remove ticket from this tech's list locally
+                            setTickets(prev => prev.filter(t => t.Ticket_ID !== ticket.Ticket_ID));
+                            onTicketReassigned?.();
+                          }}
+                          buttonLabel="Reassign"
+                        />
                       </td>
                     </tr>
                   ))}
@@ -394,8 +406,8 @@ export default function LabTechDetailPanel({ labTech }: Props) {
                         const statusColor = status === 'Completed'
                           ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
                           : status === 'In Progress'
-                          ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
-                          : 'bg-gray-100 text-gray-800 dark:bg-gray-700/30 dark:text-gray-300';
+                            ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
+                            : 'bg-gray-100 text-gray-800 dark:bg-gray-700/30 dark:text-gray-300';
                         return (
                           <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                             <td className="px-4 py-3 whitespace-nowrap">

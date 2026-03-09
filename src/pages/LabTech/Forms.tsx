@@ -7,7 +7,7 @@ import { InlineTimeline } from '@/components/labtech/InlineTimeline';
 import { StatusSelect } from '@/components/labtech/StatusSelect';
 import { DeptSelect } from '@/components/labtech/DeptSelect';
 import type { FormRecord, FormStatus, FormType, FormDepartment } from '@/types/formtypes';
-import { formStatusColors, formStatusLabels, formDepartmentLabels } from '@/types/formtypes';
+import { formStatusColors, formStatusLabels, formDepartmentLabels, getTimelineStepsForType } from '@/types/formtypes';
 import { getForms, createForm, updateForm as updateFormAPI, archiveForm as archiveFormAPI, transferForm, uploadFile } from '@/services/forms';
 import { useAuth } from '@/context/AuthContext';
 import { useModal } from '@/context/ModalContext';
@@ -19,7 +19,7 @@ import type { Form } from '@/types/formtypes';
 const statusChip = formStatusColors;
 
 // Department display names (for UI) with matching to backend uppercase values
-const steps = ['Registrar', 'Finance', 'DCISM', 'Laboratory'] as const;
+// Timeline steps are now derived per form type via getTimelineStepsForType()
 
 export default function Forms() {
   const { user } = useAuth();
@@ -61,7 +61,9 @@ export default function Forms() {
     history: form.History?.map(h => ({
       dept: h.Department,
       at: h.Changed_At
-    })) || []
+    })) || [],
+    requesterName: form.Requester_Name || undefined,
+    remarks: form.Remarks || undefined,
   }), []);
 
   const loadForms = useCallback(async (isSilent = false) => {
@@ -163,7 +165,9 @@ export default function Forms() {
         fileName: payload.file?.name,
         fileUrl: fileUrl,
         fileType: payload.file?.type,
-        department: payload.department as any
+        department: payload.department as any,
+        requesterName: payload.requesterName,
+        remarks: payload.remarks,
       });
 
       setForms(prev => {
@@ -467,7 +471,7 @@ export default function Forms() {
                           </h4>
                           <div className="p-2">
                             <InlineTimeline
-                              steps={steps as unknown as string[]}
+                              steps={getTimelineStepsForType(f.type)}
                               current={formDepartmentLabels[f.department as FormDepartment] || f.department}
                               completedSteps={f.history?.map(h => h.dept) || []}
                             />
@@ -537,9 +541,32 @@ export default function Forms() {
                             <DeptSelect
                               value={editedForms[f.id]?.department ?? f.department}
                               onChange={(d) => handleLocalChange(f.id, 'department', d)}
+                              formType={f.type}
                               className="w-full"
                             />
                           </div>
+                        </div>
+
+                        {/* Remarks / Notes */}
+                        <div className="bg-white dark:bg-gray-900 p-5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-300 mb-4 flex items-center gap-2">
+                            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                            </svg>
+                            Remarks / Notes
+                          </h4>
+                          <textarea
+                            value={editedForms[f.id]?.remarks ?? f.remarks ?? ''}
+                            onChange={(e) => handleLocalChange(f.id, 'remarks', e.target.value)}
+                            placeholder="Add remarks or notes..."
+                            rows={3}
+                            className="block w-full pl-3 pr-3 py-2.5 text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 hover:border-gray-400 dark:hover:border-gray-500 resize-none"
+                          />
+                          {f.requesterName && (
+                            <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                              <span className="font-medium">Requester:</span> {f.requesterName}
+                            </p>
+                          )}
                         </div>
 
                         <div className="bg-white dark:bg-gray-900 p-5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">

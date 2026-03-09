@@ -11,6 +11,8 @@ export interface FormCreateInput {
     fileUrl?: string;
     fileType?: string;
     department?: FormDepartment;
+    requesterName?: string;
+    remarks?: string;
 }
 
 export interface FormUpdateInput {
@@ -18,6 +20,7 @@ export interface FormUpdateInput {
     approverId?: number | null;
     title?: string;
     content?: string;
+    remarks?: string;
 }
 
 export interface FormFilters {
