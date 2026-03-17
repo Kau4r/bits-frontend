@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { BrowserQRCodeReader } from '@zxing/browser';
-import { QrCodeIcon, PlusIcon, FunnelIcon } from '@heroicons/react/24/outline';
-import ItemModal from '@/components/inventory/ItemModal';
+import { QrCode, Plus, Filter } from 'lucide-react';
+import ItemModal from '@/pages/labtech/components/ItemModal';
 import Search from '@/components/Search';
 import { type Item } from '@/types/inventory';
 import type { Room } from '@/types/room';
 import { useAuth } from '@/context/AuthContext';
-import { fetchInventory } from '@/services/inventory';
+import { getInventory } from '@/services/inventory';
 import { getRooms } from '@/services/room';
 
 const InventoryMobilePage = () => {
@@ -45,7 +45,7 @@ const InventoryMobilePage = () => {
     useEffect(() => {
         const loadInventory = async () => {
             try {
-                const data = await fetchInventory();
+                const data = await getInventory();
                 setInventory(data.filter((item): item is Item => !!item));
             } catch (err) {
                 console.error('Error fetching inventory:', err);
@@ -131,14 +131,14 @@ const InventoryMobilePage = () => {
                     className="p-2 bg-gray-100 dark:bg-gray-800 rounded-md"
                     onClick={() => setIsQrOpen(true)}
                 >
-                    <QrCodeIcon className="w-5 h-5 text-gray-900 dark:text-gray-200" />
+                    <QrCode className="w-5 h-5 text-gray-900 dark:text-gray-200" />
                 </button>
 
                 <button
                     className="p-2 bg-gray-100 dark:bg-gray-800 rounded-md flex items-center gap-1"
                     onClick={() => setIsFilterOpen(!isFilterOpen)}
                 >
-                    <FunnelIcon className="w-5 h-5 text-gray-900 dark:text-gray-200" />
+                    <Filter className="w-5 h-5 text-gray-900 dark:text-gray-200" />
                 </button>
             </div>
 
@@ -190,7 +190,7 @@ const InventoryMobilePage = () => {
                 className="w-full flex items-center justify-center gap-2 rounded-md bg-indigo-600 text-white py-2"
                 onClick={() => { setModalMode('add'); setIsModalOpen(true); }}
             >
-                <PlusIcon className="h-5 w-5" />
+                <Plus className="h-5 w-5" />
                 Add Item
             </button>
 

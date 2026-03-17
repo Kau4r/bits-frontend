@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 
 type BorrowingEventType = 'BORROW_REQUESTED' | 'BORROW_APPROVED' | 'BORROW_REJECTED' | 'BORROW_RETURNED';
 

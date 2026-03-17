@@ -1,4 +1,4 @@
-import api from "./api";
+import api from "@/services/api";
 import type { Form, FormType, FormStatus, FormDepartment } from "@/types/formtypes";
 
 // Input types for creating/updating forms

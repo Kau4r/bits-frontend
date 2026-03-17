@@ -1,4 +1,4 @@
-import api from './api';
+import api from '@/services/api';
 
 // Types
 export interface ComputerItem {
@@ -19,6 +19,7 @@ export interface ComputerRoom {
 export interface Computer {
     Computer_ID: number;
     Name: string;
+    Mac_Address: string | null;
     Status: 'AVAILABLE' | 'IN_USE' | 'MAINTENANCE' | 'DECOMMISSIONED';
     Room_ID: number | null;
     Room: ComputerRoom | null;
@@ -57,6 +58,14 @@ export interface UpdateComputerPayload {
 }
 
 // API Functions
+
+/** Alias for fetchComputers — used by student-facing components */
+export const getComputers = async (roomId?: number): Promise<Computer[]> => {
+    const params = roomId ? { roomId } : {};
+    const response = await api.get<Computer[]>('/computers', { params });
+    return response.data;
+};
+
 export const fetchComputers = async (roomId?: number): Promise<Computer[]> => {
     const params = roomId ? { roomId } : {};
     const response = await api.get<Computer[]>('/computers', { params });

@@ -1,9 +1,9 @@
 import Table, { type SortConfig, type SortDirection } from '@/components/Table'
 import Search from '@/components/Search'
 import { useEffect, useState, useMemo } from 'react'
-import { PlusIcon, UserGroupIcon, FunnelIcon } from '@heroicons/react/24/outline'
+import { Plus, Users, Filter } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import AddUserModal from '@/components/SysAd/user/AddUserModal'
+import AddUserModal from '@/pages/sysad/components/AddUserModal'
 import { fetchUsers, addUser } from '@/services/user'
 import type { User } from '@/types/user'
 import { ROLES, type User_Role } from "@/types/user"
@@ -176,7 +176,7 @@ export default function SysAdDash() {
     return (
       <div className="flex h-full w-full flex-col items-center justify-center bg-white p-4 dark:bg-gray-900">
         <div className="text-center">
-          <UserGroupIcon className="mx-auto h-12 w-12 text-gray-400" />
+          <Users className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
             {error}
           </h3>
@@ -203,7 +203,7 @@ export default function SysAdDash() {
           className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-500 hover:shadow-md focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none active:bg-indigo-700"
           onClick={() => setIsModalOpen(true)}
         >
-          <PlusIcon className="h-5 w-5" />
+          <Plus className="h-5 w-5" />
           Add User
         </button>
       </div>
@@ -227,7 +227,7 @@ export default function SysAdDash() {
               <option key={role} value={role}>{formatRole(role)}</option>
             ))}
           </select>
-          <FunnelIcon className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Filter className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         </div>
 
         {/* Status Toggle */}
@@ -268,7 +268,7 @@ export default function SysAdDash() {
         >
           {filteredAndSortedUsers.length === 0 ? (
             <div className="flex flex-col items-center justify-center flex-1 w-full min-h-full" data-full-row>
-              <UserGroupIcon className="h-12 w-12 text-gray-400" />
+              <Users className="h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
                 {hasActiveFilters ? "No users match your filters" : `No ${showInactive ? 'inactive' : 'active'} users`}
               </h3>
@@ -291,7 +291,7 @@ export default function SysAdDash() {
                   onClick={() => setIsModalOpen(true)}
                   className="mt-4 inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
                 >
-                  <PlusIcon className="mr-2 h-4 w-4" />
+                  <Plus className="mr-2 h-4 w-4" />
                   Add User
                 </button>
               )}

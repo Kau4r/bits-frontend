@@ -4,7 +4,7 @@ import { fetchComputers, createComputer, updateComputer, deleteComputer, type Co
 import api from '@/services/api';
 import { useModal } from '@/context/ModalContext';
 import Table from '@/components/Table';
-import InventoryItemCombobox from '@/components/labtech/InventoryItemCombobox';
+import InventoryItemCombobox from '@/pages/labtech/components/InventoryItemCombobox';
 
 // Asset/Item type from inventory
 interface RoomAsset {

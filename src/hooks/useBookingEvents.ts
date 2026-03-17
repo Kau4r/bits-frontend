@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 
 type BookingEventType = 'BOOKING_CREATED' | 'BOOKING_CANCELLED' | 'BOOKING_APPROVED' | 'BOOKING_REJECTED';
 

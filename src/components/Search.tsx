@@ -1,4 +1,4 @@
-import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { Search, X } from 'lucide-react'
 
 interface TableSearchInputProps {
   label?: string
@@ -26,7 +26,7 @@ const TableSearchInput = ({
         </label>
       )}
       <div className="relative">
-        <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         <input
           type="text"
           id="search"
@@ -41,7 +41,7 @@ const TableSearchInput = ({
             onClick={() => onChange('')}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
           >
-            <XMarkIcon className="h-4 w-4" />
+            <X className="h-4 w-4" />
           </button>
         )}
       </div>

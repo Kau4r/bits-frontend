@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
-import { useAuth } from './AuthContext';
-import { getLocalIP } from '@/utils/networkUtils';
+import { useAuth } from '@/context/AuthContext';
+import { getLocalIP } from '@/lib/networkUtils';
 import { registerComputer } from '@/services/heartbeat';
 import type { HeartbeatContextType, Computer } from '@/types/heartbeat';
 

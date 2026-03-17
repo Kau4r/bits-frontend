@@ -1,5 +1,5 @@
-import type { Room } from "./room";
-import type { User } from "./user";
+import type { Room } from "@/types/room";
+import type { User } from "@/types/user";
 
 export type ItemType = "HDMI" | "VGA" | "ADAPTER" | "PROJECTOR" | "EXTENSION" | "MOUSE" | "KEYBOARD" | "MONITOR" | "GENERAL" | "OTHER";
 

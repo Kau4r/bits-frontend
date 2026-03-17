@@ -1,4 +1,4 @@
-import { ChevronUpIcon, ChevronDownIcon, ChevronUpDownIcon } from '@heroicons/react/24/outline'
+import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import React from 'react'
 
 export type SortDirection = 'asc' | 'desc' | null
@@ -39,14 +39,14 @@ const Table = ({ headers, children, sortConfig, onSort, columnWidths }: TablePro
 
     if (!direction) {
       return (
-        <ChevronUpDownIcon className="ml-1 h-4 w-4 text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300" />
+        <ChevronsUpDown className="ml-1 h-4 w-4 text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300" />
       )
     }
 
     return direction === 'asc' ? (
-      <ChevronUpIcon className="ml-1 h-4 w-4 text-indigo-500" />
+      <ChevronUp className="ml-1 h-4 w-4 text-indigo-500" />
     ) : (
-      <ChevronDownIcon className="ml-1 h-4 w-4 text-indigo-500" />
+      <ChevronDown className="ml-1 h-4 w-4 text-indigo-500" />
     )
   }
 

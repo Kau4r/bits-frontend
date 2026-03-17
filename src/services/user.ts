@@ -1,4 +1,4 @@
-import api from "./api";
+import api from "@/services/api";
 import type { User, User_Role, ActivityLog } from "@/types/user";
 
 // Fetch all users

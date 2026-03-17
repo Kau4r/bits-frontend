@@ -1,0 +1,92 @@
+import type { BadgeProps } from "@/ui/Badge"
+
+// ============================================
+// Status → Badge Variant Mappings
+// ============================================
+
+/** Inventory item statuses */
+export const ITEM_STATUS_VARIANT: Record<string, BadgeProps["variant"]> = {
+  AVAILABLE: "success",
+  BORROWED: "warning",
+  DEFECTIVE: "orange",
+  LOST: "danger",
+  REPLACED: "info",
+  INACTIVE: "default",
+} as const
+
+/** Ticket statuses */
+export const TICKET_STATUS_VARIANT: Record<string, BadgeProps["variant"]> = {
+  PENDING: "warning",
+  IN_PROGRESS: "info",
+  RESOLVED: "success",
+  CLOSED: "default",
+  REJECTED: "danger",
+} as const
+
+/** Booking statuses */
+export const BOOKING_STATUS_VARIANT: Record<string, BadgeProps["variant"]> = {
+  PENDING: "warning",
+  APPROVED: "success",
+  REJECTED: "danger",
+  CANCELLED: "default",
+} as const
+
+/** Borrowing statuses */
+export const BORROW_STATUS_VARIANT: Record<string, BadgeProps["variant"]> = {
+  PENDING: "warning",
+  APPROVED: "success",
+  RETURNED: "info",
+  REJECTED: "danger",
+  OVERDUE: "orange",
+  CANCELLED: "default",
+} as const
+
+/** Form statuses */
+export const FORM_STATUS_VARIANT: Record<string, BadgeProps["variant"]> = {
+  PENDING: "warning",
+  APPROVED: "success",
+  REJECTED: "danger",
+  REVIEWED: "info",
+} as const
+
+/** Computer statuses */
+export const COMPUTER_STATUS_VARIANT: Record<string, BadgeProps["variant"]> = {
+  AVAILABLE: "success",
+  IN_USE: "info",
+  MAINTENANCE: "orange",
+  DECOMMISSIONED: "default",
+} as const
+
+/** Room statuses */
+export const ROOM_STATUS_VARIANT: Record<string, BadgeProps["variant"]> = {
+  AVAILABLE: "success",
+  OCCUPIED: "info",
+  MAINTENANCE: "orange",
+  CLOSED: "default",
+} as const
+
+/** Report statuses */
+export const REPORT_STATUS_VARIANT: Record<string, BadgeProps["variant"]> = {
+  PENDING: "warning",
+  APPROVED: "success",
+  REJECTED: "danger",
+  REVIEWED: "info",
+} as const
+
+// ============================================
+// Status label helpers
+// ============================================
+
+/** Capitalize first letter, lowercase rest */
+export function formatStatus(status: string): string {
+  return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase().replace(/_/g, " ")
+}
+
+// ============================================
+// Responsive breakpoints (desktop-first)
+// ============================================
+export const BREAKPOINTS = {
+  mobile: 768,
+  tablet: 1024,
+  desktop: 1280,
+} as const

@@ -1,12 +1,12 @@
 import { useMemo, useState, useEffect } from 'react';
-import { useMonitoringData } from '../../hooks/useMonitoringData';
-import StatusGrid from '../../components/monitoring/StatusGrid';
-import ComputerDetailModal from '../../components/monitoring/ComputerDetailModal';
-import LoadingSkeleton from '../../components/monitoring/LoadingSkeleton';
-import ErrorBoundary from '../../components/ErrorBoundary';
-import { ComputerDesktopIcon, FunnelIcon } from '@heroicons/react/24/outline';
-import Search from '../../components/Search';
-import type { HeartbeatStatus } from '../../types/heartbeat';
+import { useMonitoringData } from '@/hooks/useMonitoringData';
+import StatusGrid from '@/pages/monitoring/components/StatusGrid';
+import ComputerDetailModal from '@/pages/monitoring/components/ComputerDetailModal';
+import LoadingSkeleton from '@/pages/monitoring/components/LoadingSkeleton';
+import ErrorBoundary from '@/components/ErrorBoundary';
+import { Monitor, Filter } from 'lucide-react';
+import Search from '@/components/Search';
+import type { HeartbeatStatus } from '@/types/heartbeat';
 
 export default function MonitoringDashboard() {
   const { rooms, isLoading, error, selectedRoomId, selectedStatus, setRoomFilter, setStatusFilter } = useMonitoringData();
@@ -105,7 +105,7 @@ export default function MonitoringDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div className="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex items-center gap-4 transition-all hover:shadow-md" aria-label={`Total computers: ${totalStats.total}`}>
             <div className="p-3 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-lg">
-              <ComputerDesktopIcon className="w-6 h-6" aria-hidden="true" />
+              <Monitor className="w-6 h-6" aria-hidden="true" />
             </div>
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Total Computers</p>
@@ -115,7 +115,7 @@ export default function MonitoringDashboard() {
 
           <div className="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex items-center gap-4 transition-all hover:shadow-md" aria-label={`Online computers: ${totalStats.ONLINE + totalStats.IDLE}`}>
             <div className="p-3 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-lg">
-              <ComputerDesktopIcon className="w-6 h-6" aria-hidden="true" />
+              <Monitor className="w-6 h-6" aria-hidden="true" />
             </div>
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Online</p>
@@ -125,7 +125,7 @@ export default function MonitoringDashboard() {
 
           <div className="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex items-center gap-4 transition-all hover:shadow-md" aria-label={`Warning status computers: ${totalStats.WARNING}`}>
             <div className="p-3 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-lg">
-              <ComputerDesktopIcon className="w-6 h-6" aria-hidden="true" />
+              <Monitor className="w-6 h-6" aria-hidden="true" />
             </div>
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Warning</p>
@@ -135,7 +135,7 @@ export default function MonitoringDashboard() {
 
           <div className="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex items-center gap-4 transition-all hover:shadow-md" aria-label={`Offline computers: ${totalStats.OFFLINE}`}>
             <div className="p-3 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg">
-              <ComputerDesktopIcon className="w-6 h-6" aria-hidden="true" />
+              <Monitor className="w-6 h-6" aria-hidden="true" />
             </div>
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Offline</p>
@@ -170,7 +170,7 @@ export default function MonitoringDashboard() {
                 </option>
               ))}
             </select>
-            <FunnelIcon className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Filter className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           </div>
 
           {/* Status Filter */}
@@ -186,7 +186,7 @@ export default function MonitoringDashboard() {
               <option value="WARNING">Warning</option>
               <option value="OFFLINE">Offline</option>
             </select>
-            <FunnelIcon className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Filter className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           </div>
 
           {/* Results Count */}
@@ -213,7 +213,7 @@ export default function MonitoringDashboard() {
 
         {!isLoading && !error && filteredRooms.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <ComputerDesktopIcon className="h-12 w-12 text-gray-400 mb-2" />
+            <Monitor className="h-12 w-12 text-gray-400 mb-2" />
             <h3 className="text-sm font-medium text-gray-900 dark:text-white">No computers found</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400">Try adjusting your filters or search terms</p>
           </div>

@@ -1,20 +1,26 @@
-import api from "./api";
+import api from "@/services/api";
 import type { Item, Computer } from "@/types/inventory";
 
 // Fetch all inventory items
-export const fetchInventory = async (): Promise<(Item | Computer)[]> => {
+export const getInventory = async (): Promise<(Item | Computer)[]> => {
     const { data } = await api.get<(Item | Computer)[]>("/inventory");
     return data;
 };
 
+/** @deprecated Use getInventory instead */
+export const fetchInventory = getInventory;
+
 // Fetch a single item by code
-export const fetchInventoryByCode = async (itemCode: string): Promise<Item | Computer> => {
+export const getInventoryByCode = async (itemCode: string): Promise<Item | Computer> => {
     const { data } = await api.get<Item | Computer>(`/inventory/code/${itemCode}`);
     return data;
 };
 
+/** @deprecated Use getInventoryByCode instead */
+export const fetchInventoryByCode = getInventoryByCode;
+
 // Add a single inventory item - use bulk endpoint which auto-generates Item_Code
-export const addInventoryItem = async (
+export const createInventoryItem = async (
     item: Omit<Item | Computer, "Item_ID">,
     User_ID: number
 ): Promise<Item | Computer> => {
@@ -27,8 +33,11 @@ export const addInventoryItem = async (
     return data.items?.[0] || data;
 };
 
+/** @deprecated Use createInventoryItem instead */
+export const addInventoryItem = createInventoryItem;
+
 // Add multiple inventory items in bulk
-export const addInventoryBulk = async (
+export const createInventoryBulk = async (
     items: Omit<Item, "Item_ID">[],
     User_ID: number
 ): Promise<Item[]> => {
@@ -39,9 +48,12 @@ export const addInventoryBulk = async (
     return data.items || data;
 };
 
+/** @deprecated Use createInventoryBulk instead */
+export const addInventoryBulk = createInventoryBulk;
+
 // Update inventory item
 export const updateInventoryItem = async (id: number, item: Partial<Item | Computer>): Promise<Item | Computer> => {
-    const { data } = await api.put<{ success: boolean; message: string; data: Item | Computer }>(`/inventory/${id}`, item);
-    // Backend returns { success, message, data } so extract the actual item
-    return data.data || data;
+    const { data } = await api.put<Item | Computer>(`/inventory/${id}`, item);
+    // After interceptor unwraps envelope, data is the item directly
+    return data;
 };

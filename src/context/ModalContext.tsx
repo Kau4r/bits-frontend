@@ -1,10 +1,10 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import {
-    ExclamationTriangleIcon,
-    CheckCircleIcon,
-    XCircleIcon,
-    InformationCircleIcon,
-} from '@heroicons/react/24/outline';
+    AlertTriangle,
+    CheckCircle,
+    XCircle,
+    Info,
+} from 'lucide-react';
 
 type ModalType = 'alert' | 'confirm' | 'error' | 'success';
 
@@ -135,28 +135,28 @@ export function ModalProvider({ children }: ModalProviderProps) {
         switch (modal.type) {
             case 'error':
                 return {
-                    Icon: XCircleIcon,
+                    Icon: XCircle,
                     iconBg: 'bg-red-100 dark:bg-red-900/30',
                     iconColor: 'text-red-600 dark:text-red-400',
                     buttonClass: 'bg-red-600 hover:bg-red-700 focus:ring-red-500',
                 };
             case 'success':
                 return {
-                    Icon: CheckCircleIcon,
+                    Icon: CheckCircle,
                     iconBg: 'bg-green-100 dark:bg-green-900/30',
                     iconColor: 'text-green-600 dark:text-green-400',
                     buttonClass: 'bg-green-600 hover:bg-green-700 focus:ring-green-500',
                 };
             case 'confirm':
                 return {
-                    Icon: ExclamationTriangleIcon,
+                    Icon: AlertTriangle,
                     iconBg: 'bg-amber-100 dark:bg-amber-900/30',
                     iconColor: 'text-amber-600 dark:text-amber-400',
                     buttonClass: 'bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500',
                 };
             default:
                 return {
-                    Icon: InformationCircleIcon,
+                    Icon: Info,
                     iconBg: 'bg-blue-100 dark:bg-blue-900/30',
                     iconColor: 'text-blue-600 dark:text-blue-400',
                     buttonClass: 'bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500',

@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
 import { getRooms, createRoom, updateRoom } from "@/services/room";
 import { type Room, type RoomStatus, roomStatuses } from "@/types/room";
-import RoomCard from "@/components/SysAd/room/RoomCard";
-import RoomModal from "@/components/SysAd/room/RoomModal";
+import RoomCard from "@/pages/sysad/components/RoomCard";
+import RoomModal from "@/pages/sysad/components/RoomModal";
 import Search from "@/components/Search";
-import { PlusIcon, BuildingOfficeIcon, FunnelIcon } from "@heroicons/react/24/outline";
+import { Plus, Building2, Filter } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useModal } from "@/context/ModalContext";
 import toast from "react-hot-toast";
@@ -136,7 +136,7 @@ export default function RoomPage() {
     return (
       <div className="flex h-full w-full flex-col items-center justify-center bg-white p-4 dark:bg-gray-900">
         <div className="text-center">
-          <BuildingOfficeIcon className="mx-auto h-12 w-12 text-gray-400" />
+          <Building2 className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
             {error}
           </h3>
@@ -167,7 +167,7 @@ export default function RoomPage() {
             setIsModalOpen(true);
           }}
         >
-          <PlusIcon className="h-5 w-5" />
+          <Plus className="h-5 w-5" />
           Add Room
         </button>
       </div>
@@ -191,7 +191,7 @@ export default function RoomPage() {
               <option key={status} value={status}>{formatStatus(status)}</option>
             ))}
           </select>
-          <FunnelIcon className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Filter className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         </div>
 
         {/* Results Count */}
@@ -203,7 +203,7 @@ export default function RoomPage() {
 
       {filteredRooms.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12">
-          <BuildingOfficeIcon className="h-12 w-12 text-gray-400" />
+          <Building2 className="h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
             {hasActiveFilters ? "No rooms match your filters" : "No rooms yet"}
           </h3>
@@ -231,7 +231,7 @@ export default function RoomPage() {
               }}
               className="mt-4 inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
             >
-              <PlusIcon className="mr-2 h-4 w-4" />
+              <Plus className="mr-2 h-4 w-4" />
               Add Room
             </button>
           )}

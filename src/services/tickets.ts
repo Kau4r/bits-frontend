@@ -1,4 +1,4 @@
-import api from "./api";
+import api from "@/services/api";
 import type { Ticket, NewTicketInput, TicketStatus, TicketPriority, TicketCategory } from "@/types/tickets";
 
 // Filter types

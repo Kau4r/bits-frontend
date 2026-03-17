@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react';
-import { useAuth } from './AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { toast } from 'react-hot-toast';
+import api from '@/services/api';
 import { getNotifications, getUnreadCount, markNotificationRead, markAllNotificationsRead, type Notification } from '@/services/notifications';
 
 interface NotificationContextType {
@@ -35,14 +36,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const fetchTicketCount = useCallback(async () => {
         if (!user || !token) return;
         try {
-            const httpBase = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-            const res = await fetch(`${httpBase}/api/tickets/count?status=PENDING`, {
-                headers: { Authorization: `Bearer ${token}` }
+            const res = await api.get<{ count: number }>('/tickets/count', {
+                params: { status: 'PENDING' }
             });
-            if (res.ok) {
-                const data = await res.json();
-                setPendingTicketCount(data.count || 0);
-            }
+            setPendingTicketCount(res.data.count || 0);
         } catch (err) {
             console.error('Error fetching ticket count:', err);
         }

@@ -1,4 +1,4 @@
-import type { HeartbeatStatus } from './heartbeat';
+import type { HeartbeatStatus } from '@/types/heartbeat';
 
 export interface MonitoringComputer {
   Computer_ID: number;

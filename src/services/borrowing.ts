@@ -1,5 +1,5 @@
 import type { Borrowing, CreateBorrowingDTO } from "@/types/borrowing";
-import api from "./api";
+import api from "@/services/api";
 
 const API_BASE = "/borrowing";
 

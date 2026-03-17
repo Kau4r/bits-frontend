@@ -1,15 +1,15 @@
 import { useState, useEffect, useMemo } from 'react'
 import { type Item } from '@/types/inventory'
-import { PlusIcon, FunnelIcon } from '@heroicons/react/24/outline'
+import { Plus, Filter } from 'lucide-react'
 import Table, { type SortConfig, type SortDirection } from '@/components/Table'
-import ItemModal from '@/components/inventory/ItemModal'
+import ItemModal from '@/pages/labtech/components/ItemModal'
 import Search from '@/components/Search'
 import { getRooms } from "@/services/room";
-import { fetchInventory, updateInventoryItem, addInventoryBulk, addInventoryItem } from "@/services/inventory"
+import { getInventory, updateInventoryItem, createInventoryBulk, createInventoryItem } from "@/services/inventory"
 import { inventoryStatuses } from "@/types/inventory"
 import type { Room } from '@/types/room'
 import { useAuth } from '@/context/AuthContext'
-import InventoryMobilePage from './InventoryMobile'
+import InventoryMobilePage from '@/pages/labtech/InventoryMobile'
 
 const InventoryPage = () => {
   const { user } = useAuth();
@@ -50,7 +50,7 @@ const InventoryPage = () => {
   useEffect(() => {
     const loadInventory = async () => {
       try {
-        const data = await fetchInventory()
+        const data = await getInventory()
         setInventory(data.filter((item): item is Item => !!item));
         console.log("Fetched inventory:", data);
       } catch (err) {
@@ -154,7 +154,7 @@ const InventoryPage = () => {
         }));
 
         // Send bulk request
-        const result = await addInventoryBulk(itemsToAdd, user?.User_ID ?? 0);
+        const result = await createInventoryBulk(itemsToAdd, user?.User_ID ?? 0);
         savedItems = Array.isArray(result) ? result : [result as Item];
       }
 
@@ -171,7 +171,7 @@ const InventoryPage = () => {
           Item_Code: payload.Item_Code ?? "",
         };
 
-        const result = await addInventoryItem(itemToAdd, user?.User_ID ?? 0);
+        const result = await createInventoryItem(itemToAdd, user?.User_ID ?? 0);
         savedItems = Array.isArray(result) ? result : [result as Item];
       }
 
@@ -286,7 +286,7 @@ const InventoryPage = () => {
             setIsModalOpen(true)
           }}
         >
-          <PlusIcon className="h-5 w-5" />
+          <Plus className="h-5 w-5" />
           Add Item
         </button>
       </div>
@@ -312,7 +312,7 @@ const InventoryPage = () => {
               </option>
             ))}
           </select>
-          <FunnelIcon className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Filter className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         </div>
 
         {/* Status Filter */}
@@ -334,7 +334,7 @@ const InventoryPage = () => {
               );
             })}
           </select>
-          <FunnelIcon className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Filter className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         </div>
 
         {/* Results Count */}
@@ -354,7 +354,7 @@ const InventoryPage = () => {
           {filteredAndSortedInventory.length === 0 ? (
             <div className="flex flex-col items-center justify-center flex-1 w-full min-h-full" data-full-row>
               <div className="p-4 bg-gray-100 dark:bg-gray-800/50 rounded-full mb-4">
-                <FunnelIcon className="h-12 w-12 text-gray-400" />
+                <Filter className="h-12 w-12 text-gray-400" />
               </div>
               <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
                 No items match your filters

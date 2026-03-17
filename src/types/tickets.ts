@@ -1,6 +1,6 @@
-import type { User } from "./user";
-import type { Room } from "./room";
-import type { Item } from "./inventory";
+import type { User } from "@/types/user";
+import type { Room } from "@/types/room";
+import type { Item } from "@/types/inventory";
 
 export type TicketStatus = "PENDING" | "IN_PROGRESS" | "RESOLVED";
 export type TicketPriority = "HIGH" | "MEDIUM" | "LOW";

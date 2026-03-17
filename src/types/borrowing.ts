@@ -1,4 +1,4 @@
-import type { Item, Computer } from "./inventory";
+import type { Item, Computer } from "@/types/inventory";
 
 // Borrowing status
 export type BorrowingStatus = "PENDING" | "APPROVED" | "REJECTED" | "BORROWED" | "RETURNED" | "OVERDUE";

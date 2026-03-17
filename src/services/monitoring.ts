@@ -1,5 +1,5 @@
-import api from './api';
-import type { RoomStatus } from '../types/monitoring';
+import api from '@/services/api';
+import type { RoomStatus } from '@/types/monitoring';
 
 /**
  * Get monitoring status summary for all rooms
@@ -30,7 +30,6 @@ export interface HeartbeatRecord {
 }
 
 export interface ComputerHistoryResponse {
-  success: boolean;
   computer: {
     id: number;
     name: string;

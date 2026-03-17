@@ -1,4 +1,4 @@
-import api from "./api";
+import api from "@/services/api";
 
 export interface Notification {
     id: number;
@@ -22,9 +22,9 @@ export const getNotifications = async (params?: {
     limit?: number;
     unreadOnly?: boolean;
 }): Promise<Notification[]> => {
-    const response = await api.get<{ success: boolean; data: any[] }>("/notifications", { params });
+    const response = await api.get<any[]>("/notifications", { params });
     // Map backend Audit_Log format to frontend Notification interface
-    return response.data.data.map((log: any) => ({
+    return response.data.map((log: any) => ({
         id: log.Log_ID,
         type: log.Action.includes('ERROR') || log.Action.includes('REJECT') ? 'warning' : 'info',
         title: log.Action.replace(/_/g, ' '),
@@ -45,12 +45,12 @@ export const markNotificationRead = async (id: number): Promise<void> => {
 
 // Mark all notifications as read
 export const markAllNotificationsRead = async (): Promise<{ count: number }> => {
-    const { data } = await api.patch<{ success: boolean; count: number }>("/notifications/read-all");
+    const { data } = await api.patch<{ count: number }>("/notifications/read-all");
     return data;
 };
 
 // Get unread notification count
 export const getUnreadCount = async (): Promise<number> => {
-    const { data } = await api.get<{ success: boolean; count: number }>("/notifications/unread-count");
+    const { data } = await api.get<{ count: number }>("/notifications/unread-count");
     return data.count;
 };

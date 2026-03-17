@@ -1,4 +1,4 @@
-import api from "./api";
+import api from "@/services/api";
 import type { Booking, CreateBookingDTO, UpdateBookingStatusDTO } from "@/types/booking";
 import type { Room } from "@/types/room";
 

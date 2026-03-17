@@ -1,8 +1,8 @@
 import { useReducer, useEffect, useRef, useCallback } from 'react';
-import type { MonitoringDashboardState, RoomStatus, MonitoringWSMessage } from '../types/monitoring';
-import type { HeartbeatStatus } from '../types/heartbeat';
-import { getMonitoringStatus } from '../services/monitoring';
-import { useNotifications } from '../context/NotificationContext';
+import type { MonitoringDashboardState, RoomStatus, MonitoringWSMessage } from '@/types/monitoring';
+import type { HeartbeatStatus } from '@/types/heartbeat';
+import { getMonitoringStatus } from '@/services/monitoring';
+import { useNotifications } from '@/context/NotificationContext';
 
 const initialState: MonitoringDashboardState = {
   rooms: [],

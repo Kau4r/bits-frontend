@@ -1,5 +1,5 @@
-import type { Room } from "./room";
-import type { User } from "./user";
+import type { Room } from "@/types/room";
+import type { User } from "@/types/user";
 
 // Booking status
 export type BookingStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
