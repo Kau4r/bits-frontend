@@ -484,7 +484,7 @@ export default function Room() {
                                                     // Only display valid computer queue slots opened by lab staff
                                                     sessions={categorySessions.filter(s => s.type === 'booking' && s.purpose === 'Student Usage')}
                                                     categoryRooms={categoryRooms}
-                                                    onAddRoom={(start, end) => handleAddTimeSlot(key, start, end)}
+                                                    onAddRoom={(start: string, end: string) => handleAddTimeSlot(key, start, end)}
                                                     onSlotDetail={handleSlotDetail}
                                                     testTimeOverride={new Date('2024-03-07T15:00:00')} // Uncomment to test a specific time
                                                 />

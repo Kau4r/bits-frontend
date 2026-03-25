@@ -524,7 +524,7 @@ export default function Forms() {
                           <div className="w-full">
                             <StatusSelect
                               value={editedForms[f.id]?.status ?? f.status}
-                              onChange={(s) => handleLocalChange(f.id, 'status', s)}
+                              onChange={(s: FormStatus) => handleLocalChange(f.id, 'status', s)}
                               className="w-full"
                             />
                           </div>
@@ -540,7 +540,7 @@ export default function Forms() {
                           <div className="w-full">
                             <DeptSelect
                               value={editedForms[f.id]?.department ?? f.department}
-                              onChange={(d) => handleLocalChange(f.id, 'department', d)}
+                              onChange={(d: FormDepartment) => handleLocalChange(f.id, 'department', d)}
                               formType={f.type}
                               className="w-full"
                             />

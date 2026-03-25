@@ -242,7 +242,7 @@ export default function RoomPage() {
             <RoomCard
               key={room.Room_ID}
               room={room}
-              onView={(selected) => {
+              onView={(selected: Room) => {
                 setSelectedRoom(selected);
                 setModalMode("view");
                 setIsModalOpen(true);

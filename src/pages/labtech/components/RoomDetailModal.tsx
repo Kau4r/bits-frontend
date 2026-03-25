@@ -631,7 +631,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                     itemType={itemType}
                                     label={formatItemType(itemType)}
                                     value={selectedItems[itemType]}
-                                    onChange={(item) => setSelectedItems(prev => ({ ...prev, [itemType]: item }))}
+                                    onChange={(item: { Item_ID: number; Item_Code: string; Item_Type: string; Brand: string | null; Serial_Number: string | null; Status: string } | null) => setSelectedItems(prev => ({ ...prev, [itemType]: item }))}
                                     placeholder={`Select ${formatItemType(itemType).toLowerCase()} from inventory...`}
                                 />
                             ))}
