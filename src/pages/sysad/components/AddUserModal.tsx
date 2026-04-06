@@ -3,6 +3,7 @@ import { useState } from 'react'
 import type { User_Role } from '@/types/user'
 
 interface UserFormData {
+    Username: string
     First_Name: string
     Middle_Name: string
     Last_Name: string
@@ -19,6 +20,7 @@ interface Props {
 
 export default function AddUserModal({ onClose, onSubmit }: Props) {
     const [form, setForm] = useState({
+        Username: '',
         First_Name: '',
         Middle_Name: '',
         Last_Name: '',
@@ -31,6 +33,7 @@ export default function AddUserModal({ onClose, onSubmit }: Props) {
 
     const validateForm = () => {
         const newErrors: Record<string, string> = {}
+        if (!form.Username.trim()) newErrors.Username = 'Username is required'
         if (!form.First_Name.trim()) newErrors.First_Name = 'First name is required'
         if (!form.Last_Name.trim()) newErrors.Last_Name = 'Last name is required'
         if (!form.Email.trim()) {
@@ -53,7 +56,7 @@ export default function AddUserModal({ onClose, onSubmit }: Props) {
 
         try {
             const password = `${form.First_Name[0].toLowerCase()}${form.Last_Name[0].toLowerCase()}123`
-            await onSubmit({ ...form, Password: password })
+            await onSubmit({ ...form, Password: password, Username: form.Username })
         } finally {
             setIsSubmitting(false)
         }
@@ -97,6 +100,26 @@ export default function AddUserModal({ onClose, onSubmit }: Props) {
                 {/* Body */}
                 <div className="flex-1 overflow-y-auto px-6 py-4">
                     <div className="space-y-4">
+                        {/* Username (htshadow) */}
+                        <div className="flex flex-col">
+                            <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Username <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                value={form.Username}
+                                onChange={(e) => {
+                                    setForm({ ...form, Username: e.target.value })
+                                    if (errors.Username) setErrors({ ...errors, Username: '' })
+                                }}
+                                className={inputClassName('Username')}
+                                placeholder="Enter htshadow username"
+                            />
+                            {errors.Username && (
+                                <p className="mt-1 text-sm text-red-500">{errors.Username}</p>
+                            )}
+                        </div>
+
                         {/* First Name */}
                         <div className="flex flex-col">
                             <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">

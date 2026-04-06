@@ -1,5 +1,6 @@
 export interface User {
     User_ID: number;
+    Username?: string;
     User_Role: User_Role;
     First_Name: string;
     Middle_Name?: string;

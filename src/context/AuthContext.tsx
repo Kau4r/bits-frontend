@@ -7,7 +7,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
   token: string | null;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string; user?: User }>;
+  login: (username: string, password: string) => Promise<{ success: boolean; error?: string; user?: User }>;
   logout: () => void;
   userRole: User_Role | null;
   loading: boolean;
@@ -58,9 +58,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
 
-  const login = async (email: string, password: string) => {
+  const login = async (username: string, password: string) => {
     try {
-      const res = await api.post<LoginResponse>('/auth/login', { email, password });
+      const res = await api.post<LoginResponse>('/auth/login', { username, password });
       const { token, user } = res.data;
 
       localStorage.setItem("userId", res.data.user.User_ID.toString()); // ✅ store as string

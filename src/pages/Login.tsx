@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -17,15 +17,15 @@ export default function Login() {
     e.preventDefault();
     setError(null);
 
-    if (!email || !password) {
-      setError('Please enter both email and password');
+    if (!username || !password) {
+      setError('Please enter both username and password');
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const result = await login(email, password);
+      const result = await login(username, password);
 
       if (result.success && result.user) {
         const role = result.user.User_Role;
@@ -95,20 +95,20 @@ export default function Login() {
             <div className="space-y-4">
               <div>
                 <label
-                  htmlFor="email"
+                  htmlFor="username"
                   className="block text-sm font-medium text-gray-700 dark:text-gray-300"
                 >
-                  Email address
+                  Username
                 </label>
                 <input
-                  id="email"
-                  name="email"
-                  type="email"
+                  id="username"
+                  name="username"
+                  type="text"
                   required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
-                // placeholder="@usc.edu.ph"
+                  placeholder="Enter your username"
                 />
               </div>
 
