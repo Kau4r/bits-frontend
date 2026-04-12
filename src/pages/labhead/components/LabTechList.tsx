@@ -21,7 +21,7 @@ export type Tech = {
 
 interface Props {
   selectedTech: Tech | null;
-  onSelect: (tech: Tech) => void;
+  onSelect: (tech: Tech | null) => void;
 }
 
 const getTicketProgress = (userId: number, tickets: Ticket[]) => {
@@ -59,12 +59,16 @@ export default function LabTechList({ selectedTech, onSelect }: Props) {
           fetchUsersByRole('LAB_TECH'),
           fetchTickets()
         ]);
-        const techs = users.map(user => mapUserToTech(user, tickets));
+        const techs = users
+          .filter(user => user.Is_Active)
+          .map(user => mapUserToTech(user, tickets));
         setLabTechs(techs);
 
-        // Auto-select first tech if none selected
-        if (techs.length > 0 && !selectedTech) {
-          onSelect(techs[0]);
+        // Auto-select a visible tech, or clear a now-hidden inactive selection.
+        if (!selectedTech) {
+          onSelect(techs[0] ?? null);
+        } else if (!techs.some(tech => tech.dbId === selectedTech.dbId)) {
+          onSelect(techs[0] ?? null);
         }
       } catch (err) {
         console.error('Failed to fetch lab techs:', err);
