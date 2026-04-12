@@ -50,6 +50,14 @@ export default function TicketingModal({
   const [isLoadingAssets, setIsLoadingAssets] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditingExisting, setIsEditingExisting] = useState(false);
+  const [editBaseline, setEditBaseline] = useState<{
+    status: TicketStatus;
+    priority: TicketPriority | '';
+    category: TicketCategory | '';
+    reportProblem: string;
+    location: string;
+    itemId: number | undefined;
+  } | null>(null);
 
   // Local state for optimistic UI updates on technician assignment
   const [localTechnician, setLocalTechnician] = useState<Ticket['Technician'] | null>(null);
@@ -64,7 +72,16 @@ export default function TicketingModal({
   const selectStyle = { backgroundImage: 'none' };
   const selectChevronClassName = "pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 dark:text-gray-400";
   const editButtonClassName = "px-4 py-2 text-white rounded-lg transition-colors text-sm font-medium shadow-sm bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed";
+  const activeEditButtonClassName = "px-4 py-2 text-white rounded-lg transition-colors text-sm font-medium shadow-sm bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2";
   const saveButtonClassName = "px-4 py-2 text-white rounded-lg transition-colors text-sm font-medium shadow-sm bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed";
+  const hasTicketChanges = !isCreating && Boolean(editBaseline) && (
+    status !== editBaseline?.status ||
+    (priority || '') !== (editBaseline?.priority || '') ||
+    (category || '') !== (editBaseline?.category || '') ||
+    formData.reportProblem !== (editBaseline?.reportProblem || '') ||
+    formData.location !== (editBaseline?.location || '') ||
+    (formData.itemId ?? undefined) !== (editBaseline?.itemId ?? undefined)
+  );
 
   // Clear feedback after 3 seconds
   useEffect(() => {
@@ -172,6 +189,7 @@ export default function TicketingModal({
       });
       setLocalTechnician(ticket.Technician || null);
       setIsEditingExisting(false);
+      setEditBaseline(null);
     }
 
     if (isCreating) {
@@ -181,6 +199,7 @@ export default function TicketingModal({
       setFormData({ reportProblem: '', location: '', itemId: undefined, roomId: undefined });
       setLocalTechnician(null);
       setIsEditingExisting(false);
+      setEditBaseline(null);
     }
   }, [ticket, isCreating]);
 
@@ -201,6 +220,14 @@ export default function TicketingModal({
     if (!isCreating && !hasAssignedLabTech) {
       setFeedbackMessage({
         text: 'Assign this ticket to a Lab Tech before updating details or status.',
+        type: 'error',
+      });
+      return;
+    }
+
+    if (!isCreating && !hasTicketChanges) {
+      setFeedbackMessage({
+        text: 'Change the ticket details before saving.',
         type: 'error',
       });
       return;
@@ -270,6 +297,14 @@ export default function TicketingModal({
       return;
     }
 
+    setEditBaseline({
+      status,
+      priority,
+      category,
+      reportProblem: formData.reportProblem,
+      location: formData.location,
+      itemId: formData.itemId,
+    });
     setIsEditingExisting(true);
   };
 
@@ -312,7 +347,7 @@ export default function TicketingModal({
 
           {ticket && !isCreating && isEditingExisting && (
             <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm font-medium text-blue-800 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-200">
-              Editing is active. Change the ticket details, then click Save Changes.
+              Update mode is active. Change the ticket details; Save Changes will appear after a change.
             </div>
           )}
 
@@ -365,6 +400,7 @@ export default function TicketingModal({
                             });
                             onUpdate(updated);
                             setIsEditingExisting(false);
+                            setEditBaseline(null);
                             setFeedbackMessage({ text: 'Ticket unassigned successfully', type: 'success' });
                           } catch (err) {
                             setLocalTechnician(previousTechnician);
@@ -579,6 +615,14 @@ export default function TicketingModal({
               className={editButtonClassName}
             >
               {hasAssignedLabTech ? 'Update Ticket' : 'Assign before updating'}
+            </button>
+          ) : !isCreating && !hasTicketChanges ? (
+            <button
+              type="button"
+              onClick={() => setFeedbackMessage({ text: 'Change the ticket details before saving.', type: 'error' })}
+              className={activeEditButtonClassName}
+            >
+              Update Ticket Active
             </button>
           ) : (
             <button
