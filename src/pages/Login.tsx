@@ -18,7 +18,7 @@ export default function Login() {
     setError(null);
 
     if (!username || !password) {
-      setError('Please enter both username and password');
+      setError('Please enter both username/email and password');
       return;
     }
 
@@ -98,7 +98,7 @@ export default function Login() {
                   htmlFor="username"
                   className="block text-sm font-medium text-gray-700 dark:text-gray-300"
                 >
-                  Username
+                  Username or Email
                 </label>
                 <input
                   id="username"
@@ -108,7 +108,7 @@ export default function Login() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
-                  placeholder="Enter your username"
+                  placeholder="Enter your username or email"
                 />
               </div>
 

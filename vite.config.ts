@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig, type UserConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
@@ -28,4 +28,15 @@ export default defineConfig({
       reporter: ['text', 'lcov'],
     },
   },
+} as UserConfig & {
+  test: {
+    globals: boolean;
+    environment: string;
+    setupFiles: string[];
+    css: boolean;
+    coverage: {
+      provider: string;
+      reporter: string[];
+    };
+  };
 });

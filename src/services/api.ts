@@ -1,5 +1,13 @@
 import axios from 'axios';
 
+type ApiEnvelope = {
+    success: unknown;
+    data?: unknown;
+    error?: string;
+    message?: string;
+    meta?: unknown;
+};
+
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL + '/api',
     headers: { "Content-Type": "application/json" },
@@ -19,19 +27,22 @@ api.interceptors.response.use(
     (response) => {
         // If the response has our envelope format, unwrap it
         if (response.data && typeof response.data === 'object' && 'success' in response.data) {
+            const envelope = response.data as ApiEnvelope;
+
             // Attach meta to the response for pagination etc.
-            if (response.data.meta) {
-                response.headers['x-meta'] = JSON.stringify(response.data.meta);
+            if (envelope.meta) {
+                response.headers['x-meta'] = JSON.stringify(envelope.meta);
             }
             // Replace response.data with the actual data payload
-            response.data = response.data.data;
+            response.data = envelope.data;
         }
         return response;
     },
     (error) => {
         // Extract error message from envelope
         if (error.response?.data && typeof error.response.data === 'object') {
-            const serverError = error.response.data.error || error.response.data.message;
+            const envelope = error.response.data as ApiEnvelope;
+            const serverError = envelope.error || envelope.message;
             if (serverError) {
                 error.message = serverError;
             }
