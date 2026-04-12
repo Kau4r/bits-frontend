@@ -7,6 +7,7 @@ interface ApprovalModalProps {
     request: {
         id: number;
         item: {
+            Item_ID: number;
             Item_Type: string;
             Brand: string;
         };
@@ -33,6 +34,8 @@ export default function ApprovalModal({
     isLoading = false,
 }: ApprovalModalProps) {
     if (!isOpen || !request) return null;
+
+    const requiresAssignment = !request.item.Item_ID;
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -85,15 +88,17 @@ export default function ApprovalModal({
                         {/* Assign Specific Item */}
                         <div className="flex flex-col">
                             <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Assign Specific Item {availableItems.length > 0 && <span className="text-red-500">*</span>}
+                                Assign Specific Item {requiresAssignment && <span className="text-red-500">*</span>}
                             </label>
                             {availableItems.length > 0 ? (
                                 <select
                                     name="itemId"
-                                    required
+                                    required={requiresAssignment}
                                     className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                 >
-                                    <option value="">Select an item</option>
+                                    <option value="">
+                                        {requiresAssignment ? 'Select an item' : 'Keep currently assigned item'}
+                                    </option>
                                     {availableItems.map((item) => (
                                         <option key={item.Item_ID} value={item.Item_ID}>
                                             {item.Item_Type} - {item.Brand} (SN: {item.Serial_Number})
@@ -104,14 +109,17 @@ export default function ApprovalModal({
                                 <input
                                     type="text"
                                     name="itemId"
-                                    placeholder="Enter item ID"
+                                    required={requiresAssignment}
+                                    placeholder={requiresAssignment ? 'Enter item ID' : 'Enter item ID to reassign'}
                                     className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                 />
                             )}
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                {availableItems.length > 0
+                                {requiresAssignment && availableItems.length > 0
                                     ? 'Select a specific item to assign to this request'
-                                    : 'No available items found. Enter item ID manually or leave blank.'}
+                                    : requiresAssignment
+                                        ? 'No available items found. Enter a valid item ID manually.'
+                                        : 'Leave blank to keep the currently assigned item.'}
                             </p>
                         </div>
                     </div>

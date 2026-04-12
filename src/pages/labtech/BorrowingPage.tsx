@@ -154,33 +154,38 @@ export default function Borrowing() {
 
     const hasActiveFilters = searchTerm || statusFilter !== 'all' || sortBy !== 'newest';
 
-    const handleApprove = async () => {
+    const handleApprove = async (assignedItemId?: number) => {
         if (!approvalModal.request) return;
         setIsLoading(true);
         try {
-            await approveBorrowing(approvalModal.request.id, approvalModal.request.item.Item_ID);
+            const currentItemId = approvalModal.request.item.Item_ID > 0
+                ? approvalModal.request.item.Item_ID
+                : undefined;
+            await approveBorrowing(approvalModal.request.id, assignedItemId ?? currentItemId);
 
             await modal.showSuccess('Request approved successfully!', 'Success');
             setApprovalModal({ isOpen: false, request: null });
             await loadRequests();
         } catch (error) {
-            await modal.showError('Failed to approve request', 'Error');
+            const message = error instanceof Error ? error.message : 'Failed to approve request';
+            await modal.showError(message, 'Error');
         } finally {
             setIsLoading(false);
         }
     };
 
-    const handleReject = async () => {
+    const handleReject = async (reason: string) => {
         if (!rejectionModal.request) return;
         setIsLoading(true);
         try {
-            await rejectBorrowing(rejectionModal.request.id);
+            await rejectBorrowing(rejectionModal.request.id, reason);
 
             await modal.showSuccess('Request rejected and borrower notified', 'Success');
             setRejectionModal({ isOpen: false, request: null });
             await loadRequests();
         } catch (error) {
-            await modal.showError('Failed to reject request', 'Error');
+            const message = error instanceof Error ? error.message : 'Failed to reject request';
+            await modal.showError(message, 'Error');
         } finally {
             setIsLoading(false);
         }
