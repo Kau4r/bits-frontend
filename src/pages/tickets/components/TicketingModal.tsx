@@ -63,10 +63,8 @@ export default function TicketingModal({
   const selectClassName = "w-full pl-4 pr-11 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-none disabled:cursor-not-allowed disabled:opacity-70";
   const selectStyle = { backgroundImage: 'none' };
   const selectChevronClassName = "pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 dark:text-gray-400";
-  const primaryButtonClassName = `px-4 py-2 text-white rounded-lg transition-colors text-sm font-medium shadow-sm disabled:bg-gray-400 disabled:cursor-not-allowed ${isCreating || isEditingExisting
-    ? 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
-    : 'bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2'
-    }`;
+  const editButtonClassName = "px-4 py-2 text-white rounded-lg transition-colors text-sm font-medium shadow-sm bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed";
+  const saveButtonClassName = "px-4 py-2 text-white rounded-lg transition-colors text-sm font-medium shadow-sm bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed";
 
   // Clear feedback after 3 seconds
   useEffect(() => {
@@ -193,14 +191,10 @@ export default function TicketingModal({
     if (isSubmitting) return;
 
     if (!isCreating && !isEditingExisting) {
-      if (!hasAssignedLabTech) {
-        setFeedbackMessage({
-          text: 'Assign this ticket to a Lab Tech before updating details or status.',
-          type: 'error',
-        });
-        return;
-      }
-      setIsEditingExisting(true);
+      setFeedbackMessage({
+        text: 'Click Update Ticket before saving changes.',
+        type: 'error',
+      });
       return;
     }
 
@@ -279,16 +273,6 @@ export default function TicketingModal({
     setIsEditingExisting(true);
   };
 
-  const primaryButtonLabel = isSubmitting
-    ? 'Saving...'
-    : isCreating
-      ? 'Create Ticket'
-      : isEditingExisting
-        ? 'Save Changes'
-        : hasAssignedLabTech
-          ? 'Update Ticket'
-          : 'Assign before updating';
-
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={onClose}>
       <div
@@ -323,6 +307,12 @@ export default function TicketingModal({
               {hasAssignedLabTech
                 ? 'Click Update Ticket to modify details or status.'
                 : 'Assign this ticket to a Lab Tech before updating details or status.'}
+            </div>
+          )}
+
+          {ticket && !isCreating && isEditingExisting && (
+            <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm font-medium text-blue-800 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-200">
+              Editing is active. Change the ticket details, then click Save Changes.
             </div>
           )}
 
@@ -581,15 +571,25 @@ export default function TicketingModal({
           >
             Cancel
           </button>
-          <button
-            type={isCreating || isEditingExisting ? 'submit' : 'button'}
-            form={isCreating || isEditingExisting ? 'ticket-form' : undefined}
-            onClick={!isCreating && !isEditingExisting ? handleEnterEditMode : undefined}
-            disabled={isSubmitting || (!isCreating && (!canManageTicketDetails || (!isEditingExisting && !hasAssignedLabTech)))}
-            className={primaryButtonClassName}
-          >
-            {primaryButtonLabel}
-          </button>
+          {!isCreating && !isEditingExisting ? (
+            <button
+              type="button"
+              onClick={handleEnterEditMode}
+              disabled={!canManageTicketDetails || !hasAssignedLabTech}
+              className={editButtonClassName}
+            >
+              {hasAssignedLabTech ? 'Update Ticket' : 'Assign before updating'}
+            </button>
+          ) : (
+            <button
+              type="submit"
+              form="ticket-form"
+              disabled={isSubmitting}
+              className={saveButtonClassName}
+            >
+              {isSubmitting ? 'Saving...' : isCreating ? 'Create Ticket' : 'Save Changes'}
+            </button>
+          )}
         </div>
       </div>
     </div>
