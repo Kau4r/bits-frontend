@@ -20,6 +20,7 @@ export interface FormUpdateInput {
     approverId?: number | null;
     title?: string;
     content?: string;
+    requesterName?: string;
     remarks?: string;
 }
 

@@ -5,7 +5,7 @@ import { formDepartmentLabels, getDepartmentsForType } from '@/types/formtypes';
 export const AddFormDialog: React.FC<{
   open: boolean;
   onClose: () => void;
-  onCreate: (record: Omit<FormRecord, 'id' | 'createdAt'> & { file?: File }) => void;
+  onCreate: (record: Omit<FormRecord, 'id' | 'createdAt'> & { file: File }) => Promise<void> | void;
   existing?: FormRecord[];
 }> = ({ open, onClose, onCreate, existing = [] }) => {
   const [type, setType] = useState<FormType>('WRF');
@@ -14,6 +14,8 @@ export const AddFormDialog: React.FC<{
   const [requesterName, setRequesterName] = useState('');
   const [remarks, setRemarks] = useState('');
   const [file, setFile] = useState<File | undefined>();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Get departments for the selected form type
@@ -28,6 +30,8 @@ export const AddFormDialog: React.FC<{
       setRequesterName('');
       setRemarks('');
       setFile(undefined);
+      setIsSubmitting(false);
+      setSubmitError(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -51,25 +55,40 @@ export const AddFormDialog: React.FC<{
 
   const accept = ".pdf,.doc,.docx,image/*";
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file) return;
+    setSubmitError(null);
 
-    onCreate({
-      formId: nextId,
-      type,
-      status,
-      department,
-      file,
-      isArchived: false,
-      requesterName: requesterName || undefined,
-      remarks: remarks || undefined,
-    });
-    onClose();
+    if (!file) {
+      setSubmitError('Please attach a file before tracking the form.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await onCreate({
+        formId: nextId,
+        type,
+        status,
+        department,
+        file,
+        isArchived: false,
+        requesterName: requesterName || undefined,
+        remarks: remarks || undefined,
+      });
+      onClose();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to create form. Please try again.';
+      setSubmitError(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFile(e.target.files?.[0]);
+    setSubmitError(null);
   };
 
   const clearFile = (e: React.MouseEvent) => {
@@ -85,7 +104,9 @@ export const AddFormDialog: React.FC<{
   return (
     <div
       className="fixed inset-0 bg-black/40 grid place-items-center p-4 z-50"
-      onClick={onClose}
+      onClick={() => {
+        if (!isSubmitting) onClose();
+      }}
     >
       <div
         className="w-full max-w-lg rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-6 shadow-xl"
@@ -95,6 +116,7 @@ export const AddFormDialog: React.FC<{
           <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Add New Form</h3>
           <button
             onClick={onClose}
+            disabled={isSubmitting}
             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
             aria-label="Close"
           >
@@ -113,6 +135,7 @@ export const AddFormDialog: React.FC<{
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value as FormType)}
+                disabled={isSubmitting}
                 className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-2 text-sm"
               >
                 <option value="WRF">WRF</option>
@@ -127,6 +150,7 @@ export const AddFormDialog: React.FC<{
               <select
                 value={department}
                 onChange={(e) => setDepartment(e.target.value as FormDepartment)}
+                disabled={isSubmitting}
                 className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-2 text-sm"
               >
                 {departments.map((dept) => (
@@ -144,6 +168,7 @@ export const AddFormDialog: React.FC<{
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as FormStatus)}
+                disabled={isSubmitting}
                 className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-2 text-sm"
               >
                 <option value="PENDING">Pending</option>
@@ -175,6 +200,7 @@ export const AddFormDialog: React.FC<{
               type="text"
               value={requesterName}
               onChange={(e) => setRequesterName(e.target.value)}
+              disabled={isSubmitting}
               placeholder="Name of the person requesting"
               className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-2 text-sm"
             />
@@ -188,6 +214,7 @@ export const AddFormDialog: React.FC<{
             <textarea
               value={remarks}
               onChange={(e) => setRemarks(e.target.value)}
+              disabled={isSubmitting}
               placeholder="Any additional notes or context..."
               rows={3}
               className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-2 text-sm resize-none"
@@ -221,6 +248,7 @@ export const AddFormDialog: React.FC<{
                   type="file"
                   accept={accept}
                   onChange={handleFileChange}
+                  disabled={isSubmitting}
                   className="hidden"
                   required
                 />
@@ -229,6 +257,7 @@ export const AddFormDialog: React.FC<{
                 <button
                   type="button"
                   onClick={clearFile}
+                  disabled={isSubmitting}
                   className="p-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                   title="Remove file"
                 >
@@ -245,23 +274,30 @@ export const AddFormDialog: React.FC<{
             )}
           </div>
 
+          {submitError && (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">
+              {submitError}
+            </div>
+          )}
+
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
             <button
               type="button"
               onClick={onClose}
+              disabled={isSubmitting}
               className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={!file}
+              disabled={!file || isSubmitting}
               className={`px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${file
-                ? 'bg-blue-600 hover:bg-blue-700'
+                ? 'bg-blue-600 hover:bg-blue-700 disabled:opacity-70 disabled:cursor-not-allowed'
                 : 'bg-blue-400 cursor-not-allowed'
                 }`}
             >
-              Track Form
+              {isSubmitting ? 'Tracking...' : 'Track Form'}
             </button>
           </div>
         </form>

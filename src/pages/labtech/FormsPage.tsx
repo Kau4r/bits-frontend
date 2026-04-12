@@ -139,23 +139,21 @@ export default function Forms() {
     return undefined;
   };
 
-  const handleCreateForm = async (payload: Omit<FormRecord, 'id' | 'createdAt' | 'isArchived'> & { file?: File }) => {
+  const handleCreateForm = async (payload: Omit<FormRecord, 'id' | 'createdAt' | 'isArchived'> & { file: File }) => {
     if (!user?.User_ID) {
       console.error('User not authenticated');
-      return;
+      await modal.showError('You must be signed in to create a form.', 'Error');
+      throw new Error('You must be signed in to create a form.');
+    }
+
+    if (!payload.file) {
+      await modal.showError('Please attach a file before creating the form.', 'File Required');
+      throw new Error('Please attach a file before creating the form.');
     }
 
     try {
-      let fileUrl = undefined;
-      if (payload.file) {
-        try {
-          const uploadResult = await uploadFile(payload.file);
-          fileUrl = uploadResult.url;
-        } catch (error) {
-          console.error('File upload failed:', error);
-          await modal.showError('Failed to upload file. Continuing without attachment.', 'Warning');
-        }
-      }
+      const uploadResult = await uploadFile(payload.file);
+      const fileUrl = uploadResult.url;
 
       const createdForm = await createForm({
         creatorId: user.User_ID,
@@ -177,10 +175,11 @@ export default function Forms() {
         }
         return [mapFormToRecord(createdForm), ...prev];
       });
-      setIsAddDialogOpen(false);
     } catch (error) {
       console.error('Failed to create form:', error);
-      await modal.showError('Failed to create form. Please try again.', 'Error');
+      const message = error instanceof Error ? error.message : 'Failed to create form. Please try again.';
+      await modal.showError(message, 'Error');
+      throw new Error(message);
     }
   };
 
@@ -203,12 +202,16 @@ export default function Forms() {
     setSavingIds(prev => new Set(prev).add(id));
 
     try {
-      // 1. Handle Status Update
-      if (edits.status) {
+      const currentForm = forms.find(f => f.id === id);
+      const needsFormUpdate = edits.status !== undefined || edits.remarks !== undefined;
+
+      // 1. Handle form field updates
+      if (needsFormUpdate) {
         await updateFormAPI(parseInt(id), {
           status: edits.status as any,
-          // title is required by API usually, preserve existing if not changed
-          title: forms.find(f => f.id === id)?.formId || ''
+          // Preserve the existing title/form code if only remarks changed.
+          title: currentForm?.formId || '',
+          remarks: edits.remarks,
         });
       }
 
@@ -265,7 +268,7 @@ export default function Forms() {
       await archiveFormAPI(parseInt(f.id));
       setForms(prev =>
         prev.map(form =>
-          form.id === f.id ? { ...form, isArchived: true, status: 'Archived' as FormStatus } : form
+          form.id === f.id ? { ...form, isArchived: true, status: 'ARCHIVED' } : form
         )
       );
       setExpandedRow(null);
