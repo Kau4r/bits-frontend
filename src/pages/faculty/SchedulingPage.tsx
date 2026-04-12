@@ -18,7 +18,7 @@ const FacultyScheduling = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const modal = useModal();
-  const { unreadCount } = useNotifications();
+  const { unreadCount, markAsRead } = useNotifications();
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
@@ -122,6 +122,24 @@ const FacultyScheduling = () => {
     }
   };
 
+  const handleNotificationClick = async (notification: Notification) => {
+    if (notification.read) return;
+
+    const readAt = new Date().toISOString();
+    setNotifications(prev => prev.map(item =>
+      item.id === notification.id ? { ...item, read: true, readAt } : item
+    ));
+
+    try {
+      await markAsRead(notification.id);
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+      setNotifications(prev => prev.map(item =>
+        item.id === notification.id ? { ...item, read: false, readAt: null } : item
+      ));
+    }
+  };
+
   // Real-time updates for notifications
   useBorrowingEvents(() => {
     console.log('Received borrowing update, refreshing notifications...');
@@ -199,11 +217,17 @@ const FacultyScheduling = () => {
                         <div className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">Loading...</div>
                       ) : notifications.length > 0 ? (
                         notifications.map(notification => (
-                          <div key={notification.id} className={`px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 ${!notification.read ? 'border-l-2 border-indigo-500' : ''}`}>
+                          <button
+                            key={notification.id}
+                            type="button"
+                            onClick={() => handleNotificationClick(notification)}
+                            className={`block w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700 ${!notification.read ? 'border-l-2 border-indigo-500' : ''}`}
+                            title={notification.read ? 'Notification already read' : 'Mark notification as read'}
+                          >
                             <p className="text-sm font-medium text-gray-900 dark:text-white">{notification.title}</p>
                             <p className="text-sm text-gray-800 dark:text-gray-300">{notification.message || 'No details'}</p>
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{formatTime(notification.timestamp)}</p>
-                          </div>
+                          </button>
                         ))
                       ) : (
                         <div className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">No new notifications</div>
