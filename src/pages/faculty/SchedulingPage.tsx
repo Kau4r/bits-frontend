@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useModal } from '@/context/ModalContext';
+import { useNotifications } from '@/context/NotificationContext';
 import { getInventory } from '@/services/inventory';
 import type { Item } from '@/types/inventory';
 import { getNotifications, type Notification } from '@/services/notifications';
@@ -17,6 +18,7 @@ const FacultyScheduling = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const modal = useModal();
+  const { unreadCount } = useNotifications();
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
@@ -177,9 +179,15 @@ const FacultyScheduling = () => {
               <div className="relative">
                 <button
                   onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                  className="p-1 rounded-full text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors focus:outline-none"
+                  className="relative p-1 rounded-full text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors focus:outline-none"
+                  aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
                 >
                   <Bell className="h-6 w-6" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[11px] font-bold leading-none text-white ring-2 ring-white dark:ring-gray-800">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
                 </button>
                 {isNotificationOpen && (
                   <div className="origin-top-right absolute right-0 mt-2 w-72 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
