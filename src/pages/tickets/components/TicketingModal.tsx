@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { ChevronDown, X } from 'lucide-react';
 import type { Ticket, TicketStatus, TicketPriority, TicketCategory } from '@/types/tickets';
 import { createTicket, updateTicket } from '@/services/tickets';
 import { getRooms } from '@/services/room';
@@ -60,6 +60,13 @@ export default function TicketingModal({
   const canEditExistingTicket = !isCreating && isEditingExisting && canManageTicketDetails && hasAssignedLabTech;
   const canModifyTicketFields = isCreating || canEditExistingTicket;
   const showTicketManagementFields = canManageTicketDetails || (!isCreating && (Boolean(category) || Boolean(priority)));
+  const selectClassName = "w-full pl-4 pr-11 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-none disabled:cursor-not-allowed disabled:opacity-70";
+  const selectStyle = { backgroundImage: 'none' };
+  const selectChevronClassName = "pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 dark:text-gray-400";
+  const primaryButtonClassName = `px-4 py-2 text-white rounded-lg transition-colors text-sm font-medium shadow-sm disabled:bg-gray-400 disabled:cursor-not-allowed ${isCreating || isEditingExisting
+    ? 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+    : 'bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2'
+    }`;
 
   // Clear feedback after 3 seconds
   useEffect(() => {
@@ -432,7 +439,8 @@ export default function TicketingModal({
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value as TicketCategory)}
-                    className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+                    className={selectClassName}
+                    style={selectStyle}
                     disabled={!canModifyTicketFields}
                   >
                     <option value="">Select Category</option>
@@ -441,9 +449,7 @@ export default function TicketingModal({
                     <option value="FACILITY">Facility</option>
                     <option value="OTHER">Other</option>
                   </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                  </div>
+                  <ChevronDown className={selectChevronClassName} strokeWidth={2.25} />
                 </div>
               </div>
             )}
@@ -482,7 +488,8 @@ export default function TicketingModal({
                   <select
                     value={formData.itemId || ''}
                     onChange={(e) => setFormData({ ...formData, itemId: e.target.value ? parseInt(e.target.value) : undefined })}
-                    className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+                    className={selectClassName}
+                    style={selectStyle}
                     disabled={isLoadingAssets || !canModifyTicketFields}
                   >
                     <option value="">Select an item...</option>
@@ -493,9 +500,7 @@ export default function TicketingModal({
                       </option>
                     ))}
                   </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                  </div>
+                  <ChevronDown className={selectChevronClassName} strokeWidth={2.25} />
                 </div>
                 {isLoadingAssets && (
                   <p className="mt-1.5 text-xs text-gray-500">Loading assets from {formData.location}...</p>
@@ -514,7 +519,8 @@ export default function TicketingModal({
                   <select
                     value={priority}
                     onChange={(e) => setPriority(e.target.value as TicketPriority)}
-                    className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+                    className={selectClassName}
+                    style={selectStyle}
                     disabled={!canModifyTicketFields}
                   >
                     <option value="">Select Priority</option>
@@ -522,9 +528,7 @@ export default function TicketingModal({
                     <option value="MEDIUM">Medium</option>
                     <option value="LOW">Low</option>
                   </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                  </div>
+                  <ChevronDown className={selectChevronClassName} strokeWidth={2.25} />
                 </div>
               </div>
             )}
@@ -553,16 +557,15 @@ export default function TicketingModal({
                   <select
                     value={status}
                     onChange={(e) => setStatus(e.target.value as TicketStatus)}
-                    className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+                    className={selectClassName}
+                    style={selectStyle}
                     disabled={!canModifyTicketFields}
                   >
                     <option value="PENDING">Pending</option>
                     <option value="IN_PROGRESS">In Progress</option>
                     <option value="RESOLVED">Resolved</option>
                   </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                  </div>
+                  <ChevronDown className={selectChevronClassName} strokeWidth={2.25} />
                 </div>
               </div>
             )}
@@ -583,7 +586,7 @@ export default function TicketingModal({
             form={isCreating || isEditingExisting ? 'ticket-form' : undefined}
             onClick={!isCreating && !isEditingExisting ? handleEnterEditMode : undefined}
             disabled={isSubmitting || (!isCreating && (!canManageTicketDetails || (!isEditingExisting && !hasAssignedLabTech)))}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm font-medium shadow-sm"
+            className={primaryButtonClassName}
           >
             {primaryButtonLabel}
           </button>
