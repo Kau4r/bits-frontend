@@ -33,6 +33,7 @@ export default function TicketingModal({
   isCreating,
 }: TicketingModalProps) {
   const { user } = useAuth();
+  const canManageTicketDetails = ['LAB_TECH', 'LAB_HEAD', 'FACULTY'].includes(user?.User_Role ?? '');
 
   const [status, setStatus] = useState<TicketStatus>('PENDING');
   const [priority, setPriority] = useState<TicketPriority | ''>('');
@@ -48,12 +49,17 @@ export default function TicketingModal({
   const [assets, setAssets] = useState<Asset[]>([]);
   const [isLoadingAssets, setIsLoadingAssets] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isEditingExisting, setIsEditingExisting] = useState(false);
 
   // Local state for optimistic UI updates on technician assignment
   const [localTechnician, setLocalTechnician] = useState<Ticket['Technician'] | null>(null);
   const assignedTechnicianId = localTechnician?.User_ID ?? ticket?.Technician_ID;
-  const canUpdateExistingTicket = isCreating || Boolean(assignedTechnicianId);
-  const canEditTicketDetails = ['LAB_TECH', 'LAB_HEAD', 'FACULTY'].includes(user?.User_Role ?? '') && canUpdateExistingTicket;
+  const hasAssignedLabTech = Boolean(assignedTechnicianId) &&
+    (!localTechnician || localTechnician.User_Role === 'LAB_TECH') &&
+    localTechnician?.Is_Active !== false;
+  const canEditExistingTicket = !isCreating && isEditingExisting && canManageTicketDetails && hasAssignedLabTech;
+  const canModifyTicketFields = isCreating || canEditExistingTicket;
+  const showTicketManagementFields = canManageTicketDetails || (!isCreating && (Boolean(category) || Boolean(priority)));
 
   // Clear feedback after 3 seconds
   useEffect(() => {
@@ -155,11 +161,12 @@ export default function TicketingModal({
       setCategory(ticket.Category || '');
       setFormData({
         reportProblem: ticket.Report_Problem,
-        location: ticket.Location || '',
-        itemId: ticket.Item?.Item_ID,
+        location: ticket.Location || ticket.Room?.Name || '',
+        itemId: ticket.Item?.Item_ID ?? ticket.Item_ID,
         roomId: ticket.Room_ID || undefined,
       });
       setLocalTechnician(ticket.Technician || null);
+      setIsEditingExisting(false);
     }
 
     if (isCreating) {
@@ -168,6 +175,7 @@ export default function TicketingModal({
       setCategory('');
       setFormData({ reportProblem: '', location: '', itemId: undefined, roomId: undefined });
       setLocalTechnician(null);
+      setIsEditingExisting(false);
     }
   }, [ticket, isCreating]);
 
@@ -177,7 +185,19 @@ export default function TicketingModal({
     e.preventDefault();
     if (isSubmitting) return;
 
-    if (!isCreating && !canUpdateExistingTicket) {
+    if (!isCreating && !isEditingExisting) {
+      if (!hasAssignedLabTech) {
+        setFeedbackMessage({
+          text: 'Assign this ticket to a Lab Tech before updating details or status.',
+          type: 'error',
+        });
+        return;
+      }
+      setIsEditingExisting(true);
+      return;
+    }
+
+    if (!isCreating && !hasAssignedLabTech) {
       setFeedbackMessage({
         text: 'Assign this ticket to a Lab Tech before updating details or status.',
         type: 'error',
@@ -189,7 +209,13 @@ export default function TicketingModal({
     try {
       // Find room ID if location matches a room name
       const selectedRoom = rooms.find(r => r.Name === formData.location);
-      const roomId = selectedRoom ? selectedRoom.Room_ID : formData.roomId;
+      const unchangedExistingLocation = !isCreating && ticket &&
+        formData.location === (ticket.Location || ticket.Room?.Name || '');
+      const roomId = selectedRoom
+        ? selectedRoom.Room_ID
+        : unchangedExistingLocation
+          ? formData.roomId
+          : undefined;
 
       if (isCreating) {
         const newTicket = await createTicket({
@@ -206,7 +232,11 @@ export default function TicketingModal({
       } else if (ticket) {
         const updatedTicket = await updateTicket(ticket.Ticket_ID, {
           Status: status,
-          ...(canEditTicketDetails ? { Priority: priority || undefined, Category: category || undefined } : {}),
+          Report_Problem: formData.reportProblem,
+          Location: formData.location || null,
+          Item_ID: formData.itemId ?? null,
+          Room_ID: roomId ?? null,
+          ...(canManageTicketDetails ? { Priority: priority || undefined, Category: category || undefined } : {}),
         });
         onUpdate(updatedTicket);
       }
@@ -221,6 +251,36 @@ export default function TicketingModal({
       setIsSubmitting(false);
     }
   };
+
+  const handleEnterEditMode = () => {
+    if (!hasAssignedLabTech) {
+      setFeedbackMessage({
+        text: 'Assign this ticket to a Lab Tech before updating details or status.',
+        type: 'error',
+      });
+      return;
+    }
+
+    if (!canManageTicketDetails) {
+      setFeedbackMessage({
+        text: 'You do not have permission to update this ticket.',
+        type: 'error',
+      });
+      return;
+    }
+
+    setIsEditingExisting(true);
+  };
+
+  const primaryButtonLabel = isSubmitting
+    ? 'Saving...'
+    : isCreating
+      ? 'Create Ticket'
+      : isEditingExisting
+        ? 'Save Changes'
+        : hasAssignedLabTech
+          ? 'Update Ticket'
+          : 'Assign before updating';
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={onClose}>
@@ -248,9 +308,14 @@ export default function TicketingModal({
             </div>
           )}
 
-          {ticket && !isCreating && !canUpdateExistingTicket && (
-            <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-800 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
-              Assign this ticket to a Lab Tech before updating details or status.
+          {ticket && !isCreating && !isEditingExisting && (
+            <div className={`mb-6 rounded-lg border p-4 text-sm font-medium ${hasAssignedLabTech
+              ? 'border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-200'
+              : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-200'
+              }`}>
+              {hasAssignedLabTech
+                ? 'Click Update Ticket to modify details or status.'
+                : 'Assign this ticket to a Lab Tech before updating details or status.'}
             </div>
           )}
 
@@ -302,6 +367,7 @@ export default function TicketingModal({
                               Status: 'PENDING'
                             });
                             onUpdate(updated);
+                            setIsEditingExisting(false);
                             setFeedbackMessage({ text: 'Ticket unassigned successfully', type: 'success' });
                           } catch (err) {
                             setLocalTechnician(previousTechnician);
@@ -359,7 +425,7 @@ export default function TicketingModal({
 
           <form id="ticket-form" onSubmit={handleSubmit} className="space-y-5">
             {/* Category - First Position */}
-            {canEditTicketDetails && (
+            {showTicketManagementFields && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Category</label>
                 <div className="relative">
@@ -367,6 +433,7 @@ export default function TicketingModal({
                     value={category}
                     onChange={(e) => setCategory(e.target.value as TicketCategory)}
                     className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+                    disabled={!canModifyTicketFields}
                   >
                     <option value="">Select Category</option>
                     <option value="HARDWARE">Hardware</option>
@@ -394,7 +461,7 @@ export default function TicketingModal({
                   setFormData({ ...formData, location: e.target.value, itemId: undefined });
                 }}
                 className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                disabled={!canUpdateExistingTicket}
+                disabled={!canModifyTicketFields}
                 placeholder="Select a room or type location..."
                 required={category === 'HARDWARE'}
               />
@@ -416,7 +483,7 @@ export default function TicketingModal({
                     value={formData.itemId || ''}
                     onChange={(e) => setFormData({ ...formData, itemId: e.target.value ? parseInt(e.target.value) : undefined })}
                     className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
-                    disabled={isLoadingAssets || !canUpdateExistingTicket}
+                    disabled={isLoadingAssets || !canModifyTicketFields}
                   >
                     <option value="">Select an item...</option>
                     {assets.map((asset) => (
@@ -440,7 +507,7 @@ export default function TicketingModal({
             )}
 
             {/* Priority - Third Position */}
-            {canEditTicketDetails && (
+            {showTicketManagementFields && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Priority</label>
                 <div className="relative">
@@ -448,6 +515,7 @@ export default function TicketingModal({
                     value={priority}
                     onChange={(e) => setPriority(e.target.value as TicketPriority)}
                     className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+                    disabled={!canModifyTicketFields}
                   >
                     <option value="">Select Priority</option>
                     <option value="HIGH">High</option>
@@ -471,7 +539,7 @@ export default function TicketingModal({
                 value={formData.reportProblem}
                 onChange={(e) => setFormData({ ...formData, reportProblem: e.target.value })}
                 className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                disabled={!canUpdateExistingTicket}
+                disabled={!canModifyTicketFields}
                 required
                 placeholder="Describe the issue in detail..."
               />
@@ -486,7 +554,7 @@ export default function TicketingModal({
                     value={status}
                     onChange={(e) => setStatus(e.target.value as TicketStatus)}
                     className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
-                    disabled={!canUpdateExistingTicket}
+                    disabled={!canModifyTicketFields}
                   >
                     <option value="PENDING">Pending</option>
                     <option value="IN_PROGRESS">In Progress</option>
@@ -511,12 +579,13 @@ export default function TicketingModal({
             Cancel
           </button>
           <button
-            type="submit"
-            form="ticket-form"
-            disabled={isSubmitting || (!isCreating && !canUpdateExistingTicket)}
+            type={isCreating || isEditingExisting ? 'submit' : 'button'}
+            form={isCreating || isEditingExisting ? 'ticket-form' : undefined}
+            onClick={!isCreating && !isEditingExisting ? handleEnterEditMode : undefined}
+            disabled={isSubmitting || (!isCreating && (!canManageTicketDetails || (!isEditingExisting && !hasAssignedLabTech)))}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm font-medium shadow-sm"
           >
-            {isSubmitting ? 'Saving...' : (isCreating ? 'Create Ticket' : canUpdateExistingTicket ? 'Update Ticket' : 'Assign before updating')}
+            {primaryButtonLabel}
           </button>
         </div>
       </div>

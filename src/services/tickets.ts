@@ -30,7 +30,17 @@ export const createTicket = async (ticket: NewTicketInput): Promise<Ticket> => {
 };
 
 // Update ticket
-export const updateTicket = async (ticketId: number, data: { Status?: TicketStatus; Priority?: TicketPriority; Category?: TicketCategory; Technician_ID?: number | null; Archived?: boolean }): Promise<Ticket> => {
+export const updateTicket = async (ticketId: number, data: {
+    Status?: TicketStatus;
+    Priority?: TicketPriority;
+    Category?: TicketCategory;
+    Technician_ID?: number | null;
+    Archived?: boolean;
+    Report_Problem?: string;
+    Location?: string | null;
+    Item_ID?: number | null;
+    Room_ID?: number | null;
+}): Promise<Ticket> => {
     const { data: updated } = await api.put<Ticket>(`${"/tickets"}/${ticketId}`, data);
     return updated;
 };
