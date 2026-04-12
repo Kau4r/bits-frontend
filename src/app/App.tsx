@@ -27,7 +27,6 @@ import type { JSX } from 'react';
 import { ROLES } from '@/types/user';
 import InventoryMobile from '@/pages/labtech/InventoryMobile';
 import Borrowing from '@/pages/labtech/BorrowingPage';
-import MonitoringDashboard from '@/pages/monitoring/MonitoringDashboard';
 import Reports from '@/pages/labtech/ReportsPage';
 
 // 🔒 Protects routes based on auth + role
@@ -108,7 +107,7 @@ function AppContent() {
         <Route path="/labtech/borrowing" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Borrowing /></ProtectedRoute>} />
         <Route path="/tickets" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Ticket /></ProtectedRoute>} />
         <Route path="/notification" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Notification /></ProtectedRoute>} />
-        <Route path="/monitoring" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><MonitoringDashboard /></ProtectedRoute>} />
+        <Route path="/monitoring" element={<Navigate to="/" replace />} />
         <Route path="/reports" element={<ProtectedRoute roles={[ROLES.LAB_TECH]}><Reports /></ProtectedRoute>} />
 
         <Route path="/labhead-scheduling" element={<ProtectedRoute roles={[ROLES.LAB_HEAD]}><LabheadScheduling /></ProtectedRoute>} />
