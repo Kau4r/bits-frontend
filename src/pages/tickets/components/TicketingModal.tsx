@@ -33,7 +33,6 @@ export default function TicketingModal({
   isCreating,
 }: TicketingModalProps) {
   const { user } = useAuth();
-  const canEditTicketDetails = ['LAB_TECH', 'LAB_HEAD', 'FACULTY'].includes(user?.User_Role ?? '');
 
   const [status, setStatus] = useState<TicketStatus>('PENDING');
   const [priority, setPriority] = useState<TicketPriority | ''>('');
@@ -52,6 +51,9 @@ export default function TicketingModal({
 
   // Local state for optimistic UI updates on technician assignment
   const [localTechnician, setLocalTechnician] = useState<Ticket['Technician'] | null>(null);
+  const assignedTechnicianId = localTechnician?.User_ID ?? ticket?.Technician_ID;
+  const canUpdateExistingTicket = isCreating || Boolean(assignedTechnicianId);
+  const canEditTicketDetails = ['LAB_TECH', 'LAB_HEAD', 'FACULTY'].includes(user?.User_Role ?? '') && canUpdateExistingTicket;
 
   // Clear feedback after 3 seconds
   useEffect(() => {
@@ -175,6 +177,14 @@ export default function TicketingModal({
     e.preventDefault();
     if (isSubmitting) return;
 
+    if (!isCreating && !canUpdateExistingTicket) {
+      setFeedbackMessage({
+        text: 'Assign this ticket to a Lab Tech before updating details or status.',
+        type: 'error',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       // Find room ID if location matches a room name
@@ -203,6 +213,10 @@ export default function TicketingModal({
       onClose();
     } catch (err) {
       console.error('Error saving ticket', err);
+      setFeedbackMessage({
+        text: err instanceof Error ? err.message : 'Failed to save ticket',
+        type: 'error',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -231,6 +245,12 @@ export default function TicketingModal({
               : 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300 border border-red-200 dark:border-red-800'
               }`}>
               {feedbackMessage.text}
+            </div>
+          )}
+
+          {ticket && !isCreating && !canUpdateExistingTicket && (
+            <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-800 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
+              Assign this ticket to a Lab Tech before updating details or status.
             </div>
           )}
 
@@ -299,7 +319,7 @@ export default function TicketingModal({
                 </div>
 
                 {/* Assign to Me Button */}
-                {['LAB_TECH', 'LAB_HEAD', 'ADMIN'].includes(user?.User_Role ?? '') && !localTechnician?.User_ID && ticket.Status !== 'RESOLVED' && (
+                {user?.User_Role === 'LAB_TECH' && !localTechnician?.User_ID && ticket.Status !== 'RESOLVED' && (
                   <button
                     type="button"
                     onClick={async () => {
@@ -374,6 +394,7 @@ export default function TicketingModal({
                   setFormData({ ...formData, location: e.target.value, itemId: undefined });
                 }}
                 className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={!canUpdateExistingTicket}
                 placeholder="Select a room or type location..."
                 required={category === 'HARDWARE'}
               />
@@ -395,7 +416,7 @@ export default function TicketingModal({
                     value={formData.itemId || ''}
                     onChange={(e) => setFormData({ ...formData, itemId: e.target.value ? parseInt(e.target.value) : undefined })}
                     className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
-                    disabled={isLoadingAssets}
+                    disabled={isLoadingAssets || !canUpdateExistingTicket}
                   >
                     <option value="">Select an item...</option>
                     {assets.map((asset) => (
@@ -450,6 +471,7 @@ export default function TicketingModal({
                 value={formData.reportProblem}
                 onChange={(e) => setFormData({ ...formData, reportProblem: e.target.value })}
                 className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={!canUpdateExistingTicket}
                 required
                 placeholder="Describe the issue in detail..."
               />
@@ -464,6 +486,7 @@ export default function TicketingModal({
                     value={status}
                     onChange={(e) => setStatus(e.target.value as TicketStatus)}
                     className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+                    disabled={!canUpdateExistingTicket}
                   >
                     <option value="PENDING">Pending</option>
                     <option value="IN_PROGRESS">In Progress</option>
@@ -490,10 +513,10 @@ export default function TicketingModal({
           <button
             type="submit"
             form="ticket-form"
-            disabled={isSubmitting}
+            disabled={isSubmitting || (!isCreating && !canUpdateExistingTicket)}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm font-medium shadow-sm"
           >
-            {isSubmitting ? 'Saving...' : (isCreating ? 'Create Ticket' : 'Update Ticket')}
+            {isSubmitting ? 'Saving...' : (isCreating ? 'Create Ticket' : canUpdateExistingTicket ? 'Update Ticket' : 'Assign before updating')}
           </button>
         </div>
       </div>
