@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { fetchUsersByRole } from '@/services/user';
+import { fetchTickets } from '@/services/tickets';
 import type { User } from '@/types/user';
+import type { Ticket } from '@/types/tickets';
 import { Search } from 'lucide-react';
 
 export type Tech = {
@@ -22,14 +24,24 @@ interface Props {
   onSelect: (tech: Tech) => void;
 }
 
+const getTicketProgress = (userId: number, tickets: Ticket[]) => {
+  const assignedTickets = tickets.filter(ticket => ticket.Technician_ID === userId && !ticket.Archived);
+  const resolvedTickets = assignedTickets.filter(ticket => ticket.Status === 'RESOLVED');
+
+  return {
+    completedTasks: resolvedTickets.length,
+    totalTasks: assignedTickets.length
+  };
+};
+
 // Convert backend User to component Tech type
-const mapUserToTech = (user: User): Tech => ({
+const mapUserToTech = (user: User, tickets: Ticket[]): Tech => ({
   dbId: user.User_ID,
   id: `LT${user.User_ID.toString().padStart(3, '0')}`,
   name: `${user.First_Name} ${user.Last_Name}`,
   email: user.Email,
   status: user.Is_Active ? 'Active' : 'Inactive',
-  weeklyProgress: { completedTasks: Math.floor(Math.random() * 10), totalTasks: 10 }, // TODO: Fetch real progress data
+  weeklyProgress: getTicketProgress(user.User_ID, tickets),
   activities: { completed: [], pending: [], inProgress: [] } // TODO: Fetch real activity data
 });
 
@@ -43,8 +55,11 @@ export default function LabTechList({ selectedTech, onSelect }: Props) {
     const loadLabTechs = async () => {
       try {
         setIsLoading(true);
-        const users = await fetchUsersByRole('LAB_TECH');
-        const techs = users.map(mapUserToTech);
+        const [users, tickets] = await Promise.all([
+          fetchUsersByRole('LAB_TECH'),
+          fetchTickets()
+        ]);
+        const techs = users.map(user => mapUserToTech(user, tickets));
         setLabTechs(techs);
 
         // Auto-select first tech if none selected
@@ -71,7 +86,9 @@ export default function LabTechList({ selectedTech, onSelect }: Props) {
 
   // Determine workload status color
   const getWorkloadColor = (completed: number, total: number) => {
-    const ratio = total > 0 ? completed / total : 0;
+    if (total === 0) return 'text-gray-500 bg-gray-50 dark:bg-gray-800 dark:text-gray-300';
+
+    const ratio = completed / total;
     if (ratio < 0.3) return 'text-red-500 bg-red-50 dark:bg-red-900/20 dark:text-red-300';
     if (ratio < 0.7) return 'text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 dark:text-yellow-300';
     return 'text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-300';
@@ -157,10 +174,14 @@ export default function LabTechList({ selectedTech, onSelect }: Props) {
                 </div>
               </div>
 
-              {/* Workload Badge */}
+              {/* Assigned ticket progress badge */}
               <div className={`flex items-center px-2 py-0.5 rounded text-[10px] font-medium leading-4 ${getWorkloadColor(tech.weeklyProgress.completedTasks, tech.weeklyProgress.totalTasks)
-                }`}>
-                <span>{tech.weeklyProgress.completedTasks}/{tech.weeklyProgress.totalTasks}</span>
+                }`} title={`${tech.weeklyProgress.completedTasks} resolved of ${tech.weeklyProgress.totalTasks} assigned tickets`}>
+                <span>
+                  {tech.weeklyProgress.totalTasks > 0
+                    ? `${tech.weeklyProgress.completedTasks}/${tech.weeklyProgress.totalTasks}`
+                    : '0 tickets'}
+                </span>
               </div>
             </div>
           ))
