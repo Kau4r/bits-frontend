@@ -33,6 +33,12 @@ const timeSlots = [
     '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00'
 ];
 
+const SCHEDULE_SLOT_WIDTH_PX = 100;
+const SCHEDULE_SLOT_GAP_PX = 8;
+const SCHEDULE_GRID_START_MINS = 7 * 60 + 30;
+const SCHEDULE_GRID_WIDTH_PX =
+    timeSlots.length * SCHEDULE_SLOT_WIDTH_PX + (timeSlots.length - 1) * SCHEDULE_SLOT_GAP_PX;
+
 const ITEM_TYPES = ['KEYBOARD', 'MOUSE', 'MONITOR', 'SYSTEM_UNIT'] as const;
 
 const formatItemType = (type: string) => {
@@ -505,9 +511,15 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
 
                             {/* Schedule Container */}
                             <div className="overflow-x-auto pb-4">
-                                <div className="min-w-[1200px]">
+                                <div style={{ width: SCHEDULE_GRID_WIDTH_PX, minWidth: SCHEDULE_GRID_WIDTH_PX }}>
                                     {/* Time Header Row */}
-                                    <div className="grid grid-cols-[repeat(28,minmax(80px,1fr))] gap-2 mb-4">
+                                    <div
+                                        className="grid gap-2 mb-4"
+                                        style={{
+                                            gridTemplateColumns: `repeat(${timeSlots.length}, ${SCHEDULE_SLOT_WIDTH_PX}px)`,
+                                            columnGap: SCHEDULE_SLOT_GAP_PX,
+                                        }}
+                                    >
                                         {timeSlots.map(time => (
                                             <div key={time} className="bg-gray-100 dark:bg-gray-800 py-3 rounded-lg text-center text-sm font-semibold text-gray-700 dark:text-gray-300">
                                                 {time}
@@ -516,10 +528,16 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                     </div>
 
                                     {/* Events Rows */}
-                                    <div className="relative space-y-4 min-h-[100px]">
-                                        <div className="h-24 bg-gray-50 dark:bg-gray-800/30 rounded-lg relative border border-gray-200 dark:border-gray-700">
+                                    <div className="min-h-[100px]">
+                                        <div
+                                            className="h-24 bg-gray-50 dark:bg-gray-800/30 rounded-lg grid relative border border-gray-200 dark:border-gray-700"
+                                            style={{
+                                                gridTemplateColumns: `repeat(${timeSlots.length}, ${SCHEDULE_SLOT_WIDTH_PX}px)`,
+                                                columnGap: SCHEDULE_SLOT_GAP_PX,
+                                            }}
+                                        >
                                             {sessions.length === 0 ? (
-                                                <div className="flex items-center justify-center h-full text-gray-600 dark:text-gray-500 italic">
+                                                <div className="absolute inset-0 flex items-center justify-center text-gray-600 dark:text-gray-500 italic">
                                                     No schedules or bookings for today
                                                 </div>
                                             ) : (
@@ -528,34 +546,28 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                                     const start = new Date(session.startTime);
                                                     const end = new Date(session.endTime);
 
-                                                    // Grid starts at 7:30 (450 mins from midnight)
-                                                    // Each slot is 30 mins
-                                                    const gridStartMins = 7 * 60 + 30;
-
                                                     const startMins = start.getHours() * 60 + start.getMinutes();
                                                     const endMins = end.getHours() * 60 + end.getMinutes();
 
-                                                    // Calculate column index (0-based) form 7:30
-                                                    // 28 columns total representing 7:30 to 21:30
-                                                    const colStart = (startMins - gridStartMins) / 30;
-                                                    const durationSlots = (endMins - startMins) / 30;
+                                                    const colStart = Math.round((startMins - SCHEDULE_GRID_START_MINS) / 30);
+                                                    const durationSlots = Math.max(
+                                                        1,
+                                                        Math.round((endMins - startMins) / 30)
+                                                    );
 
-                                                    // CSS Grid placement
-                                                    // left = (colStart / 28) * 100 %
-                                                    // width = (durationSlots / 28) * 100 %
+                                                    if (colStart < 0 || colStart >= timeSlots.length) return null;
 
-                                                    // Ensure within bounds
-                                                    if (colStart < 0 || colStart >= 28) return null;
+                                                    const safeDurationSlots = Math.min(durationSlots, timeSlots.length - colStart);
 
                                                     const isSchedule = session.type === 'schedule';
 
                                                     return (
                                                         <div
                                                             key={index}
-                                                            className="absolute top-1 bottom-1 p-1"
+                                                            className="p-1 min-w-0"
                                                             style={{
-                                                                left: `calc((100% / 28) * ${colStart})`,
-                                                                width: `calc((100% / 28) * ${Math.max(durationSlots, 0.5)})` // Min width
+                                                                gridColumn: `${colStart + 1} / span ${safeDurationSlots}`,
+                                                                gridRow: 1,
                                                             }}
                                                         >
                                                             <div className={`
