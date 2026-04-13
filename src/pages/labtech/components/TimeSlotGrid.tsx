@@ -7,6 +7,7 @@ interface TimeSlotGridProps {
     categoryRooms: RoomType[]; // Active queue rooms for this category
     onAddRoom: (startTime: string, endTime: string) => void;
     onSlotDetail?: (startTime: string, sessions: RoomSession[]) => void;
+    currentTime?: Date;
     testTimeOverride?: Date; // For testing
     isTomorrow?: boolean;
 }
@@ -290,7 +291,7 @@ function TimeRow({ slots, sessions, categoryRooms, currentTime, onAddRoom, onSlo
 
             {/* Capacity Row */}
             <div className="grid relative" style={gridTemplateStyle}>
-                {slotMeta.map((meta, idx) => {
+                {slotMeta.map((_, idx) => {
                     const queuedRange = queuedRangeByStart.get(idx);
                     const filler = fillerSegmentByStart.get(idx);
 
@@ -370,19 +371,28 @@ function TimeRow({ slots, sessions, categoryRooms, currentTime, onAddRoom, onSlo
     );
 }
 
-export default function TimeSlotGrid({ sessions, categoryRooms, onAddRoom, onSlotDetail, testTimeOverride, isTomorrow = false }: TimeSlotGridProps) {
-    const [currentTime, setCurrentTime] = useState(testTimeOverride || new Date());
+export default function TimeSlotGrid({
+    sessions,
+    categoryRooms,
+    onAddRoom,
+    onSlotDetail,
+    currentTime: controlledCurrentTime,
+    testTimeOverride,
+    isTomorrow = false
+}: TimeSlotGridProps) {
+    const [fallbackCurrentTime, setFallbackCurrentTime] = useState(new Date());
 
     useEffect(() => {
-        if (testTimeOverride) {
-            setCurrentTime(testTimeOverride);
+        if (testTimeOverride || controlledCurrentTime) {
             return;
         }
 
         // Update current time every minute
-        const interval = setInterval(() => setCurrentTime(new Date()), 60000);
+        const interval = setInterval(() => setFallbackCurrentTime(new Date()), 60000);
         return () => clearInterval(interval);
-    }, [testTimeOverride]);
+    }, [testTimeOverride, controlledCurrentTime]);
+
+    const currentTime = testTimeOverride || controlledCurrentTime || fallbackCurrentTime;
 
     const visibleSlots = useMemo(() => {
         // Show all slots for tomorrow (no past-time filtering)
@@ -392,7 +402,7 @@ export default function TimeSlotGrid({ sessions, categoryRooms, onAddRoom, onSlo
         const now = currentTime;
         return baseSlots.filter(slot => {
             const [h, m] = slot.split(':').map(Number);
-            const slotDate = new Date();
+            const slotDate = new Date(now);
             slotDate.setHours(h, m, 0, 0);
 
             const slotEnd = new Date(slotDate);

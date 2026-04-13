@@ -12,7 +12,13 @@ export default function NotificationPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState<NotificationType | 'All'>('All');
   const [activeView, setActiveView] = useState<NotificationView>('all');
-  const { notifications: apiNotifications, loading, markAsRead } = useNotifications();
+  const {
+    notifications: apiNotifications,
+    loading,
+    markAsRead,
+    archiveNotification,
+    restoreNotification
+  } = useNotifications();
 
   // Map context notifications to view format
   const notifications: Notification[] = useMemo(() => {
@@ -34,7 +40,7 @@ export default function NotificationPage() {
         message: n.message,
         time: n.time,
         isRead: n.read,
-        isArchived: false, // API doesn't support archive yet
+        isArchived: n.archived,
         type: type,
         role: 'Lab Tech',
       };
@@ -77,12 +83,12 @@ export default function NotificationPage() {
     await markAsRead(id);
   };
 
-  const handleArchive = (id: number) => {
-    console.log('Archive not fully supported in global context yet', id);
+  const handleArchive = async (id: number) => {
+    await archiveNotification(id);
   };
 
-  const handleRestore = (id: number) => {
-    console.log('Restore not fully supported in global context yet', id);
+  const handleRestore = async (id: number) => {
+    await restoreNotification(id);
   };
 
   const getViewCount = (view: NotificationView) => {

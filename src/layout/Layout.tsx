@@ -12,7 +12,7 @@ const Layout = () => {
   const profileRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
-  const noSidebarRoles = ["STUDENT", "FACULTY"];
+  const noSidebarRoles = ["STUDENT", "FACULTY", "SECRETARY"];
   const hideSidebar = noSidebarRoles.includes((userRole ?? "").toUpperCase());
 
   useEffect(() => {

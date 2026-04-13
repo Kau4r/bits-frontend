@@ -6,12 +6,15 @@ import type { FormEvent } from "react";
 import type { Item, ItemType } from "@/types/inventory";
 import type { Room } from "@/types/room";
 import { useModal } from "@/context/ModalContext";
+import { buildInventoryItemQrUrl } from "@/utils/inventoryQr";
 
 // Valid item types from Prisma schema
 const ITEM_TYPES: ItemType[] = [
   "HDMI", "VGA", "ADAPTER", "PROJECTOR", "EXTENSION",
-  "MOUSE", "KEYBOARD", "MONITOR", "GENERAL", "OTHER"
+  "MOUSE", "KEYBOARD", "MONITOR", "SYSTEM_UNIT", "GENERAL", "OTHER"
 ];
+
+const CUSTOM_ITEM_TYPE_VALUE = "__CUSTOM_ITEM_TYPE__";
 
 const STATUS_OPTIONS = ["AVAILABLE", "BORROWED", "DEFECTIVE", "LOST", "REPLACED"] as const;
 
@@ -69,6 +72,7 @@ export default function ItemModal({
   const [quantity, setQuantity] = useState(1);
   const [serials, setSerials] = useState<string[]>([""]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCustomItemType, setIsCustomItemType] = useState(false);
 
   // Form data state
   const [formData, setFormData] = useState<FormData>({
@@ -83,6 +87,12 @@ export default function ItemModal({
   // Extract unique brands from existing items for suggestions
   const existingBrands = [...new Set(items.map(i => i.Brand).filter(Boolean))];
   const existingTypes = [...new Set(items.map(i => i.Item_Type).filter(Boolean))];
+  const itemTypeOptions = [
+    ...new Set(
+      [...ITEM_TYPES, ...existingTypes, item?.Item_Type]
+        .filter((type): type is string => Boolean(type))
+    )
+  ];
 
   // Initialize/reset form when modal opens or mode changes
   useEffect(() => {
@@ -99,6 +109,7 @@ export default function ItemModal({
       });
       setQuantity(1);
       setSerials([""]);
+      setIsCustomItemType(false);
     } else if ((initMode === "edit" || initMode === "view") && item) {
       setFormData({
         itemType: item.Item_Type || "GENERAL",
@@ -110,6 +121,7 @@ export default function ItemModal({
       });
       setQuantity(1);
       setSerials([item.Serial_Number || ""]);
+      setIsCustomItemType(false);
     }
 
     setMode(initMode);
@@ -408,6 +420,7 @@ export default function ItemModal({
   const readOnly = mode === "view";
   const modeTitle = mode === "add" ? "Add Item" : mode === "edit" ? "Edit Item" : "View Item";
   const showAssetInfo = (mode === "view" || mode === "edit") && item;
+  const qrItemUrl = showAssetInfo && item?.Item_Code ? buildInventoryItemQrUrl(item.Item_Code) : "";
 
   return createPortal(
     <div
@@ -438,7 +451,7 @@ export default function ItemModal({
         <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
           <div className="flex-1 overflow-y-auto px-6 py-4">
             {/* QR Code with Asset Info for View/Edit */}
-            {showAssetInfo && formData.serialNumber && (
+            {showAssetInfo && (
               <div
                 ref={labelRef}
                 id="printable-label"
@@ -446,14 +459,20 @@ export default function ItemModal({
               >
                 {/* QR Code */}
                 <div className="flex-shrink-0">
-                  <ReactQRCode
-                    id="qrCode"
-                    value={formData.serialNumber}
-                    size={120}
-                    level="H"
-                    bgColor="#1f2937"
-                    fgColor="#fff"
-                  />
+                  {qrItemUrl ? (
+                    <ReactQRCode
+                      id="qrCode"
+                      value={qrItemUrl}
+                      size={120}
+                      level="H"
+                      bgColor="#fff"
+                      fgColor="#111827"
+                    />
+                  ) : (
+                    <div className="grid h-[120px] w-[120px] place-items-center rounded-md border border-dashed border-gray-400 bg-gray-100 px-3 text-center text-xs font-semibold text-gray-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-400">
+                      QR unavailable
+                    </div>
+                  )}
                 </div>
 
                 {/* Asset Information */}
@@ -474,26 +493,39 @@ export default function ItemModal({
                       {formatDate(item?.Updated_At)}
                     </p>
                   </div>
+                  {qrItemUrl && (
+                    <p className="break-all text-xs text-gray-500 dark:text-gray-400">
+                      Opens: {qrItemUrl}
+                    </p>
+                  )}
                 </div>
 
                 {/* Action Buttons */}
                 <div className="flex flex-col gap-2">
-                  <button
-                    type="button"
-                    onClick={handleDownloadQRCode}
-                    className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
-                  >
-                    <Download className="w-4 h-4" />
-                    Download
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handlePrintLabel}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
-                  >
-                    <Printer className="w-4 h-4" />
-                    Print Label
-                  </button>
+                  {qrItemUrl ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleDownloadQRCode}
+                        className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+                      >
+                        <Download className="w-4 h-4" />
+                        Download
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handlePrintLabel}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+                      >
+                        <Printer className="w-4 h-4" />
+                        Print Label
+                      </button>
+                    </>
+                  ) : (
+                    <p className="max-w-32 text-xs text-gray-500 dark:text-gray-400">
+                      Asset code is required before a QR label can be generated.
+                    </p>
+                  )}
                 </div>
               </div>
             )}
@@ -505,21 +537,45 @@ export default function ItemModal({
                 <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
                   Item Type *
                 </label>
-                <input
-                  type="text"
-                  list="itemTypes"
-                  value={formData.itemType}
-                  onChange={(e) => setFormData({ ...formData, itemType: e.target.value as ItemType })}
+                <select
+                  value={isCustomItemType ? CUSTOM_ITEM_TYPE_VALUE : formData.itemType}
+                  onChange={(e) => {
+                    if (e.target.value === CUSTOM_ITEM_TYPE_VALUE) {
+                      setIsCustomItemType(true);
+                      setFormData({ ...formData, itemType: "" });
+                      return;
+                    }
+
+                    setIsCustomItemType(false);
+                    setFormData({ ...formData, itemType: e.target.value });
+                  }}
                   disabled={readOnly}
                   required
                   className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60"
-                  placeholder="Select or type item type..."
-                />
-                <datalist id="itemTypes">
-                  {[...ITEM_TYPES, ...existingTypes.filter(t => !ITEM_TYPES.includes(t as ItemType))].map((type) => (
-                    <option key={type} value={type} />
+                >
+                  <option value="" disabled>Select item type</option>
+                  {itemTypeOptions.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
                   ))}
-                </datalist>
+                  <option value={CUSTOM_ITEM_TYPE_VALUE}>--</option>
+                </select>
+                {isCustomItemType && !readOnly && (
+                  <input
+                    type="text"
+                    value={formData.itemType}
+                    onChange={(e) => setFormData({ ...formData, itemType: e.target.value })}
+                    required
+                    className="mt-2 w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter new item type..."
+                  />
+                )}
+                {!readOnly && (
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Choose -- to add a new item type.
+                  </p>
+                )}
               </div>
 
               {/* Brand */}

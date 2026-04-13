@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import { BrowserQRCodeReader, type IScannerControls } from "@zxing/browser";
+import { useNavigate } from "react-router-dom";
 import type { Item } from "@/types/inventory";
+import { buildInventoryItemPath, parseInventoryQrValue } from "@/utils/inventoryQr";
 
 interface Props {
     inventory: Item[];
@@ -8,6 +10,7 @@ interface Props {
 }
 
 const QrScanner = ({ inventory, onOpenItem }: Props) => {
+    const navigate = useNavigate();
     const videoRef = useRef<HTMLVideoElement>(null);
     const controlsRef = useRef<IScannerControls | null>(null);
     const readerRef = useRef<BrowserQRCodeReader | null>(null);
@@ -27,9 +30,16 @@ const QrScanner = ({ inventory, onOpenItem }: Props) => {
             videoRef.current,
             (result, error) => {
                 if (result) {
-                    const code = result.getText();
+                    const scan = parseInventoryQrValue(result.getText());
+
+                    if (scan.isItemUrl && scan.itemCode) {
+                        stopScan();
+                        navigate(buildInventoryItemPath(scan.itemCode));
+                        return;
+                    }
+
                     const item = inventory.find(
-                        i => i.Serial_Number === code || i.Item_Code === code
+                        i => i.Serial_Number === scan.rawValue || i.Item_Code === scan.rawValue
                     );
 
                     if (item) {

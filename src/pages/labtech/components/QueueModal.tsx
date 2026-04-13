@@ -92,21 +92,21 @@ export default function QueueModal({
     const isEditing = !!selectedQueueItem;
     // If readOnly, we are just viewing details
 
-    // Check if a specific room is booked for the selected time range
-    const isRoomBooked = (roomId: number): boolean => {
-        if (!categorySessions || !startTime || !endTime) return false;
+    // Check if a specific room is blocked for the selected time range
+    const getRoomBlocker = (roomId: number): RoomSession | null => {
+        if (!categorySessions || !startTime || !endTime) return null;
         const startMinutes = parseInt(startTime.split(':')[0]) * 60 + parseInt(startTime.split(':')[1]);
         const endMinutes = parseInt(endTime.split(':')[0]) * 60 + parseInt(endTime.split(':')[1]);
 
         return categorySessions
             .filter(s => s.roomId === roomId && s.id !== editingSessionId)
-            .some(s => {
+            .find(s => {
                 const sStart = new Date(s.startTime);
                 const sEnd = new Date(s.endTime);
                 const sStartMin = sStart.getHours() * 60 + sStart.getMinutes();
                 const sEndMin = sEnd.getHours() * 60 + sEnd.getMinutes();
                 return startMinutes < sEndMin && endMinutes > sStartMin;
-            });
+            }) || null;
     };
 
     // Check if a time slot is fully booked across all rooms
@@ -300,7 +300,13 @@ export default function QueueModal({
                             </p>
                         ) : (
                             availableRooms.map((room) => {
-                                const booked = isRoomBooked(room.Room_ID);
+                                const blocker = getRoomBlocker(room.Room_ID);
+                                const booked = !!blocker;
+                                const blockedLabel = blocker?.type === 'schedule'
+                                    ? 'Class'
+                                    : blocker?.purpose === 'Student Usage'
+                                        ? 'Queued'
+                                        : 'Booked';
                                 return (
                                     <button
                                         key={room.Room_ID}
@@ -314,10 +320,10 @@ export default function QueueModal({
                                                     ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-600/20 dark:text-blue-300'
                                                     : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-700'
                                         } ${isEditing ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                        title={booked ? `${room.Name} — Booked` : room.Name}
+                                        title={booked ? `${room.Name} - ${blockedLabel}` : room.Name}
                                     >
                                         {room.Name}
-                                        {booked && <span className="block text-xs text-gray-400">Booked</span>}
+                                        {booked && <span className="block text-xs text-gray-400">{blockedLabel}</span>}
                                     </button>
                                 );
                             })

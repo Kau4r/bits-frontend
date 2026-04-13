@@ -1,6 +1,6 @@
 import '@/styles/App.css'
 import '@/styles/index.css';
-import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useEffect, useRef } from 'react';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ModalProvider } from '@/context/ModalContext';
@@ -12,7 +12,9 @@ import UserDetails from '@/pages/sysad/UserDetailsPage';
 import Login from '@/pages/Login';
 import SysAdDash from '@/pages/sysad/UserPage';
 import RoomPage from '@/pages/sysad/RoomPage';
+import ScheduleImportPage from '@/pages/sysad/ScheduleImportPage';
 import InventoryPage from '@/pages/labtech/InventoryPage';
+import InventoryItemInfo from '@/pages/labtech/InventoryItemInfoPage';
 import Room from '@/pages/labtech/RoomPage';
 import Forms from '@/pages/labtech/FormsPage';
 import LabheadDashboard from '@/pages/labhead/DashboardPage';
@@ -32,11 +34,17 @@ import Reports from '@/pages/labtech/ReportsPage';
 // 🔒 Protects routes based on auth + role
 const ProtectedRoute = ({ children, roles }: { children: JSX.Element, roles: string[] }) => {
   const { isAuthenticated, userRole } = useAuth();
+  const location = useLocation();
 
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: location }} />;
   if (userRole && !roles.includes(userRole)) return <Navigate to="/unauthorized" replace />;
 
   return children;
+};
+
+const LoginRedirect = () => {
+  const location = useLocation();
+  return <Navigate to="/login" replace state={{ from: location }} />;
 };
 
 // 🚪 Handles logout redirection
@@ -62,7 +70,7 @@ function AppContent() {
     return (
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<LoginRedirect />} />
       </Routes>
     );
   }
@@ -72,7 +80,7 @@ function AppContent() {
     return (
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<LoginRedirect />} />
       </Routes>
     );
   }
@@ -96,6 +104,7 @@ function AppContent() {
 
         {/* Admin routes */}
         <Route path="/room" element={<ProtectedRoute roles={[ROLES.ADMIN]}><RoomPage /></ProtectedRoute>} />
+        <Route path="/schedule-import" element={<ProtectedRoute roles={[ROLES.ADMIN]}><ScheduleImportPage /></ProtectedRoute>} />
         <Route path="/user/:email" element={<ProtectedRoute roles={[ROLES.ADMIN]}><UserDetails /></ProtectedRoute>} />
 
         {/* LabTech & LabHead routes */}
@@ -104,6 +113,7 @@ function AppContent() {
         <Route path="/labtech/room" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Room /></ProtectedRoute>} />
         <Route path="/forms" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Forms /></ProtectedRoute>} />
         <Route path="/inventory" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><InventoryPage /></ProtectedRoute>} />
+        <Route path="/inventory/item/:itemCode" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><InventoryItemInfo /></ProtectedRoute>} />
         <Route path="/labtech/borrowing" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Borrowing /></ProtectedRoute>} />
         <Route path="/tickets" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Ticket /></ProtectedRoute>} />
         <Route path="/notification" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Notification /></ProtectedRoute>} />

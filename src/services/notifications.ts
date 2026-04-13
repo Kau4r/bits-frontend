@@ -9,6 +9,8 @@ export interface Notification {
     timestamp: string;
     read: boolean;
     readAt: string | null;
+    archived: boolean;
+    archivedAt: string | null;
     user?: {
         First_Name: string;
         Last_Name: string;
@@ -33,6 +35,8 @@ export const getNotifications = async (params?: {
         timestamp: log.Timestamp,
         read: !!log.Notification_Read_At,
         readAt: log.Notification_Read_At,
+        archived: !!log.Notification_Archived_At,
+        archivedAt: log.Notification_Archived_At,
         user: log.User,
         details: log.Notification_Data || {}
     }));
@@ -45,8 +49,16 @@ export const markNotificationRead = async (id: number): Promise<void> => {
 
 // Mark all notifications as read
 export const markAllNotificationsRead = async (): Promise<{ count: number }> => {
-    const { data } = await api.patch<{ count: number }>("/notifications/read-all");
+    const { data } = await api.post<{ count: number }>("/notifications/mark-all-read");
     return data;
+};
+
+export const archiveNotification = async (id: number): Promise<void> => {
+    await api.patch(`/notifications/${id}/archive`);
+};
+
+export const restoreNotification = async (id: number): Promise<void> => {
+    await api.patch(`/notifications/${id}/restore`);
 };
 
 // Get unread notification count

@@ -36,6 +36,7 @@ export default function CalendarSidebar({
     // Calculate stats for schedule requests (bookings)
     const requestedSchedules = myBookings.filter(b => b.extendedProps.status === 'PENDING').length;
     const acceptedSchedules = myBookings.filter(b => b.extendedProps.status === 'APPROVED').length;
+    const rejectedSchedules = myBookings.filter(b => b.extendedProps.status === 'REJECTED').length;
 
     // Collapse state
     const [isRoomsCollapsed, setIsRoomsCollapsed] = useState(false);
@@ -141,7 +142,7 @@ export default function CalendarSidebar({
 
                     {!isSchedulesCollapsed && (
                         <>
-                            <div className="grid grid-cols-2 gap-2 mb-3 flex-shrink-0">
+                            <div className="grid grid-cols-3 gap-2 mb-3 flex-shrink-0">
                                 <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2">
                                     <div className="text-xs text-yellow-400">Requested</div>
                                     <div className="text-lg font-bold text-yellow-300">{requestedSchedules}</div>
@@ -149,6 +150,10 @@ export default function CalendarSidebar({
                                 <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-2">
                                     <div className="text-xs text-green-400">Accepted</div>
                                     <div className="text-lg font-bold text-green-300">{acceptedSchedules}</div>
+                                </div>
+                                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-2">
+                                    <div className="text-xs text-red-400">Rejected</div>
+                                    <div className="text-lg font-bold text-red-300">{rejectedSchedules}</div>
                                 </div>
                             </div>
 
@@ -165,9 +170,10 @@ export default function CalendarSidebar({
                                                 <span className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate pr-2">{booking.title}</span>
                                                 <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase tracking-wider ${booking.extendedProps.status === 'APPROVED' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
                                                     booking.extendedProps.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                                        booking.extendedProps.status === 'REJECTED' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
                                                         'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
                                                     }`}>
-                                                    {booking.extendedProps.status === 'APPROVED' ? 'ACC' : booking.extendedProps.status === 'PENDING' ? 'REQ' : booking.extendedProps.status.substring(0, 3)}
+                                                    {booking.extendedProps.status === 'APPROVED' ? 'ACC' : booking.extendedProps.status === 'PENDING' ? 'REQ' : booking.extendedProps.status === 'REJECTED' ? 'REJ' : booking.extendedProps.status.substring(0, 3)}
                                                 </span>
                                             </div>
                                             <div className="flex justify-between text-[10px] text-gray-500">

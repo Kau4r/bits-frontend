@@ -12,7 +12,7 @@ export const fetchInventory = getInventory;
 
 // Fetch a single item by code
 export const getInventoryByCode = async (itemCode: string): Promise<Item | Computer> => {
-    const { data } = await api.get<Item | Computer>(`/inventory/code/${itemCode}`);
+    const { data } = await api.get<Item | Computer>(`/inventory/code/${encodeURIComponent(itemCode)}`);
     return data;
 };
 

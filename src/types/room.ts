@@ -17,6 +17,7 @@ export const roomTypes: RoomType[] = ['CONSULTATION', 'LECTURE', 'LAB'];
 export interface RoomSchedule {
     Schedule_ID: number;
     Room_ID: number;
+    Schedule_Type?: 'CLASS' | 'FACULTY_USE' | 'STUDENT_USE' | 'MAINTENANCE' | 'SPECIAL_EVENT';
     Days: string;       // Comma-separated day numbers, e.g., "1,2,3,4,5"
     Start_Time: string; // ISO datetime string
     End_Time: string;   // ISO datetime string

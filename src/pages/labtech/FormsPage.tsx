@@ -8,7 +8,7 @@ import { StatusSelect } from '@/pages/labtech/components/StatusSelect';
 import { DeptSelect } from '@/pages/labtech/components/DeptSelect';
 import type { FormRecord, FormStatus, FormType, FormDepartment } from '@/types/formtypes';
 import { formStatusColors, formStatusLabels, formDepartmentLabels, getTimelineStepsForType } from '@/types/formtypes';
-import { getForms, createForm, updateForm as updateFormAPI, archiveForm as archiveFormAPI, transferForm, uploadFile } from '@/services/forms';
+import { getForms, createForm, updateForm as updateFormAPI, archiveForm as archiveFormAPI, transferForm, uploadFile, resolveFormFileUrl } from '@/services/forms';
 import { useAuth } from '@/context/AuthContext';
 import { useModal } from '@/context/ModalContext';
 import { useNotifications } from '@/context/NotificationContext';
@@ -56,7 +56,7 @@ export default function Forms() {
     createdAt: form.Created_At,
     isArchived: form.Is_Archived,
     attachmentName: form.File_Name || undefined,
-    attachmentUrl: form.File_URL || undefined,
+    attachmentUrl: resolveFormFileUrl(form.File_URL),
     attachmentType: normalizeType(form.File_Name || undefined),
     history: form.History?.map(h => ({
       dept: h.Department,
@@ -124,6 +124,12 @@ export default function Forms() {
   }, [forms, searchTerm, showArchived, formTypeFilter, statusFilter]);
 
   const hasActiveFilters = searchTerm !== '' || formTypeFilter !== 'All' || statusFilter !== 'All';
+
+  const getFormDownloadUrl = (form: FormRecord) =>
+    resolveFormFileUrl(form.attachmentUrl, {
+      download: true,
+      fileName: form.attachmentName || form.formId,
+    }) || form.attachmentUrl;
 
   const clearFilters = () => {
     setSearchTerm('');
@@ -595,7 +601,7 @@ export default function Forms() {
                                   Preview
                                 </a>
                                 <a
-                                  href={f.attachmentUrl}
+                                  href={getFormDownloadUrl(f)}
                                   download={f.attachmentName || f.formId}
                                   className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                                 >

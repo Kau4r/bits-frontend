@@ -48,6 +48,49 @@ export default function Room() {
     const [slotDetailSessions, setSlotDetailSessions] = useState<RoomSession[] | null>(null);
     const [scheduleDate, setScheduleDate] = useState<'today' | 'tomorrow'>('today');
     const [refreshTrigger, setRefreshTrigger] = useState(0);
+    const [serverTimeOffsetMs, setServerTimeOffsetMs] = useState(0);
+    const [serverCurrentTime, setServerCurrentTime] = useState(() => new Date());
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const syncServerTime = async () => {
+            try {
+                const response = await api.get<{
+                    timestamp?: string;
+                    data?: { timestamp?: string };
+                }>('/health');
+                const serverTimestamp = response.data?.data?.timestamp || response.data?.timestamp;
+                if (!serverTimestamp) return;
+
+                const serverTimeMs = new Date(serverTimestamp).getTime();
+                if (!Number.isNaN(serverTimeMs) && !cancelled) {
+                    setServerTimeOffsetMs(serverTimeMs - Date.now());
+                }
+            } catch (error) {
+                console.error('Failed to sync server time:', error);
+            }
+        };
+
+        syncServerTime();
+        const syncInterval = window.setInterval(syncServerTime, 5 * 60 * 1000);
+        return () => {
+            cancelled = true;
+            window.clearInterval(syncInterval);
+        };
+    }, []);
+
+    useEffect(() => {
+        const updateServerCurrentTime = () => {
+            setServerCurrentTime(new Date(Date.now() + serverTimeOffsetMs));
+        };
+
+        updateServerCurrentTime();
+        const interval = window.setInterval(updateServerCurrentTime, 60 * 1000);
+        return () => window.clearInterval(interval);
+    }, [serverTimeOffsetMs]);
+
+    const serverDayKey = dayjs(serverCurrentTime).format('YYYY-MM-DD');
 
     // Fetch rooms from API
     useEffect(() => {
@@ -80,7 +123,7 @@ export default function Room() {
 
     // Compute available now count for a category
     const getAvailableNowCount = (categoryRooms: RoomType[], categorySessions: RoomSession[]) => {
-        const now = dayjs();
+        const now = dayjs(serverCurrentTime);
         return categoryRooms.filter(room => {
             if (room.Status !== 'AVAILABLE') return false;
             const hasActiveBooking = categorySessions.some(s =>
@@ -110,8 +153,9 @@ export default function Room() {
             if (labRooms.length === 0) return;
 
             try {
-                // Get target date for filtering based on scheduleDate toggle
-                const today = scheduleDate === 'tomorrow' ? dayjs().add(1, 'day').startOf('day') : dayjs().startOf('day');
+                const today = scheduleDate === 'tomorrow'
+                    ? dayjs(serverCurrentTime).add(1, 'day').startOf('day')
+                    : dayjs(serverCurrentTime).startOf('day');
                 const todayDayOfWeek = today.day(); // 0 = Sunday, 1 = Monday, etc.
 
                 const allSessions: RoomSession[] = [];
@@ -211,7 +255,7 @@ export default function Room() {
         };
 
         loadSchedulesAndBookings();
-    }, [labRooms.length, scheduleDate, refreshTrigger]); // Re-run when labRooms, date, or refresh changes
+    }, [labRooms.length, scheduleDate, refreshTrigger, serverDayKey]); // Re-run when rooms, date, refresh, or server day changes
 
     // Compute fully booked slots for the selected category's time picker
     const computeFullyBookedSlots = (): { startMinutes: number; endMinutes: number }[] => {
@@ -251,7 +295,9 @@ export default function Room() {
     };
 
     const handleQueueRoom = async (startTime: string, endTime: string, roomId: number) => {
-        const targetDate = scheduleDate === 'tomorrow' ? dayjs().add(1, 'day').startOf('day') : dayjs().startOf('day');
+        const targetDate = scheduleDate === 'tomorrow'
+            ? dayjs(serverCurrentTime).add(1, 'day').startOf('day')
+            : dayjs(serverCurrentTime).startOf('day');
         const requestedStart = targetDate.hour(Number(startTime.split(':')[0])).minute(Number(startTime.split(':')[1])).toISOString();
         const requestedEnd = targetDate.hour(Number(endTime.split(':')[0])).minute(Number(endTime.split(':')[1])).toISOString();
 
@@ -277,21 +323,26 @@ export default function Room() {
                 setQueueModalOpen(false);
                 await modal.showSuccess('Booking updated successfully.', 'Success');
             } else {
-                // CREATE LOGIC — use roomId directly
+                // CREATE LOGIC - use roomId directly
                 const response = await setRoomStudentAvailability(roomId, {
                     startTime: requestedStart,
                     endTime: requestedEnd,
                     notes: `Student usage time set by staff`
                 });
 
-                if (response?.success === false) {
-                    throw new Error(response?.error || 'Failed to queue room');
-                }
-
                 setQueueModalOpen(false);
+                setSelectedCategory(null);
+                setSelectedSlotStart('');
+                setSelectedSlotEnd('');
                 setSelectedSession(null);
+                setSelectedRoom(null);
                 setRefreshTrigger(prev => prev + 1);
-                await modal.showSuccess('Room queued successfully.', 'Success');
+                await modal.showSuccess(
+                    response.rejectedBookings?.length
+                        ? `Room queue added. ${response.rejectedBookings.length} pending booking(s) were rejected due to conflict.`
+                        : 'Room queue added successfully.',
+                    'Success'
+                );
             }
         } catch (error: any) {
             console.error('Error setting room availability:', error);
@@ -484,8 +535,8 @@ export default function Room() {
                             </div>
                             <span className="text-sm text-gray-500 dark:text-gray-400">
                                 {scheduleDate === 'today'
-                                    ? dayjs().format('dddd, MMMM D')
-                                    : dayjs().add(1, 'day').format('dddd, MMMM D')
+                                    ? dayjs(serverCurrentTime).format('dddd, MMMM D')
+                                    : dayjs(serverCurrentTime).add(1, 'day').format('dddd, MMMM D')
                                 }
                             </span>
                         </div>
@@ -539,11 +590,12 @@ export default function Room() {
                                                 )}
 
                                                 <TimeSlotGrid
-                                                    sessions={categorySessions.filter(s => s.type === 'booking' && s.purpose === 'Student Usage')}
+                                                    sessions={categorySessions}
                                                     categoryRooms={categoryRooms}
                                                     onAddRoom={(start: string, end: string) => handleAddTimeSlot(key, start, end)}
                                                     onSlotDetail={handleSlotDetail}
                                                     isTomorrow={scheduleDate === 'tomorrow'}
+                                                    currentTime={serverCurrentTime}
                                                 />
                                             </div>
                                         );

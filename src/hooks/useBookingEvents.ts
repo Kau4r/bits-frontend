@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useAuth } from '@/context/AuthContext';
+import { useNotifications } from '@/context/NotificationContext';
 
 type BookingEventType = 'BOOKING_CREATED' | 'BOOKING_CANCELLED' | 'BOOKING_APPROVED' | 'BOOKING_REJECTED';
 
@@ -28,9 +28,9 @@ type BookingEventCallback = (event: BookingEventData) => void;
  * @param onBookingEvent - Callback function to handle booking events
  */
 export const useBookingEvents = (onBookingEvent: BookingEventCallback) => {
-    const { token } = useAuth();
-    const eventSourceRef = useRef<EventSource | null>(null);
+    const { notifications } = useNotifications();
     const callbackRef = useRef<BookingEventCallback>(onBookingEvent);
+    const processedNotificationRef = useRef<Set<string>>(new Set());
 
     // Keep callback ref up to date
     useEffect(() => {
@@ -38,53 +38,50 @@ export const useBookingEvents = (onBookingEvent: BookingEventCallback) => {
     }, [onBookingEvent]);
 
     useEffect(() => {
-        if (!token) {
-            console.log('[useBookingEvents] No token, skipping SSE connection');
+        const latestNotification = notifications[0];
+        if (!latestNotification) {
             return;
         }
 
-        // Close existing connection if any
-        if (eventSourceRef.current) {
-            eventSourceRef.current.close();
+        const notificationId = String(latestNotification.id);
+        if (processedNotificationRef.current.has(notificationId)) {
+            return;
         }
 
-        const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-        const streamUrl = `${backendUrl}/api/notifications/stream?token=${token}`;
+        const details = latestNotification.details ?? {};
+        const eventType = String(
+            details.eventType ||
+            latestNotification.title?.replace(/\s+/g, '_') ||
+            ''
+        ).toUpperCase();
 
-        console.log('[useBookingEvents] Connecting to SSE stream...');
-        const eventSource = new EventSource(streamUrl);
-        eventSourceRef.current = eventSource;
+        const bookingEvents: BookingEventType[] = [
+            'BOOKING_CREATED',
+            'BOOKING_CANCELLED',
+            'BOOKING_APPROVED',
+            'BOOKING_REJECTED'
+        ];
 
-        eventSource.onopen = () => {
-            console.log('[useBookingEvents] SSE Connection established');
-        };
+        if (!bookingEvents.includes(eventType as BookingEventType)) {
+            return;
+        }
 
-        eventSource.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-
-                // Only process booking update events
-                if (data.category === 'BOOKING_UPDATE') {
-                    console.log('[useBookingEvents] Received booking event:', data.type);
-                    callbackRef.current(data);
-                }
-            } catch (err) {
-                // Ignore parsing errors for non-JSON heartbeats
+        processedNotificationRef.current.add(notificationId);
+        callbackRef.current({
+            type: eventType as BookingEventType,
+            category: 'BOOKING_UPDATE',
+            timestamp: latestNotification.timestamp,
+            booking: {
+                id: Number(details.id ?? 0),
+                roomId: Number(details.roomId ?? 0),
+                status: String(details.status ?? ''),
+                startTime: String(details.startTime ?? ''),
+                endTime: String(details.endTime ?? ''),
+                purpose: typeof details.purpose === 'string' ? details.purpose : undefined,
+                userId: details.userId === undefined ? undefined : Number(details.userId),
             }
-        };
-
-        eventSource.onerror = (err) => {
-            console.error('[useBookingEvents] SSE Error:', err);
-        };
-
-        return () => {
-            console.log('[useBookingEvents] Closing SSE connection');
-            if (eventSourceRef.current) {
-                eventSourceRef.current.close();
-                eventSourceRef.current = null;
-            }
-        };
-    }, [token]);
+        });
+    }, [notifications]);
 };
 
 export default useBookingEvents;

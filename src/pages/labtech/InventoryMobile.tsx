@@ -1,16 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
 import { BrowserQRCodeReader } from '@zxing/browser';
 import { QrCode, Plus, Filter } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import ItemModal from '@/pages/labtech/components/ItemModal';
 import Search from '@/components/Search';
 import { type Item } from '@/types/inventory';
 import type { Room } from '@/types/room';
-import { useAuth } from '@/context/AuthContext';
 import { getInventory } from '@/services/inventory';
 import { getRooms } from '@/services/room';
+import { buildInventoryItemPath, parseInventoryQrValue } from '@/utils/inventoryQr';
 
 const InventoryMobilePage = () => {
-    const { } = useAuth();
+    const navigate = useNavigate();
     const [isQrOpen, setIsQrOpen] = useState(false);
     const [inventory, setInventory] = useState<Item[]>([]);
     const [selectedItem, setSelectedItem] = useState<Item | null>(null);
@@ -85,9 +86,18 @@ const InventoryMobilePage = () => {
                     videoRef.current!,
                     (result, error) => {
                         if (result && !stopped) {
-                            const code = result.getText();
+                            const scan = parseInventoryQrValue(result.getText());
+
+                            if (scan.isItemUrl && scan.itemCode) {
+                                stopped = true;
+                                qrControlsRef.current?.stop();
+                                setIsQrOpen(false);
+                                navigate(buildInventoryItemPath(scan.itemCode));
+                                return;
+                            }
+
                             const item = inventory.find(
-                                i => i.Serial_Number === code || i.Item_Code === code
+                                i => i.Serial_Number === scan.rawValue || i.Item_Code === scan.rawValue
                             );
 
                             if (item) {
@@ -120,7 +130,7 @@ const InventoryMobilePage = () => {
             qrControlsRef.current = null;
             codeReaderRef.current = null;
         };
-    }, [isQrOpen, inventory]);
+    }, [isQrOpen, inventory, navigate]);
 
     return (
         <div className="px-4 py-4 space-y-4">

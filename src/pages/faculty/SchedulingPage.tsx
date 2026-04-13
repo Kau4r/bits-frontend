@@ -18,7 +18,7 @@ const FacultyScheduling = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const modal = useModal();
-  const { unreadCount, markAsRead } = useNotifications();
+  const { notifications: liveNotifications, unreadCount, markAsRead } = useNotifications();
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
@@ -109,6 +109,10 @@ const FacultyScheduling = () => {
       loadNotifications();
     }
   }, [isNotificationOpen]);
+
+  useEffect(() => {
+    setNotifications(liveNotifications.slice(0, 10));
+  }, [liveNotifications]);
 
   const loadNotifications = async () => {
     setIsLoadingNotifications(true);

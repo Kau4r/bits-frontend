@@ -2,7 +2,15 @@ import React, { createContext, useContext, useEffect, useState, useRef, useCallb
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'react-hot-toast';
 import api from '@/services/api';
-import { getNotifications, getUnreadCount, markNotificationRead, markAllNotificationsRead, type Notification } from '@/services/notifications';
+import {
+    archiveNotification as archiveNotificationRequest,
+    getNotifications,
+    getUnreadCount,
+    markAllNotificationsRead,
+    markNotificationRead,
+    restoreNotification as restoreNotificationRequest,
+    type Notification
+} from '@/services/notifications';
 
 interface NotificationContextType {
     notifications: Notification[];
@@ -11,6 +19,8 @@ interface NotificationContextType {
     loading: boolean;
     markAsRead: (id: number) => Promise<void>;
     markAllAsRead: () => Promise<void>;
+    archiveNotification: (id: number) => Promise<void>;
+    restoreNotification: (id: number) => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -128,6 +138,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                         fetchTicketCount();
                     }
 
+                    const rawDetails = rawData.data ?? rawData.borrowing ?? rawData.booking ?? {};
+                    const normalizedDetails =
+                        rawDetails && typeof rawDetails === 'object' && !Array.isArray(rawDetails)
+                            ? { ...rawDetails, eventType: rawData.type, category: rawData.category }
+                            : { payload: rawDetails, eventType: rawData.type, category: rawData.category };
+
                     // Normalize to match Notification interface
                     const newNotification: Notification = {
                         id: typeof generatedId === 'number' ? generatedId : parseInt(notifId.replace(/\D/g, '').slice(-9) || '0', 10) || Date.now(),
@@ -137,9 +153,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                         timestamp: rawData.timestamp || rawData.time || new Date().toISOString(),
                         read: false,
                         readAt: null,
+                        archived: false,
+                        archivedAt: null,
                         type: (rawData.type && (rawData.type.includes('ERROR') || rawData.type.includes('REJECT'))) ? 'warning' : 'info',
                         user: rawData.user,
-                        details: rawData.data || rawData.borrowing || rawData.booking || {}
+                        details: normalizedDetails
                     };
 
                     // Check for duplicates using functional update to ensure thread safety
@@ -203,26 +221,33 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     const markAsRead = async (id: number) => {
         // Optimistic update
+        const readAt = new Date().toISOString();
+        const notification = notifications.find(n => n.id === id);
         setNotifications(prev => prev.map(n =>
-            n.id === id ? { ...n, read: true, Notification_Read_At: new Date().toISOString() } : n
+            n.id === id ? { ...n, read: true, readAt } : n
         ));
-        setUnreadCount(prev => Math.max(0, prev - 1));
+        if (notification && !notification.read) {
+            setUnreadCount(prev => Math.max(0, prev - 1));
+        }
 
         try {
             await markNotificationRead(id);
         } catch (err) {
             console.error('Failed to mark notification as read:', err);
             // Revert on error
-            setUnreadCount(prev => prev + 1);
+            if (notification && !notification.read) {
+                setUnreadCount(prev => prev + 1);
+            }
             setNotifications(prev => prev.map(n =>
-                n.id === id ? { ...n, read: false, Notification_Read_At: null } : n
+                n.id === id ? { ...n, read: notification?.read ?? false, readAt: notification?.readAt ?? null } : n
             ));
         }
     };
 
     const markAllAsRead = async () => {
         // Optimistic update
-        setNotifications(prev => prev.map(n => ({ ...n, read: true, Notification_Read_At: new Date().toISOString() })));
+        const readAt = new Date().toISOString();
+        setNotifications(prev => prev.map(n => ({ ...n, read: true, readAt: n.readAt || readAt })));
         setUnreadCount(0);
 
         try {
@@ -233,8 +258,57 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }
     };
 
+    const archiveNotification = async (id: number) => {
+        const archivedAt = new Date().toISOString();
+        const notification = notifications.find(n => n.id === id);
+        setNotifications(prev => prev.map(n =>
+            n.id === id ? { ...n, read: true, readAt: n.readAt || archivedAt, archived: true, archivedAt } : n
+        ));
+        if (notification && !notification.read) {
+            setUnreadCount(prev => Math.max(0, prev - 1));
+        }
+
+        try {
+            await archiveNotificationRequest(id);
+        } catch (err) {
+            console.error('Failed to archive notification:', err);
+            if (notification && !notification.read) {
+                setUnreadCount(prev => prev + 1);
+            }
+            setNotifications(prev => prev.map(n =>
+                n.id === id
+                    ? {
+                        ...n,
+                        read: notification?.read ?? false,
+                        readAt: notification?.readAt ?? null,
+                        archived: notification?.archived ?? false,
+                        archivedAt: notification?.archivedAt ?? null
+                    }
+                    : n
+            ));
+        }
+    };
+
+    const restoreNotification = async (id: number) => {
+        const notification = notifications.find(n => n.id === id);
+        setNotifications(prev => prev.map(n =>
+            n.id === id ? { ...n, archived: false, archivedAt: null } : n
+        ));
+
+        try {
+            await restoreNotificationRequest(id);
+        } catch (err) {
+            console.error('Failed to restore notification:', err);
+            setNotifications(prev => prev.map(n =>
+                n.id === id
+                    ? { ...n, archived: notification?.archived ?? false, archivedAt: notification?.archivedAt ?? null }
+                    : n
+            ));
+        }
+    };
+
     return (
-        <NotificationContext.Provider value={{ notifications, unreadCount, pendingTicketCount, loading, markAsRead, markAllAsRead }}>
+        <NotificationContext.Provider value={{ notifications, unreadCount, pendingTicketCount, loading, markAsRead, markAllAsRead, archiveNotification, restoreNotification }}>
             {children}
         </NotificationContext.Provider>
     );

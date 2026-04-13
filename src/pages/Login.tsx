@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
@@ -10,8 +10,18 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { login } = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+
+  const redirectState = location.state as {
+    from?: { pathname?: string; search?: string; hash?: string };
+  } | null;
+  const redirectFrom = redirectState?.from;
+  const redirectPath =
+    redirectFrom?.pathname && redirectFrom.pathname !== '/login'
+      ? `${redirectFrom.pathname}${redirectFrom.search ?? ''}${redirectFrom.hash ?? ''}`
+      : null;
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -30,7 +40,7 @@ export default function Login() {
       if (result.success && result.user) {
         const role = result.user.User_Role;
         const isMobile = window.innerWidth < 768;
-        const target =
+        const defaultTarget =
           role === "LAB_TECH"
             ? isMobile
               ? "/labtech-mobile"
@@ -44,6 +54,7 @@ export default function Login() {
                   : role === "STUDENT"
                     ? "/student-session"
                     : "/";
+        const target = redirectPath?.startsWith('/') ? redirectPath : defaultTarget;
 
         // ✅ small delay to ensure context updates before route guard checks
         setTimeout(() => {

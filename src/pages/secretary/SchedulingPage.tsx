@@ -1,21 +1,43 @@
 import Scheduling from '@/pages/scheduling/SchedulingPage';
+import { LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
 
 const SecretaryScheduling = () => {
   const navigate = useNavigate();
-  
+  const { user, logout } = useAuth();
+  const secretaryName = user ? `${user.First_Name} ${user.Last_Name}` : 'Secretary';
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
+
   return (
-    <div className="p-4 pb-6 flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="flex items-center justify-between mb-2">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Secretary Scheduling</h1>
-        <button
-          onClick={() => navigate('/logout')}
-          className="rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer"
-        >
-          Logout
-        </button>
-      </div>
-      <div className="flex-1 overflow-hidden">
+    <div className="flex h-screen flex-col bg-gray-50 dark:bg-gray-900">
+      <nav className="bg-white shadow-sm dark:bg-gray-800">
+        <div className="w-full px-6">
+          <div className="flex h-18 items-center justify-between">
+            <div className="flex items-center space-x-6">
+              <h1 className="text-4xl font-bold text-[#4338CA]">BITS</h1>
+              <div className="text-lg text-gray-900 dark:text-gray-200">
+                Hello, <span className="font-medium text-gray-900 dark:text-gray-200">{secretaryName}</span>
+              </div>
+            </div>
+
+            <button
+              onClick={handleLogout}
+              className="flex items-center justify-center space-x-2 rounded-md px-3 py-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+              title="Log out"
+            >
+              <LogOut className="h-5 w-5 flex-shrink-0" />
+              <span>Log out</span>
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      <div className="flex-1 overflow-hidden p-4">
         <Scheduling />
       </div>
     </div>

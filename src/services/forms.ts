@@ -1,6 +1,58 @@
 import api from "@/services/api";
 import type { Form, FormType, FormStatus, FormDepartment } from "@/types/formtypes";
 
+const getAppBaseUrl = () => (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/+$/, '');
+
+const getApiBaseUrl = () => `${getAppBaseUrl()}/api`;
+
+interface ResolveFormFileUrlOptions {
+    download?: boolean;
+    fileName?: string | null;
+}
+
+const uploadPathPrefixes = [
+    '/api/upload/files/',
+    '/upload/files/',
+    '/api/uploads/',
+    '/uploads/',
+];
+
+const getUploadedFileName = (url: string): string | undefined => {
+    try {
+        const parsedUrl = new URL(url, `${getAppBaseUrl()}/`);
+        const prefix = uploadPathPrefixes.find(pathPrefix => parsedUrl.pathname.startsWith(pathPrefix));
+        if (!prefix) return undefined;
+
+        const fileName = parsedUrl.pathname.slice(prefix.length).split('/').pop();
+        return fileName ? decodeURIComponent(fileName) : undefined;
+    } catch {
+        return undefined;
+    }
+};
+
+const buildUploadFileUrl = (storedFileName: string, options: ResolveFormFileUrlOptions = {}) => {
+    const params = new URLSearchParams();
+    if (options.download) params.set('download', '1');
+    if (options.download && options.fileName) params.set('name', options.fileName);
+
+    const query = params.toString();
+    return `${getApiBaseUrl()}/upload/files/${encodeURIComponent(storedFileName)}${query ? `?${query}` : ''}`;
+};
+
+export const resolveFormFileUrl = (url?: string | null, options: ResolveFormFileUrlOptions = {}): string | undefined => {
+    if (!url) return undefined;
+
+    const trimmedUrl = url.trim();
+    if (!trimmedUrl) return undefined;
+
+    const storedFileName = getUploadedFileName(trimmedUrl);
+    if (storedFileName) {
+        return buildUploadFileUrl(storedFileName, options);
+    }
+
+    return trimmedUrl;
+};
+
 // Input types for creating/updating forms
 export interface FormCreateInput {
     creatorId: number;
@@ -83,10 +135,8 @@ export const uploadFile = async (file: File): Promise<{ url: string; filename: s
         },
     });
 
-    // Construct full URL
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
     return {
         ...data,
-        url: `${baseUrl}${data.url}`
+        url: resolveFormFileUrl(data.url) || data.url
     };
 };

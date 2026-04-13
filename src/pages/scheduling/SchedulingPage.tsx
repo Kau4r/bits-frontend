@@ -103,33 +103,11 @@ export default function Scheduling() {
     });
   };
 
-  // Load rooms and bookings
-  useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        const roomsData = await getRooms();
-        if (roomsData.length > 0) {
-          setSelectedRooms(roomsData.map(r => r.Room_ID)); // Select ALL rooms by default
-        }
-        setRooms(roomsData);
-        await loadBookings();
-
-        // Load borrowing requests for faculty users
-        if (userRole === 'FACULTY') {
-          await loadBorrowingRequests();
-        }
-      } catch (error) {
-        console.error('Failed to load initial data:', error);
-      }
-    };
-    loadInitialData();
-  }, [userRole]);
-
   const loadBookings = useCallback(async () => {
     try {
       const bookings = await getBookings();
       const mapped = bookings
-        .filter((b: Booking) => b.Status !== 'CANCELLED' && b.Status !== 'REJECTED')
+        .filter((b: Booking) => b.Status !== 'CANCELLED' && (b.Status !== 'REJECTED' || b.User_ID === currentUserId))
         .map((b: Booking) => ({
           id: String(b.Booked_Room_ID),
           title: b.Purpose ?? 'No Title',
@@ -148,7 +126,7 @@ export default function Scheduling() {
     } catch (error) {
       console.error('Error loading bookings:', error);
     }
-  }, []);
+  }, [currentUserId]);
 
   // Subscribe to real-time booking events
   useBookingEvents(useCallback((event) => {
@@ -186,6 +164,28 @@ export default function Scheduling() {
       console.error('Failed to load borrowing requests:', error);
     }
   };
+
+  // Load rooms and bookings
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        const roomsData = await getRooms();
+        if (roomsData.length > 0) {
+          setSelectedRooms(roomsData.map(r => r.Room_ID)); // Select ALL rooms by default
+        }
+        setRooms(roomsData);
+        await loadBookings();
+
+        // Load borrowing requests for faculty users
+        if (userRole === 'FACULTY') {
+          await loadBorrowingRequests();
+        }
+      } catch (error) {
+        console.error('Failed to load initial data:', error);
+      }
+    };
+    loadInitialData();
+  }, [userRole, currentUserId, loadBookings]);
 
   const updateCurrentDate = () => {
     const api: CalendarApi | undefined = calendarRef.current?.getApi();
@@ -533,7 +533,10 @@ export default function Scheduling() {
   };
 
   // Filter events by selected rooms
-  const filteredEvents = events.filter(e => selectedRooms.includes(e.extendedProps.roomId));
+  const filteredEvents = events.filter(e =>
+    selectedRooms.includes(e.extendedProps.roomId) &&
+    e.extendedProps.status !== 'REJECTED'
+  );
 
   const statusColor: Record<string, string> = {
     APPROVED: '#22c55e',
@@ -673,9 +676,14 @@ export default function Scheduling() {
 
               return (
                 <div
-                  className="px-2 py-1 rounded text-xs overflow-hidden"
-                  style={{ borderLeft: `3px solid ${statusColor[status] || '#6366f1'}` }}
+                  className="relative h-full overflow-hidden rounded px-2 py-1 pr-5 text-xs"
                 >
+                  <span
+                    className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full ring-1 ring-white/70 dark:ring-gray-900/70"
+                    style={{ backgroundColor: statusColor[status] || '#6366f1' }}
+                    title={status}
+                    aria-label={`Status: ${status}`}
+                  />
                   <div className="font-medium truncate">{event.title}</div>
                   <div className="text-gray-500 dark:text-gray-300 opacity-75">{timeText}</div>
                 </div>

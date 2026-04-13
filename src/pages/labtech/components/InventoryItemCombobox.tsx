@@ -53,10 +53,13 @@ export default function InventoryItemCombobox({
         setIsLoading(true);
         setError(null);
         try {
-            const response = await api.get<{ items: InventoryItem[] }>(
+            const response = await api.get<InventoryItem[] | { items: InventoryItem[] }>(
                 `/inventory/available?type=${itemType}&status=AVAILABLE`
             );
-            setItems(response.data.items || []);
+            const availableItems = Array.isArray(response.data)
+                ? response.data
+                : response.data.items || [];
+            setItems(availableItems);
         } catch (err) {
             console.error('Failed to load available items:', err);
             setError('Failed to load items');

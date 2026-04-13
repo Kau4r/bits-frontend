@@ -28,8 +28,25 @@ export const updateRoom = async (id: number, room: RoomUpdateInput): Promise<Roo
     const { data } = await api.put<{ message: string; room: Room }>(`/rooms/${id}`, room);
     return data.room;
 };
+
+export interface StudentAvailabilityResponse {
+    message: string;
+    roomId: number;
+    roomName: string;
+    startTime: string;
+    endTime: string;
+    auditLogId?: number;
+    bookingId: number;
+    rejectedBookings?: Array<{
+        id: number;
+        userId: number;
+        startTime: string;
+        endTime: string;
+    }>;
+}
+
 // Set room availability for students
-export const setRoomStudentAvailability = async (id: number, data: { startTime: string; endTime: string; notes?: string }): Promise<any> => {
-    const response = await api.post(`/rooms/${id}/student-availability`, data);
+export const setRoomStudentAvailability = async (id: number, data: { startTime: string; endTime: string; notes?: string }): Promise<StudentAvailabilityResponse> => {
+    const response = await api.post<StudentAvailabilityResponse>(`/rooms/${id}/student-availability`, data);
     return response.data;
 };
