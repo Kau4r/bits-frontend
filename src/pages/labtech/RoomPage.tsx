@@ -669,7 +669,13 @@ export default function Room() {
                                         <div>
                                             <p className="font-medium text-gray-900 dark:text-white">{session.roomName}</p>
                                             {session.type === 'schedule' ? (
-                                                <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">Class Schedule</p>
+                                                <>
+                                                    <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">Class Schedule</p>
+                                                    <p className="text-sm text-gray-500 dark:text-gray-400">{session.purpose || 'Class schedule'}</p>
+                                                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                                                        {dayjs(session.startTime).format('h:mm A')} - {dayjs(session.endTime).format('h:mm A')}
+                                                    </p>
+                                                </>
                                             ) : session.type === 'booking' && session.purpose !== 'Student Usage' ? (
                                                 <p className="text-sm text-gray-500 dark:text-gray-400 italic">Unavailable</p>
                                             ) : (

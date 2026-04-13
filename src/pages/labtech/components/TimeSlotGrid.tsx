@@ -79,6 +79,29 @@ function TimeRow({ slots, sessions, categoryRooms, currentTime, onAddRoom, onSlo
         return currentSlotMinutes >= slotStart && currentSlotMinutes < slotEnd;
     };
 
+    const getSessionRoomName = (session: RoomSession) => {
+        const room = categoryRooms.find(r => r.Room_ID === session.roomId);
+        return room?.Name || session.roomName || `Room ${session.roomId}`;
+    };
+
+    const getClassDetails = (classSessions: RoomSession[]) =>
+        Array.from(new Set(classSessions.map(session => {
+            const start = dayjs(session.startTime).format('h:mm A');
+            const end = dayjs(session.endTime).format('h:mm A');
+            return `${getSessionRoomName(session)}: ${session.purpose || 'Class schedule'} (${start} - ${end})`;
+        })));
+
+    const getClassPillLabel = (roomNames: string[]) => {
+        if (roomNames.length === 0) return '';
+        if (roomNames.length === 1) return `Class ${roomNames[0]}`;
+        return `${roomNames.length} classes`;
+    };
+
+    const getClassTitle = (classDetails: string[]) =>
+        classDetails.length > 0
+            ? `Classes ongoing:\n${classDetails.join('\n')}`
+            : 'Classes ongoing';
+
     if (slots.length === 0) return null;
 
     const slotMeta = slots.map((slot) => {
@@ -91,10 +114,12 @@ function TimeRow({ slots, sessions, categoryRooms, currentTime, onAddRoom, onSlo
         const classRoomIds = new Set<number>();
         const otherBookingRoomIds = new Set<number>();
         const queuedSessions: RoomSession[] = [];
+        const classSessions: RoomSession[] = [];
 
         slotSessions.forEach(session => {
             if (session.type === 'schedule') {
                 classRoomIds.add(session.roomId);
+                classSessions.push(session);
                 return;
             }
 
@@ -119,6 +144,9 @@ function TimeRow({ slots, sessions, categoryRooms, currentTime, onAddRoom, onSlo
         const hasClasses = classRoomIds.size > 0;
         const roomNames = Array.from(queuedRoomNames);
         const roomIds = Array.from(queuedRoomIds).sort((a, b) => a - b);
+        const classRoomNames = Array.from(new Set(classSessions.map(getSessionRoomName))).sort();
+        const classDetails = getClassDetails(classSessions);
+        const classPillLabel = getClassPillLabel(classRoomNames);
         const hasQueuedRooms = roomNames.length > 0;
         const queuedLabel = roomNames.length === 1 ? roomNames[0] : `${roomNames.length} rooms queued`;
 
@@ -156,6 +184,9 @@ function TimeRow({ slots, sessions, categoryRooms, currentTime, onAddRoom, onSlo
             queuedRangeLabel,
             roomNames,
             roomIds,
+            classRoomNames,
+            classDetails,
+            classPillLabel,
         };
     });
 
@@ -173,6 +204,8 @@ function TimeRow({ slots, sessions, categoryRooms, currentTime, onAddRoom, onSlo
         endSlot: string;
         display: (typeof slotMeta)[number];
         allSessions: RoomSession[];
+        classDetails: string[];
+        classPillLabel: string;
     }> = [];
 
     const coveredByQueuedRange = new Set<number>();
@@ -183,6 +216,8 @@ function TimeRow({ slots, sessions, categoryRooms, currentTime, onAddRoom, onSlo
         endSlot: string;
         display: (typeof slotMeta)[number];
         allSessions: RoomSession[];
+        classDetails: string[];
+        classPillLabel: string;
     }>();
     let i = 0;
     while (i < slotMeta.length) {
@@ -207,13 +242,19 @@ function TimeRow({ slots, sessions, categoryRooms, currentTime, onAddRoom, onSlo
                 }
             });
         });
+        const allSessions = Array.from(dedupedSessions.values());
+        const rangeClassSessions = allSessions.filter(session => session.type === 'schedule');
+        const rangeClassRoomNames = Array.from(new Set(rangeClassSessions.map(getSessionRoomName))).sort();
+
         queuedRanges.push({
             start: i,
             end,
             startSlot: slotMeta[i].slot,
             endSlot: getEndTime(slotMeta[end].slot),
             display: slotMeta[center],
-            allSessions: Array.from(dedupedSessions.values()),
+            allSessions,
+            classDetails: getClassDetails(rangeClassSessions),
+            classPillLabel: getClassPillLabel(rangeClassRoomNames),
         });
 
         queuedRangeByStart.set(i, queuedRanges[queuedRanges.length - 1]);
@@ -228,6 +269,8 @@ function TimeRow({ slots, sessions, categoryRooms, currentTime, onAddRoom, onSlo
         endSlot: string;
         type: 'add' | 'unavailable';
         hasClasses: boolean;
+        classDetails: string[];
+        classPillLabel: string;
     }>();
     const coveredByFillerSegment = new Set<number>();
 
@@ -242,6 +285,8 @@ function TimeRow({ slots, sessions, categoryRooms, currentTime, onAddRoom, onSlo
         const startType: 'add' | 'unavailable' = startMeta.activeRoomsForQueue.length > 0 ? 'add' : 'unavailable';
         let end = j;
         let hasClasses = startMeta.hasClasses;
+        const classDetails = new Set(startMeta.classDetails);
+        const classRoomNames = new Set(startMeta.classRoomNames);
 
         while (end + 1 < slotMeta.length) {
             const nextIdx = end + 1;
@@ -250,6 +295,8 @@ function TimeRow({ slots, sessions, categoryRooms, currentTime, onAddRoom, onSlo
             const nextType: 'add' | 'unavailable' = nextMeta.activeRoomsForQueue.length > 0 ? 'add' : 'unavailable';
             if (nextType !== startType) break;
             hasClasses = hasClasses || nextMeta.hasClasses;
+            nextMeta.classDetails.forEach(detail => classDetails.add(detail));
+            nextMeta.classRoomNames.forEach(roomName => classRoomNames.add(roomName));
             end = nextIdx;
         }
 
@@ -260,6 +307,8 @@ function TimeRow({ slots, sessions, categoryRooms, currentTime, onAddRoom, onSlo
             endSlot: getEndTime(slotMeta[end].slot),
             type: startType,
             hasClasses,
+            classDetails: Array.from(classDetails),
+            classPillLabel: getClassPillLabel(Array.from(classRoomNames).sort()),
         });
         for (let idx = j + 1; idx <= end; idx++) coveredByFillerSegment.add(idx);
         j = end + 1;
@@ -312,9 +361,11 @@ function TimeRow({ slots, sessions, categoryRooms, currentTime, onAddRoom, onSlo
                                 </span>
                                 {queuedRange.display.hasClasses && (
                                     <div
-                                        className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full border border-white dark:border-gray-800"
-                                        title="Classes Ongoing"
-                                    />
+                                        className="absolute -top-2 -right-1 max-w-[120px] truncate rounded-full border border-white bg-yellow-400 px-1.5 py-0.5 text-[10px] font-bold leading-none text-yellow-950 shadow-sm dark:border-gray-800"
+                                        title={getClassTitle(queuedRange.classDetails)}
+                                    >
+                                        {queuedRange.classPillLabel}
+                                    </div>
                                 )}
                                 {onSlotDetail && (
                                     <button
@@ -355,9 +406,11 @@ function TimeRow({ slots, sessions, categoryRooms, currentTime, onAddRoom, onSlo
                                 )}
                                 {filler.hasClasses && (
                                     <div
-                                        className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full border border-white dark:border-gray-800"
-                                        title="Classes Ongoing"
-                                    />
+                                        className="absolute -top-2 -right-1 max-w-[120px] truncate rounded-full border border-white bg-yellow-400 px-1.5 py-0.5 text-[10px] font-bold leading-none text-yellow-950 shadow-sm dark:border-gray-800"
+                                        title={getClassTitle(filler.classDetails)}
+                                    >
+                                        {filler.classPillLabel}
+                                    </div>
                                 )}
                             </div>
                         );
