@@ -3,6 +3,7 @@ import 'react-calendar/dist/Calendar.css';
 import type { Room } from '@/types/room';
 import type { BorrowingRequest } from '@/components/RequestCard';
 import { useState } from 'react';
+import { CalendarDays, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleDashed, DoorOpen, Plus, XCircle } from 'lucide-react';
 
 interface CalendarSidebarProps {
     rooms: Room[];
@@ -17,6 +18,31 @@ interface CalendarSidebarProps {
     myBookings?: any[];
     onBookingClick?: (booking: any) => void;
 }
+
+const getStatus = (booking: any) => String(booking.extendedProps?.status || 'PENDING').toUpperCase();
+
+const getStatusClasses = (status: string) => {
+    switch (status) {
+        case 'APPROVED':
+            return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300';
+        case 'PENDING':
+            return 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-300';
+        case 'REJECTED':
+            return 'border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-300';
+        default:
+            return 'border-slate-300 bg-slate-100 text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-slate-300';
+    }
+};
+
+const formatBookingDate = (date: string | Date) => new Date(date).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+});
+
+const formatBookingTime = (start: string | Date, end: string | Date) => {
+    const formatter = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
+    return `${formatter.format(new Date(start))} - ${formatter.format(new Date(end))}`;
+};
 
 export default function CalendarSidebar({
     rooms,
@@ -33,28 +59,36 @@ export default function CalendarSidebar({
 }: CalendarSidebarProps) {
     const allSelected = rooms.length > 0 && selectedRooms.length === rooms.length;
 
-    // Calculate stats for schedule requests (bookings)
-    const requestedSchedules = myBookings.filter(b => b.extendedProps.status === 'PENDING').length;
-    const acceptedSchedules = myBookings.filter(b => b.extendedProps.status === 'APPROVED').length;
-    const rejectedSchedules = myBookings.filter(b => b.extendedProps.status === 'REJECTED').length;
+    const requestedSchedules = myBookings.filter(b => getStatus(b) === 'PENDING').length;
+    const acceptedSchedules = myBookings.filter(b => getStatus(b) === 'APPROVED').length;
+    const rejectedSchedules = myBookings.filter(b => getStatus(b) === 'REJECTED').length;
 
-    // Collapse state
     const [isRoomsCollapsed, setIsRoomsCollapsed] = useState(false);
     const [isSchedulesCollapsed, setIsSchedulesCollapsed] = useState(false);
 
+    const scheduleStats = [
+        { label: 'Requested', value: requestedSchedules, Icon: CircleDashed, classes: 'border-amber-500/25 bg-amber-500/10 text-amber-600 dark:text-amber-300' },
+        { label: 'Accepted', value: acceptedSchedules, Icon: CheckCircle2, classes: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300' },
+        { label: 'Rejected', value: rejectedSchedules, Icon: XCircle, classes: 'border-rose-500/25 bg-rose-500/10 text-rose-600 dark:text-rose-300' },
+    ];
+
     return (
-        <div className="w-64 h-full bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col p-4 overflow-hidden">
-            {/* Create Button */}
+        <aside className="flex h-full w-[19rem] shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white/95 p-4 text-slate-950 dark:border-white/10 dark:bg-slate-950/95 dark:text-white">
             <button
+                type="button"
                 onClick={onCreateClick}
-                className="flex items-center gap-3 px-4 py-3 mb-6 rounded-2xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-lg transition-all group flex-shrink-0"
+                className="group mb-4 flex shrink-0 items-center justify-between rounded-3xl border border-indigo-500/20 bg-indigo-600 px-5 py-4 text-left text-white shadow-lg shadow-indigo-600/20 transition hover:-translate-y-0.5 hover:bg-indigo-500 dark:border-cyan-300/20 dark:bg-cyan-400 dark:text-slate-950 dark:shadow-cyan-400/20"
             >
-                <span className="text-2xl text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">+</span>
-                <span className="text-gray-900 dark:text-white font-medium">Create</span>
+                <span>
+                    <span className="block text-xs font-semibold uppercase tracking-[0.22em] opacity-80">New booking</span>
+                    <span className="mt-1 block text-lg font-black">Create schedule</span>
+                </span>
+                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-white/20 transition group-hover:scale-105 dark:bg-slate-950/15">
+                    <Plus className="h-5 w-5" />
+                </span>
             </button>
 
-            {/* Mini Calendar */}
-            <div className="mb-6 calendar-dark flex-shrink-0">
+            <div className="calendar-dark mb-4 shrink-0 rounded-3xl border border-slate-200 bg-slate-50 p-3 dark:border-white/10 dark:bg-white/[0.03]">
                 <Calendar
                     onChange={(value) => {
                         if (value instanceof Date) {
@@ -62,131 +96,148 @@ export default function CalendarSidebar({
                         }
                     }}
                     value={selectedDate}
-                    className="!bg-transparent !border-none text-sm"
-                    tileClassName="!text-gray-700 dark:!text-gray-300 hover:!bg-gray-100 dark:hover:!bg-gray-700 !rounded-full"
+                    className="!border-none !bg-transparent text-sm"
+                    tileClassName="!rounded-full !text-slate-700 hover:!bg-white dark:!text-slate-300 dark:hover:!bg-white/10"
                     navigationLabel={({ date }) => (
-                        <span className="text-gray-900 dark:text-white font-medium">
+                        <span className="text-sm font-black text-slate-950 dark:text-white">
                             {date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                         </span>
                     )}
-                    prevLabel={<span className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">‹</span>}
-                    nextLabel={<span className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">›</span>}
+                    prevLabel={<ChevronLeft className="h-4 w-4 text-slate-500 dark:text-slate-400" />}
+                    nextLabel={<ChevronRight className="h-4 w-4 text-slate-500 dark:text-slate-400" />}
                     prev2Label={null}
                     next2Label={null}
                 />
             </div>
 
-            {/* Rooms Section */}
-            <div className="mb-4 min-h-0 flex-1 flex flex-col overflow-hidden">
-                <div className="flex items-center justify-between mb-3 flex-shrink-0">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Rooms</span>
+            <section className="flex min-h-0 flex-1 flex-col rounded-3xl border border-slate-200 bg-slate-50 p-3 dark:border-white/10 dark:bg-white/[0.03]">
+                <div className="mb-3 flex shrink-0 items-center justify-between gap-3 px-1">
+                    <div>
+                        <div className="flex items-center gap-2 text-sm font-black text-slate-950 dark:text-white">
+                            <DoorOpen className="h-4 w-4 text-indigo-500 dark:text-cyan-300" />
+                            Rooms
+                        </div>
+                        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{selectedRooms.length} of {rooms.length} selected</p>
+                    </div>
                     <button
+                        type="button"
                         onClick={() => setIsRoomsCollapsed(!isRoomsCollapsed)}
-                        className="text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white text-lg transition-transform"
-                        style={{ transform: isRoomsCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}
+                        className="rounded-full p-2 text-slate-400 transition hover:bg-white hover:text-slate-950 dark:hover:bg-white/10 dark:hover:text-white"
+                        aria-expanded={!isRoomsCollapsed}
+                        aria-label="Toggle room filters"
                     >
-                        ▼
+                        <ChevronDown className={`h-4 w-4 transition-transform ${isRoomsCollapsed ? '-rotate-90' : ''}`} />
                     </button>
                 </div>
 
                 {!isRoomsCollapsed && (
-                    <div className="space-y-1 overflow-y-auto scrollbar-thin">
-                        {/* All Rooms Toggle */}
-                        <label className="flex items-center gap-3 px-2 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer group border-b border-gray-200 dark:border-gray-700 pb-2 mb-2">
+                    <div className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1 custom-scrollbar">
+                        <label className="mb-2 flex cursor-pointer items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3 transition hover:border-indigo-300 dark:border-white/10 dark:bg-slate-950/40 dark:hover:border-cyan-300/40">
                             <input
                                 type="checkbox"
                                 checked={allSelected}
                                 onChange={() => onSelectAll(!allSelected)}
-                                className="h-4 w-4 shrink-0 cursor-pointer rounded border border-gray-400 bg-white checked:bg-indigo-600 checked:border-indigo-600 text-indigo-600 focus:ring-2 focus:ring-indigo-500 dark:border-gray-500 dark:bg-gray-700"
+                                className="h-4 w-4 shrink-0 cursor-pointer rounded border-slate-300 bg-white text-indigo-600 focus:ring-2 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-900 dark:text-cyan-400 dark:focus:ring-cyan-400"
                             />
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-200 group-hover:text-gray-900 dark:group-hover:text-white">All Rooms</span>
+                            <div className="min-w-0">
+                                <span className="block text-sm font-bold text-slate-800 dark:text-slate-100">All Rooms</span>
+                                <span className="block text-xs text-slate-500 dark:text-slate-500">Show every laboratory booking</span>
+                            </div>
                         </label>
 
-                        {rooms.map((room) => (
-                            <label
-                                key={room.Room_ID}
-                                className="flex items-center gap-3 px-2 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer group"
-                            >
-                                <input
-                                    type="checkbox"
-                                    checked={selectedRooms.includes(room.Room_ID)}
-                                    onChange={() => onRoomToggle(room.Room_ID)}
-                                    className="h-4 w-4 shrink-0 cursor-pointer rounded border border-gray-400 bg-white checked:bg-indigo-600 checked:border-indigo-600 text-indigo-600 focus:ring-2 focus:ring-indigo-500 dark:border-gray-500 dark:bg-gray-700"
-                                />
-                                <span className="w-3 h-3 rounded-full bg-indigo-500" />
-                                <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white">
-                                    {room.Name}
-                                </span>
-                            </label>
-                        ))}
+                        {rooms.map((room) => {
+                            const isSelected = selectedRooms.includes(room.Room_ID);
+                            return (
+                                <label
+                                    key={room.Room_ID}
+                                    className={`flex cursor-pointer items-center gap-3 rounded-2xl px-3 py-2.5 transition ${isSelected
+                                        ? 'bg-indigo-50 text-indigo-700 dark:bg-cyan-400/10 dark:text-cyan-200'
+                                        : 'text-slate-600 hover:bg-white dark:text-slate-300 dark:hover:bg-white/10'
+                                        }`}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onChange={() => onRoomToggle(room.Room_ID)}
+                                        className="h-4 w-4 shrink-0 cursor-pointer rounded border-slate-300 bg-white text-indigo-600 focus:ring-2 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-900 dark:text-cyan-400 dark:focus:ring-cyan-400"
+                                    />
+                                    <span className={`h-2.5 w-2.5 rounded-full ${isSelected ? 'bg-indigo-500 dark:bg-cyan-300' : 'bg-slate-300 dark:bg-slate-600'}`} />
+                                    <span className="truncate text-sm font-semibold">{room.Name}</span>
+                                </label>
+                            );
+                        })}
                     </div>
                 )}
-            </div>
+            </section>
 
-            {/* Schedule Requests (Bookings) Section */}
             {myBookings.length > 0 && (
-                <div className="flex-1 min-h-0 flex flex-col mb-6">
-                    <div className="flex items-center justify-between mb-3 flex-shrink-0">
-                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">My Schedules</span>
-                        <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-500">{myBookings.length}</span>
-                            <button
-                                onClick={() => setIsSchedulesCollapsed(!isSchedulesCollapsed)}
-                                className="text-gray-500 hover:text-gray-900 dark:hover:text-white text-lg transition-transform"
-                                style={{ transform: isSchedulesCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}
-                            >
-                                ▼
-                            </button>
+                <section className="mt-4 flex max-h-[42%] min-h-[210px] flex-col rounded-3xl border border-slate-200 bg-slate-50 p-3 dark:border-white/10 dark:bg-white/[0.03]">
+                    <div className="mb-3 flex shrink-0 items-center justify-between gap-3 px-1">
+                        <div>
+                            <div className="flex items-center gap-2 text-sm font-black text-slate-950 dark:text-white">
+                                <CalendarDays className="h-4 w-4 text-indigo-500 dark:text-cyan-300" />
+                                My Schedules
+                            </div>
+                            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{myBookings.length} total requests</p>
                         </div>
+                        <button
+                            type="button"
+                            onClick={() => setIsSchedulesCollapsed(!isSchedulesCollapsed)}
+                            className="rounded-full p-2 text-slate-400 transition hover:bg-white hover:text-slate-950 dark:hover:bg-white/10 dark:hover:text-white"
+                            aria-expanded={!isSchedulesCollapsed}
+                            aria-label="Toggle my schedules"
+                        >
+                            <ChevronDown className={`h-4 w-4 transition-transform ${isSchedulesCollapsed ? '-rotate-90' : ''}`} />
+                        </button>
                     </div>
 
                     {!isSchedulesCollapsed && (
                         <>
-                            <div className="grid grid-cols-3 gap-2 mb-3 flex-shrink-0">
-                                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2">
-                                    <div className="text-xs text-yellow-400">Requested</div>
-                                    <div className="text-lg font-bold text-yellow-300">{requestedSchedules}</div>
-                                </div>
-                                <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-2">
-                                    <div className="text-xs text-green-400">Accepted</div>
-                                    <div className="text-lg font-bold text-green-300">{acceptedSchedules}</div>
-                                </div>
-                                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-2">
-                                    <div className="text-xs text-red-400">Rejected</div>
-                                    <div className="text-lg font-bold text-red-300">{rejectedSchedules}</div>
-                                </div>
+                            <div className="grid grid-cols-3 gap-2">
+                                {scheduleStats.map(({ label, value, Icon, classes }) => (
+                                    <div key={label} className={`rounded-2xl border p-2 ${classes}`}>
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className="text-[10px] font-bold uppercase tracking-wide">{label}</span>
+                                            <Icon className="h-3.5 w-3.5" />
+                                        </div>
+                                        <div className="mt-1 text-xl font-black">{value}</div>
+                                    </div>
+                                ))}
                             </div>
 
-                            <div className="space-y-2 flex-1 overflow-y-auto custom-scrollbar min-h-0">
-                                {myBookings
+                            <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1 custom-scrollbar">
+                                {[...myBookings]
                                     .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
-                                    .map((booking) => (
-                                        <div
-                                            key={booking.id}
-                                            onClick={() => onBookingClick?.(booking)}
-                                            className="bg-gray-100 dark:bg-gray-800/50 p-2 rounded border border-gray-200 dark:border-gray-700/50 flex flex-col gap-1 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
-                                        >
-                                            <div className="flex justify-between items-start">
-                                                <span className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate pr-2">{booking.title}</span>
-                                                <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase tracking-wider ${booking.extendedProps.status === 'APPROVED' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                                    booking.extendedProps.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                                                        booking.extendedProps.status === 'REJECTED' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                                                        'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
-                                                    }`}>
-                                                    {booking.extendedProps.status === 'APPROVED' ? 'ACC' : booking.extendedProps.status === 'PENDING' ? 'REQ' : booking.extendedProps.status === 'REJECTED' ? 'REJ' : booking.extendedProps.status.substring(0, 3)}
-                                                </span>
-                                            </div>
-                                            <div className="flex justify-between text-[10px] text-gray-500">
-                                                <span>{new Date(booking.start).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-                                                <span>{booking.extendedProps.roomName}</span>
-                                            </div>
-                                        </div>
-                                    ))}
+                                    .map((booking) => {
+                                        const status = getStatus(booking);
+                                        return (
+                                            <button
+                                                key={booking.id}
+                                                type="button"
+                                                onClick={() => onBookingClick?.(booking)}
+                                                className="w-full rounded-2xl border border-slate-200 bg-white p-3 text-left transition hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-sm dark:border-white/10 dark:bg-slate-950/40 dark:hover:border-cyan-300/40"
+                                            >
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div className="min-w-0">
+                                                        <p className="truncate text-sm font-bold text-slate-900 dark:text-white">{booking.title}</p>
+                                                        <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">{booking.extendedProps.roomName}</p>
+                                                    </div>
+                                                    <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-black uppercase tracking-wide ${getStatusClasses(status)}`}>
+                                                        {status}
+                                                    </span>
+                                                </div>
+                                                <div className="mt-3 flex items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
+                                                    <span>{formatBookingDate(booking.start)}</span>
+                                                    <span>{formatBookingTime(booking.start, booking.end)}</span>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
                             </div>
                         </>
                     )}
-                </div>
+                </section>
             )}
-        </div>
+        </aside>
     );
 }
