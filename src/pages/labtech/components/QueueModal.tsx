@@ -25,12 +25,14 @@ interface QueueModalProps {
     readOnly?: boolean;
 }
 
-// Generate 30-minute time slots including 21:30
+// Generate 30-minute time slots from 7:00 AM to 9:00 PM
 const generateTimeSlots = () => {
     const slots: string[] = [];
     for (let h = 7; h <= 21; h++) {
         slots.push(`${h.toString().padStart(2, '0')}:00`);
-        slots.push(`${h.toString().padStart(2, '0')}:30`);
+        if (h < 21) {
+            slots.push(`${h.toString().padStart(2, '0')}:30`);
+        }
     }
     return slots;
 };
@@ -75,8 +77,8 @@ export default function QueueModal({
             setEndTime(`${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}`);
             setSelectedRoom(selectedQueueItem.roomId);
         } else {
-            setStartTime(initialStartTime || '09:00');
-            setEndTime(initialEndTime || '10:30');
+            setStartTime(initialStartTime || '07:00');
+            setEndTime(initialEndTime || '09:00');
             // Pre-select the first room from availableRooms when adding new
             if (availableRooms.length > 0) {
                 setSelectedRoom(availableRooms[0].Room_ID);

@@ -10,7 +10,7 @@ import RoomCard from '@/pages/labtech/components/RoomCard'
 import TimeSlotGrid from '@/pages/labtech/components/TimeSlotGrid'
 import { useAuth } from '@/context/AuthContext'
 import Search from '@/components/Search'
-import { Filter, CalendarDays, Building2 } from 'lucide-react'
+import { Filter, CalendarDays, Building2, Apple, Monitor, HelpCircle } from 'lucide-react'
 
 
 type TabType = 'rooms' | 'queue';
@@ -46,6 +46,8 @@ export default function Room() {
     const [selectedSlotStart, setSelectedSlotStart] = useState('');
     const [selectedSlotEnd, setSelectedSlotEnd] = useState('');
     const [slotDetailSessions, setSlotDetailSessions] = useState<RoomSession[] | null>(null);
+    const [scheduleDate, setScheduleDate] = useState<'today' | 'tomorrow'>('today');
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
 
     // Fetch rooms from API
     useEffect(() => {
@@ -108,8 +110,8 @@ export default function Room() {
             if (labRooms.length === 0) return;
 
             try {
-                // Get today's date for filtering
-                const today = dayjs().startOf('day');
+                // Get target date for filtering based on scheduleDate toggle
+                const today = scheduleDate === 'tomorrow' ? dayjs().add(1, 'day').startOf('day') : dayjs().startOf('day');
                 const todayDayOfWeek = today.day(); // 0 = Sunday, 1 = Monday, etc.
 
                 const allSessions: RoomSession[] = [];
@@ -147,7 +149,20 @@ export default function Room() {
                         }
                     });
 
-                    const bookings = response.data as Array<{
+                    const bookingsPayload = response.data as {
+                        data?: Array<{
+                            Booked_Room_ID: number;
+                            Room_ID: number;
+                            Start_Time: string;
+                            End_Time: string;
+                            Status: string;
+                            Purpose?: string;
+                            Room?: { Name: string };
+                            User_ID?: number;
+                            Created_By?: number;
+                            User?: { First_Name: string; Last_Name: string };
+                        }>;
+                    } | Array<{
                         Booked_Room_ID: number;
                         Room_ID: number;
                         Start_Time: string;
@@ -159,6 +174,12 @@ export default function Room() {
                         Created_By?: number;
                         User?: { First_Name: string; Last_Name: string };
                     }>;
+
+                    const bookings = Array.isArray(bookingsPayload)
+                        ? bookingsPayload
+                        : Array.isArray(bookingsPayload?.data)
+                            ? bookingsPayload.data
+                            : [];
 
                     // Convert to RoomSession format and filter for today
                     bookings.forEach(booking => {
@@ -190,7 +211,7 @@ export default function Room() {
         };
 
         loadSchedulesAndBookings();
-    }, [labRooms.length]); // Re-run when labRooms changes
+    }, [labRooms.length, scheduleDate, refreshTrigger]); // Re-run when labRooms, date, or refresh changes
 
     // Compute fully booked slots for the selected category's time picker
     const computeFullyBookedSlots = (): { startMinutes: number; endMinutes: number }[] => {
@@ -230,9 +251,9 @@ export default function Room() {
     };
 
     const handleQueueRoom = async (startTime: string, endTime: string, roomId: number) => {
-        const today = dayjs().startOf('day');
-        const requestedStart = today.hour(Number(startTime.split(':')[0])).minute(Number(startTime.split(':')[1])).toISOString();
-        const requestedEnd = today.hour(Number(endTime.split(':')[0])).minute(Number(endTime.split(':')[1])).toISOString();
+        const targetDate = scheduleDate === 'tomorrow' ? dayjs().add(1, 'day').startOf('day') : dayjs().startOf('day');
+        const requestedStart = targetDate.hour(Number(startTime.split(':')[0])).minute(Number(startTime.split(':')[1])).toISOString();
+        const requestedEnd = targetDate.hour(Number(endTime.split(':')[0])).minute(Number(endTime.split(':')[1])).toISOString();
 
         try {
             if (selectedSession && selectedSession.type === 'booking' && selectedSession.id) {
@@ -263,9 +284,14 @@ export default function Room() {
                     notes: `Student usage time set by staff`
                 });
 
-                if (response.success) {
-                    window.location.reload();
+                if (response?.success === false) {
+                    throw new Error(response?.error || 'Failed to queue room');
                 }
+
+                setQueueModalOpen(false);
+                setSelectedSession(null);
+                setRefreshTrigger(prev => prev + 1);
+                await modal.showSuccess('Room queued successfully.', 'Success');
             }
         } catch (error: any) {
             console.error('Error setting room availability:', error);
@@ -434,6 +460,38 @@ export default function Room() {
                 ) : (
                     /* Room Availability Queue */
                     <div className="space-y-6">
+                        {/* Today / Tomorrow Toggle */}
+                        <div className="flex items-center gap-3">
+                            <div className="flex rounded-lg border border-gray-300 bg-white shadow-sm dark:border-gray-600 dark:bg-gray-800">
+                                <button
+                                    onClick={() => setScheduleDate('today')}
+                                    className={`inline-flex items-center gap-2 rounded-l-lg px-4 py-2 text-sm font-medium transition-colors ${scheduleDate === 'today'
+                                        ? 'bg-indigo-600 text-white'
+                                        : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+                                    }`}
+                                >
+                                    Today
+                                </button>
+                                <button
+                                    onClick={() => setScheduleDate('tomorrow')}
+                                    className={`inline-flex items-center gap-2 rounded-r-lg px-4 py-2 text-sm font-medium transition-colors ${scheduleDate === 'tomorrow'
+                                        ? 'bg-indigo-600 text-white'
+                                        : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+                                    }`}
+                                >
+                                    Tomorrow
+                                </button>
+                            </div>
+                            <span className="text-sm text-gray-500 dark:text-gray-400">
+                                {scheduleDate === 'today'
+                                    ? dayjs().format('dddd, MMMM D')
+                                    : dayjs().add(1, 'day').format('dddd, MMMM D')
+                                }
+                            </span>
+                        </div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                            All rooms queued here are reserved for student use during the selected time window.
+                        </p>
                         {isLoading ? (
                             <div className="space-y-4">
                                 {[...Array(3)].map((_, i) => (
@@ -443,12 +501,12 @@ export default function Room() {
                         ) : labRooms.length > 0 ? (
                             <>
                                 {([
-                                    { key: 'WINDOWS' as LabCategory, label: 'Windows Laboratories', rooms: windowsLabs, icon: '\u{1F5A5}\uFE0F' },
-                                    { key: 'MAC' as LabCategory, label: 'Mac Laboratories', rooms: macLabs, icon: '\u{1F34E}' },
-                                    { key: 'UNASSIGNED' as LabCategory, label: 'Unassigned Laboratories', rooms: unassignedLabs, icon: '\u2753' },
+                                    { key: 'WINDOWS' as LabCategory, label: 'Windows Laboratories', rooms: windowsLabs, icon: Monitor },
+                                    { key: 'MAC' as LabCategory, label: 'Mac Laboratories', rooms: macLabs, icon: Apple },
+                                    { key: 'UNASSIGNED' as LabCategory, label: 'Unassigned Laboratories', rooms: unassignedLabs, icon: HelpCircle },
                                 ] as const)
                                     .filter(cat => cat.rooms.length > 0)
-                                    .map(({ key, label, rooms: categoryRooms, icon }) => {
+                                    .map(({ key, label, rooms: categoryRooms, icon: Icon }) => {
                                         const categorySessions = getSessionsByCategory(categoryRooms);
                                         const availableNow = getAvailableNowCount(categoryRooms, categorySessions);
 
@@ -457,7 +515,7 @@ export default function Room() {
                                                 <div className="flex items-center justify-between mb-6">
                                                     <div className="flex items-center gap-3">
                                                         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 text-lg">
-                                                            {icon}
+                                                            <Icon className="h-5 w-5" />
                                                         </div>
                                                         <div>
                                                             <h2 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -481,12 +539,11 @@ export default function Room() {
                                                 )}
 
                                                 <TimeSlotGrid
-                                                    // Only display valid computer queue slots opened by lab staff
                                                     sessions={categorySessions.filter(s => s.type === 'booking' && s.purpose === 'Student Usage')}
                                                     categoryRooms={categoryRooms}
                                                     onAddRoom={(start: string, end: string) => handleAddTimeSlot(key, start, end)}
                                                     onSlotDetail={handleSlotDetail}
-                                                    testTimeOverride={new Date('2024-03-07T15:00:00')} // Uncomment to test a specific time
+                                                    isTomorrow={scheduleDate === 'tomorrow'}
                                                 />
                                             </div>
                                         );
