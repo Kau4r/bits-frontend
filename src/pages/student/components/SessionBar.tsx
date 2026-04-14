@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { AlertTriangle, Power } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { AlertTriangle, Clock, DoorOpen, Power } from 'lucide-react';
 import ReportIssueModal from '@/pages/student/components/ReportIssue';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -7,6 +7,7 @@ import { useHeartbeat } from '@/context/HeartbeatContext';
 import { useHeartbeatInterval } from '@/hooks/useHeartbeat';
 import { endSession } from '@/services/heartbeat';
 import { createTicket } from '@/services/tickets';
+import { getOpenedLabs, type OpenedLabRoom, type StudentUsageBooking } from '@/services/room';
 
 interface SessionBarProps {
   timeSlot?: string;
@@ -15,23 +16,98 @@ interface SessionBarProps {
   isLoading?: boolean;
 }
 
+interface StudentUsageSummary {
+  roomName: string;
+  startTime: string;
+  endTime: string;
+  openedBy?: string;
+  isOpenNow: boolean;
+}
+
+const formatStudentUsageWindow = (startTime: string, endTime: string) => {
+  const start = new Date(startTime);
+  const end = new Date(endTime);
+  const now = new Date();
+  const sameDay = start.toDateString() === now.toDateString();
+  const dateLabel = sameDay ? '' : `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} `;
+
+  return `${dateLabel}${start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} - ${end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+};
+
+const getNextStudentUsage = (labs: OpenedLabRoom[]): StudentUsageSummary | null => {
+  const now = Date.now();
+  const usageSlots = labs.flatMap((lab) =>
+    (lab.Booked_Rooms || []).map((booking: StudentUsageBooking) => {
+      const startsAt = new Date(booking.Start_Time).getTime();
+      const endsAt = new Date(booking.End_Time).getTime();
+      const openedBy = booking.User
+        ? `${booking.User.First_Name} ${booking.User.Last_Name}`.trim()
+        : undefined;
+
+      return {
+        roomName: lab.Name,
+        startTime: booking.Start_Time,
+        endTime: booking.End_Time,
+        openedBy,
+        isOpenNow: startsAt <= now && endsAt > now,
+      };
+    })
+  );
+
+  return usageSlots
+    .filter((slot) => new Date(slot.endTime).getTime() > now)
+    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())[0] || null;
+};
+
 export default function SessionBar({
-  timeSlot = '9:00 - 10:30',
   onReportIssue,
   onEndSession,
   isLoading = false
 }: SessionBarProps) {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [studentUsage, setStudentUsage] = useState<StudentUsageSummary | null>(null);
+  const [isUsageLoading, setIsUsageLoading] = useState(true);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const { computer, isDetecting, detectionFailed: _detectionFailed, sessionId, stopHeartbeat } = useHeartbeat();
+  const { computer, isDetecting, detectionFailed, sessionId, stopHeartbeat } = useHeartbeat();
   useHeartbeatInterval(); // Start heartbeat interval
 
   const pcNumber = computer?.Name || 'Unknown';
   const roomName = computer?.Room?.Name || 'Unknown Room';
   const roomId = (computer?.Room as any)?.Room_ID as number | undefined;
+  const computerStatus = isDetecting
+    ? 'Detecting PC...'
+    : detectionFailed
+      ? 'PC not detected'
+      : `PC ${pcNumber}`;
 
-  // Default ticket creation for students — creates a real ticket and notifies LabTechs via backend
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadStudentUsage = async (showLoading = false) => {
+      if (showLoading) setIsUsageLoading(true);
+
+      try {
+        const labs = await getOpenedLabs();
+        if (isMounted) setStudentUsage(getNextStudentUsage(labs));
+      } catch (error) {
+        console.error('Failed to fetch student usage rooms:', error);
+        if (isMounted) setStudentUsage(null);
+      } finally {
+        if (isMounted && showLoading) setIsUsageLoading(false);
+      }
+    };
+
+    loadStudentUsage(true);
+    const refreshInterval = window.setInterval(() => loadStudentUsage(false), 60000);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(refreshInterval);
+    };
+  }, []);
+
+  // Default ticket creation for students creates a real ticket and notifies LabTechs via backend
   const handleReportIssue = async (description: string, issueType: string, equipment: string, editedPcNumber: string) => {
     if (onReportIssue) {
       return onReportIssue(description, issueType, equipment, editedPcNumber);
@@ -49,7 +125,7 @@ export default function SessionBar({
     await createTicket({
       Reported_By_ID: user.User_ID,
       Report_Problem: description,
-      Location: `${equipment} — PC: ${editedPcNumber} | Room: ${roomName}`,
+      Location: `${equipment} - PC: ${editedPcNumber} | Room: ${roomName}`,
       Room_ID: roomId,
       Category: categoryMap[issueType] ?? 'OTHER',
       Status: 'PENDING',
@@ -77,21 +153,6 @@ export default function SessionBar({
     navigate('/login', { replace: true });
   };
 
-  // Show loading state during detection
-  if (isDetecting) {
-    return (
-      <div className="flex items-center justify-center bg-gray-100 dark:bg-slate-800 rounded-xl p-4 w-full border border-gray-200 dark:border-slate-700">
-        <div className="flex items-center gap-3">
-          <svg className="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          <p className="text-gray-600 dark:text-gray-300">Detecting computer...</p>
-        </div>
-      </div>
-    );
-  }
-
   // Show computer selector if detection failed
   // if (detectionFailed) {
   //   return <ComputerSelector />;
@@ -100,18 +161,36 @@ export default function SessionBar({
   return (
     <div className="flex flex-col md:flex-row justify-between items-stretch gap-3 md:gap-4 bg-gray-100 dark:bg-slate-800 rounded-xl p-3 md:p-4 w-full border border-gray-200 dark:border-slate-700">
       <div className="flex items-center gap-3 flex-1 min-w-0">
-        <div className="bg-green-500 p-1.5 md:p-2 rounded-lg flex-shrink-0">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 md:h-5 md:w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-          </svg>
+        <div className="bg-blue-600 p-1.5 md:p-2 rounded-lg flex-shrink-0">
+          <DoorOpen className="h-4 w-4 md:h-5 md:w-5 text-white" />
         </div>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 min-w-0">
-          <span className="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200 whitespace-nowrap">Active Session</span>
-          <div className="hidden sm:block h-5 w-px bg-gray-300 dark:bg-slate-600"></div>
-          <div className="flex items-center gap-2 text-xs sm:text-sm">
-            <span className="font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap">PC {pcNumber}</span>
-            <span className="text-gray-500 hidden sm:inline">•</span>
-            <span className="text-gray-600 dark:text-gray-400 whitespace-nowrap truncate">{timeSlot}</span>
+        <div className="flex min-w-0 flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200 whitespace-nowrap">Student Usage</span>
+            {studentUsage && (
+              <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${studentUsage.isOpenNow ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'}`}>
+                {studentUsage.isOpenNow ? 'Open now' : 'Upcoming'}
+              </span>
+            )}
+          </div>
+
+          <div className="flex min-w-0 items-center gap-2 text-xs sm:text-sm text-gray-600 dark:text-gray-300">
+            <Clock className="h-4 w-4 flex-shrink-0 text-gray-400" />
+            {isUsageLoading ? (
+              <span>Checking student usage rooms...</span>
+            ) : studentUsage ? (
+              <span className="truncate">
+                <span className="font-semibold text-gray-800 dark:text-gray-100">{studentUsage.roomName}</span>{' '}
+                {formatStudentUsageWindow(studentUsage.startTime, studentUsage.endTime)} is open for usage
+              </span>
+            ) : (
+              <span>No lab room is open for student usage yet.</span>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400">
+            <span>{computerStatus}</span>
+            {!isDetecting && !detectionFailed && <span>Room: {roomName}</span>}
           </div>
         </div>
       </div>

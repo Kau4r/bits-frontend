@@ -45,8 +45,41 @@ export interface StudentAvailabilityResponse {
     }>;
 }
 
+export interface StudentUsageBooking {
+    Booked_Room_ID: number;
+    Room_ID: number;
+    User_ID: number;
+    Start_Time: string;
+    End_Time: string;
+    Status: 'APPROVED';
+    Purpose?: string | null;
+    Created_At?: string;
+    Updated_At?: string;
+    User?: {
+        User_ID: number;
+        First_Name: string;
+        Last_Name: string;
+    } | null;
+}
+
+export interface OpenedLabRoom extends Room {
+    Opened_At?: string | null;
+    Opened_By_User?: {
+        User_ID: number;
+        First_Name: string;
+        Last_Name: string;
+    } | null;
+    Booked_Rooms?: StudentUsageBooking[];
+}
+
 // Set room availability for students
 export const setRoomStudentAvailability = async (id: number, data: { startTime: string; endTime: string; notes?: string }): Promise<StudentAvailabilityResponse> => {
     const response = await api.post<StudentAvailabilityResponse>(`/rooms/${id}/student-availability`, data);
     return response.data;
+};
+
+// Fetch current and future lab openings for student usage
+export const getOpenedLabs = async (): Promise<OpenedLabRoom[]> => {
+    const { data } = await api.get<OpenedLabRoom[]>("/rooms/opened-labs");
+    return data;
 };

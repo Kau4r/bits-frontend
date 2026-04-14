@@ -43,7 +43,7 @@ export default function OpenedLabCard({ room }: OpenedLabCardProps) {
             <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
               <DoorOpen className="mr-2 text-gray-400" />
               <span>
-                Next Available: <span className="text-green-400 font-medium">{room.nextAvailable}</span>
+                Status: <span className="text-green-400 font-medium">{room.nextAvailable}</span>
               </span>
             </div>
           </div>

@@ -1,4 +1,4 @@
-
+import { AlertTriangle, Info, X, XCircle } from 'lucide-react';
 
 interface WarningModalProps {
     isOpen: boolean;
@@ -7,6 +7,30 @@ interface WarningModalProps {
     message: string;
     type?: 'warning' | 'error' | 'info';
 }
+
+const modalTheme = {
+    warning: {
+        Icon: AlertTriangle,
+        dot: 'bg-amber-500',
+        icon: 'text-amber-600 dark:text-amber-300',
+        panel: 'bg-amber-50 text-amber-900 dark:bg-amber-500/10 dark:text-amber-100',
+        button: 'bg-amber-600 hover:bg-amber-500 focus:ring-amber-500',
+    },
+    error: {
+        Icon: XCircle,
+        dot: 'bg-rose-500',
+        icon: 'text-rose-600 dark:text-rose-300',
+        panel: 'bg-rose-50 text-rose-900 dark:bg-rose-500/10 dark:text-rose-100',
+        button: 'bg-rose-600 hover:bg-rose-500 focus:ring-rose-500',
+    },
+    info: {
+        Icon: Info,
+        dot: 'bg-indigo-500',
+        icon: 'text-indigo-600 dark:text-cyan-300',
+        panel: 'bg-indigo-50 text-indigo-900 dark:bg-cyan-400/10 dark:text-cyan-100',
+        button: 'bg-indigo-600 hover:bg-indigo-500 focus:ring-indigo-500 dark:bg-cyan-400 dark:text-slate-950 dark:hover:bg-cyan-300 dark:focus:ring-cyan-300',
+    },
+};
 
 export default function WarningModal({
     isOpen,
@@ -17,54 +41,49 @@ export default function WarningModal({
 }: WarningModalProps) {
     if (!isOpen) return null;
 
-    const iconColors = {
-        warning: 'text-yellow-400',
-        error: 'text-red-400',
-        info: 'text-blue-400',
-    };
-
-    const bgColors = {
-        warning: 'bg-yellow-500/10',
-        error: 'bg-red-500/10',
-        info: 'bg-blue-500/10',
-    };
-
-    const icons = {
-        warning: '⚠️',
-        error: '❌',
-        info: 'ℹ️',
-    };
+    const theme = modalTheme[type];
+    const Icon = theme.Icon;
 
     return (
-        <div className="fixed inset-0 z-[1100] flex items-center justify-center">
-            {/* Backdrop */}
+        <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-[2px]" onClick={onClose}>
             <div
-                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                onClick={onClose}
-            />
-
-            {/* Modal */}
-            <div className="relative z-10 w-full max-w-md mx-4 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden animate-in fade-in zoom-in duration-200">
-                {/* Header */}
-                <div className={`flex items-center gap-3 px-6 py-4 ${bgColors[type]}`}>
-                    <span className="text-2xl">{icons[type]}</span>
-                    <h3 className={`text-lg font-semibold ${iconColors[type]}`}>
-                        {title}
-                    </h3>
-                </div>
-
-                {/* Body */}
-                <div className="px-6 py-5">
-                    <p className="text-gray-800 dark:text-gray-300 leading-relaxed whitespace-pre-line">
-                        {message}
-                    </p>
-                </div>
-
-                {/* Footer */}
-                <div className="flex justify-end px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700">
+                className="w-full max-w-[440px] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/30 dark:border-white/10 dark:bg-[#111827]"
+                onClick={(event) => event.stopPropagation()}
+            >
+                <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/90 px-5 py-3 dark:border-white/10 dark:bg-white/[0.03]">
+                    <div className="flex items-center gap-3">
+                        <span className={`h-3 w-3 rounded-full ${theme.dot}`} />
+                        <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">Scheduling notice</span>
+                    </div>
                     <button
+                        type="button"
                         onClick={onClose}
-                        className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition-colors font-medium"
+                        className="grid h-9 w-9 place-items-center rounded-full text-slate-500 transition hover:bg-slate-200 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
+                        aria-label="Close notice"
+                    >
+                        <X className="h-5 w-5" />
+                    </button>
+                </div>
+
+                <div className="px-6 py-6">
+                    <div className="flex gap-4">
+                        <div className={`mt-1 grid h-10 w-10 shrink-0 place-items-center rounded-full ${theme.panel}`}>
+                            <Icon className={`h-5 w-5 ${theme.icon}`} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <h3 className="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">{title}</h3>
+                            <p className="mt-3 whitespace-pre-line text-sm leading-6 text-slate-600 dark:text-slate-300">
+                                {message}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex justify-end border-t border-slate-200 bg-slate-50 px-6 py-4 dark:border-white/10 dark:bg-white/[0.03]">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className={`rounded-full px-5 py-2 text-sm font-semibold text-white shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-[#111827] ${theme.button}`}
                     >
                         Got it
                     </button>

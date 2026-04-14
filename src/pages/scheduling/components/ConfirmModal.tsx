@@ -1,4 +1,5 @@
 import dayjs from 'dayjs';
+import { ArrowRight, CalendarDays, Clock3, X } from 'lucide-react';
 
 interface ConfirmModalProps {
     isOpen: boolean;
@@ -32,70 +33,88 @@ export default function ConfirmModal({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[1100] flex items-center justify-center">
-            {/* Backdrop */}
+        <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-[2px]" onClick={onCancel}>
             <div
-                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                onClick={onCancel}
-            />
-
-            {/* Modal */}
-            <div className="relative z-10 w-full max-w-md mx-4 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden animate-in fade-in zoom-in duration-200">
-                {/* Header */}
-                <div className="flex items-center gap-3 px-6 py-4 bg-indigo-500/10">
-                    <span className="text-2xl">📅</span>
-                    <h3 className="text-lg font-semibold text-indigo-600 dark:text-indigo-400">
-                        {title}
-                    </h3>
+                className="w-full max-w-[520px] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/30 dark:border-white/10 dark:bg-[#111827]"
+                onClick={(event) => event.stopPropagation()}
+            >
+                <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/90 px-5 py-3 dark:border-white/10 dark:bg-white/[0.03]">
+                    <div className="flex items-center gap-3">
+                        <span className="h-3 w-3 rounded-full bg-indigo-500 dark:bg-cyan-300" />
+                        <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">Reschedule booking</span>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onCancel}
+                        className="grid h-9 w-9 place-items-center rounded-full text-slate-500 transition hover:bg-slate-200 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
+                        aria-label="Close confirmation"
+                    >
+                        <X className="h-5 w-5" />
+                    </button>
                 </div>
 
-                {/* Body */}
-                <div className="px-6 py-5 space-y-4">
-                    <p className="text-gray-800 dark:text-gray-300 leading-relaxed">
-                        {message}
-                    </p>
+                <div className="px-6 py-6">
+                    <div className="flex gap-4">
+                        <div className="mt-1 grid h-10 w-10 shrink-0 place-items-center rounded-full bg-indigo-50 text-indigo-600 dark:bg-cyan-400/10 dark:text-cyan-300">
+                            <CalendarDays className="h-5 w-5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <h3 className="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">{title}</h3>
+                            <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">{message}</p>
+                        </div>
+                    </div>
 
                     {eventDetails && (
-                        <div className="bg-gray-100 dark:bg-gray-700/50 rounded-lg p-4 space-y-3">
-                            <div className="font-medium text-gray-900 dark:text-white">{eventDetails.title}</div>
-
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div>
-                                    <div className="text-gray-600 dark:text-gray-500 text-xs mb-1">FROM</div>
-                                    <div className="text-gray-700 dark:text-gray-400">
-                                        {dayjs(eventDetails.oldStart).format('MMM D, h:mm A')}
-                                    </div>
-                                    <div className="text-gray-700 dark:text-gray-400">
-                                        to {dayjs(eventDetails.oldEnd).format('h:mm A')}
-                                    </div>
+                        <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+                            <div className="mb-4 flex items-start gap-3">
+                                <span className="mt-1 h-3 w-3 rounded-full bg-indigo-500 dark:bg-cyan-300" />
+                                <div className="min-w-0">
+                                    <p className="truncate text-sm font-semibold text-slate-950 dark:text-white">{eventDetails.title}</p>
+                                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Drag-and-drop schedule change</p>
                                 </div>
-                                <div>
-                                    <div className="text-indigo-600 dark:text-indigo-400 text-xs mb-1">TO</div>
-                                    <div className="text-gray-900 dark:text-white font-medium">
-                                        {dayjs(eventDetails.newStart).format('MMM D, h:mm A')}
+                            </div>
+
+                            <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
+                                <div className="rounded-xl bg-white p-3 dark:bg-slate-950/50">
+                                    <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                                        <Clock3 className="h-3.5 w-3.5" />
+                                        From
                                     </div>
-                                    <div className="text-gray-900 dark:text-white font-medium">
-                                        to {dayjs(eventDetails.newEnd).format('h:mm A')}
+                                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{dayjs(eventDetails.oldStart).format('MMM D, h:mm A')}</p>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400">to {dayjs(eventDetails.oldEnd).format('h:mm A')}</p>
+                                </div>
+
+                                <div className="hidden justify-center text-slate-400 sm:flex">
+                                    <ArrowRight className="h-5 w-5" />
+                                </div>
+
+                                <div className="rounded-xl bg-indigo-50 p-3 ring-1 ring-indigo-200 dark:bg-cyan-400/10 dark:ring-cyan-300/20">
+                                    <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-indigo-600 dark:text-cyan-300">
+                                        <Clock3 className="h-3.5 w-3.5" />
+                                        To
                                     </div>
+                                    <p className="text-sm font-semibold text-slate-950 dark:text-white">{dayjs(eventDetails.newStart).format('MMM D, h:mm A')}</p>
+                                    <p className="text-sm text-slate-600 dark:text-slate-300">to {dayjs(eventDetails.newEnd).format('h:mm A')}</p>
                                 </div>
                             </div>
                         </div>
                     )}
                 </div>
 
-                {/* Footer */}
-                <div className="flex justify-end gap-3 px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700">
+                <div className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-6 py-4 dark:border-white/10 dark:bg-white/[0.03]">
                     <button
+                        type="button"
                         onClick={onCancel}
                         disabled={isLoading}
-                        className="px-4 py-2.5 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors font-medium disabled:opacity-50"
+                        className="rounded-full px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-200 hover:text-slate-950 disabled:opacity-50 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
                     >
                         {cancelText}
                     </button>
                     <button
+                        type="button"
                         onClick={onConfirm}
                         disabled={isLoading}
-                        className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition-colors font-medium disabled:opacity-50"
+                        className="rounded-full bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-600/20 transition hover:bg-indigo-500 disabled:opacity-50 dark:bg-cyan-400 dark:text-slate-950 dark:shadow-cyan-400/20 dark:hover:bg-cyan-300"
                     >
                         {isLoading ? 'Updating...' : confirmText}
                     </button>

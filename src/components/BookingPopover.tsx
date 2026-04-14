@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import dayjs from 'dayjs';
+import { AlignLeft, Check, ChevronDown, Clock3, MapPin, Trash2, UserRound, X } from 'lucide-react';
 import type { Room } from '@/types/room';
 import { useModal } from '@/context/ModalContext';
 
@@ -50,7 +51,6 @@ interface BookingPopoverProps {
     canApprove?: boolean;
 }
 
-// Generate time options in 30-minute intervals
 const generateTimeOptions = () => {
     const options: string[] = [];
     for (let h = 0; h < 24; h++) {
@@ -67,17 +67,41 @@ const TIME_OPTIONS = generateTimeOptions();
 
 const formatTimeDisplay = (time: string) => {
     const [h, m] = time.split(':').map(Number);
-    const period = h >= 12 ? 'pm' : 'am';
+    const period = h >= 12 ? 'PM' : 'AM';
     const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-    return `${hour12.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} ${period}`;
+    return `${hour12}:${m.toString().padStart(2, '0')} ${period}`;
 };
 
-const statusColors: Record<string, { bg: string; text: string }> = {
-    APPROVED: { bg: 'bg-green-500/20', text: 'text-green-400' },
-    PENDING: { bg: 'bg-yellow-500/20', text: 'text-yellow-400' },
-    REJECTED: { bg: 'bg-red-500/20', text: 'text-red-400' },
-    CANCELLED: { bg: 'bg-gray-500/20', text: 'text-gray-400' },
+const statusTheme: Record<string, { dot: string; pill: string; label: string }> = {
+    APPROVED: {
+        dot: 'bg-emerald-500',
+        pill: 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/30',
+        label: 'Approved',
+    },
+    PENDING: {
+        dot: 'bg-amber-500',
+        pill: 'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30',
+        label: 'Pending',
+    },
+    REJECTED: {
+        dot: 'bg-rose-500',
+        pill: 'bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/30',
+        label: 'Rejected',
+    },
+    CANCELLED: {
+        dot: 'bg-slate-400',
+        pill: 'bg-slate-100 text-slate-700 ring-slate-200 dark:bg-slate-500/10 dark:text-slate-300 dark:ring-slate-500/30',
+        label: 'Cancelled',
+    },
 };
+
+const getStatusTheme = (status?: string) => statusTheme[String(status || 'PENDING').toUpperCase()] || statusTheme.PENDING;
+
+const FieldIcon = ({ children }: { children: React.ReactNode }) => (
+    <div className="mt-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-300">
+        {children}
+    </div>
+);
 
 export default function BookingPopover({
     isOpen,
@@ -108,42 +132,39 @@ export default function BookingPopover({
     const [startTimeValue, setStartTimeValue] = useState(dayjs(startTime).format('HH:mm'));
     const [endTimeValue, setEndTimeValue] = useState(dayjs(endTime).format('HH:mm'));
     const [repeat, setRepeat] = useState(false);
-    const [showRoomDropdown, setShowRoomDropdown] = useState(false);
 
     const popoverRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    // Update form when props change
     useEffect(() => {
-        if (isOpen) {
-            if (viewingBooking) {
-                setTitle(viewingBooking.title);
-                setDescription(viewingBooking.description);
-                setRoomId(viewingBooking.roomId);
-                setDate(viewingBooking.date);
-                setStartTimeValue(viewingBooking.startTime);
-                setEndTimeValue(viewingBooking.endTime);
-                setRepeat(false);
-            } else {
-                setTitle('');
-                setDescription('');
-                setDate(dayjs(startTime).format('YYYY-MM-DD'));
-                setStartTimeValue(dayjs(startTime).format('HH:mm'));
-                setEndTimeValue(dayjs(endTime).format('HH:mm'));
-                if (selectedRoomId) setRoomId(selectedRoomId);
-                setRepeat(false);
-            }
+        if (!isOpen) return;
+
+        if (viewingBooking) {
+            setTitle(viewingBooking.title);
+            setDescription(viewingBooking.description);
+            setRoomId(viewingBooking.roomId);
+            setDate(viewingBooking.date);
+            setStartTimeValue(viewingBooking.startTime);
+            setEndTimeValue(viewingBooking.endTime);
+            setRepeat(false);
+            return;
         }
+
+        setTitle('');
+        setDescription('');
+        setDate(dayjs(startTime).format('YYYY-MM-DD'));
+        setStartTimeValue(dayjs(startTime).format('HH:mm'));
+        setEndTimeValue(dayjs(endTime).format('HH:mm'));
+        if (selectedRoomId) setRoomId(selectedRoomId);
+        setRepeat(false);
     }, [isOpen, startTime, endTime, selectedRoomId, viewingBooking]);
 
-    // Focus input when opened (only in edit/create mode)
     useEffect(() => {
         if (isOpen && inputRef.current && !isViewMode) {
             setTimeout(() => inputRef.current?.focus(), 100);
         }
     }, [isOpen, isViewMode]);
 
-    // Close on outside click
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
@@ -157,7 +178,6 @@ export default function BookingPopover({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [isOpen, onClose]);
 
-    // Close on Escape
     useEffect(() => {
         const handleEscape = (event: KeyboardEvent) => {
             if (event.key === 'Escape') onClose();
@@ -167,6 +187,9 @@ export default function BookingPopover({
     }, [onClose]);
 
     if (!isOpen) return null;
+
+    const selectedRoom = rooms.find(r => r.Room_ID === roomId);
+    const currentStatus = getStatusTheme(viewingBooking?.status);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -197,266 +220,260 @@ export default function BookingPopover({
         setRepeat(false);
     };
 
-    const selectedRoom = rooms.find(r => r.Room_ID === roomId);
-
-    // Modal overlay and container styles
-    const overlayStyle: React.CSSProperties = {
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        zIndex: 1000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+    const handleRemove = async () => {
+        if (!viewingBooking || !onRemove) return;
+        const confirmed = await modal.showConfirm('Are you sure you want to remove this booking? This action cannot be undone.', 'Remove Booking');
+        if (confirmed) {
+            onRemove(viewingBooking.id);
+        }
     };
 
-    const modalStyle: React.CSSProperties = {
-        position: 'relative',
-        width: 400,
-        maxHeight: '90vh',
-        borderRadius: '0.75rem',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-    };
-
-    // VIEW-ONLY MODE
-    if (isViewMode && viewingBooking) {
-        const statusStyle = statusColors[viewingBooking.status] || statusColors.PENDING;
-
-        return (
-            <div style={overlayStyle} onClick={onClose}>
-                <div ref={popoverRef} style={modalStyle} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700" onClick={e => e.stopPropagation()}>
-                    {/* Header */}
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                        <h3 className="font-semibold text-gray-900 dark:text-white">Booking Details</h3>
-                        <button onClick={onClose} className="text-gray-400 hover:text-gray-900 dark:hover:text-white text-xl leading-none">×</button>
-                    </div>
-
-                    {/* Details */}
-                    <div className="p-4 space-y-4 overflow-y-auto">
-                        <div>
-                            <div className="text-xl font-semibold text-gray-900 dark:text-white">{viewingBooking.title}</div>
-                            {viewingBooking.description && (
-                                <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">{viewingBooking.description}</div>
-                            )}
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusStyle.bg} ${statusStyle.text}`}>
-                                {viewingBooking.status}
-                            </span>
-                        </div>
-
-                        <div className="bg-gray-100 dark:bg-gray-700/50 rounded-lg p-3 space-y-2">
-                            <div className="flex items-center gap-2 text-sm">
-                                <span className="text-gray-600 dark:text-gray-400">👤</span>
-                                <span className="text-gray-900 dark:text-white font-medium">{viewingBooking.createdBy}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm">
-                                <span className="text-gray-600 dark:text-gray-400">🏠</span>
-                                <span className="text-gray-800 dark:text-gray-300">{viewingBooking.roomName}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm">
-                                <span className="text-gray-600 dark:text-gray-400">📅</span>
-                                <span className="text-gray-800 dark:text-gray-300">{dayjs(viewingBooking.date).format('dddd, MMMM D, YYYY')}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm">
-                                <span className="text-gray-600 dark:text-gray-400">🕐</span>
-                                <span className="text-gray-800 dark:text-gray-300">
-                                    {formatTimeDisplay(viewingBooking.startTime)} – {formatTimeDisplay(viewingBooking.endTime)}
-                                </span>
-                            </div>
-                        </div>
-
-                        {canApprove && viewingBooking.status === 'PENDING' && (
-                            <div className="flex gap-3 pt-2 border-t border-gray-200 dark:border-gray-700">
-                                <button
-                                    onClick={() => onReject?.(viewingBooking.id)}
-                                    disabled={isSubmitting}
-                                    className="flex-1 px-4 py-2 text-sm bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600/30 disabled:opacity-50"
-                                >
-                                    Reject
-                                </button>
-                                <button
-                                    onClick={() => onApprove?.(viewingBooking.id)}
-                                    disabled={isSubmitting}
-                                    className="flex-1 px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-500 disabled:opacity-50"
-                                >
-                                    {isSubmitting ? 'Approving...' : 'Approve'}
-                                </button>
-                            </div>
-                        )}
-
-                        <div className="flex justify-end pt-2">
-                            <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">Close</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    // CREATE / EDIT MODE
     return (
-        <div style={overlayStyle} onClick={onClose}>
-            <div ref={popoverRef} style={modalStyle} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700" onClick={e => e.stopPropagation()}>
-                {/* Header */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                    <h3 className="font-semibold text-gray-900 dark:text-white">{isEditMode ? 'Edit Booking' : 'New Booking'}</h3>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-900 dark:hover:text-white text-xl leading-none">×</button>
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-[2px]" onClick={onClose}>
+            <div
+                ref={popoverRef}
+                className="flex max-h-[92vh] w-full max-w-[520px] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/30 dark:border-white/10 dark:bg-[#111827]"
+                onClick={e => e.stopPropagation()}
+            >
+                <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/90 px-5 py-3 dark:border-white/10 dark:bg-white/[0.03]">
+                    <div className="flex items-center gap-3">
+                        <span className={`h-3 w-3 rounded-full ${isCreateMode ? 'bg-indigo-500' : currentStatus.dot}`} />
+                        <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">
+                            {isCreateMode ? 'New booking' : isEditMode ? 'Edit booking' : 'Booking details'}
+                        </span>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="grid h-9 w-9 place-items-center rounded-full text-slate-500 transition hover:bg-slate-200 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
+                        aria-label="Close booking modal"
+                    >
+                        <X className="h-5 w-5" />
+                    </button>
                 </div>
 
-                {/* Form */}
-                <form onSubmit={handleSubmit} className="p-4 space-y-4 overflow-y-auto">
-                    {/* Event Title */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Event Title</label>
-                        <input
-                            ref={inputRef}
-                            type="text"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
-                            required
-                        />
-                    </div>
+                {isViewMode && viewingBooking ? (
+                    <div className="overflow-y-auto px-6 py-5">
+                        <div className="mb-5 flex items-start gap-4">
+                            <span className={`mt-2 h-4 w-4 rounded-full ${currentStatus.dot}`} />
+                            <div className="min-w-0 flex-1">
+                                <h2 className="break-words text-2xl font-semibold tracking-tight text-slate-950 dark:text-white">
+                                    {viewingBooking.title}
+                                </h2>
+                                <div className="mt-3 flex flex-wrap items-center gap-2">
+                                    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ring-1 ${currentStatus.pill}`}>
+                                        {currentStatus.label}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
 
-                    {/* Event Description */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Event Description</label>
-                        <textarea
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            rows={2}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none"
-                        />
-                    </div>
+                        <div className="space-y-1">
+                            <div className="flex gap-4 rounded-2xl px-1 py-2">
+                                <FieldIcon><Clock3 className="h-4 w-4" /></FieldIcon>
+                                <div>
+                                    <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                        {dayjs(viewingBooking.date).format('dddd, MMMM D, YYYY')}
+                                    </div>
+                                    <div className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+                                        {formatTimeDisplay(viewingBooking.startTime)} - {formatTimeDisplay(viewingBooking.endTime)}
+                                    </div>
+                                </div>
+                            </div>
 
-                    {/* Room */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Room</label>
-                        <div className="relative">
-                            <button
-                                type="button"
-                                onClick={() => setShowRoomDropdown(!showRoomDropdown)}
-                                className="w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-left flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-600"
-                            >
-                                <span className="text-lg">+</span>
-                                <span>{selectedRoom?.Name || 'Add Room'}</span>
-                            </button>
+                            <div className="flex gap-4 rounded-2xl px-1 py-2">
+                                <FieldIcon><MapPin className="h-4 w-4" /></FieldIcon>
+                                <div>
+                                    <div className="text-sm font-semibold text-slate-900 dark:text-white">{viewingBooking.roomName}</div>
+                                    <div className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">Room</div>
+                                </div>
+                            </div>
 
-                            {showRoomDropdown && (
-                                <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg z-10 min-w-[200px]">
-                                    {rooms.map((room) => (
-                                        <button
-                                            key={room.Room_ID}
-                                            type="button"
-                                            onClick={() => {
-                                                setRoomId(room.Room_ID);
-                                                setShowRoomDropdown(false);
-                                            }}
-                                            className={`w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-600 first:rounded-t-lg last:rounded-b-lg ${roomId === room.Room_ID ? 'bg-indigo-900/30 text-indigo-400' : 'text-gray-900 dark:text-gray-300'}`}
-                                        >
-                                            {room.Name}
-                                        </button>
-                                    ))}
+                            <div className="flex gap-4 rounded-2xl px-1 py-2">
+                                <FieldIcon><UserRound className="h-4 w-4" /></FieldIcon>
+                                <div>
+                                    <div className="text-sm font-semibold text-slate-900 dark:text-white">{viewingBooking.createdBy}</div>
+                                    <div className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">Organizer</div>
+                                </div>
+                            </div>
+
+                            {viewingBooking.description && (
+                                <div className="flex gap-4 rounded-2xl px-1 py-2">
+                                    <FieldIcon><AlignLeft className="h-4 w-4" /></FieldIcon>
+                                    <p className="min-w-0 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700 dark:text-slate-300">
+                                        {viewingBooking.description}
+                                    </p>
                                 </div>
                             )}
                         </div>
-                    </div>
 
-                    {/* Date */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date</label>
-                        <input
-                            type="date"
-                            value={date}
-                            onChange={(e) => setDate(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
-                            required
-                        />
-                    </div>
-
-                    {/* Time Range */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Time</label>
-                            <select
-                                value={startTimeValue}
-                                onChange={(e) => setStartTimeValue(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
-                            >
-                                {TIME_OPTIONS.map((t) => (
-                                    <option key={`start-${t}`} value={t}>{formatTimeDisplay(t)}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Time</label>
-                            <select
-                                value={endTimeValue}
-                                onChange={(e) => setEndTimeValue(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
-                            >
-                                {TIME_OPTIONS.map((t) => (
-                                    <option key={`end-${t}`} value={t}>{formatTimeDisplay(t)}</option>
-                                ))}
-                            </select>
+                        <div className="mt-6 flex items-center justify-end gap-3 border-t border-slate-200 pt-4 dark:border-white/10">
+                            {canApprove && viewingBooking.status === 'PENDING' && (
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={() => onReject?.(viewingBooking.id)}
+                                        disabled={isSubmitting}
+                                        className="rounded-full px-4 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-50 dark:text-rose-300 dark:hover:bg-rose-500/10"
+                                    >
+                                        Reject
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => onApprove?.(viewingBooking.id)}
+                                        disabled={isSubmitting}
+                                        className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 disabled:opacity-50"
+                                    >
+                                        <Check className="h-4 w-4" />
+                                        {isSubmitting ? 'Approving...' : 'Approve'}
+                                    </button>
+                                </>
+                            )}
+                            {!(canApprove && viewingBooking.status === 'PENDING') && (
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    className="rounded-full px-5 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
+                                >
+                                    Close
+                                </button>
+                            )}
                         </div>
                     </div>
+                ) : (
+                    <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+                        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+                            <div className="mb-5 flex items-start gap-4">
+                                <span className={`mt-3 h-4 w-4 rounded-full ${isEditMode ? currentStatus.dot : 'bg-indigo-500'}`} />
+                                <input
+                                    ref={inputRef}
+                                    type="text"
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    placeholder="Add title"
+                                    className="w-full border-0 border-b border-slate-300 bg-transparent px-0 pb-2 text-2xl font-semibold tracking-tight text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-0 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-500 dark:focus:border-cyan-300"
+                                    required
+                                />
+                            </div>
 
-                    {/* Repeat */}
-                    {isCreateMode && (
-                        <div className="flex items-center gap-2">
-                            <input
-                                type="checkbox"
-                                id="repeat"
-                                checked={repeat}
-                                onChange={(e) => setRepeat(e.target.checked)}
-                                className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-indigo-600 focus:ring-indigo-500"
-                            />
-                            <label htmlFor="repeat" className="text-sm text-gray-700 dark:text-gray-300">Repeat Event</label>
+                            <div className="space-y-3">
+                                <div className="flex gap-4">
+                                    <FieldIcon><Clock3 className="h-4 w-4" /></FieldIcon>
+                                    <div className="grid flex-1 gap-3 sm:grid-cols-[1fr_auto_auto]">
+                                        <label className="sr-only" htmlFor="booking-date">Date</label>
+                                        <input
+                                            id="booking-date"
+                                            type="date"
+                                            value={date}
+                                            onChange={(e) => setDate(e.target.value)}
+                                            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:focus:border-cyan-300 dark:focus:ring-cyan-300/20"
+                                            required
+                                        />
+                                        <label className="sr-only" htmlFor="booking-start-time">Start time</label>
+                                        <select
+                                            id="booking-start-time"
+                                            value={startTimeValue}
+                                            onChange={(e) => setStartTimeValue(e.target.value)}
+                                            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:focus:border-cyan-300 dark:focus:ring-cyan-300/20"
+                                        >
+                                            {TIME_OPTIONS.map((t) => (
+                                                <option key={`start-${t}`} value={t}>{formatTimeDisplay(t)}</option>
+                                            ))}
+                                        </select>
+                                        <label className="sr-only" htmlFor="booking-end-time">End time</label>
+                                        <select
+                                            id="booking-end-time"
+                                            value={endTimeValue}
+                                            onChange={(e) => setEndTimeValue(e.target.value)}
+                                            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:focus:border-cyan-300 dark:focus:ring-cyan-300/20"
+                                        >
+                                            {TIME_OPTIONS.map((t) => (
+                                                <option key={`end-${t}`} value={t}>{formatTimeDisplay(t)}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-4">
+                                    <FieldIcon><MapPin className="h-4 w-4" /></FieldIcon>
+                                    <div className="relative flex-1">
+                                        <label className="sr-only" htmlFor="booking-room">Room</label>
+                                        <select
+                                            id="booking-room"
+                                            value={roomId || ''}
+                                            onChange={(e) => setRoomId(Number(e.target.value))}
+                                            className="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 pr-10 text-sm font-medium text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:focus:border-cyan-300 dark:focus:ring-cyan-300/20"
+                                            required
+                                        >
+                                            <option value="" disabled>Select room</option>
+                                            {rooms.map((room) => (
+                                                <option key={room.Room_ID} value={room.Room_ID}>{room.Name}</option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                                        {selectedRoom && (
+                                            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Selected room: {selectedRoom.Name}</p>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-4">
+                                    <FieldIcon><AlignLeft className="h-4 w-4" /></FieldIcon>
+                                    <textarea
+                                        value={description}
+                                        onChange={(e) => setDescription(e.target.value)}
+                                        rows={3}
+                                        placeholder="Add description or notes"
+                                        className="min-h-[96px] flex-1 resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-slate-500 dark:focus:border-cyan-300 dark:focus:ring-cyan-300/20"
+                                    />
+                                </div>
+
+                                {isCreateMode && (
+                                    <label className="ml-12 inline-flex cursor-pointer items-center gap-3 rounded-xl px-1 py-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                                        <input
+                                            type="checkbox"
+                                            checked={repeat}
+                                            onChange={(e) => setRepeat(e.target.checked)}
+                                            className="h-4 w-4 rounded border-slate-300 bg-white text-indigo-600 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-900 dark:text-cyan-400 dark:focus:ring-cyan-300"
+                                        />
+                                        Repeat event
+                                    </label>
+                                )}
+                            </div>
                         </div>
-                    )}
 
-                    {/* Actions */}
-                    <div className="flex justify-between gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-                        {/* Remove button - only in edit mode */}
-                        {isEditMode && viewingBooking && onRemove ? (
-                            <button
-                                type="button"
-                                onClick={async () => {
-                                    const confirmed = await modal.showConfirm('Are you sure you want to remove this booking? This action cannot be undone.', 'Remove Booking');
-                                    if (confirmed) {
-                                        onRemove(viewingBooking.id);
-                                    }
-                                }}
-                                disabled={isSubmitting}
-                                className="px-4 py-2 text-sm bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600/30 disabled:opacity-50"
-                            >
-                                Remove
-                            </button>
-                        ) : <div />}
+                        <div className="flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4 dark:border-white/10 dark:bg-white/[0.03]">
+                            {isEditMode && viewingBooking && onRemove ? (
+                                <button
+                                    type="button"
+                                    onClick={handleRemove}
+                                    disabled={isSubmitting}
+                                    className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-50 dark:text-rose-300 dark:hover:bg-rose-500/10"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                    Remove
+                                </button>
+                            ) : <div />}
 
-                        <div className="flex gap-3">
-                            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
-                                Cancel
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={!title.trim() || !roomId || isSubmitting}
-                                className="px-6 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {isSubmitting ? 'Saving...' : isEditMode ? 'Update' : 'Save'}
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    className="rounded-full px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-200 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={!title.trim() || !roomId || isSubmitting}
+                                    className="rounded-full bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-600/20 transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-cyan-400 dark:text-slate-950 dark:shadow-cyan-400/20 dark:hover:bg-cyan-300"
+                                >
+                                    {isSubmitting ? 'Saving...' : isEditMode ? 'Update' : 'Save'}
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                </form>
+                    </form>
+                )}
             </div>
         </div>
     );
