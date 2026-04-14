@@ -2,15 +2,19 @@ import { useState, useEffect, useRef } from "react";
 import Navbar from "@/layout/Navbar";
 import { Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { useNotifications } from "@/context/NotificationContext";
 import { Toaster } from 'react-hot-toast';
-import { DoorOpen } from "lucide-react";
+import { Bell, DoorOpen } from "lucide-react";
 
 const Layout = () => {
   const [collapsed, setCollapsed] = useState(false);
   const { userRole, user, logout } = useAuth();
+  const { notifications, unreadCount, markAsRead } = useNotifications();
   const [isMobile, setIsMobile] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
+  const notificationRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
   const noSidebarRoles = ["STUDENT", "FACULTY", "SECRETARY"];
@@ -30,10 +34,32 @@ const Layout = () => {
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
         setProfileOpen(false);
       }
+      if (notificationRef.current && !notificationRef.current.contains(e.target as Node)) {
+        setNotificationOpen(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const formatNotificationTime = (timestamp: string) => {
+    const diff = Date.now() - new Date(timestamp).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return `${Math.max(0, mins)}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
+  };
+
+  const handleNotificationClick = async (id: number, read: boolean) => {
+    if (!read) await markAsRead(id);
+  };
+
+  const handleRoomsClick = () => {
+    setNotificationOpen(false);
+    setProfileOpen(false);
+    navigate("/student-room-view");
+  };
 
   const handleLogout = () => {
     logout();
@@ -48,13 +74,14 @@ const Layout = () => {
       <div className="flex-1 flex flex-col">
         {/* Mobile Top Notch */}
         {isMobile && (
-          <header className="flex items-center justify-between bg-white dark:bg-gray-800 px-4 py-3 shadow-md fixed top-0 left-0 right-0 z-30">
+          <header className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between bg-white px-4 py-3 shadow-md dark:bg-gray-800">
             <h1 className="text-xl font-bold text-indigo-600">BITS</h1>
 
             <div className="flex items-center gap-3">
               {isStudent && (
                 <button
-                  onClick={() => navigate("/student-room-view")}
+                  type="button"
+                  onClick={handleRoomsClick}
                   className="flex items-center gap-1.5 rounded-md px-2.5 py-2 text-gray-700 transition hover:bg-gray-200 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white"
                   aria-label="View available rooms"
                 >
@@ -64,11 +91,50 @@ const Layout = () => {
               )}
 
               {/* Notification Button */}
-              <button className="p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700">
-                <svg className="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-              </button>
+              <div className="relative" ref={notificationRef}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNotificationOpen(prev => !prev);
+                    setProfileOpen(false);
+                  }}
+                  className="relative rounded-md p-2 hover:bg-gray-200 dark:hover:bg-gray-700"
+                  aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
+                >
+                  <Bell className="h-6 w-6 text-gray-700 dark:text-gray-300" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[11px] font-bold leading-none text-white ring-2 ring-white dark:ring-gray-800">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
+                </button>
+
+                {notificationOpen && (
+                  <div className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                    <div className="border-b border-gray-200 px-4 py-3 dark:border-gray-700">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white">Notifications</p>
+                    </div>
+                    <div className="max-h-80 overflow-y-auto py-1">
+                      {notifications.length > 0 ? (
+                        notifications.slice(0, 8).map(notification => (
+                          <button
+                            key={notification.id}
+                            type="button"
+                            onClick={() => handleNotificationClick(notification.id, notification.read)}
+                            className={`block w-full px-4 py-3 text-left transition hover:bg-gray-100 dark:hover:bg-gray-700 ${!notification.read ? "border-l-2 border-indigo-500" : ""}`}
+                          >
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">{notification.title}</p>
+                            <p className="mt-1 line-clamp-2 text-sm text-gray-700 dark:text-gray-300">{notification.message || "No details"}</p>
+                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{formatNotificationTime(notification.timestamp)}</p>
+                          </button>
+                        ))
+                      ) : (
+                        <div className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">No notifications</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Profile Picture with Dropdown */}
               <div className="relative" ref={profileRef}>
