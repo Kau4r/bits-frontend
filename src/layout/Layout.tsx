@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import Navbar from "@/layout/Navbar";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Link, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useNotifications } from "@/context/NotificationContext";
 import { Toaster } from 'react-hot-toast';
@@ -55,12 +55,6 @@ const Layout = () => {
     if (!read) await markAsRead(id);
   };
 
-  const handleRoomsClick = () => {
-    setNotificationOpen(false);
-    setProfileOpen(false);
-    navigate("/student-room-view");
-  };
-
   const handleLogout = () => {
     logout();
     navigate("/login", { replace: true });
@@ -75,19 +69,32 @@ const Layout = () => {
         {/* Mobile Top Notch */}
         {isMobile && (
           <header className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between bg-white px-4 py-3 shadow-md dark:bg-gray-800">
-            <h1 className="text-xl font-bold text-indigo-600">BITS</h1>
+            <Link
+              to={isStudent ? "/student-session" : "/"}
+              onClick={() => {
+                setNotificationOpen(false);
+                setProfileOpen(false);
+              }}
+              className="text-xl font-bold text-indigo-600 transition hover:text-indigo-700"
+              aria-label={isStudent ? "Return to student shortcuts" : "Return to home"}
+            >
+              BITS
+            </Link>
 
             <div className="flex items-center gap-3">
               {isStudent && (
-                <button
-                  type="button"
-                  onClick={handleRoomsClick}
+                <Link
+                  to="/student-room-view"
+                  onClick={() => {
+                    setNotificationOpen(false);
+                    setProfileOpen(false);
+                  }}
                   className="flex items-center gap-1.5 rounded-md px-2.5 py-2 text-gray-700 transition hover:bg-gray-200 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white"
                   aria-label="View available rooms"
                 >
                   <DoorOpen className="h-5 w-5" />
                   <span className="text-sm font-medium">Rooms</span>
-                </button>
+                </Link>
               )}
 
               {/* Notification Button */}
