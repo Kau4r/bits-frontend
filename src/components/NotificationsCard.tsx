@@ -11,6 +11,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { useNotifications } from '@/context/NotificationContext';
+import Card from './Card';
 
 /**
  * Returns a relative time string like "2m ago", "3h ago", "Yesterday"
@@ -121,14 +122,10 @@ export default function NotificationsCard() {
 
   if (loading && notifications.length === 0) {
     return (
-      <div className="flex h-full flex-col">
-        <div className="mb-3 flex items-center justify-between">
-          <div className="h-5 w-24 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
-          <div className="h-4 w-16 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
-        </div>
+      <Card title="Notifications" className="h-full">
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="animate-pulse rounded-lg bg-white p-3 dark:bg-gray-800">
+            <div key={i} className="animate-pulse rounded-lg bg-gray-50 dark:bg-gray-700/30 p-3">
               <div className="flex items-start space-x-3">
                 <div className="h-8 w-8 rounded-lg bg-gray-200 dark:bg-gray-700" />
                 <div className="flex-1">
@@ -139,33 +136,29 @@ export default function NotificationsCard() {
             </div>
           ))}
         </div>
-      </div>
+      </Card>
     );
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Unread Notifications
-          {unreadNotifications.length > 0 && (
-            <span className="ml-2 inline-flex items-center justify-center rounded-full bg-red-500 px-2 py-0.5 text-xs font-medium text-white">
-              {unreadNotifications.length}
-            </span>
-          )}
-        </h3>
-        <Link
-          to="/notification"
-          className="text-sm font-medium text-green-600 hover:text-green-500 dark:text-green-400 dark:hover:text-green-300"
-        >
-          View All
-        </Link>
-      </div>
-
+    <Card
+      title="Notifications"
+      className="h-full"
+      headerRight={
+        unreadNotifications.length > 0 ? (
+          <Link
+            to="/notification"
+            className="text-sm font-medium text-green-600 hover:text-green-500 dark:text-green-400 dark:hover:text-green-300"
+          >
+            View All
+          </Link>
+        ) : undefined
+      }
+    >
       {unreadNotifications.length === 0 ? (
         <div className="flex flex-1 items-center justify-center">
           <div className="text-center py-8">
-            <Bell className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+            <Bell className="h-10 w-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
             <p className="text-sm text-gray-500 dark:text-gray-400">No unread notifications</p>
           </div>
         </div>
@@ -175,45 +168,30 @@ export default function NotificationsCard() {
             <div className="space-y-2 pr-1">
               {unreadNotifications.map(({ id, title, message, timestamp, time, user }) => {
                 const style = getNotificationStyle(title);
-                const displayUser = user
-                  ? `${user.First_Name} ${user.Last_Name}`
-                  : null;
+                const displayUser = user ? `${user.First_Name} ${user.Last_Name}` : null;
 
                 return (
                   <div
                     key={id}
                     onClick={() => markAsRead(id)}
-                    className="cursor-pointer group flex items-start space-x-3 rounded-lg p-3 shadow-sm ring-1 ring-gray-200/50 dark:ring-gray-700/50 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/80 transition-all"
+                    className="cursor-pointer group flex items-start gap-3 p-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
                     title="Click to mark as read"
                   >
-                    {/* Icon */}
                     <div className={`mt-0.5 flex-shrink-0 rounded-lg p-1.5 ${style.bg} ${style.color}`}>
                       {style.icon}
                     </div>
-
-                    {/* Content */}
                     <div className="min-w-0 flex-1">
-                      <div className="flex justify-between items-start">
-                        <p className="truncate text-sm font-medium text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                           {title}
                         </p>
-                        <span className="text-[10px] text-gray-400 dark:text-gray-500 flex-shrink-0 ml-2 whitespace-nowrap">
+                        <span className="text-[10px] text-gray-400 dark:text-gray-500 flex-shrink-0 whitespace-nowrap">
                           {getRelativeTime(timestamp, time)}
                         </span>
                       </div>
-
-                      <p
-                        className="overflow-hidden text-xs text-gray-600 dark:text-gray-300 mt-1"
-                        style={{
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          textOverflow: 'ellipsis'
-                        }}
-                      >
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">
                         {message}
                       </p>
-
                       {displayUser && (
                         <p className="mt-1 text-[10px] text-gray-400 dark:text-gray-500">
                           by {displayUser}
@@ -226,7 +204,6 @@ export default function NotificationsCard() {
             </div>
           </div>
 
-          {/* Scroll indicator */}
           {canScrollDown && (
             <div className="pointer-events-none absolute bottom-0 left-0 right-2 flex justify-center pb-1 pt-6 bg-gradient-to-t from-gray-50 dark:from-gray-900 to-transparent">
               <div className="pointer-events-auto flex items-center gap-1 rounded-full bg-gray-800/70 dark:bg-gray-600/70 px-3 py-1 text-[10px] text-white">
@@ -237,6 +214,6 @@ export default function NotificationsCard() {
           )}
         </div>
       )}
-    </div>
+    </Card>
   );
 }

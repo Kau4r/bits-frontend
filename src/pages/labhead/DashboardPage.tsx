@@ -100,17 +100,13 @@ export default function LabheadDashboard() {
 
           {/* Bottom Row: Bookings - takes remaining space */}
           <div className="flex-1 min-h-0">
-            <Card title="Bookings" className="h-full">
-              <BookingCard />
-            </Card>
+            <BookingCard />
           </div>
         </div>
 
         {/* Right Side: Notifications full height */}
         <div className="h-full min-h-0">
-          <Card className="h-full">
             <NotificationsCard />
-          </Card>
         </div>
       </div>
     </div>

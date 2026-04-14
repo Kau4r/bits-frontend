@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { getBookings } from '@/services/booking';
 import type { Booking, BookingStatus } from '@/types/booking';
 import { Calendar } from 'lucide-react';
+import Card from './Card';
+import { useAuth } from '@/context/AuthContext';
+import { Link } from 'react-router-dom';
 
 const statusColors: Record<BookingStatus, string> = {
   APPROVED: 'text-green-600 dark:text-green-400',
@@ -18,6 +21,8 @@ const statusDots: Record<BookingStatus, string> = {
 };
 
 export default function BookingCard() {
+  const { user } = useAuth();
+  const isLabHead = user?.User_Role?.toUpperCase() === 'LAB_HEAD';
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -58,12 +63,7 @@ export default function BookingCard() {
 
   if (loading) {
     return (
-      <div className="h-full flex flex-col">
-        {pendingCount > 0 && (
-          <div className="flex justify-end mb-3">
-            <div className="h-5 w-28 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" />
-          </div>
-        )}
+      <Card title="Bookings" className="h-full">
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
             <div key={i} className="flex items-center gap-3 p-2.5 animate-pulse">
@@ -75,20 +75,31 @@ export default function BookingCard() {
             </div>
           ))}
         </div>
-      </div>
+      </Card>
     );
   }
 
   return (
-    <div className="h-full flex flex-col">
-      {pendingCount > 0 && (
-        <div className="flex justify-end mb-2">
-          <span className="text-xs bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400 px-2.5 py-1 rounded-full font-medium">
-            {pendingCount} pending
-          </span>
-        </div>
-      )}
-
+    <Card
+      title={isLabHead ? 'Bookings' : 'Room Schedule'}
+      className="h-full"
+      headerRight={
+        isLabHead ? (
+          pendingCount > 0 ? (
+            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400">
+              {pendingCount} pending
+            </span>
+          ) : undefined
+        ) : (
+          <Link
+            to="/labtech/room"
+            className="text-sm font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
+          >
+            View All
+          </Link>
+        )
+      }
+    >
       {bookings.length === 0 ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center py-8">
@@ -118,6 +129,6 @@ export default function BookingCard() {
           ))}
         </div>
       )}
-    </div>
+    </Card>
   );
 }

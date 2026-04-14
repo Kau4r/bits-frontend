@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import Card from '@/components/Card';
+import { useNavigate } from 'react-router-dom';
 import BookingCard from '@/components/BookingCard';
 import NotificationsCard from '@/components/NotificationsCard';
 import { getDashboardMetrics, type DashboardMetrics } from '@/services/dashboard';
@@ -110,30 +109,13 @@ export default function LabtechDashboard() {
         {/* Left Side (2 columns wide) */}
         <div className="lg:col-span-2 flex flex-col gap-6 h-full min-h-0">
           <div className="flex-1 min-h-0">
-            <Card
-              title={
-                <div className="flex justify-between items-center w-full">
-                  <span>Room Schedule</span>
-                  <Link
-                    to="/labtech/room"
-                    className="text-sm font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
-                  >
-                    View All
-                  </Link>
-                </div>
-              }
-              className="h-full shadow-sm rounded-xl border border-gray-200 dark:border-gray-700"
-            >
-              <BookingCard />
-            </Card>
+            <BookingCard />
           </div>
         </div>
 
         {/* Right Side: Notifications full height */}
         <div className="h-full min-h-0">
-          <Card className="h-full shadow-sm rounded-xl border border-gray-200 dark:border-gray-700">
-            <NotificationsCard />
-          </Card>
+          <NotificationsCard />
         </div>
       </div>
     </div>

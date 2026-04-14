@@ -6,14 +6,25 @@ interface CardProps {
   className?: string;
 }
 
-export default function Card({ title, children, className = '' }: CardProps) {
+// Card.tsx
+interface CardProps {
+  title?: ReactNode;
+  headerRight?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+}
+
+export default function Card({ title, headerRight, children, className = '' }: CardProps) {
   return (
     <div className={`bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 h-full flex flex-col min-h-0 ${className}`}>
-      {title && (
+      {(title || headerRight) && (
         <div className="px-4 pt-4 pb-3 flex-shrink-0">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            {title}
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              {title}
+            </h3>
+            {headerRight}
+          </div>
           <div className="mt-3 h-px bg-gray-100 dark:bg-gray-700/50" />
         </div>
       )}
