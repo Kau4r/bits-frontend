@@ -2,6 +2,7 @@ import { useState } from "react";
 import SessionBar from "@/pages/student/components/SessionBar";
 import Shortcuts from "@/pages/student/components/Shortcuts";
 import { useNavigate } from "react-router-dom";
+import { DoorOpen } from "lucide-react";
 
 export default function StudentSession() {
   const navigate = useNavigate();
@@ -24,12 +25,21 @@ export default function StudentSession() {
 
   return (
     <div className="h-screen w-full flex flex-col bg-white dark:bg-gray-900 overflow-hidden">
-      <div className="p-4 sm:px-8 lg:px-10">
+      <div className="relative flex items-center justify-between p-4 sm:px-8 lg:px-10">
         <button
           onClick={() => navigate("/student-pc-view")}
           className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
         >
-          ← Go to PC View
+          Go to PC View
+        </button>
+
+        <button
+          onClick={() => navigate("/student-room-view")}
+          aria-label="View available rooms"
+          className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1 rounded-2xl px-4 py-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-slate-800 dark:hover:text-white"
+        >
+          <DoorOpen className="h-6 w-6" />
+          <span className="text-xs font-medium">Rooms</span>
         </button>
       </div>
 
