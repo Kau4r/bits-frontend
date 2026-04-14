@@ -1,7 +1,7 @@
 import api from "@/services/api";
 import type { Form, FormType, FormStatus, FormDepartment } from "@/types/formtypes";
 
-const getAppBaseUrl = () => (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/+$/, '');
+const getAppBaseUrl = () => (import.meta.env.VITE_API_URL).replace(/\/+$/, '');
 
 const getApiBaseUrl = () => `${getAppBaseUrl()}/api`;
 
