@@ -45,6 +45,8 @@ export default function Forms() {
   // Local state for buffered edits: formId -> partial updates
   const [editedForms, setEditedForms] = useState<Record<string, Partial<FormRecord>>>({});
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
+  const [replacingFileIds, setReplacingFileIds] = useState<Set<string>>(new Set());
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   // Helper to map API Form to local FormRecord
   const mapFormToRecord = useCallback((form: Form): FormRecord => ({
@@ -130,6 +132,89 @@ export default function Forms() {
       download: true,
       fileName: form.attachmentName || form.formId,
     }) || form.attachmentUrl;
+
+  const fetchAttachmentBlob = async (url?: string) => {
+    if (!url) throw new Error('No file is attached to this form.');
+
+    const response = await fetch(url);
+    const contentType = response.headers.get('content-type') || '';
+
+    if (!response.ok) {
+      throw new Error('The attached file is missing from the server. Please replace the file.');
+    }
+
+    if (contentType.includes('text/html')) {
+      throw new Error('The file link points to the website page instead of an uploaded file. Please replace the file.');
+    }
+
+    return response.blob();
+  };
+
+  const handlePreviewFile = async (form: FormRecord) => {
+    try {
+      const blob = await fetchAttachmentBlob(form.attachmentUrl);
+      const objectUrl = URL.createObjectURL(blob);
+      const opened = window.open(objectUrl, '_blank', 'noopener,noreferrer');
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+
+      if (!opened) {
+        await modal.showError('Your browser blocked the preview popup. Please allow popups and try again.', 'Preview Blocked');
+      }
+    } catch (error) {
+      await modal.showError(error instanceof Error ? error.message : 'Unable to preview this file.', 'Preview Failed');
+    }
+  };
+
+  const handleDownloadFile = async (form: FormRecord) => {
+    try {
+      const blob = await fetchAttachmentBlob(getFormDownloadUrl(form));
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = form.attachmentName || `${form.formId}-attachment`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (error) {
+      await modal.showError(error instanceof Error ? error.message : 'Unable to download this file.', 'Download Failed');
+    }
+  };
+
+  const handleReplaceAttachment = async (form: FormRecord, file: File) => {
+    setReplacingFileIds(prev => new Set(prev).add(form.id));
+
+    try {
+      const uploadResult = await uploadFile(file);
+      await updateFormAPI(parseInt(form.id), {
+        fileName: file.name,
+        fileUrl: uploadResult.url,
+        fileType: file.type,
+      });
+
+      setForms(prev =>
+        prev.map(current =>
+          current.id === form.id
+            ? {
+              ...current,
+              attachmentName: file.name,
+              attachmentUrl: uploadResult.url,
+              attachmentType: normalizeType(file.name),
+            }
+            : current
+        )
+      );
+    } catch (error) {
+      console.error('Failed to replace form attachment:', error);
+      await modal.showError('Failed to replace the attached file. Please try again.', 'Replace File Failed');
+    } finally {
+      setReplacingFileIds(prev => {
+        const next = new Set(prev);
+        next.delete(form.id);
+        return next;
+      });
+    }
+  };
 
   const clearFilters = () => {
     setSearchTerm('');
@@ -586,12 +671,24 @@ export default function Forms() {
                             File Actions
                           </h4>
                           <div className="flex flex-wrap gap-3">
+                            <input
+                              ref={(node) => {
+                                fileInputRefs.current[f.id] = node;
+                              }}
+                              type="file"
+                              className="hidden"
+                              accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.rtf"
+                              onChange={(event) => {
+                                const file = event.target.files?.[0];
+                                event.target.value = '';
+                                if (file) void handleReplaceAttachment(f, file);
+                              }}
+                            />
                             {f.attachmentUrl ? (
                               <>
-                                <a
-                                  href={f.attachmentUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
+                                <button
+                                  type="button"
+                                  onClick={() => void handlePreviewFile(f)}
                                   className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                                 >
                                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -599,34 +696,46 @@ export default function Forms() {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                   </svg>
                                   Preview
-                                </a>
-                                <a
-                                  href={getFormDownloadUrl(f)}
-                                  download={f.attachmentName || f.formId}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => void handleDownloadFile(f)}
                                   className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                                 >
                                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                   </svg>
                                   Download
-                                </a>
-                                <button
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    archiveForm(f);
-                                  }}
-                                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-yellow-600 border border-transparent rounded-md shadow-sm hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors"
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                                  </svg>
-                                  Archive
                                 </button>
                               </>
                             ) : (
                               <span className="text-sm text-gray-500 dark:text-gray-400">No file attached</span>
                             )}
+                            <button
+                              type="button"
+                              disabled={replacingFileIds.has(f.id)}
+                              onClick={() => fileInputRefs.current[f.id]?.click()}
+                              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 border border-transparent rounded-md shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors disabled:opacity-50"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 4v12m0-12l-4 4m4-4l4 4" />
+                              </svg>
+                              {replacingFileIds.has(f.id) ? 'Replacing...' : f.attachmentUrl ? 'Replace File' : 'Upload File'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                archiveForm(f);
+                              }}
+                              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-yellow-600 border border-transparent rounded-md shadow-sm hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                              </svg>
+                              Archive
+                            </button>
                           </div>
                         </div>
                       </div>

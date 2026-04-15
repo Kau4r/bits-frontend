@@ -69,6 +69,9 @@ export interface FormUpdateInput {
     approverId?: number | null;
     title?: string;
     content?: string;
+    fileName?: string | null;
+    fileUrl?: string | null;
+    fileType?: string | null;
     requesterName?: string;
     remarks?: string;
 }
