@@ -151,16 +151,23 @@ export default function Forms() {
   };
 
   const handlePreviewFile = async (form: FormRecord) => {
+    const previewWindow = window.open('', '_blank');
+
+    if (!previewWindow) {
+      await modal.showError('Your browser blocked the preview popup. Please allow popups and try again.', 'Preview Blocked');
+      return;
+    }
+
+    previewWindow.document.title = form.attachmentName || `${form.formId} preview`;
+    previewWindow.document.body.innerHTML = '<p style="font-family: sans-serif; padding: 24px;">Loading preview...</p>';
+
     try {
       const blob = await fetchAttachmentBlob(form.attachmentUrl);
       const objectUrl = URL.createObjectURL(blob);
-      const opened = window.open(objectUrl, '_blank', 'noopener,noreferrer');
+      previewWindow.location.href = objectUrl;
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
-
-      if (!opened) {
-        await modal.showError('Your browser blocked the preview popup. Please allow popups and try again.', 'Preview Blocked');
-      }
     } catch (error) {
+      previewWindow.close();
       await modal.showError(error instanceof Error ? error.message : 'Unable to preview this file.', 'Preview Failed');
     }
   };
