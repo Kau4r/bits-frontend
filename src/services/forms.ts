@@ -1,9 +1,6 @@
 import api from "@/services/api";
 import type { Form, FormType, FormStatus, FormDepartment } from "@/types/formtypes";
-
-const getAppBaseUrl = () => (import.meta.env.VITE_API_URL).replace(/\/+$/, '');
-
-const getApiBaseUrl = () => `${getAppBaseUrl()}/api`;
+import { getApiBaseUrl, getAppBaseUrl } from "@/utils/apiBaseUrl";
 
 interface ResolveFormFileUrlOptions {
     download?: boolean;

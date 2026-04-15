@@ -1,14 +1,11 @@
 import Table, { type SortConfig, type SortDirection } from '@/components/Table'
 import Search from '@/components/Search'
 import { useEffect, useState, useMemo } from 'react'
-import { Plus, Users, Filter } from 'lucide-react'
+import { Users, Filter } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import AddUserModal from '@/pages/sysad/components/AddUserModal'
-import { fetchUsers, addUser } from '@/services/user'
+import { fetchUsers } from '@/services/user'
 import type { User } from '@/types/user'
 import { ROLES, type User_Role } from "@/types/user"
-import { useModal } from '@/context/ModalContext'
-import toast from 'react-hot-toast'
 
 
 export function formatRole(role?: string | null) {
@@ -25,13 +22,11 @@ export default function SysAdDash() {
   const [searchTerm, setSearchTerm] = useState('')
   const [showInactive, setShowInactive] = useState(false)
   const [roleFilter, setRoleFilter] = useState<User_Role | 'ALL'>('ALL')
-  const [isModalOpen, setIsModalOpen] = useState(false)
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'name', direction: 'asc' })
   const navigate = useNavigate()
-  const modal = useModal()
 
   const roleClasses: Record<User_Role, string> = {
     [ROLES.ADMIN]: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
@@ -124,18 +119,6 @@ export default function SysAdDash() {
   }, [users, searchTerm, showInactive, roleFilter, sortConfig])
 
 
-  const handleAddUser = async (newUser: Omit<User, 'User_ID'> & { Password: string }) => {
-    try {
-      const addedUser = await addUser(newUser)
-      setUsers((prev) => [...prev, addedUser])
-      setIsModalOpen(false)
-      toast.success('User created successfully')
-    } catch (err) {
-      console.error(err)
-      await modal.showError('Failed to add user.', 'Error')
-    }
-  }
-
   const clearFilters = () => {
     setSearchTerm('')
     setRoleFilter('ALL')
@@ -199,13 +182,6 @@ export default function SysAdDash() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Account Management</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Manage user accounts, roles, and permissions</p>
         </div>
-        <button
-          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-500 hover:shadow-md focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none active:bg-indigo-700"
-          onClick={() => setIsModalOpen(true)}
-        >
-          <Plus className="h-5 w-5" />
-          Add User
-        </button>
       </div>
 
       {/* Filters Bar */}
@@ -277,7 +253,7 @@ export default function SysAdDash() {
                   ? "Try adjusting your search or filter criteria"
                   : showInactive
                     ? "All users are currently active"
-                    : "Get started by adding your first user"}
+                    : "No active users are available"}
               </p>
               {hasActiveFilters ? (
                 <button
@@ -286,15 +262,7 @@ export default function SysAdDash() {
                 >
                   Clear Filters
                 </button>
-              ) : !showInactive && (
-                <button
-                  onClick={() => setIsModalOpen(true)}
-                  className="mt-4 inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add User
-                </button>
-              )}
+              ) : null}
             </div>
           ) : (
             filteredAndSortedUsers.map((user) => (
@@ -337,8 +305,6 @@ export default function SysAdDash() {
           )}
         </Table>
       </div>
-
-      {isModalOpen && <AddUserModal onClose={() => setIsModalOpen(false)} onSubmit={handleAddUser} />}
     </div>
   )
 }

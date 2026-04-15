@@ -28,12 +28,13 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
 
   // Restore session on app load
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
+    const storedToken = localStorage.getItem('token');
+    if (!storedToken) {
       setLoading(false);
       return;
     }
@@ -42,10 +43,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const fetchUser = async () => {
       try {
-        const res = await api.get<User>('/users/me', { headers: { Authorization: `Bearer ${token}` } });
+        const res = await api.get<User>('/users/me', { headers: { Authorization: `Bearer ${storedToken}` } });
         if (isMounted) setUser(res.data);
       } catch (err: any) {
-        if (err.response?.status === 401) localStorage.removeItem('token');
+        if (err.response?.status === 401) {
+          localStorage.removeItem('token');
+          if (isMounted) {
+            setToken(null);
+            setUser(null);
+          }
+        }
         console.error('Failed to fetch current user', err);
       } finally {
         if (isMounted) setLoading(false);
@@ -61,13 +68,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const login = async (username: string, password: string) => {
     try {
       const res = await api.post<LoginResponse>('/auth/login', { username, password });
-      const { token, user } = res.data;
+      const { token: authToken, user: authUser } = res.data;
 
-      localStorage.setItem("userId", res.data.user.User_ID.toString()); // ✅ store as string
-      localStorage.setItem('token', token);
-      setUser(user);
+      localStorage.setItem('userId', authUser.User_ID.toString());
+      localStorage.setItem('token', authToken);
+      setToken(authToken);
+      setUser(authUser);
 
-      return { success: true, user };
+      return { success: true, user: authUser };
     } catch (err: any) {
       return { success: false, error: err.response?.data?.error || err.response?.data?.message || 'Login failed' };
     }
@@ -85,6 +93,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } finally {
       localStorage.removeItem('token');
       localStorage.removeItem('userId');
+      setToken(null);
       setUser(null);
     }
   };
@@ -92,9 +101,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   return (
     <AuthContext.Provider
       value={{
-        isAuthenticated: !!user,
+        isAuthenticated: Boolean(token && user),
         user,
-        token: localStorage.getItem('token'),
+        token,
         login,
         logout,
         userRole: user?.User_Role || null,

@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
+import { getLoginRedirectTarget } from '@/utils/authRoutes';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -40,26 +41,9 @@ export default function Login() {
       if (result.success && result.user) {
         const role = result.user.User_Role;
         const isMobile = window.innerWidth < 768;
-        const defaultTarget =
-          role === "LAB_TECH"
-            ? isMobile
-              ? "/labtech-mobile"
-              : "/"
-            : role === "LAB_HEAD"
-              ? "/"
-              : role === "FACULTY"
-                ? "/faculty/scheduling"
-                : role === "SECRETARY"
-                  ? "/secretary/scheduling"
-                  : role === "STUDENT"
-                    ? "/student-session"
-                    : "/";
-        const target = redirectPath?.startsWith('/') ? redirectPath : defaultTarget;
+        const target = getLoginRedirectTarget(redirectPath, role, isMobile);
 
-        // ✅ small delay to ensure context updates before route guard checks
-        setTimeout(() => {
-          navigate(target, { replace: true });
-        }, 100);
+        navigate(target, { replace: true });
       } else {
         setError(result.error || 'Login failed');
       }

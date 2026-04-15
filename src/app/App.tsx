@@ -33,11 +33,12 @@ import Reports from '@/pages/labtech/ReportsPage';
 
 // 🔒 Protects routes based on auth + role
 const ProtectedRoute = ({ children, roles }: { children: JSX.Element, roles: string[] }) => {
-  const { isAuthenticated, userRole } = useAuth();
+  const { isAuthenticated, userRole, loading } = useAuth();
   const location = useLocation();
 
+  if (loading) return null;
   if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: location }} />;
-  if (userRole && !roles.includes(userRole)) return <Navigate to="/unauthorized" replace />;
+  if (!userRole || !roles.includes(userRole)) return <Navigate to="/unauthorized" replace />;
 
   return children;
 };
@@ -64,7 +65,9 @@ const Logout = () => {
 
 // ⚙️ Main app logic
 function AppContent() {
-  const { isAuthenticated, userRole } = useAuth();
+  const { isAuthenticated, userRole, loading } = useAuth();
+
+  if (loading) return null;
 
   if (!isAuthenticated) {
     return (
