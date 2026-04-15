@@ -191,7 +191,10 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
             setShowAddDialog(false);
         } catch (err) {
             console.error('Failed to create computer:', err);
-            setError('Failed to create computer');
+            const message = err instanceof Error && err.message
+                ? err.message
+                : 'Failed to create computer';
+            setError(message);
         } finally {
             setIsSubmitting(false);
         }
