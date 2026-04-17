@@ -1,5 +1,6 @@
 import api from "@/services/api";
 import type { Room } from "@/types/room";
+import { sortRoomsForDisplay } from "@/utils/roomSort";
 
 // Create / update shapes
 export type RoomCreateInput = Omit<Room, "Room_ID"> & { Created_By: number };
@@ -8,7 +9,7 @@ export type RoomUpdateInput = Partial<Omit<Room, "Room_ID">>;
 // Fetch all rooms
 export const getRooms = async (): Promise<Room[]> => {
     const { data } = await api.get<Room[]>("/rooms");
-    return data;
+    return sortRoomsForDisplay(data);
 };
 
 // Fetch room by ID

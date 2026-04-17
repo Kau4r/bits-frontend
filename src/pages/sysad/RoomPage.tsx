@@ -8,6 +8,7 @@ import { Plus, Building2, Filter } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useModal } from "@/context/ModalContext";
 import toast from "react-hot-toast";
+import { sortRoomsForDisplay } from "@/utils/roomSort";
 
 export default function RoomPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -56,7 +57,7 @@ export default function RoomPage() {
           Created_By: user.User_ID,
         };
         const newRoom = await createRoom(payload);
-        setRooms((prev) => [...prev, newRoom]);
+        setRooms((prev) => sortRoomsForDisplay([...prev, newRoom]));
         toast.success("Room created successfully");
       } else if (modalMode === "edit") {
         const payload = {
@@ -72,7 +73,7 @@ export default function RoomPage() {
 
         const res = await updateRoom(room.Room_ID, payload);
         setRooms((prev) =>
-          prev.map((r) => (r.Room_ID === room.Room_ID ? res : r))
+          sortRoomsForDisplay(prev.map((r) => (r.Room_ID === room.Room_ID ? res : r)))
         );
         toast.success("Room updated successfully");
       }
