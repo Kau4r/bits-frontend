@@ -20,6 +20,7 @@ export default function AssignTicketDropdown({
     const [techs, setTechs] = useState<User[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [assigning, setAssigning] = useState(false);
+    const [assignError, setAssignError] = useState<string | null>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     // Load active technicians when dropdown opens
@@ -53,12 +54,14 @@ export default function AssignTicketDropdown({
 
     const handleAssign = async (tech: User) => {
         setAssigning(true);
+        setAssignError(null);
         try {
             await assignTicket(ticketId, tech.User_ID);
             onAssigned(tech.User_ID, `${tech.First_Name} ${tech.Last_Name}`);
             setIsOpen(false);
         } catch (err) {
             console.error('Failed to assign ticket:', err);
+            setAssignError(err instanceof Error ? err.message : 'Failed to assign ticket');
         } finally {
             setAssigning(false);
         }
@@ -101,6 +104,10 @@ export default function AssignTicketDropdown({
                     {isLoading ? (
                         <div className="flex justify-center py-4">
                             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600 dark:border-indigo-400" />
+                        </div>
+                    ) : assignError ? (
+                        <div className="px-3 py-3 text-xs text-red-600 dark:text-red-300 text-center">
+                            {assignError}
                         </div>
                     ) : techs.length === 0 ? (
                         <div className="px-3 py-3 text-xs text-gray-500 dark:text-gray-400 text-center">

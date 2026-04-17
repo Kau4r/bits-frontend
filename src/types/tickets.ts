@@ -10,17 +10,17 @@ export interface Ticket {
     Ticket_ID: number;
     Reported_By_ID: number;
     Reported_By: User;
-    Item_ID?: number;
-    Item?: Item;
+    Item_ID?: number | null;
+    Item?: Item | null;
     Report_Problem: string;
-    Room_ID?: number;
-    Room?: Room;
-    Location?: string;
+    Room_ID?: number | null;
+    Room?: Room | null;
+    Location?: string | null;
     Status: TicketStatus;
-    Priority?: TicketPriority;
-    Category?: TicketCategory;
-    Technician_ID?: number;
-    Technician?: User;
+    Priority?: TicketPriority | null;
+    Category?: TicketCategory | null;
+    Technician_ID?: number | null;
+    Technician?: User | null;
     Created_At: string;
     Updated_At: string;
     Archived: boolean;
@@ -33,6 +33,6 @@ export interface NewTicketInput {
     Item_ID?: number;
     Room_ID?: number;
     Status?: TicketStatus;
-    Priority?: TicketPriority;
-    Category?: TicketCategory;
+    Priority?: TicketPriority | null;
+    Category?: TicketCategory | null;
 }

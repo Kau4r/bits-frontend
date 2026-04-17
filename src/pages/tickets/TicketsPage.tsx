@@ -62,7 +62,7 @@ export default function Tickets() {
             if (existingTicket) {
                 return prevTickets.map(t =>
                     t.Ticket_ID === updatedTicket.Ticket_ID
-                        ? { ...updatedTicket, Archived: t.Archived }
+                        ? updatedTicket
                         : t
                 );
             } else {
@@ -73,10 +73,10 @@ export default function Tickets() {
 
     const handleArchiveTicket = async (ticketId: number) => {
         try {
-            await archiveTicket(ticketId);
+            const archivedTicket = await archiveTicket(ticketId);
             setTickets(tickets.map(ticket =>
                 ticket.Ticket_ID === ticketId
-                    ? { ...ticket, Archived: true }
+                    ? archivedTicket
                     : ticket
             ));
         } catch (error) {
@@ -86,10 +86,10 @@ export default function Tickets() {
 
     const handleRestoreTicket = async (ticketId: number) => {
         try {
-            await restoreTicket(ticketId);
+            const restoredTicket = await restoreTicket(ticketId);
             setTickets(tickets.map(ticket =>
                 ticket.Ticket_ID === ticketId
-                    ? { ...ticket, Archived: false }
+                    ? restoredTicket
                     : ticket
             ));
         } catch (error) {

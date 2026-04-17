@@ -131,12 +131,12 @@ export default function TicketingModal({
         const computersResponse = await api.get<{
           Computer_ID: number;
           Name: string;
-          Items: { Item_ID: number; Item_Code: string; Item_Type: string; Brand: string | null; Status: string }[];
+          Item: { Item_ID: number; Item_Code: string; Item_Type: string; Brand: string | null; Status: string }[];
         }[]>('/computers', { params: { roomId: selectedRoom.Room_ID } });
 
         // Map computer items to Asset format
         const computerItems: Asset[] = computersResponse.data.flatMap(computer =>
-          computer.Items.map(item => ({
+          computer.Item.map(item => ({
             Item_ID: item.Item_ID,
             Item_Code: item.Item_Code,
             Item_Type: item.Item_Type,
@@ -184,8 +184,8 @@ export default function TicketingModal({
       setFormData({
         reportProblem: ticket.Report_Problem,
         location: ticket.Location || ticket.Room?.Name || '',
-        itemId: ticket.Item?.Item_ID ?? ticket.Item_ID,
-        roomId: ticket.Room_ID || undefined,
+        itemId: ticket.Item?.Item_ID ?? ticket.Item_ID ?? undefined,
+        roomId: ticket.Room_ID ?? undefined,
       });
       setLocalTechnician(ticket.Technician || null);
       setIsEditingExisting(false);
@@ -233,6 +233,15 @@ export default function TicketingModal({
       return;
     }
 
+    const reportProblem = formData.reportProblem.trim();
+    if (!reportProblem) {
+      setFeedbackMessage({
+        text: 'Report description cannot be empty.',
+        type: 'error',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       // Find room ID if location matches a room name
@@ -246,9 +255,14 @@ export default function TicketingModal({
           : undefined;
 
       if (isCreating) {
+        if (!user?.User_ID) {
+          setFeedbackMessage({ text: 'You must be logged in to create a ticket.', type: 'error' });
+          return;
+        }
+
         const newTicket = await createTicket({
-          Reported_By_ID: user?.User_ID ?? 0,
-          Report_Problem: formData.reportProblem,
+          Reported_By_ID: user.User_ID,
+          Report_Problem: reportProblem,
           Location: formData.location || undefined,
           Item_ID: formData.itemId,
           Room_ID: roomId,
@@ -260,11 +274,11 @@ export default function TicketingModal({
       } else if (ticket) {
         const updatedTicket = await updateTicket(ticket.Ticket_ID, {
           Status: status,
-          Report_Problem: formData.reportProblem,
+          Report_Problem: reportProblem,
           Location: formData.location || null,
           Item_ID: formData.itemId ?? null,
           Room_ID: roomId ?? null,
-          ...(canManageTicketDetails ? { Priority: priority || undefined, Category: category || undefined } : {}),
+          ...(canManageTicketDetails ? { Priority: priority || null, Category: category || null } : {}),
         });
         onUpdate(updatedTicket);
       }
@@ -406,7 +420,7 @@ export default function TicketingModal({
                             setLocalTechnician(previousTechnician);
                             setStatus(ticket.Status);
                             console.error("Failed to unassign ticket", err);
-                            setFeedbackMessage({ text: 'Failed to unassign ticket', type: 'error' });
+                            setFeedbackMessage({ text: err instanceof Error ? err.message : 'Failed to unassign ticket', type: 'error' });
                           }
                         }}
                         className="text-xs text-red-600 hover:text-red-700 hover:underline font-medium ml-2"
@@ -444,7 +458,7 @@ export default function TicketingModal({
                         setLocalTechnician(null);
                         setStatus(ticket.Status);
                         console.error("Failed to assign ticket", err);
-                        setFeedbackMessage({ text: 'Failed to assign ticket', type: 'error' });
+                        setFeedbackMessage({ text: err instanceof Error ? err.message : 'Failed to assign ticket', type: 'error' });
                       }
                     }}
                     className="text-xs bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-3 py-1.5 rounded-md border border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-700 dark:hover:bg-indigo-900/50 transition-colors font-medium"
