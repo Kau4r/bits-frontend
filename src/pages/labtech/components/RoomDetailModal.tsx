@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { Room, RoomSession } from '@/types/room';
 import { fetchComputers, createComputer, updateComputer, deleteComputer, type Computer, type CreateComputerPayload, type UpdateComputerPayload } from '@/services/computers';
 import api from '@/services/api';
 import { useModal } from '@/context/ModalContext';
 import Table from '@/components/Table';
 import InventoryItemCombobox from '@/pages/labtech/components/InventoryItemCombobox';
+import { getNextComputerName, getNumberedComputers } from '@/utils/computerDisplay';
 
 // Asset/Item type from inventory
 interface RoomAsset {
@@ -84,6 +85,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
     // Assets state
     const [assets, setAssets] = useState<RoomAsset[]>([]);
     const [isLoadingAssets, setIsLoadingAssets] = useState(false);
+    const numberedComputers = useMemo(() => getNumberedComputers(computers), [computers]);
 
     // Fetch computers when modal opens
     useEffect(() => {
@@ -104,6 +106,9 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
         try {
             // Get items from inventory API (direct room items)
             const inventoryResponse = await api.get<RoomAsset[]>('/inventory', { params: { roomId: room.Room_ID } });
+            const computerDisplayById = new Map(
+                getNumberedComputers(computers).map(({ computer, displayName }) => [computer.Computer_ID, displayName])
+            );
 
             // Also gather items from computers in this room
             const computerItems: RoomAsset[] = computers.flatMap(computer =>
@@ -116,7 +121,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                     Status: item.Status,
                     IsBorrowable: false,
                     Created_At: '',
-                    ComputerName: computer.Name,  // Add computer name reference
+                    ComputerName: computerDisplayById.get(computer.Computer_ID) || computer.Name,
                 }))
             );
 
@@ -150,6 +155,18 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const openAddComputerDialog = () => {
+        setError(null);
+        setNewComputerName(getNextComputerName(computers));
+        setSelectedItems({
+            KEYBOARD: null,
+            MOUSE: null,
+            MONITOR: null,
+            SYSTEM_UNIT: null,
+        });
+        setShowAddDialog(true);
     };
 
     const handleAddComputer = async () => {
@@ -346,7 +363,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                             {/* Add Computer Button */}
                             <div className="mb-4 flex justify-end">
                                 <button
-                                    onClick={() => setShowAddDialog(true)}
+                                    onClick={openAddComputerDialog}
                                     className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
                                 >
                                     + Add Computer
@@ -372,7 +389,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                                    {computers.map(pc => {
+                                    {numberedComputers.map(({ computer: pc, displayName, originalName, wasRenumbered }) => {
                                         const statusColor = getStatusColor(pc.Status);
                                         const isHovered = hoveredPc === pc.Computer_ID;
                                         return (
@@ -414,7 +431,12 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                                         }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                                     </svg>
-                                                    <span className="text-gray-900 dark:text-white font-bold text-lg">{pc.Name}</span>
+                                                    <span className="text-gray-900 dark:text-white font-bold text-lg">{displayName}</span>
+                                                    {wasRenumbered && (
+                                                        <span className="mt-0.5 max-w-full truncate text-[10px] text-gray-500 dark:text-gray-400" title={`Saved as ${originalName}`}>
+                                                            saved: {originalName}
+                                                        </span>
+                                                    )}
                                                 </div>
 
                                                 {/* Items count / Click to edit hint */}
@@ -635,6 +657,9 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                 placeholder="e.g., PC 1"
                                 className="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
+                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                Defaults to the next available PC number for this room.
+                            </p>
                         </div>
 
                         {/* Components */}

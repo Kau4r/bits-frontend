@@ -1,12 +1,12 @@
 import { Monitor } from 'lucide-react';
 
 type ComputerProps = {
-    pcNumber: number;
+    pcLabel: string;
     status: 'available' | 'in-use' | 'active' | 'damaged';
     isActive?: boolean;
 };
 
-export default function Computer({ pcNumber, status = 'available', isActive = false }: ComputerProps) {
+export default function Computer({ pcLabel, status = 'available', isActive = false }: ComputerProps) {
     const statusStyles = {
         available: 'text-green-500',
         'in-use': 'text-yellow-500',
@@ -35,7 +35,7 @@ export default function Computer({ pcNumber, status = 'available', isActive = fa
 
             <div className="flex flex-col items-center pt-4 justify-center">
                 <Monitor className={`w-8 h-8 ${statusStyles[status]}`} />
-                <span className="text-gray-900 dark:text-white font-medium mt-2">PC {pcNumber}</span>
+                <span className="text-gray-900 dark:text-white font-medium mt-2">{pcLabel}</span>
             </div>
         </div>
     );

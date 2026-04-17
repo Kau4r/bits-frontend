@@ -8,7 +8,7 @@ import { StatusSelect } from '@/pages/labtech/components/StatusSelect';
 import { DeptSelect } from '@/pages/labtech/components/DeptSelect';
 import type { FormRecord, FormStatus, FormType, FormDepartment, FormAttachmentRecord } from '@/types/formtypes';
 import { formStatusColors, formStatusLabels, formDepartmentLabels, getTimelineStepsForType, getTransferDepartmentOptions } from '@/types/formtypes';
-import { getForms, createForm, updateForm as updateFormAPI, archiveForm as archiveFormAPI, transferForm, uploadFile, addFormAttachment, resolveFormFileUrl } from '@/services/forms';
+import { getForms, createForm, updateForm as updateFormAPI, transferForm, uploadFile, addFormAttachment, resolveFormFileUrl } from '@/services/forms';
 import { useAuth } from '@/context/AuthContext';
 import { useModal } from '@/context/ModalContext';
 import { useNotifications } from '@/context/NotificationContext';
@@ -368,7 +368,11 @@ export default function Forms() {
       // Success: Apply changes locally and clear edit state
       setForms(prev => prev.map(f => {
         if (f.id !== id) return f;
-        let updated = { ...f, ...edits };
+        let updated = {
+          ...f,
+          ...edits,
+          ...(edits.status !== undefined ? { isArchived: edits.status === 'ARCHIVED' } : {}),
+        };
 
         // If dept changed, append history locally for immediate feedback
         if (edits.department) {
@@ -404,24 +408,6 @@ export default function Forms() {
     });
   };
 
-
-  const archiveForm = async (f: FormRecord) => {
-    const ok = await modal.showConfirm('Are you sure you want to archive this form?', 'Archive Form');
-    if (!ok) return;
-
-    try {
-      await archiveFormAPI(parseInt(f.id));
-      setForms(prev =>
-        prev.map(form =>
-          form.id === f.id ? { ...form, isArchived: true, status: 'ARCHIVED' } : form
-        )
-      );
-      setExpandedRow(null);
-    } catch (error) {
-      console.error('Failed to archive form:', error);
-      await modal.showError('Failed to archive form. Please try again.', 'Error');
-    }
-  };
 
   return (
     <div className="flex h-full w-full flex-col bg-white p-6 sm:px-8 lg:px-10 dark:bg-gray-900">
@@ -814,22 +800,6 @@ export default function Forms() {
                             <p className="text-xs text-gray-500 dark:text-gray-400">
                               New files are attached to the form's current department and do not replace existing files.
                             </p>
-                          </div>
-                          <div className="mt-3 flex flex-wrap gap-3">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                archiveForm(f);
-                              }}
-                              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-yellow-600 border border-transparent rounded-md shadow-sm hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                              </svg>
-                              Archive
-                            </button>
                           </div>
                         </div>
                       </div>

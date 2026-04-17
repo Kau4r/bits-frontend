@@ -19,6 +19,8 @@ export interface ComputerRoom {
 export interface Computer {
     Computer_ID: number;
     Name: string;
+    Display_Name?: string;
+    Display_Number?: number;
     Mac_Address: string | null;
     Status: 'AVAILABLE' | 'IN_USE' | 'MAINTENANCE' | 'DECOMMISSIONED';
     Room_ID: number | null;

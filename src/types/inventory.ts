@@ -33,6 +33,8 @@ export const inventoryStatuses: InventoryStatus[] = ['AVAILABLE', 'BORROWED', 'D
 export interface Computer {
   Computer_ID: number;
   Name: string;
+  Display_Name?: string;
+  Display_Number?: number;
   Room_ID?: number;
   Status: "AVAILABLE" | "IN_USE" | "MAINTENANCE" | "DECOMMISSIONED";
   Updated_At?: string;

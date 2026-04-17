@@ -72,14 +72,14 @@ export default function SessionBar({
   const { computer, isDetecting, detectionFailed, sessionId, stopHeartbeat } = useHeartbeat();
   useHeartbeatInterval(); // Start heartbeat interval
 
-  const pcNumber = computer?.Name || 'Unknown';
+  const pcLabel = computer?.Name || 'Unknown';
   const roomName = computer?.Room?.Name || 'Unknown Room';
   const roomId = (computer?.Room as any)?.Room_ID as number | undefined;
   const computerStatus = isDetecting
     ? 'Detecting PC...'
     : detectionFailed
       ? 'PC not detected'
-      : `PC ${pcNumber}`;
+      : pcLabel;
 
   useEffect(() => {
     let isMounted = true;
@@ -226,7 +226,7 @@ export default function SessionBar({
         onClose={() => setIsReportModalOpen(false)}
         onSubmit={handleReportIssue}
         room={roomName}
-        pcNumber={pcNumber}
+        pcNumber={pcLabel}
       />
     </div>
   );
