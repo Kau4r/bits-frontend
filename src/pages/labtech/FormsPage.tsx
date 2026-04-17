@@ -6,9 +6,9 @@ import { RowPreview } from '@/pages/labtech/components/RowPreview';
 import { InlineTimeline } from '@/pages/labtech/components/InlineTimeline';
 import { StatusSelect } from '@/pages/labtech/components/StatusSelect';
 import { DeptSelect } from '@/pages/labtech/components/DeptSelect';
-import type { FormRecord, FormStatus, FormType, FormDepartment } from '@/types/formtypes';
+import type { FormRecord, FormStatus, FormType, FormDepartment, FormAttachmentRecord } from '@/types/formtypes';
 import { formStatusColors, formStatusLabels, formDepartmentLabels, getTimelineStepsForType, getTransferDepartmentOptions } from '@/types/formtypes';
-import { getForms, createForm, updateForm as updateFormAPI, archiveForm as archiveFormAPI, transferForm, uploadFile, resolveFormFileUrl } from '@/services/forms';
+import { getForms, createForm, updateForm as updateFormAPI, archiveForm as archiveFormAPI, transferForm, uploadFile, addFormAttachment, resolveFormFileUrl } from '@/services/forms';
 import { useAuth } from '@/context/AuthContext';
 import { useModal } from '@/context/ModalContext';
 import { useNotifications } from '@/context/NotificationContext';
@@ -17,6 +17,14 @@ import type { Form } from '@/types/formtypes';
 
 // Use the imported formStatusColors for status chips
 const statusChip = formStatusColors;
+
+const normalizeAttachmentType = (name?: string): 'pdf' | 'image' | 'doc' | 'docx' | undefined => {
+  if (!name) return undefined;
+  if (/\.(pdf)$/i.test(name)) return 'pdf';
+  if (/\.(png|jpe?g|webp|gif|heic)$/i.test(name)) return 'image';
+  if (/\.(docx?|rtf)$/i.test(name)) return name.toLowerCase().endsWith('docx') ? 'docx' : 'doc';
+  return undefined;
+};
 
 // Department display names (for UI) with matching to backend uppercase values
 // Timeline steps are now derived per form type via getTimelineStepsForType()
@@ -45,28 +53,62 @@ export default function Forms() {
   // Local state for buffered edits: formId -> partial updates
   const [editedForms, setEditedForms] = useState<Record<string, Partial<FormRecord>>>({});
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
-  const [replacingFileIds, setReplacingFileIds] = useState<Set<string>>(new Set());
+  const [uploadingAttachmentIds, setUploadingAttachmentIds] = useState<Set<string>>(new Set());
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   // Helper to map API Form to local FormRecord
-  const mapFormToRecord = useCallback((form: Form): FormRecord => ({
-    id: form.Form_ID.toString(),
-    formId: form.Form_Code,
-    type: form.Form_Type,
-    status: form.Status,
-    department: form.Department,
-    createdAt: form.Created_At,
-    isArchived: form.Is_Archived,
-    attachmentName: form.File_Name || undefined,
-    attachmentUrl: resolveFormFileUrl(form.File_URL),
-    attachmentType: normalizeType(form.File_Name || undefined),
-    history: form.History?.map(h => ({
-      dept: h.Department,
-      at: h.Changed_At
-    })) || [],
-    requesterName: form.Requester_Name || undefined,
-    remarks: form.Remarks || undefined,
-  }), []);
+  const mapFormToRecord = useCallback((form: Form): FormRecord => {
+    const attachments: FormAttachmentRecord[] = (form.Attachments || []).map(attachment => {
+      const uploader = attachment.Uploader
+        ? `${attachment.Uploader.First_Name} ${attachment.Uploader.Last_Name}`.trim()
+        : undefined;
+
+      return {
+        id: attachment.Attachment_ID.toString(),
+        department: attachment.Department,
+        fileName: attachment.File_Name,
+        fileUrl: resolveFormFileUrl(attachment.File_URL) || attachment.File_URL,
+        fileType: normalizeAttachmentType(attachment.File_Name),
+        uploadedAt: attachment.Uploaded_At,
+        uploadedByName: uploader,
+        notes: attachment.Notes || undefined,
+      };
+    });
+
+    if (attachments.length === 0 && form.File_URL && form.File_Name) {
+      attachments.push({
+        id: `legacy-${form.Form_ID}`,
+        department: form.Department,
+        fileName: form.File_Name,
+        fileUrl: resolveFormFileUrl(form.File_URL) || form.File_URL,
+        fileType: normalizeAttachmentType(form.File_Name),
+        uploadedAt: form.Created_At,
+        notes: 'Initial form attachment',
+      });
+    }
+
+    const primaryAttachment = attachments[0];
+
+    return {
+      id: form.Form_ID.toString(),
+      formId: form.Form_Code,
+      type: form.Form_Type,
+      status: form.Status,
+      department: form.Department,
+      createdAt: form.Created_At,
+      isArchived: form.Is_Archived,
+      attachmentName: primaryAttachment?.fileName,
+      attachmentUrl: primaryAttachment?.fileUrl,
+      attachmentType: primaryAttachment?.fileType,
+      attachments,
+      history: form.History?.map(h => ({
+        dept: h.Department,
+        at: h.Changed_At
+      })) || [],
+      requesterName: form.Requester_Name || undefined,
+      remarks: form.Remarks || undefined,
+    };
+  }, []);
 
   const loadForms = useCallback(async (isSilent = false) => {
     if (!isSilent) setLoading(true);
@@ -116,7 +158,8 @@ export default function Forms() {
     return forms
       .filter(f => (showArchived ? f.isArchived : !f.isArchived))
       .filter(f => {
-        const matchesSearch = `${f.formId} ${f.type} ${f.status} ${f.department} ${f.attachmentName || ''}`
+        const attachmentSearch = (f.attachments || []).map(attachment => attachment.fileName).join(' ');
+        const matchesSearch = `${f.formId} ${f.type} ${f.status} ${f.department} ${f.attachmentName || ''} ${attachmentSearch}`
           .toLowerCase()
           .includes(q);
         const matchesFormType = formTypeFilter === 'All' || f.type === formTypeFilter;
@@ -140,11 +183,11 @@ export default function Forms() {
     const contentType = response.headers.get('content-type') || '';
 
     if (!response.ok) {
-      throw new Error('The attached file is missing from the server. Please replace the file.');
+      throw new Error('The attached file is missing from the server. Please upload the file again.');
     }
 
     if (contentType.includes('text/html')) {
-      throw new Error('The file link points to the website page instead of an uploaded file. Please replace the file.');
+      throw new Error('The file link points to the website page instead of an uploaded file. Please upload the file again.');
     }
 
     return response.blob();
@@ -188,34 +231,34 @@ export default function Forms() {
     }
   };
 
-  const handleReplaceAttachment = async (form: FormRecord, file: File) => {
-    setReplacingFileIds(prev => new Set(prev).add(form.id));
+  const handleAddAttachments = async (form: FormRecord, selectedFiles: File[]) => {
+    if (selectedFiles.length === 0) return;
+
+    setUploadingAttachmentIds(prev => new Set(prev).add(form.id));
 
     try {
-      const uploadResult = await uploadFile(file);
-      await updateFormAPI(parseInt(form.id), {
-        fileName: file.name,
-        fileUrl: uploadResult.url,
-        fileType: file.type,
-      });
+      let updatedForm: Form | null = null;
 
-      setForms(prev =>
-        prev.map(current =>
-          current.id === form.id
-            ? {
-              ...current,
-              attachmentName: file.name,
-              attachmentUrl: uploadResult.url,
-              attachmentType: normalizeType(file.name),
-            }
-            : current
-        )
-      );
+      for (const file of selectedFiles) {
+        const uploadResult = await uploadFile(file);
+        updatedForm = await addFormAttachment(parseInt(form.id), {
+          fileName: file.name,
+          fileUrl: uploadResult.url,
+          fileType: file.type,
+          department: form.department as FormDepartment,
+          notes: `Proof uploaded for ${formDepartmentLabels[form.department as FormDepartment] || form.department}`,
+        });
+      }
+
+      if (updatedForm) {
+        const updatedRecord = mapFormToRecord(updatedForm);
+        setForms(prev => prev.map(current => current.id === form.id ? updatedRecord : current));
+      }
     } catch (error) {
-      console.error('Failed to replace form attachment:', error);
-      await modal.showError('Failed to replace the attached file. Please try again.', 'Replace File Failed');
+      console.error('Failed to add form attachment:', error);
+      await modal.showError('Failed to add the selected file(s). Please try again.', 'Upload File Failed');
     } finally {
-      setReplacingFileIds(prev => {
+      setUploadingAttachmentIds(prev => {
         const next = new Set(prev);
         next.delete(form.id);
         return next;
@@ -229,38 +272,42 @@ export default function Forms() {
     setStatusFilter('All');
   };
 
-  const normalizeType = (name?: string): 'pdf' | 'image' | 'doc' | 'docx' | undefined => {
-    if (!name) return undefined;
-    if (/\.(pdf)$/i.test(name)) return 'pdf';
-    if (/\.(png|jpe?g|webp|gif|heic)$/i.test(name)) return 'image';
-    if (/\.(docx?|rtf)$/i.test(name)) return name.toLowerCase().endsWith('docx') ? 'docx' : 'doc';
-    return undefined;
-  };
-
-  const handleCreateForm = async (payload: Omit<FormRecord, 'id' | 'createdAt' | 'isArchived'> & { file: File }) => {
+  const handleCreateForm = async (payload: Omit<FormRecord, 'id' | 'createdAt' | 'isArchived'> & { files: File[] }) => {
     if (!user?.User_ID) {
       console.error('User not authenticated');
       await modal.showError('You must be signed in to create a form.', 'Error');
       throw new Error('You must be signed in to create a form.');
     }
 
-    if (!payload.file) {
-      await modal.showError('Please attach a file before creating the form.', 'File Required');
-      throw new Error('Please attach a file before creating the form.');
+    if (!payload.files || payload.files.length === 0) {
+      await modal.showError('Please attach at least one file before creating the form.', 'File Required');
+      throw new Error('Please attach at least one file before creating the form.');
     }
 
     try {
-      const uploadResult = await uploadFile(payload.file);
-      const fileUrl = uploadResult.url;
+      const uploadedFiles = [];
+      for (const file of payload.files) {
+        const uploadResult = await uploadFile(file);
+        uploadedFiles.push({ file, uploadResult });
+      }
+
+      const primaryUpload = uploadedFiles[0];
 
       const createdForm = await createForm({
         creatorId: user.User_ID,
         formType: payload.type,
         title: payload.formId,
         content: payload.department,
-        fileName: payload.file?.name,
-        fileUrl: fileUrl,
-        fileType: payload.file?.type,
+        fileName: primaryUpload.file.name,
+        fileUrl: primaryUpload.uploadResult.url,
+        fileType: primaryUpload.file.type,
+        attachments: uploadedFiles.map(({ file, uploadResult }) => ({
+          fileName: file.name,
+          fileUrl: uploadResult.url,
+          fileType: file.type,
+          department: payload.department as FormDepartment,
+          notes: 'Initial form attachment',
+        })),
         department: payload.department as any,
         requesterName: payload.requesterName,
         remarks: payload.remarks,
@@ -530,9 +577,16 @@ export default function Forms() {
                 >
                   <div className="flex items-center gap-3 min-w-0 w-full">
                     <RowPreview url={f.attachmentUrl} name={f.attachmentName} type={f.attachmentType} />
-                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-[200px]">
-                      {f.attachmentName || 'No file'}
-                    </span>
+                    <div className="min-w-0">
+                      <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-[200px]">
+                        {f.attachmentName || 'No file'}
+                      </span>
+                      {(f.attachments?.length || 0) > 1 && (
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          +{(f.attachments?.length || 0) - 1} more file(s)
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <span className="text-sm text-gray-700 dark:text-gray-300">{f.formId}</span>
@@ -683,60 +737,85 @@ export default function Forms() {
                             <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-7a2 2 0 012-2h2m3-4H9a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-1m-1 4l-3 3m0 0l-3-3m3 3V3" />
                             </svg>
-                            File Actions
+                            Attachments
                           </h4>
-                          <div className="flex flex-wrap gap-3">
+                          <div className="space-y-3">
+                            <div className="space-y-2">
+                              {(f.attachments || []).length > 0 ? (
+                                (f.attachments || []).map((attachment) => {
+                                  const attachmentForm = {
+                                    ...f,
+                                    attachmentName: attachment.fileName,
+                                    attachmentUrl: attachment.fileUrl,
+                                    attachmentType: attachment.fileType,
+                                  };
+
+                                  return (
+                                    <div key={attachment.id} className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/60 sm:flex-row sm:items-center sm:justify-between">
+                                      <div className="min-w-0">
+                                        <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">{attachment.fileName}</p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                                          {formDepartmentLabels[attachment.department] || attachment.department}
+                                          {attachment.uploadedByName ? ` by ${attachment.uploadedByName}` : ''}
+                                          {' '}on {new Date(attachment.uploadedAt).toLocaleString()}
+                                        </p>
+                                        {attachment.notes && (
+                                          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{attachment.notes}</p>
+                                        )}
+                                      </div>
+                                      <div className="flex flex-wrap gap-2">
+                                        <button
+                                          type="button"
+                                          onClick={() => void handlePreviewFile(attachmentForm)}
+                                          className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                                        >
+                                          Preview
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => void handleDownloadFile(attachmentForm)}
+                                          className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 transition-colors"
+                                        >
+                                          Download
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })
+                              ) : (
+                                <span className="text-sm text-gray-500 dark:text-gray-400">No files attached</span>
+                              )}
+                            </div>
                             <input
                               ref={(node) => {
                                 fileInputRefs.current[f.id] = node;
                               }}
                               type="file"
+                              multiple
                               className="hidden"
                               accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.rtf"
                               onChange={(event) => {
-                                const file = event.target.files?.[0];
+                                const selectedFiles = Array.from(event.target.files || []);
                                 event.target.value = '';
-                                if (file) void handleReplaceAttachment(f, file);
+                                if (selectedFiles.length > 0) void handleAddAttachments(f, selectedFiles);
                               }}
                             />
-                            {f.attachmentUrl ? (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => void handlePreviewFile(f)}
-                                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                  </svg>
-                                  Preview
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => void handleDownloadFile(f)}
-                                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                  </svg>
-                                  Download
-                                </button>
-                              </>
-                            ) : (
-                              <span className="text-sm text-gray-500 dark:text-gray-400">No file attached</span>
-                            )}
                             <button
                               type="button"
-                              disabled={replacingFileIds.has(f.id)}
+                              disabled={uploadingAttachmentIds.has(f.id)}
                               onClick={() => fileInputRefs.current[f.id]?.click()}
                               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 border border-transparent rounded-md shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors disabled:opacity-50"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 4v12m0-12l-4 4m4-4l4 4" />
                               </svg>
-                              {replacingFileIds.has(f.id) ? 'Replacing...' : f.attachmentUrl ? 'Replace File' : 'Upload File'}
+                              {uploadingAttachmentIds.has(f.id) ? 'Uploading...' : 'Add Proof File'}
                             </button>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              New files are attached to the form's current department and do not replace existing files.
+                            </p>
+                          </div>
+                          <div className="mt-3 flex flex-wrap gap-3">
                             <button
                               type="button"
                               onClick={(e) => {

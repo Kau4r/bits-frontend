@@ -59,6 +59,7 @@ export interface FormCreateInput {
     fileName?: string;
     fileUrl?: string;
     fileType?: string;
+    attachments?: FormAttachmentInput[];
     department?: FormDepartment;
     requesterName?: string;
     remarks?: string;
@@ -74,6 +75,14 @@ export interface FormUpdateInput {
     fileType?: string | null;
     requesterName?: string;
     remarks?: string;
+}
+
+export interface FormAttachmentInput {
+    fileName: string;
+    fileUrl: string;
+    fileType?: string | null;
+    department?: FormDepartment;
+    notes?: string | null;
 }
 
 export interface FormFilters {
@@ -117,6 +126,12 @@ export const archiveForm = async (id: number): Promise<Form> => {
 // Transfer form to department
 export const transferForm = async (id: number, department: FormDepartment, notes?: string): Promise<Form> => {
     const { data } = await api.post<Form>(`/forms/${id}/transfer`, { department, notes });
+    return data;
+};
+
+// Add proof/supporting attachment to a form
+export const addFormAttachment = async (id: number, input: FormAttachmentInput): Promise<Form> => {
+    const { data } = await api.post<Form>(`/forms/${id}/attachments`, input);
     return data;
 };
 

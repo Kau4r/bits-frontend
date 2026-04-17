@@ -149,6 +149,19 @@ export interface FormHistory {
   Notes?: string;
 }
 
+export interface FormAttachment {
+  Attachment_ID: number;
+  Form_ID: number;
+  Department: FormDepartment;
+  File_Name: string;
+  File_Type?: string | null;
+  File_URL: string;
+  Uploaded_By?: number | null;
+  Uploaded_At: string;
+  Notes?: string | null;
+  Uploader?: FormUser | null;
+}
+
 // User summary for creator/approver
 export interface FormUser {
   User_ID: number;
@@ -177,8 +190,20 @@ export interface Form {
   Creator?: FormUser;
   Approver?: FormUser | null;
   History?: FormHistory[];
+  Attachments?: FormAttachment[];
   Requester_Name?: string | null;
   Remarks?: string | null;
+}
+
+export interface FormAttachmentRecord {
+  id: string;
+  department: FormDepartment;
+  fileName: string;
+  fileUrl: string;
+  fileType?: 'pdf' | 'image' | 'docx' | 'doc';
+  uploadedAt: string;
+  uploadedByName?: string;
+  notes?: string;
 }
 
 // Legacy type for backward compatibility during migration
@@ -192,6 +217,7 @@ export interface FormRecord {
   attachmentUrl?: string;
   attachmentName?: string;
   attachmentType?: 'pdf' | 'image' | 'docx' | 'doc';
+  attachments?: FormAttachmentRecord[];
   isArchived: boolean;
   history?: Array<{ dept: string; at: string }>;
   requesterName?: string;

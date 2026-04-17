@@ -5,7 +5,7 @@ import { formDepartmentLabels, getDepartmentsForType } from '@/types/formtypes';
 export const AddFormDialog: React.FC<{
   open: boolean;
   onClose: () => void;
-  onCreate: (record: Omit<FormRecord, 'id' | 'createdAt'> & { file: File }) => Promise<void> | void;
+  onCreate: (record: Omit<FormRecord, 'id' | 'createdAt'> & { files: File[] }) => Promise<void> | void;
   existing?: FormRecord[];
 }> = ({ open, onClose, onCreate, existing = [] }) => {
   const [type, setType] = useState<FormType>('WRF');
@@ -13,7 +13,7 @@ export const AddFormDialog: React.FC<{
   const [status, setStatus] = useState<FormStatus>('PENDING');
   const [requesterName, setRequesterName] = useState('');
   const [remarks, setRemarks] = useState('');
-  const [file, setFile] = useState<File | undefined>();
+  const [files, setFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -29,7 +29,7 @@ export const AddFormDialog: React.FC<{
       setStatus('PENDING');
       setRequesterName('');
       setRemarks('');
-      setFile(undefined);
+      setFiles([]);
       setIsSubmitting(false);
       setSubmitError(null);
       if (fileInputRef.current) {
@@ -59,8 +59,8 @@ export const AddFormDialog: React.FC<{
     e.preventDefault();
     setSubmitError(null);
 
-    if (!file) {
-      setSubmitError('Please attach a file before tracking the form.');
+    if (files.length === 0) {
+      setSubmitError('Please attach at least one file before tracking the form.');
       return;
     }
 
@@ -72,7 +72,7 @@ export const AddFormDialog: React.FC<{
         type,
         status,
         department,
-        file,
+        files,
         isArchived: false,
         requesterName: requesterName || undefined,
         remarks: remarks || undefined,
@@ -87,13 +87,13 @@ export const AddFormDialog: React.FC<{
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFile(e.target.files?.[0]);
+    setFiles(Array.from(e.target.files || []));
     setSubmitError(null);
   };
 
-  const clearFile = (e: React.MouseEvent) => {
+  const clearFile = (e: React.MouseEvent, indexToRemove?: number) => {
     e.stopPropagation();
-    setFile(undefined);
+    setFiles(prev => typeof indexToRemove === 'number' ? prev.filter((_, index) => index !== indexToRemove) : []);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -241,19 +241,20 @@ export const AddFormDialog: React.FC<{
                   />
                 </svg>
                 <span className="text-sm text-gray-600 dark:text-gray-300">
-                  {file ? file.name : 'Click to select a file'}
+                  {files.length > 0 ? `${files.length} file(s) selected` : 'Click to select files'}
                 </span>
                 <input
                   ref={fileInputRef}
                   type="file"
                   accept={accept}
+                  multiple
                   onChange={handleFileChange}
                   disabled={isSubmitting}
                   className="hidden"
                   required
                 />
               </label>
-              {file && (
+              {files.length > 0 && (
                 <button
                   type="button"
                   onClick={clearFile}
@@ -267,9 +268,26 @@ export const AddFormDialog: React.FC<{
                 </button>
               )}
             </div>
-            {!file && (
+            {files.length > 0 && (
+              <div className="mt-2 space-y-1">
+                {files.map((selectedFile, index) => (
+                  <div key={`${selectedFile.name}-${selectedFile.size}-${index}`} className="flex items-center justify-between rounded-md bg-gray-100 px-3 py-2 text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                    <span className="truncate">{selectedFile.name}</span>
+                    <button
+                      type="button"
+                      onClick={(event) => clearFile(event, index)}
+                      disabled={isSubmitting}
+                      className="ml-3 text-red-600 hover:text-red-700 dark:text-red-400"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {files.length === 0 && (
               <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                Please select a file
+                Please select at least one file
               </p>
             )}
           </div>
@@ -291,8 +309,8 @@ export const AddFormDialog: React.FC<{
             </button>
             <button
               type="submit"
-              disabled={!file || isSubmitting}
-              className={`px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${file
+              disabled={files.length === 0 || isSubmitting}
+              className={`px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${files.length > 0
                 ? 'bg-blue-600 hover:bg-blue-700 disabled:opacity-70 disabled:cursor-not-allowed'
                 : 'bg-blue-400 cursor-not-allowed'
                 }`}
