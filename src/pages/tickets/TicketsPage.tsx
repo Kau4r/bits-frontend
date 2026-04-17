@@ -7,6 +7,8 @@ import type { Ticket } from "@/types/tickets";
 import { useNotifications } from "@/context/NotificationContext";
 import { Plus, Eye, Filter, Inbox, Archive } from "lucide-react";
 
+const isActiveTicket = (ticket: Ticket) => !ticket.Archived && ticket.Status !== 'RESOLVED';
+
 export default function Tickets() {
     const { notifications } = useNotifications();
     const [searchTerm, setSearchTerm] = useState('');
@@ -65,10 +67,11 @@ export default function Tickets() {
     }, [latestTicketNotificationKey, loadTickets]);
 
     const displayedTickets = useMemo(() => {
+        const isBrowsingResolved = !showArchived && selectedStatus === 'RESOLVED';
         return showArchived
             ? tickets.filter(ticket => ticket.Archived)
-            : tickets.filter(ticket => !ticket.Archived);
-    }, [tickets, showArchived]);
+            : tickets.filter(ticket => isBrowsingResolved ? !ticket.Archived && ticket.Status === 'RESOLVED' : isActiveTicket(ticket));
+    }, [tickets, showArchived, selectedStatus]);
 
     const filteredTickets = useMemo(() => {
         return displayedTickets.filter(ticket => {
@@ -82,6 +85,7 @@ export default function Tickets() {
     }, [displayedTickets, searchTerm, selectedStatus]);
 
     const statuses: string[] = ["All", "PENDING", "IN_PROGRESS", "RESOLVED"];
+    const listLabel = showArchived ? 'archived' : selectedStatus === 'RESOLVED' ? 'resolved' : 'active';
 
     const handleViewTicket = (ticket: Ticket) => {
         setSelectedTicket(ticket)
@@ -242,7 +246,7 @@ export default function Tickets() {
                 {/* Results Count */}
                 <div className="ml-auto flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                     <span className="font-semibold text-gray-900 dark:text-white">{filteredTickets.length}</span>
-                    <span>of {displayedTickets.length} {showArchived ? 'archived' : 'active'} tickets</span>
+                    <span>of {displayedTickets.length} {listLabel} tickets</span>
                 </div>
             </div>
 
@@ -258,7 +262,7 @@ export default function Tickets() {
                                 )}
                             </div>
                             <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
-                                {hasActiveFilters ? "No tickets match your filters" : `No ${showArchived ? 'archived' : 'active'} tickets`}
+                                {hasActiveFilters ? "No tickets match your filters" : `No ${listLabel} tickets`}
                             </h3>
                             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 text-center max-w-sm px-6">
                                 {hasActiveFilters

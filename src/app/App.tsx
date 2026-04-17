@@ -26,7 +26,7 @@ import StudentRoomView from '@/pages/student/RoomViewPage';
 import LabTechOverview from '@/pages/labhead/LabTechOverviewPage';
 import LabheadScheduling from '@/pages/labhead/SchedulingPage';
 import type { JSX } from 'react';
-import { ROLES } from '@/types/user';
+import { normalizeUserRole, ROLES } from '@/types/user';
 import InventoryMobile from '@/pages/labtech/InventoryMobile';
 import Borrowing from '@/pages/labtech/BorrowingPage';
 import Reports from '@/pages/labtech/ReportsPage';
@@ -35,10 +35,11 @@ import Reports from '@/pages/labtech/ReportsPage';
 const ProtectedRoute = ({ children, roles }: { children: JSX.Element, roles: string[] }) => {
   const { isAuthenticated, userRole, loading } = useAuth();
   const location = useLocation();
+  const normalizedRole = normalizeUserRole(userRole);
 
   if (loading) return null;
   if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: location }} />;
-  if (!userRole || !roles.includes(userRole)) return <Navigate to="/unauthorized" replace />;
+  if (!normalizedRole || !roles.includes(normalizedRole)) return <Navigate to="/unauthorized" replace />;
 
   return children;
 };
@@ -66,6 +67,7 @@ const Logout = () => {
 // ⚙️ Main app logic
 function AppContent() {
   const { isAuthenticated, userRole, loading } = useAuth();
+  const normalizedRole = normalizeUserRole(userRole);
 
   if (loading) return null;
 
@@ -96,12 +98,12 @@ function AppContent() {
 
         {/* Redirect default / to dashboard based on role */}
         <Route path="/" element={
-          userRole === ROLES.ADMIN ? <SysAdDash /> :
-            userRole === ROLES.LAB_TECH ? <LabtechDashboard /> :
-              userRole === ROLES.LAB_HEAD ? <LabheadDashboard /> :
-                userRole === ROLES.STUDENT ? <StudentSession /> :
-                  userRole === ROLES.FACULTY ? <FacultyScheduling /> :
-                    userRole === ROLES.SECRETARY ? <SecretaryScheduling /> :
+          normalizedRole === ROLES.ADMIN ? <SysAdDash /> :
+            normalizedRole === ROLES.LAB_TECH ? <LabtechDashboard /> :
+              normalizedRole === ROLES.LAB_HEAD ? <LabheadDashboard /> :
+                normalizedRole === ROLES.STUDENT ? <StudentSession /> :
+                  normalizedRole === ROLES.FACULTY ? <FacultyScheduling /> :
+                    normalizedRole === ROLES.SECRETARY ? <SecretaryScheduling /> :
                       <Navigate to="/unauthorized" replace />
         } />
 

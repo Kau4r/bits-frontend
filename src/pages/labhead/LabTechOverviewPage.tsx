@@ -6,6 +6,8 @@ import { fetchTickets } from '@/services/tickets';
 import type { Ticket } from '@/types/tickets';
 import TicketingModal from '@/pages/tickets/components/TicketingModal';
 
+const isActiveTicket = (ticket: Ticket) => !ticket.Archived && ticket.Status !== 'RESOLVED';
+
 export default function LabTechOverview() {
   const [selectedTech, setSelectedTech] = useState<Tech | null>(null);
   const [unassignedTickets, setUnassignedTickets] = useState<Ticket[]>([]);
@@ -18,7 +20,7 @@ export default function LabTechOverview() {
     try {
       setIsLoadingUnassigned(true);
       const tickets = await fetchTickets({ unassigned: true });
-      setUnassignedTickets(tickets.filter(t => !t.Archived));
+      setUnassignedTickets(tickets.filter(isActiveTicket));
     } catch (error) {
       console.error('Failed to fetch unassigned tickets:', error);
     } finally {

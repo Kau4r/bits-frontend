@@ -1,4 +1,4 @@
-import { ROLES, type User_Role } from '@/types/user';
+import { normalizeUserRole, ROLES, type User_Role } from '@/types/user';
 
 const allRoles = Object.values(ROLES) as User_Role[];
 const labStaffRoles = [ROLES.LAB_TECH, ROLES.LAB_HEAD] as User_Role[];
@@ -41,29 +41,32 @@ const normalizePathname = (path: string) => {
   return pathname.replace(/\/+$/, '') || '/';
 };
 
-export const getDefaultRouteForRole = (role: User_Role, isMobile = false) => {
-  if (role === ROLES.LAB_TECH && isMobile) return '/labtech-mobile';
-  if (role === ROLES.FACULTY) return '/faculty/scheduling';
-  if (role === ROLES.SECRETARY) return '/secretary/scheduling';
-  if (role === ROLES.STUDENT) return '/student-session';
+export const getDefaultRouteForRole = (role: User_Role | string | null, isMobile = false) => {
+  const normalizedRole = normalizeUserRole(role);
+  if (normalizedRole === ROLES.LAB_TECH && isMobile) return '/labtech-mobile';
+  if (normalizedRole === ROLES.FACULTY) return '/faculty/scheduling';
+  if (normalizedRole === ROLES.SECRETARY) return '/secretary/scheduling';
+  if (normalizedRole === ROLES.STUDENT) return '/student-session';
   return '/';
 };
 
 export const isSafeInternalPath = (path?: string | null) =>
   Boolean(path && path.startsWith('/') && !path.startsWith('//'));
 
-export const isPathAllowedForRole = (path: string, role: User_Role) => {
+export const isPathAllowedForRole = (path: string, role: User_Role | string | null) => {
   const pathname = normalizePathname(path);
+  const normalizedRole = normalizeUserRole(role);
 
   if (blockedLoginRedirects.has(pathname)) return false;
+  if (!normalizedRole) return false;
 
   const match = routeAccess.find((route) => route.pattern.test(pathname));
-  return Boolean(match?.roles.includes(role));
+  return Boolean(match?.roles.includes(normalizedRole));
 };
 
 export const getLoginRedirectTarget = (
   redirectPath: string | null,
-  role: User_Role,
+  role: User_Role | string | null,
   isMobile = false,
 ) => {
   const defaultTarget = getDefaultRouteForRole(role, isMobile);

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import type { User, User_Role } from '@/types/user';
+import { normalizeUser, normalizeUserRole, type User, type User_Role } from '@/types/user';
 import api from '@/services/api';
 
 interface AuthContextType {
@@ -44,7 +44,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const fetchUser = async () => {
       try {
         const res = await api.get<User>('/users/me', { headers: { Authorization: `Bearer ${storedToken}` } });
-        if (isMounted) setUser(res.data);
+        if (isMounted) setUser(normalizeUser(res.data));
       } catch (err: any) {
         if (err.response?.status === 401) {
           localStorage.removeItem('token');
@@ -70,12 +70,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const res = await api.post<LoginResponse>('/auth/login', { username, password });
       const { token: authToken, user: authUser } = res.data;
 
-      localStorage.setItem('userId', authUser.User_ID.toString());
+      const normalizedUser = normalizeUser(authUser);
+
+      localStorage.setItem('userId', normalizedUser.User_ID.toString());
       localStorage.setItem('token', authToken);
       setToken(authToken);
-      setUser(authUser);
+      setUser(normalizedUser);
 
-      return { success: true, user: authUser };
+      return { success: true, user: normalizedUser };
     } catch (err: any) {
       return { success: false, error: err.response?.data?.error || err.response?.data?.message || 'Login failed' };
     }
@@ -106,7 +108,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         token,
         login,
         logout,
-        userRole: user?.User_Role || null,
+        userRole: normalizeUserRole(user?.User_Role) || null,
         loading,
       }}
     >

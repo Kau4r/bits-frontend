@@ -74,9 +74,9 @@ export default function LabTechDetailPanel({ labTech, onTicketReassigned }: Prop
     loadReports();
   }, [labTech.dbId]);
 
-  const pendingTickets = tickets.filter(t => t.Status === 'PENDING');
-  const inProgressTickets = tickets.filter(t => t.Status === 'IN_PROGRESS');
-  const resolvedTickets = tickets.filter(t => t.Status === 'RESOLVED');
+  const activeTickets = tickets.filter(t => !t.Archived && t.Status !== 'RESOLVED');
+  const pendingTickets = activeTickets.filter(t => t.Status === 'PENDING');
+  const inProgressTickets = activeTickets.filter(t => t.Status === 'IN_PROGRESS');
 
   const handleReview = async (reportId: number) => {
     setReviewingId(reportId);
@@ -127,7 +127,7 @@ export default function LabTechDetailPanel({ labTech, onTicketReassigned }: Prop
         >
           Tickets
           <span className="ml-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full text-xs">
-            {pendingTickets.length + inProgressTickets.length + resolvedTickets.length}
+            {activeTickets.length}
           </span>
           {activeTab === 'Tickets' && (
             <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-indigo-600 dark:bg-indigo-400" />
@@ -156,7 +156,7 @@ export default function LabTechDetailPanel({ labTech, onTicketReassigned }: Prop
             <div className="flex justify-center p-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 dark:border-indigo-400" />
             </div>
-          ) : tickets.length === 0 ? (
+          ) : activeTickets.length === 0 ? (
             <div className="text-center py-10 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
               <p>No active tickets assigned.</p>
             </div>
@@ -174,7 +174,7 @@ export default function LabTechDetailPanel({ labTech, onTicketReassigned }: Prop
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                  {[...pendingTickets, ...inProgressTickets, ...resolvedTickets].map((ticket) => (
+                  {[...pendingTickets, ...inProgressTickets].map((ticket) => (
                     <tr key={ticket.Ticket_ID} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${ticket.Priority === 'HIGH' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' :

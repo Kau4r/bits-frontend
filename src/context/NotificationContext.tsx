@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useRef, useCallb
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'react-hot-toast';
 import api from '@/services/api';
+import { isLabStaffRole } from '@/types/user';
 import {
     archiveNotification as archiveNotificationRequest,
     getNotifications,
@@ -44,7 +45,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const [pendingTicketCount, setPendingTicketCount] = useState(0);
 
     const fetchTicketCount = useCallback(async () => {
-        if (!user || !token) return;
+        if (!user || !token || !isLabStaffRole(user.User_Role, true)) {
+            setPendingTicketCount(0);
+            return;
+        }
         try {
             const res = await api.get<{ count: number }>('/tickets/count', {
                 params: { status: 'PENDING' }
