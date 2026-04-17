@@ -125,17 +125,29 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                 }))
             );
 
-            // Combine both sources, avoiding duplicates by Item_ID
+            // Combine both sources by Item_ID. Inventory owns the item fields,
+            // while computer-linked rows provide the assigned PC display label.
             const inventoryItems = inventoryResponse.data;
-            const allItems = [...inventoryItems];
+            const assetsById = new Map<number, RoomAsset>();
+
+            inventoryItems.forEach(item => {
+                assetsById.set(item.Item_ID, item);
+            });
 
             computerItems.forEach(ci => {
-                if (!allItems.some(item => item.Item_ID === ci.Item_ID)) {
-                    allItems.push(ci);
+                const existing = assetsById.get(ci.Item_ID);
+                if (existing) {
+                    assetsById.set(ci.Item_ID, {
+                        ...ci,
+                        ...existing,
+                        ComputerName: ci.ComputerName,
+                    });
+                } else {
+                    assetsById.set(ci.Item_ID, ci);
                 }
             });
 
-            setAssets(allItems);
+            setAssets(Array.from(assetsById.values()));
         } catch (err) {
             console.error('Failed to load assets:', err);
         } finally {
