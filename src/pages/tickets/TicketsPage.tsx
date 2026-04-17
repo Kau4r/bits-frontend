@@ -1,34 +1,68 @@
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Table from "@/components/Table"
 import Search from "@/components/Search"
 import TicketingModal from "@/pages/tickets/components/TicketingModal"
 import { fetchTickets, archiveTicket, restoreTicket } from "@/services/tickets";
 import type { Ticket } from "@/types/tickets";
+import { useNotifications } from "@/context/NotificationContext";
 import { Plus, Eye, Filter, Inbox, Archive } from "lucide-react";
 
 export default function Tickets() {
+    const { notifications } = useNotifications();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedStatus, setSelectedStatus] = useState('All');
     const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [showArchived, setShowArchived] = useState(false);
-    const [tickets, setTickets] = useState<Ticket[]>([]); // ✅ initialize as []
+    const [tickets, setTickets] = useState<Ticket[]>([]);
 
-    const [loading, setLoading] = useState(true); // ✅ loading state
+    const [loading, setLoading] = useState(true);
+    const lastTicketNotificationRef = useRef<string | null>(null);
+
+    const loadTickets = useCallback(async (showSkeleton = false) => {
+        if (showSkeleton) {
+            setLoading(true);
+        }
+
+        try {
+            const data = await fetchTickets();
+            setTickets(data);
+        } catch (err) {
+            console.error("Error loading tickets", err);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     useEffect(() => {
-        const loadTickets = async () => {
-            try {
-                const data = await fetchTickets();
-                setTickets(data);
-            } catch (err) {
-                console.error("Error loading tickets", err);
-            } finally {
-                setLoading(false); // ✅ stop loading
-            }
-        };
-        loadTickets();
-    }, []);
+        loadTickets(true);
+    }, [loadTickets]);
+
+    const latestTicketNotificationKey = useMemo(() => {
+        const ticketNotification = notifications.find(notification => {
+            const detailsEvent = notification.details?.eventType;
+            const searchable = `${notification.title} ${notification.message} ${String(detailsEvent ?? '')}`.toUpperCase();
+            return searchable.includes('TICKET');
+        });
+
+        return ticketNotification
+            ? `${ticketNotification.id}-${ticketNotification.timestamp}-${ticketNotification.title}`
+            : null;
+    }, [notifications]);
+
+    useEffect(() => {
+        if (!latestTicketNotificationKey) return;
+
+        if (lastTicketNotificationRef.current === null) {
+            lastTicketNotificationRef.current = latestTicketNotificationKey;
+            return;
+        }
+
+        if (lastTicketNotificationRef.current === latestTicketNotificationKey) return;
+
+        lastTicketNotificationRef.current = latestTicketNotificationKey;
+        loadTickets(false);
+    }, [latestTicketNotificationKey, loadTickets]);
 
     const displayedTickets = useMemo(() => {
         return showArchived
