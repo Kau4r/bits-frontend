@@ -60,6 +60,44 @@ export const getDepartmentsForType = (formType: FormType): FormDepartment[] => {
   return formType === 'RIS' ? risDepartments : wrfDepartments;
 };
 
+export const normalizeFormDepartment = (department?: string): FormDepartment | undefined => {
+  if (!department) return undefined;
+
+  const normalized = department.trim().toUpperCase().replace(/\s+/g, '_');
+  const allDepartments = ['REQUESTOR', 'DEPARTMENT_HEAD', 'DEAN_OFFICE', 'TNS', 'PURCHASING', 'PPFO', 'COMPLETED'] as FormDepartment[];
+
+  return allDepartments.includes(normalized as FormDepartment)
+    ? normalized as FormDepartment
+    : undefined;
+};
+
+export const getAvailableTransferDepartments = (
+  formType: FormType,
+  currentDepartment: string,
+  visitedDepartments: string[] = []
+): FormDepartment[] => {
+  const workflow = getDepartmentsForType(formType);
+  const visited = new Set<FormDepartment>();
+
+  visitedDepartments.forEach((department) => {
+    const normalized = normalizeFormDepartment(department);
+    if (normalized && workflow.includes(normalized)) {
+      visited.add(normalized);
+    }
+  });
+
+  const normalizedCurrent = normalizeFormDepartment(currentDepartment);
+  if (normalizedCurrent && workflow.includes(normalizedCurrent)) {
+    visited.add(normalizedCurrent);
+  }
+
+  const nextRequiredDepartment = workflow.find(department => !visited.has(department));
+
+  return workflow.filter(department =>
+    visited.has(department) || department === nextRequiredDepartment
+  );
+};
+
 // Get timeline steps for a given form type
 export const getTimelineStepsForType = (formType: FormType): string[] => {
   return formType === 'RIS' ? risTimelineSteps : wrfTimelineSteps;

@@ -7,14 +7,15 @@ interface DeptSelectProps {
   value: FormDepartment | string;
   onChange: (value: FormDepartment) => void;
   formType?: FormType;
+  departments?: FormDepartment[];
   className?: string;
 }
 
-export const DeptSelect: React.FC<DeptSelectProps> = ({ value, onChange, formType, className = '' }) => {
+export const DeptSelect: React.FC<DeptSelectProps> = ({ value, onChange, formType, departments, className = '' }) => {
   // If formType is specified, only show departments for that type; otherwise show all
-  const departments: FormDepartment[] = formType
+  const selectableDepartments: FormDepartment[] = departments ?? (formType
     ? getDepartmentsForType(formType)
-    : (['REQUESTOR', 'DEPARTMENT_HEAD', 'DEAN_OFFICE', 'TNS', 'PURCHASING', 'PPFO', 'COMPLETED'] as FormDepartment[]);
+    : (['REQUESTOR', 'DEPARTMENT_HEAD', 'DEAN_OFFICE', 'TNS', 'PURCHASING', 'PPFO', 'COMPLETED'] as FormDepartment[]));
 
   return (
     <div className={`relative ${className}`}>
@@ -34,7 +35,7 @@ export const DeptSelect: React.FC<DeptSelectProps> = ({ value, onChange, formTyp
           hover:border-gray-400 dark:hover:border-gray-500
         `}
       >
-        {departments.map((dept) => (
+        {selectableDepartments.map((dept) => (
           <option key={dept} value={dept}>
             {formDepartmentLabels[dept]}
           </option>

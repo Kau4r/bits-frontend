@@ -9,10 +9,15 @@ interface TimelineProps {
 }
 
 export const InlineTimeline: React.FC<TimelineProps> = ({ steps, current, completedSteps = [] }) => {
+  const normalizeStep = (value: string) => value.trim().toUpperCase().replace(/\s+/g, '_');
+
   // Determine step status
   const getStepStatus = (step: string) => {
-    const isCompleted = completedSteps.includes(step.toUpperCase()) || completedSteps.includes(step);
-    const isCurrent = step.toUpperCase() === current.toUpperCase() || step === current;
+    const normalizedStep = normalizeStep(step);
+    const normalizedCurrent = normalizeStep(current);
+    const normalizedCompletedSteps = completedSteps.map(normalizeStep);
+    const isCompleted = normalizedCompletedSteps.includes(normalizedStep);
+    const isCurrent = normalizedStep === normalizedCurrent;
     return { isCompleted, isCurrent };
   };
 
