@@ -71,11 +71,11 @@ export const normalizeFormDepartment = (department?: string): FormDepartment | u
     : undefined;
 };
 
-export const getAvailableTransferDepartments = (
+const getVisitedWorkflowDepartments = (
   formType: FormType,
   currentDepartment: string,
   visitedDepartments: string[] = []
-): FormDepartment[] => {
+): { workflow: FormDepartment[]; visited: Set<FormDepartment>; nextRequiredDepartment?: FormDepartment } => {
   const workflow = getDepartmentsForType(formType);
   const visited = new Set<FormDepartment>();
 
@@ -93,9 +93,37 @@ export const getAvailableTransferDepartments = (
 
   const nextRequiredDepartment = workflow.find(department => !visited.has(department));
 
+  return { workflow, visited, nextRequiredDepartment };
+};
+
+export const getAvailableTransferDepartments = (
+  formType: FormType,
+  currentDepartment: string,
+  visitedDepartments: string[] = []
+): FormDepartment[] => {
+  const { workflow, visited, nextRequiredDepartment } = getVisitedWorkflowDepartments(formType, currentDepartment, visitedDepartments);
+
   return workflow.filter(department =>
     visited.has(department) || department === nextRequiredDepartment
   );
+};
+
+export interface FormDepartmentOption {
+  value: FormDepartment;
+  disabled?: boolean;
+}
+
+export const getTransferDepartmentOptions = (
+  formType: FormType,
+  currentDepartment: string,
+  visitedDepartments: string[] = []
+): FormDepartmentOption[] => {
+  const { workflow, visited, nextRequiredDepartment } = getVisitedWorkflowDepartments(formType, currentDepartment, visitedDepartments);
+
+  return workflow.map(department => ({
+    value: department,
+    disabled: !(visited.has(department) || department === nextRequiredDepartment),
+  }));
 };
 
 // Get timeline steps for a given form type

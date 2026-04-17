@@ -1,6 +1,6 @@
 // src/components/labtech/DeptSelect.tsx
 import React from 'react';
-import type { FormDepartment, FormType } from '@/types/formtypes';
+import type { FormDepartment, FormDepartmentOption, FormType } from '@/types/formtypes';
 import { formDepartmentLabels, getDepartmentsForType } from '@/types/formtypes';
 
 interface DeptSelectProps {
@@ -8,14 +8,16 @@ interface DeptSelectProps {
   onChange: (value: FormDepartment) => void;
   formType?: FormType;
   departments?: FormDepartment[];
+  options?: FormDepartmentOption[];
   className?: string;
 }
 
-export const DeptSelect: React.FC<DeptSelectProps> = ({ value, onChange, formType, departments, className = '' }) => {
+export const DeptSelect: React.FC<DeptSelectProps> = ({ value, onChange, formType, departments, options, className = '' }) => {
   // If formType is specified, only show departments for that type; otherwise show all
   const selectableDepartments: FormDepartment[] = departments ?? (formType
     ? getDepartmentsForType(formType)
     : (['REQUESTOR', 'DEPARTMENT_HEAD', 'DEAN_OFFICE', 'TNS', 'PURCHASING', 'PPFO', 'COMPLETED'] as FormDepartment[]));
+  const selectableOptions: FormDepartmentOption[] = options ?? selectableDepartments.map(department => ({ value: department }));
 
   return (
     <div className={`relative ${className}`}>
@@ -35,9 +37,9 @@ export const DeptSelect: React.FC<DeptSelectProps> = ({ value, onChange, formTyp
           hover:border-gray-400 dark:hover:border-gray-500
         `}
       >
-        {selectableDepartments.map((dept) => (
-          <option key={dept} value={dept}>
-            {formDepartmentLabels[dept]}
+        {selectableOptions.map((option) => (
+          <option key={option.value} value={option.value} disabled={option.disabled}>
+            {formDepartmentLabels[option.value]}{option.disabled ? ' (locked)' : ''}
           </option>
         ))}
       </select>

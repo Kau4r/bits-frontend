@@ -7,7 +7,7 @@ import { InlineTimeline } from '@/pages/labtech/components/InlineTimeline';
 import { StatusSelect } from '@/pages/labtech/components/StatusSelect';
 import { DeptSelect } from '@/pages/labtech/components/DeptSelect';
 import type { FormRecord, FormStatus, FormType, FormDepartment } from '@/types/formtypes';
-import { formStatusColors, formStatusLabels, formDepartmentLabels, getTimelineStepsForType, getAvailableTransferDepartments } from '@/types/formtypes';
+import { formStatusColors, formStatusLabels, formDepartmentLabels, getTimelineStepsForType, getTransferDepartmentOptions } from '@/types/formtypes';
 import { getForms, createForm, updateForm as updateFormAPI, archiveForm as archiveFormAPI, transferForm, uploadFile, resolveFormFileUrl } from '@/services/forms';
 import { useAuth } from '@/context/AuthContext';
 import { useModal } from '@/context/ModalContext';
@@ -643,7 +643,7 @@ export default function Forms() {
                               value={editedForms[f.id]?.department ?? f.department}
                               onChange={(d: FormDepartment) => handleLocalChange(f.id, 'department', d)}
                               formType={f.type}
-                              departments={getAvailableTransferDepartments(
+                              options={getTransferDepartmentOptions(
                                 f.type,
                                 f.department,
                                 f.history?.map(h => h.dept) || []
@@ -651,7 +651,7 @@ export default function Forms() {
                               className="w-full"
                             />
                             <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                              Departments unlock in workflow order after each previous step has been visited.
+                              Locked departments appear here but can only be selected after the previous step has been visited.
                             </p>
                           </div>
                         </div>
