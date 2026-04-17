@@ -23,6 +23,7 @@ export interface Computer {
     Display_Number?: number;
     Mac_Address: string | null;
     Status: 'AVAILABLE' | 'IN_USE' | 'MAINTENANCE' | 'DECOMMISSIONED';
+    Is_Teacher?: boolean;
     Room_ID: number | null;
     Room: ComputerRoom | null;
     Item: ComputerItem[];
@@ -41,6 +42,7 @@ export interface CreateComputerPayload {
     name: string;
     roomId?: number;
     status?: Computer['Status'];
+    isTeacher?: boolean;
     items?: CreateComputerItem[];
 }
 
@@ -56,6 +58,7 @@ export interface UpdateComputerPayload {
     name?: string;
     roomId?: number | null;
     status?: Computer['Status'];
+    isTeacher?: boolean;
     items?: UpdateComputerItem[];
 }
 

@@ -140,9 +140,9 @@ export default function ScheduleImportPage() {
   };
 
   return (
-    <div className="min-h-full bg-slate-50 p-6 text-slate-950 dark:bg-slate-950 dark:text-white sm:px-8 lg:px-10">
+    <div className="flex h-full w-full flex-col bg-white p-6 text-slate-950 dark:bg-gray-900 dark:text-white sm:px-8 lg:px-10">
       <div className="mx-auto max-w-7xl space-y-6">
-        <div className="flex flex-col gap-4 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-4 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-indigo-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
               <FileSpreadsheet className="h-4 w-4" />
@@ -157,7 +157,7 @@ export default function ScheduleImportPage() {
 
         <section className="grid grid-cols-1 gap-5 lg:grid-cols-[420px_1fr]">
           <div className="space-y-5">
-            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
               <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200">Workbook</label>
               <label className="mt-3 flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center transition hover:border-indigo-400 hover:bg-indigo-50 dark:border-slate-700 dark:bg-slate-950/60 dark:hover:border-indigo-500 dark:hover:bg-indigo-950/20">
                 <Upload className="h-10 w-10 text-indigo-500" />
@@ -177,7 +177,7 @@ export default function ScheduleImportPage() {
               </label>
             </div>
 
-            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
               <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Import Options</h2>
               <div className="mt-4 space-y-4">
                 <div>
@@ -244,7 +244,7 @@ export default function ScheduleImportPage() {
             </div>
           </div>
 
-          <div className="space-y-5">
+          <div className="flex h-full flex-col space-y-5">
             {result ? (
               <>
                 <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
@@ -254,7 +254,7 @@ export default function ScheduleImportPage() {
                   <ResultCard label="Skipped/Dupes" value={result.summary.skipped + result.summary.duplicates} tone="border-slate-200 bg-slate-100 text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200" />
                 </div>
 
-                <div className="rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <div className="rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
                   <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-800">
                     <div>
                       <h2 className="text-lg font-bold">Rows Ready</h2>
@@ -273,7 +273,7 @@ export default function ScheduleImportPage() {
                   </div>
                 </div>
 
-                <div className="rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <div className="rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
                   <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-800">
                     <div>
                       <h2 className="text-lg font-bold">Rows Needing Attention</h2>
@@ -293,7 +293,7 @@ export default function ScheduleImportPage() {
                 </div>
               </>
             ) : (
-              <div className="flex min-h-[560px] items-center justify-center rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center dark:border-slate-700 dark:bg-slate-900">
+              <div className="flex flex-1 min-h-[560px] items-center justify-center rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-700 dark:bg-slate-800">
                 <div>
                   <FileSpreadsheet className="mx-auto h-14 w-14 text-slate-400" />
                   <h2 className="mt-4 text-xl font-bold">No preview yet</h2>

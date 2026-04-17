@@ -2,14 +2,42 @@
 import React from 'react';
 import { Check } from 'lucide-react';
 
+export interface TimelineHistoryEntry {
+  dept: string;
+  at: string;
+}
+
 interface TimelineProps {
   steps: string[];
   current: string;
   completedSteps?: string[];  // Departments that have been visited/completed
+  history?: TimelineHistoryEntry[];  // Full history for per-step timestamps
 }
 
-export const InlineTimeline: React.FC<TimelineProps> = ({ steps, current, completedSteps = [] }) => {
+const formatTimestamp = (iso: string): string => {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+};
+
+export const InlineTimeline: React.FC<TimelineProps> = ({ steps, current, completedSteps = [], history = [] }) => {
   const normalizeStep = (value: string) => value.trim().toUpperCase().replace(/\s+/g, '_');
+
+  // Build a map of stepKey -> latest timestamp
+  const stepTimestamps = new Map<string, string>();
+  history.forEach(entry => {
+    const key = normalizeStep(entry.dept);
+    const existing = stepTimestamps.get(key);
+    if (!existing || new Date(entry.at).getTime() > new Date(existing).getTime()) {
+      stepTimestamps.set(key, entry.at);
+    }
+  });
 
   // Determine step status
   const getStepStatus = (step: string) => {
@@ -18,7 +46,8 @@ export const InlineTimeline: React.FC<TimelineProps> = ({ steps, current, comple
     const normalizedCompletedSteps = completedSteps.map(normalizeStep);
     const isCompleted = normalizedCompletedSteps.includes(normalizedStep);
     const isCurrent = normalizedStep === normalizedCurrent;
-    return { isCompleted, isCurrent };
+    const timestamp = stepTimestamps.get(normalizedStep);
+    return { isCompleted, isCurrent, timestamp };
   };
 
   return (
@@ -27,7 +56,7 @@ export const InlineTimeline: React.FC<TimelineProps> = ({ steps, current, comple
 
       <div className="space-y-6">
         {steps.map((step, index) => {
-          const { isCompleted, isCurrent } = getStepStatus(step);
+          const { isCompleted, isCurrent, timestamp } = getStepStatus(step);
 
           // Determine colors
           let circleClass = 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300';
@@ -42,6 +71,8 @@ export const InlineTimeline: React.FC<TimelineProps> = ({ steps, current, comple
             circleClass = 'bg-blue-600 text-white';
             textClass = 'text-blue-600 dark:text-blue-400';
           }
+
+          const formattedTime = timestamp ? formatTimestamp(timestamp) : '';
 
           return (
             <div key={step} className="relative flex items-start">
@@ -65,6 +96,11 @@ export const InlineTimeline: React.FC<TimelineProps> = ({ steps, current, comple
                 {isCompleted && !isCurrent && (
                   <div className="mt-1 text-xs text-green-500 dark:text-green-400">
                     Completed
+                  </div>
+                )}
+                {formattedTime && (
+                  <div className="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400" title={timestamp}>
+                    {formattedTime}
                   </div>
                 )}
               </div>

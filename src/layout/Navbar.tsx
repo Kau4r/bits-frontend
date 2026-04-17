@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useNotifications } from '@/context/NotificationContext';
 import { useTheme } from '@/hooks/useTheme';
@@ -107,11 +107,24 @@ const navIcons: Record<string, ReactNode> = {
 };
 
 const Navbar = ({ collapsed, setCollapsed, isMobile }: { collapsed: boolean; setCollapsed: (c: boolean) => void; isMobile: boolean }) => {
-  const { userRole, logout } = useAuth();
+  const { user, userRole, logout } = useAuth();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement | null>(null);
   const { unreadCount, pendingTicketCount } = useNotifications();
   const { theme, toggleTheme } = useTheme();
+
+  useEffect(() => {
+    if (!profileOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setProfileOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [profileOpen]);
 
   if (!userRole || !roleRoutes[userRole as Role]) return null;
   const navItems = roleRoutes[userRole as Role];
@@ -219,17 +232,70 @@ const Navbar = ({ collapsed, setCollapsed, isMobile }: { collapsed: boolean; set
             )}
             <span className={collapsed && !isMobile ? "sr-only" : "inline"}>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
           </button>
-          <button
-            onClick={handleLogout}
-            className={`w-full flex items-center gap-3 rounded-md bg-red-600 px-3 py-3 text-sm font-medium text-white shadow hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors ${collapsed && !isMobile ? "justify-center" : ""}`}
-            type="button"
-            aria-label="Logout"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1" />
-            </svg>
-            <span className={collapsed && !isMobile ? "sr-only" : "inline"}>Logout</span>
-          </button>
+
+          {user && (
+            <div ref={profileRef} className="relative">
+              <button
+                onClick={() => setProfileOpen(v => !v)}
+                className={`w-full flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${collapsed && !isMobile ? "justify-center" : ""} ${profileOpen ? "bg-gray-100 dark:bg-gray-700" : ""}`}
+                type="button"
+                aria-haspopup="menu"
+                aria-expanded={profileOpen}
+                aria-label="Open profile menu"
+              >
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-sm font-bold text-white">
+                  {`${user.First_Name?.[0] ?? ''}${user.Last_Name?.[0] ?? ''}`.toUpperCase()}
+                </div>
+                <div className={`min-w-0 flex-1 text-left ${collapsed && !isMobile ? "sr-only" : "flex flex-col"}`}>
+                  <span className="truncate text-sm font-semibold text-gray-900 dark:text-white">
+                    {user.First_Name} {user.Last_Name}
+                  </span>
+                  <span className="truncate text-xs text-gray-500 dark:text-gray-400">
+                    {userRole?.replace('_', ' ')}
+                  </span>
+                </div>
+              </button>
+
+              {profileOpen && (
+                <div
+                  role="menu"
+                  className={`absolute bottom-full mb-2 z-50 rounded-xl border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800 ${collapsed && !isMobile ? "left-full ml-2 bottom-0 w-64" : "left-0 right-0"}`}
+                >
+                  <div className="flex items-start gap-3 border-b border-gray-200 p-4 dark:border-gray-700">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-base font-bold text-white">
+                      {`${user.First_Name?.[0] ?? ''}${user.Last_Name?.[0] ?? ''}`.toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-gray-900 dark:text-white">
+                        {user.First_Name} {user.Middle_Name ? `${user.Middle_Name} ` : ''}{user.Last_Name}
+                      </p>
+                      <p className="truncate text-xs text-gray-500 dark:text-gray-400">{user.Email}</p>
+                      <span className="mt-1 inline-flex rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
+                        {userRole?.replace('_', ' ')}
+                      </span>
+                    </div>
+                  </div>
+                  {user.Username && (
+                    <div className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
+                      <span className="font-semibold text-gray-700 dark:text-gray-300">Username:</span> {user.Username}
+                    </div>
+                  )}
+                  <div className="border-t border-gray-200 p-2 dark:border-gray-700">
+                    <button
+                      onClick={() => { setProfileOpen(false); handleLogout(); }}
+                      className="w-full flex items-center gap-3 rounded-md bg-red-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors"
+                      type="button"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1" />
+                      </svg>
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </footer>
       </nav>
     </>

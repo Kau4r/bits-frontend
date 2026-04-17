@@ -615,6 +615,7 @@ export default function Forms() {
                               steps={getTimelineStepsForType(f.type)}
                               current={formDepartmentLabels[f.department as FormDepartment] || f.department}
                               completedSteps={f.history?.map(h => h.dept) || []}
+                              history={f.history || []}
                             />
                           </div>
                         </div>

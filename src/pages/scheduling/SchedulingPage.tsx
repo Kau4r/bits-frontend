@@ -666,7 +666,6 @@ export default function Scheduling() {
             }}
             eventMouseLeave={() => setTooltipInfo(prev => ({ ...prev, visible: false }))}
             events={filteredEvents}
-            eventBackgroundColor="#4f46e5"
             eventBorderColor="transparent"
             eventContent={({ event }) => {
               const status = event.extendedProps.status as string;

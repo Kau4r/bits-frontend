@@ -34,11 +34,8 @@ const timeSlots = [
     '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00'
 ];
 
-const SCHEDULE_SLOT_WIDTH_PX = 100;
-const SCHEDULE_SLOT_GAP_PX = 8;
+const SCHEDULE_SLOT_HEIGHT_PX = 44;
 const SCHEDULE_GRID_START_MINS = 7 * 60 + 30;
-const SCHEDULE_GRID_WIDTH_PX =
-    timeSlots.length * SCHEDULE_SLOT_WIDTH_PX + (timeSlots.length - 1) * SCHEDULE_SLOT_GAP_PX;
 
 const ITEM_TYPES = ['KEYBOARD', 'MOUSE', 'MONITOR', 'SYSTEM_UNIT'] as const;
 
@@ -56,6 +53,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
     // Add Computer Dialog State
     const [showAddDialog, setShowAddDialog] = useState(false);
     const [newComputerName, setNewComputerName] = useState('');
+    const [newComputerIsTeacher, setNewComputerIsTeacher] = useState(false);
     interface InventoryItem {
         Item_ID: number;
         Item_Code: string;
@@ -77,6 +75,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
     const [editingComputer, setEditingComputer] = useState<Computer | null>(null);
     const [editName, setEditName] = useState('');
     const [editStatus, setEditStatus] = useState<Computer['Status']>('AVAILABLE');
+    const [editIsTeacher, setEditIsTeacher] = useState(false);
     const [editItems, setEditItems] = useState<{ itemId?: number; itemType: string; brand: string; serialNumber: string }[]>([]);
 
     // Hover state for showing components
@@ -172,6 +171,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
     const openAddComputerDialog = () => {
         setError(null);
         setNewComputerName(getNextComputerName(computers));
+        setNewComputerIsTeacher(false);
         setSelectedItems({
             KEYBOARD: null,
             MOUSE: null,
@@ -198,6 +198,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
             const payload: CreateComputerPayload = {
                 name: newComputerName,
                 roomId: room.Room_ID,
+                isTeacher: newComputerIsTeacher,
                 items: Object.entries(selectedItems)
                     .filter(([_, item]) => item !== null)
                     .map(([itemType, item]) => ({
@@ -211,6 +212,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
 
             // Reset form
             setNewComputerName('');
+            setNewComputerIsTeacher(false);
             setSelectedItems({
                 KEYBOARD: null,
                 MOUSE: null,
@@ -233,6 +235,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
         setEditingComputer(pc);
         setEditName(pc.Name);
         setEditStatus(pc.Status);
+        setEditIsTeacher(Boolean(pc.Is_Teacher));
         // Map existing items or create placeholders for missing types
         const existingItems = ITEM_TYPES.map(type => {
             const existing = pc.Item.find(i => i.Item_Type === type);
@@ -254,6 +257,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
             const payload: UpdateComputerPayload = {
                 name: editName,
                 status: editStatus,
+                isTeacher: editIsTeacher,
                 items: editItems.map(item => ({
                     itemId: item.itemId,
                     itemType: item.itemType,
@@ -407,7 +411,11 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                         return (
                                             <div
                                                 key={pc.Computer_ID}
-                                                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-col gap-3 hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-md transition-all group relative cursor-pointer"
+                                                className={`bg-white dark:bg-gray-800 border rounded-xl p-4 flex flex-col gap-3 hover:shadow-md transition-all group relative cursor-pointer ${
+                                                    pc.Is_Teacher
+                                                        ? 'border-amber-400 dark:border-amber-500 ring-1 ring-amber-300/40 dark:ring-amber-500/30 hover:border-amber-500'
+                                                        : 'border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500'
+                                                }`}
                                                 onClick={() => handleEditClick(pc)}
                                                 onMouseEnter={() => setHoveredPc(pc.Computer_ID)}
                                                 onMouseLeave={() => setHoveredPc(null)}
@@ -423,17 +431,30 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                                     </svg>
                                                 </button>
 
-                                                <div className="flex items-center gap-2">
-                                                    <div className={`w-2.5 h-2.5 rounded-full ${statusColor === 'green' ? 'bg-green-500' :
-                                                        statusColor === 'yellow' ? 'bg-yellow-500' :
-                                                            statusColor === 'red' ? 'bg-red-500' : 'bg-gray-500'
-                                                        }`} />
-                                                    <span className={`text-xs font-medium ${statusColor === 'green' ? 'text-green-600 dark:text-green-400' :
-                                                        statusColor === 'yellow' ? 'text-yellow-600 dark:text-yellow-400' :
-                                                            statusColor === 'red' ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'
-                                                        }`}>
-                                                        {getStatusLabel(pc.Status)}
-                                                    </span>
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className={`w-2.5 h-2.5 rounded-full ${statusColor === 'green' ? 'bg-green-500' :
+                                                            statusColor === 'yellow' ? 'bg-yellow-500' :
+                                                                statusColor === 'red' ? 'bg-red-500' : 'bg-gray-500'
+                                                            }`} />
+                                                        <span className={`text-xs font-medium ${statusColor === 'green' ? 'text-green-600 dark:text-green-400' :
+                                                            statusColor === 'yellow' ? 'text-yellow-600 dark:text-yellow-400' :
+                                                                statusColor === 'red' ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'
+                                                            }`}>
+                                                            {getStatusLabel(pc.Status)}
+                                                        </span>
+                                                    </div>
+                                                    {pc.Is_Teacher && (
+                                                        <span
+                                                            className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:bg-amber-500/20 dark:text-amber-300"
+                                                            title="Teacher's PC"
+                                                        >
+                                                            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                                                <path d="M5 16l1.5-8 4.5 4 5-7 4.5 7L21 16H5zm0 2h16v2H5v-2z" />
+                                                            </svg>
+                                                            Teacher
+                                                        </span>
+                                                    )}
                                                 </div>
 
                                                 <div className="flex flex-col items-center py-2">
@@ -546,93 +567,85 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                         <div className="flex-1 overflow-y-auto p-6">
                             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Today's Schedule</h3>
 
-                            {/* Schedule Container */}
-                            <div className="overflow-x-auto pb-4">
-                                <div style={{ width: SCHEDULE_GRID_WIDTH_PX, minWidth: SCHEDULE_GRID_WIDTH_PX }}>
-                                    {/* Time Header Row */}
-                                    <div
-                                        className="grid gap-2 mb-4"
-                                        style={{
-                                            gridTemplateColumns: `repeat(${timeSlots.length}, ${SCHEDULE_SLOT_WIDTH_PX}px)`,
-                                            columnGap: SCHEDULE_SLOT_GAP_PX,
-                                        }}
-                                    >
-                                        {timeSlots.map(time => (
-                                            <div key={time} className="bg-gray-100 dark:bg-gray-800 py-3 rounded-lg text-center text-sm font-semibold text-gray-700 dark:text-gray-300">
-                                                {time}
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    {/* Events Rows */}
-                                    <div className="min-h-[100px]">
+                            <div className="rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/30">
+                                <div
+                                    className="relative grid"
+                                    style={{
+                                        gridTemplateColumns: '80px 1fr',
+                                        gridTemplateRows: `repeat(${timeSlots.length}, ${SCHEDULE_SLOT_HEIGHT_PX}px)`,
+                                    }}
+                                >
+                                    {timeSlots.map((time, idx) => (
                                         <div
-                                            className="h-24 bg-gray-50 dark:bg-gray-800/30 rounded-lg grid relative border border-gray-200 dark:border-gray-700"
-                                            style={{
-                                                gridTemplateColumns: `repeat(${timeSlots.length}, ${SCHEDULE_SLOT_WIDTH_PX}px)`,
-                                                columnGap: SCHEDULE_SLOT_GAP_PX,
-                                            }}
+                                            key={time}
+                                            className="col-start-1 flex items-start justify-end pr-3 pt-1 text-xs font-semibold text-gray-600 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700"
+                                            style={{ gridRow: idx + 1 }}
                                         >
-                                            {sessions.length === 0 ? (
-                                                <div className="absolute inset-0 flex items-center justify-center text-gray-600 dark:text-gray-500 italic">
-                                                    No schedules or bookings for today
-                                                </div>
-                                            ) : (
-                                                sessions.map((session, index) => {
-                                                    // Calculate position
-                                                    const start = new Date(session.startTime);
-                                                    const end = new Date(session.endTime);
-
-                                                    const startMins = start.getHours() * 60 + start.getMinutes();
-                                                    const endMins = end.getHours() * 60 + end.getMinutes();
-
-                                                    const colStart = Math.round((startMins - SCHEDULE_GRID_START_MINS) / 30);
-                                                    const durationSlots = Math.max(
-                                                        1,
-                                                        Math.round((endMins - startMins) / 30)
-                                                    );
-
-                                                    if (colStart < 0 || colStart >= timeSlots.length) return null;
-
-                                                    const safeDurationSlots = Math.min(durationSlots, timeSlots.length - colStart);
-
-                                                    const isSchedule = session.type === 'schedule';
-
-                                                    return (
-                                                        <div
-                                                            key={index}
-                                                            className="p-1 min-w-0"
-                                                            style={{
-                                                                gridColumn: `${colStart + 1} / span ${safeDurationSlots}`,
-                                                                gridRow: 1,
-                                                            }}
-                                                        >
-                                                            <div className={`
-                                                                h-full p-2 rounded-md border overflow-hidden
-                                                                ${isSchedule
-                                                                    ? 'bg-blue-500/20 border-blue-500/50'
-                                                                    : 'bg-green-500/10 border-green-500/30'}
-                                                            `}>
-                                                                <div className="flex justify-between items-start mb-1 gap-1">
-                                                                    <span className="text-[10px] text-gray-600 dark:text-gray-300 truncate">
-                                                                        {start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} -
-                                                                        {end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                                    </span>
-                                                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full truncate ${isSchedule ? 'bg-blue-500 text-white' : 'bg-green-500 text-green-100'
-                                                                        }`}>
-                                                                        {isSchedule ? 'Class' : 'Booking'}
-                                                                    </span>
-                                                                </div>
-                                                                <p className={`text-sm font-medium truncate ${isSchedule ? 'text-blue-600 dark:text-blue-200' : 'text-green-600 dark:text-green-200'}`}>
-                                                                    {session.purpose}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })
-                                            )}
+                                            {time}
                                         </div>
-                                    </div>
+                                    ))}
+
+                                    {timeSlots.map((time, idx) => (
+                                        <div
+                                            key={`lane-${time}`}
+                                            className="col-start-2 border-t border-gray-200 dark:border-gray-700"
+                                            style={{ gridRow: idx + 1 }}
+                                        />
+                                    ))}
+
+                                    {sessions.length === 0 ? (
+                                        <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-gray-600 dark:text-gray-500 italic">
+                                            No schedules or bookings for today
+                                        </div>
+                                    ) : (
+                                        sessions.map((session, index) => {
+                                            const start = new Date(session.startTime);
+                                            const end = new Date(session.endTime);
+
+                                            const startMins = start.getHours() * 60 + start.getMinutes();
+                                            const endMins = end.getHours() * 60 + end.getMinutes();
+
+                                            const rowStart = Math.round((startMins - SCHEDULE_GRID_START_MINS) / 30);
+                                            const durationSlots = Math.max(1, Math.round((endMins - startMins) / 30));
+
+                                            if (rowStart < 0 || rowStart >= timeSlots.length) return null;
+
+                                            const safeDurationSlots = Math.min(durationSlots, timeSlots.length - rowStart);
+                                            const isSchedule = session.type === 'schedule';
+
+                                            return (
+                                                <div
+                                                    key={index}
+                                                    className="col-start-2 p-1 min-w-0"
+                                                    style={{
+                                                        gridRow: `${rowStart + 1} / span ${safeDurationSlots}`,
+                                                    }}
+                                                >
+                                                    <div className={`h-full p-2 rounded-md border overflow-hidden ${
+                                                        isSchedule
+                                                            ? 'bg-blue-500/20 border-blue-500/50'
+                                                            : 'bg-green-500/10 border-green-500/30'
+                                                    }`}>
+                                                        <div className="flex justify-between items-start mb-1 gap-2">
+                                                            <span className="text-[10px] text-gray-600 dark:text-gray-300 truncate">
+                                                                {start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – {end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                            </span>
+                                                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full truncate shrink-0 ${
+                                                                isSchedule ? 'bg-blue-500 text-white' : 'bg-green-500 text-green-100'
+                                                            }`}>
+                                                                {isSchedule ? 'Class' : 'Booking'}
+                                                            </span>
+                                                        </div>
+                                                        <p className={`text-sm font-medium truncate ${
+                                                            isSchedule ? 'text-blue-600 dark:text-blue-200' : 'text-green-600 dark:text-green-200'
+                                                        }`}>
+                                                            {session.purpose}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -672,6 +685,22 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                 Defaults to the next available PC number for this room.
                             </p>
+                        </div>
+
+                        {/* Teacher PC Toggle */}
+                        <div className="mb-4">
+                            <label className="flex items-start gap-3 cursor-pointer rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                                <input
+                                    type="checkbox"
+                                    checked={newComputerIsTeacher}
+                                    onChange={(e) => setNewComputerIsTeacher(e.target.checked)}
+                                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                                />
+                                <span>
+                                    <span className="block text-sm font-semibold text-gray-900 dark:text-white">Mark as Teacher's PC</span>
+                                    <span className="block text-xs text-gray-500 dark:text-gray-400">Only one PC per room can be the teacher's. This will replace any existing one.</span>
+                                </span>
+                            </label>
                         </div>
 
                         {/* Components */}
@@ -753,6 +782,22 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                 <option value="MAINTENANCE">Maintenance</option>
                                 <option value="DECOMMISSIONED">Decommissioned</option>
                             </select>
+                        </div>
+
+                        {/* Teacher PC Toggle */}
+                        <div className="mb-4">
+                            <label className="flex items-start gap-3 cursor-pointer rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                                <input
+                                    type="checkbox"
+                                    checked={editIsTeacher}
+                                    onChange={(e) => setEditIsTeacher(e.target.checked)}
+                                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                                />
+                                <span>
+                                    <span className="block text-sm font-semibold text-gray-900 dark:text-white">Teacher's PC</span>
+                                    <span className="block text-xs text-gray-500 dark:text-gray-400">Marking this will unset any other teacher PC in this room.</span>
+                                </span>
+                            </label>
                         </div>
 
                         {/* Components */}

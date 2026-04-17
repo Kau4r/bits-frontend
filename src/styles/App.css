@@ -147,6 +147,13 @@ html {
   --fc-header-text-color: #1e293b;
   --fc-cell-bg-color: #ffffff;
   --fc-cell-text-color: #1e293b;
+  --fc-event-bg-color: #4f46e5;
+  --fc-event-border-color: #4f46e5;
+}
+
+.dark {
+  --fc-event-bg-color: #475569;
+  --fc-event-border-color: #475569;
 }
 
 /* Ensure the parent container allows full height */
