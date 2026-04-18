@@ -313,10 +313,15 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
         return err instanceof Error && err.message ? err.message : fallback;
     };
 
+    const isSupportedImportFile = (file: File) => {
+        const lowerName = file.name.toLowerCase();
+        return lowerName.endsWith('.csv') || lowerName.endsWith('.xlsx');
+    };
+
     const handleComputerCsvImport = async (file?: File) => {
         if (!file) return;
-        if (!file.name.toLowerCase().endsWith('.csv')) {
-            await modal.showError('Please choose a .csv file. If you have an Excel workbook, export the room sheet as CSV first.', 'Invalid File');
+        if (!isSupportedImportFile(file)) {
+            await modal.showError('Please choose a .csv or .xlsx file.', 'Invalid File');
             if (computerCsvInputRef.current) computerCsvInputRef.current.value = '';
             return;
         }
@@ -328,7 +333,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
             const refreshedComputers = await loadComputers();
             await loadAssets(refreshedComputers);
             await modal.showSuccess(
-                `${summarizeImport(result, 'Computer import')}\n\nSupported formats: Computer_Name/System_Unit_Code/Monitor_Code/Keyboard_Code/Mouse_Code, or CSV exported from the room-assets workbook.`,
+                `${summarizeImport(result, 'Computer import')}\n\nSupported formats: .xlsx room-assets workbook, CSV exported from the workbook, or Computer_Name/System_Unit_Code/Monitor_Code/Keyboard_Code/Mouse_Code CSV.`,
                 'Import Complete'
             );
         } catch (err) {
@@ -457,14 +462,14 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                 <div>
                                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Computers</h3>
                                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                                        Import a CSV or add a single PC with existing inventory components.
+                                        Import a CSV/XLSX file or add a single PC with existing inventory components.
                                     </p>
                                 </div>
                                 <div className="flex flex-wrap justify-end gap-2">
                                     <input
                                         ref={computerCsvInputRef}
                                         type="file"
-                                        accept=".csv,text/csv"
+                                        accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                                         className="hidden"
                                         onChange={(e) => handleComputerCsvImport(e.target.files?.[0])}
                                     />
@@ -473,7 +478,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                         disabled={isImportingCsv}
                                         className="px-4 py-2 border border-blue-500/60 text-blue-600 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-500/10 disabled:opacity-60 disabled:cursor-not-allowed rounded-lg text-sm font-medium transition-colors"
                                     >
-                                        {isImportingCsv ? 'Importing...' : 'Import Computers CSV'}
+                                        {isImportingCsv ? 'Importing...' : 'Import Computers CSV/XLSX'}
                                     </button>
                                     <button
                                         onClick={openAddComputerDialog}

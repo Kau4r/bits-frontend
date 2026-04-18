@@ -28,6 +28,8 @@ export interface CsvImportResult {
     rows: CsvImportRow[];
     items?: Item[];
     computers?: unknown[];
+    sourceType?: 'csv' | 'xlsx' | string;
+    sheetName?: string;
 }
 
 // Fetch all inventory items
