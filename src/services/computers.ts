@@ -1,4 +1,5 @@
 import api from '@/services/api';
+import type { CsvImportResult } from '@/services/inventory';
 
 // Types
 export interface ComputerItem {
@@ -94,5 +95,16 @@ export const updateComputer = async (id: number, data: UpdateComputerPayload): P
 
 export const deleteComputer = async (id: number): Promise<void> => {
     await api.delete(`/computers/${id}`);
+};
+
+export const importComputersCsv = async (file: File, roomId: number): Promise<CsvImportResult> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('roomId', String(roomId));
+
+    const response = await api.post<CsvImportResult>('/computers/import-csv', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
 };
 

@@ -1,6 +1,35 @@
 import api from "@/services/api";
 import type { Item, Computer } from "@/types/inventory";
 
+export type CsvImportRowStatus = 'valid' | 'imported' | 'skipped' | 'invalid' | 'duplicate';
+
+export interface CsvImportSummary {
+    totalRows: number;
+    imported: number;
+    skipped: number;
+    invalid: number;
+    duplicates: number;
+}
+
+export interface CsvImportRow {
+    rowNumber: number;
+    status: CsvImportRowStatus | string;
+    reason: string;
+    itemCode?: string;
+    itemType?: string;
+    itemId?: number;
+    computerName?: string;
+    computerId?: number;
+    componentCount?: number;
+}
+
+export interface CsvImportResult {
+    summary: CsvImportSummary;
+    rows: CsvImportRow[];
+    items?: Item[];
+    computers?: unknown[];
+}
+
 // Fetch all inventory items
 export const getInventory = async (): Promise<(Item | Computer)[]> => {
     const { data } = await api.get<(Item | Computer)[]>("/inventory");
@@ -55,5 +84,16 @@ export const addInventoryBulk = createInventoryBulk;
 export const updateInventoryItem = async (id: number, item: Partial<Item | Computer>): Promise<Item | Computer> => {
     const { data } = await api.put<Item | Computer>(`/inventory/${id}`, item);
     // After interceptor unwraps envelope, data is the item directly
+    return data;
+};
+
+export const importRoomItemsCsv = async (file: File, roomId: number): Promise<CsvImportResult> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("roomId", String(roomId));
+
+    const { data } = await api.post<CsvImportResult>("/inventory/import-csv", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+    });
     return data;
 };

@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import type { Room, RoomSession } from '@/types/room';
-import { fetchComputers, createComputer, updateComputer, deleteComputer, type Computer, type CreateComputerPayload, type UpdateComputerPayload } from '@/services/computers';
+import { fetchComputers, createComputer, updateComputer, deleteComputer, importComputersCsv, type Computer, type CreateComputerPayload, type UpdateComputerPayload } from '@/services/computers';
+import { importRoomItemsCsv, type CsvImportResult } from '@/services/inventory';
 import api from '@/services/api';
 import { useModal } from '@/context/ModalContext';
 import Table from '@/components/Table';
@@ -85,6 +86,9 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
     const [assets, setAssets] = useState<RoomAsset[]>([]);
     const [isLoadingAssets, setIsLoadingAssets] = useState(false);
     const numberedComputers = useMemo(() => getNumberedComputers(computers), [computers]);
+    const computerCsvInputRef = useRef<HTMLInputElement | null>(null);
+    const assetCsvInputRef = useRef<HTMLInputElement | null>(null);
+    const [isImportingCsv, setIsImportingCsv] = useState(false);
 
     // Fetch computers when modal opens
     useEffect(() => {
@@ -100,17 +104,17 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
         }
     }, [isOpen, room?.Room_ID, computers, isLoading]);
 
-    const loadAssets = async () => {
+    const loadAssets = async (computersSnapshot = computers) => {
         setIsLoadingAssets(true);
         try {
             // Get items from inventory API (direct room items)
             const inventoryResponse = await api.get<RoomAsset[]>('/inventory', { params: { roomId: room.Room_ID } });
             const computerDisplayById = new Map(
-                getNumberedComputers(computers).map(({ computer, displayName }) => [computer.Computer_ID, displayName])
+                getNumberedComputers(computersSnapshot).map(({ computer, displayName }) => [computer.Computer_ID, displayName])
             );
 
             // Also gather items from computers in this room
-            const computerItems: RoomAsset[] = computers.flatMap(computer =>
+            const computerItems: RoomAsset[] = computersSnapshot.flatMap(computer =>
                 computer.Item.map(item => ({
                     Item_ID: item.Item_ID,
                     Item_Code: item.Item_Code,
@@ -154,15 +158,17 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
         }
     };
 
-    const loadComputers = async () => {
+    const loadComputers = async (): Promise<Computer[]> => {
         setIsLoading(true);
         setError(null);
         try {
             const data = await fetchComputers(room.Room_ID);
             setComputers(data);
+            return data;
         } catch (err) {
             console.error('Failed to load computers:', err);
             setError('Failed to load computers');
+            return [];
         } finally {
             setIsLoading(false);
         }
@@ -291,6 +297,77 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
         }
     };
 
+    const summarizeImport = (result: CsvImportResult, label: string) => {
+        const { summary } = result;
+        const issueParts = [
+            summary.skipped ? `${summary.skipped} skipped` : '',
+            summary.invalid ? `${summary.invalid} invalid` : '',
+            summary.duplicates ? `${summary.duplicates} duplicate` : '',
+        ].filter(Boolean);
+
+        const issueText = issueParts.length > 0 ? ` (${issueParts.join(', ')})` : '';
+        return `${label}: imported ${summary.imported} of ${summary.totalRows} row(s)${issueText}.`;
+    };
+
+    const getImportErrorMessage = (err: unknown, fallback: string) => {
+        return err instanceof Error && err.message ? err.message : fallback;
+    };
+
+    const handleComputerCsvImport = async (file?: File) => {
+        if (!file) return;
+        if (!file.name.toLowerCase().endsWith('.csv')) {
+            await modal.showError('Please choose a .csv file. If you have an Excel workbook, export the room sheet as CSV first.', 'Invalid File');
+            if (computerCsvInputRef.current) computerCsvInputRef.current.value = '';
+            return;
+        }
+
+        setIsImportingCsv(true);
+        setError(null);
+        try {
+            const result = await importComputersCsv(file, room.Room_ID);
+            const refreshedComputers = await loadComputers();
+            await loadAssets(refreshedComputers);
+            await modal.showSuccess(
+                `${summarizeImport(result, 'Computer import')}\n\nSupported formats: Computer_Name/System_Unit_Code/Monitor_Code/Keyboard_Code/Mouse_Code, or CSV exported from the room-assets workbook.`,
+                'Import Complete'
+            );
+        } catch (err) {
+            const message = getImportErrorMessage(err, 'Failed to import computers CSV');
+            setError(message);
+            await modal.showError(message, 'Import Failed');
+        } finally {
+            setIsImportingCsv(false);
+            if (computerCsvInputRef.current) computerCsvInputRef.current.value = '';
+        }
+    };
+
+    const handleAssetCsvImport = async (file?: File) => {
+        if (!file) return;
+        if (!file.name.toLowerCase().endsWith('.csv')) {
+            await modal.showError('Please choose a .csv file. If you have an Excel workbook, export the asset sheet as CSV first.', 'Invalid File');
+            if (assetCsvInputRef.current) assetCsvInputRef.current.value = '';
+            return;
+        }
+
+        setIsImportingCsv(true);
+        setError(null);
+        try {
+            const result = await importRoomItemsCsv(file, room.Room_ID);
+            await loadAssets();
+            await modal.showSuccess(
+                `${summarizeImport(result, 'Asset import')}\n\nSupported headers: Item_Code, Item_Type, Brand, Serial_Number, Status, IsBorrowable.`,
+                'Import Complete'
+            );
+        } catch (err) {
+            const message = getImportErrorMessage(err, 'Failed to import assets CSV');
+            setError(message);
+            await modal.showError(message, 'Import Failed');
+        } finally {
+            setIsImportingCsv(false);
+            if (assetCsvInputRef.current) assetCsvInputRef.current.value = '';
+        }
+    };
+
     const updateEditItem = (index: number, field: 'brand' | 'serialNumber', value: string) => {
         setEditItems(prev => prev.map((item, i) =>
             i === index ? { ...item, [field]: value } : item
@@ -376,14 +453,36 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                 <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-gray-900">
                     {activeTab === 'Computers' && (
                         <div className="flex-1 overflow-y-auto p-6">
-                            {/* Add Computer Button */}
-                            <div className="mb-4 flex justify-end">
-                                <button
-                                    onClick={openAddComputerDialog}
-                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
-                                >
-                                    + Add Computer
-                                </button>
+                            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Computers</h3>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        Import a CSV or add a single PC with existing inventory components.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap justify-end gap-2">
+                                    <input
+                                        ref={computerCsvInputRef}
+                                        type="file"
+                                        accept=".csv,text/csv"
+                                        className="hidden"
+                                        onChange={(e) => handleComputerCsvImport(e.target.files?.[0])}
+                                    />
+                                    <button
+                                        onClick={() => computerCsvInputRef.current?.click()}
+                                        disabled={isImportingCsv}
+                                        className="px-4 py-2 border border-blue-500/60 text-blue-600 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-500/10 disabled:opacity-60 disabled:cursor-not-allowed rounded-lg text-sm font-medium transition-colors"
+                                    >
+                                        {isImportingCsv ? 'Importing...' : 'Import Computers CSV'}
+                                    </button>
+                                    <button
+                                        onClick={openAddComputerDialog}
+                                        disabled={isImportingCsv}
+                                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                                    >
+                                        + Add Computer
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Error Message */}
@@ -506,6 +605,37 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
 
                     {activeTab === 'Assets' && (
                         <div className="flex-1 flex flex-col min-h-0 p-6">
+                            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Room Assets</h3>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        Import standalone room items that are not assembled into a computer.
+                                    </p>
+                                </div>
+                                <div className="flex justify-end">
+                                    <input
+                                        ref={assetCsvInputRef}
+                                        type="file"
+                                        accept=".csv,text/csv"
+                                        className="hidden"
+                                        onChange={(e) => handleAssetCsvImport(e.target.files?.[0])}
+                                    />
+                                    <button
+                                        onClick={() => assetCsvInputRef.current?.click()}
+                                        disabled={isImportingCsv}
+                                        className="px-4 py-2 border border-blue-500/60 text-blue-600 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-500/10 disabled:opacity-60 disabled:cursor-not-allowed rounded-lg text-sm font-medium transition-colors"
+                                    >
+                                        {isImportingCsv ? 'Importing...' : 'Import Assets CSV'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {error && (
+                                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm dark:bg-red-500/20 dark:border-red-500/50 dark:text-red-400">
+                                    {error}
+                                </div>
+                            )}
+
                             {isLoadingAssets ? (
                                 <div className="flex items-center justify-center h-48">
                                     <div className="text-gray-600 dark:text-gray-400">Loading assets...</div>
