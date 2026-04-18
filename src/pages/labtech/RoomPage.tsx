@@ -20,6 +20,7 @@ type TypeFilterType = 'All Types' | RoomTypeEnum;
 // Map backend Room_Type to display name
 const roomTypeLabels: Record<RoomTypeEnum, string> = {
     CONSULTATION: 'Consultation Room',
+    CONFERENCE: 'Conference Room',
     LECTURE: 'Lecture Room',
     LAB: 'Lab',
 };
@@ -446,6 +447,7 @@ export default function Room() {
                         >
                             <option value="All Types">All Types</option>
                             <option value="LECTURE">Lecture Room</option>
+                            <option value="CONFERENCE">Conference Room</option>
                             <option value="CONSULTATION">Consultation Room</option>
                             <option value="LAB">Lab</option>
                         </select>

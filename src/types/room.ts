@@ -1,4 +1,4 @@
-export type RoomType = 'CONSULTATION' | 'LECTURE' | 'LAB';
+export type RoomType = 'CONSULTATION' | 'CONFERENCE' | 'LECTURE' | 'LAB';
 export type LabType = 'WINDOWS' | 'MAC';
 export type LabCategory = LabType | 'UNASSIGNED';
 export type RoomStatus = 'AVAILABLE' | 'IN_USE' | 'MAINTENANCE' | 'OCCUPIED' | 'RESERVED';
@@ -12,7 +12,7 @@ export const statusColors: Record<RoomStatus, string> = {
 };
 
 export const roomStatuses: RoomStatus[] = ['AVAILABLE', 'IN_USE', 'MAINTENANCE', 'OCCUPIED', 'RESERVED'];
-export const roomTypes: RoomType[] = ['CONSULTATION', 'LECTURE', 'LAB'];
+export const roomTypes: RoomType[] = ['CONSULTATION', 'CONFERENCE', 'LECTURE', 'LAB'];
 
 export interface RoomSchedule {
     Schedule_ID: number;
