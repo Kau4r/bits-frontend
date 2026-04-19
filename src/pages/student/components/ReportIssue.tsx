@@ -18,7 +18,8 @@ export default function ReportIssueModal({
   const [description, setDescription] = useState('');
   const [issueType, setIssueType] = useState('hardware');
   const [equipment, setEquipment] = useState('monitor');
-  const [editablePcNumber, setEditablePcNumber] = useState(pcNumber);
+  const isPlaceholderPc = !pcNumber || /^(unknown|n\/?a|none|-+)$/i.test(pcNumber.trim());
+  const [editablePcNumber, setEditablePcNumber] = useState(isPlaceholderPc ? '' : pcNumber);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -27,10 +28,10 @@ export default function ReportIssueModal({
 
     setIsSubmitting(true);
     try {
-      await onSubmit(description, issueType, equipment, editablePcNumber);
+      await onSubmit(description.trim(), issueType, equipment, editablePcNumber.trim());
       setDescription('');
       setEquipment('monitor');
-      setEditablePcNumber(pcNumber);
+      setEditablePcNumber(isPlaceholderPc ? '' : pcNumber);
       onClose();
     } finally {
       setIsSubmitting(false);

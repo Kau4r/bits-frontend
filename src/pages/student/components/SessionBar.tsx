@@ -8,6 +8,7 @@ import { useHeartbeatInterval } from '@/hooks/useHeartbeat';
 import { endSession } from '@/services/heartbeat';
 import { createTicket } from '@/services/tickets';
 import { getOpenedLabs, type OpenedLabRoom, type StudentUsageBooking } from '@/services/room';
+import { buildTicketLocation } from '@/lib/ticketLocation';
 
 interface SessionBarProps {
   timeSlot?: string;
@@ -125,7 +126,7 @@ export default function SessionBar({
     await createTicket({
       Reported_By_ID: user.User_ID,
       Report_Problem: description,
-      Location: `${equipment} - PC: ${editedPcNumber} | Room: ${roomName}`,
+      Location: buildTicketLocation({ equipment, pcLabel: editedPcNumber, roomName }),
       Room_ID: roomId,
       Category: categoryMap[issueType] ?? 'OTHER',
       Status: 'PENDING',

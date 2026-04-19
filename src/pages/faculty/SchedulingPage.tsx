@@ -13,6 +13,7 @@ import { getBookings } from '@/services/booking';
 import ReportIssueModal from '@/pages/student/components/ReportIssue';
 import { useBorrowingEvents } from '@/hooks/useBorrowingEvents';
 import { createTicket } from '@/services/tickets';
+import { buildTicketLocation } from '@/lib/ticketLocation';
 
 const FacultyScheduling = () => {
   const navigate = useNavigate();
@@ -473,7 +474,7 @@ const FacultyScheduling = () => {
           await createTicket({
             Reported_By_ID: user.User_ID,
             Report_Problem: description,
-            Location: `${equipment} — PC: ${pcNumber} | Room: ${currentRoom}`,
+            Location: buildTicketLocation({ equipment, pcLabel: pcNumber, roomName: currentRoom }),
             Category: categoryMap[issueType] ?? 'OTHER',
             Status: 'PENDING',
           });

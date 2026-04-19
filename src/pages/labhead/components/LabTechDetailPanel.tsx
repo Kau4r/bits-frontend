@@ -5,6 +5,7 @@ import { getReports, reviewReport } from '@/services/reports';
 import type { Ticket } from '@/types/tickets';
 import type { WeeklyReport } from '@/types/report';
 import { reportStatusLabels, reportStatusColors } from '@/types/report';
+import { formatTicketLocationDisplay } from '@/lib/ticketLocation';
 
 type LabTech = {
   dbId: number;
@@ -188,7 +189,7 @@ export default function LabTechDetailPanel({ labTech, onTicketReassigned }: Prop
                         <div className="max-w-xs truncate" title={ticket.Report_Problem}>{ticket.Report_Problem}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {ticket.Location} {ticket.Room ? `(${ticket.Room.Name})` : ''}
+                        {formatTicketLocationDisplay(ticket.Location, ticket.Room?.Name || '—')} {ticket.Room && !ticket.Location?.toLowerCase().includes(ticket.Room.Name.toLowerCase()) ? `(${ticket.Room.Name})` : ''}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                         {new Date(ticket.Created_At).toLocaleDateString()}

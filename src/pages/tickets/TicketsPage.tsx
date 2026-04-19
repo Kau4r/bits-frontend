@@ -3,6 +3,7 @@ import Table from "@/components/Table"
 import Search from "@/components/Search"
 import TicketingModal from "@/pages/tickets/components/TicketingModal"
 import { fetchTickets, archiveTicket, restoreTicket } from "@/services/tickets";
+import { formatTicketLocationDisplay } from "@/lib/ticketLocation";
 import type { Ticket } from "@/types/tickets";
 import { useNotifications } from "@/context/NotificationContext";
 import { Plus, Eye, Filter, Inbox, Archive } from "lucide-react";
@@ -297,7 +298,7 @@ export default function Tickets() {
                                         {ticket.Reported_By.User_Role.replace('_', ' ')} • {new Date(ticket.Created_At).toLocaleDateString()}
                                     </p>
                                 </div>
-                                <div className="text-sm text-gray-600 dark:text-gray-300">{ticket.Location || ticket.Room?.Name || '-'}</div>
+                                <div className="text-sm text-gray-600 dark:text-gray-300">{formatTicketLocationDisplay(ticket.Location, ticket.Room?.Name || '-')}</div>
                                 <div>
                                     <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300">
                                         {ticket.Category || 'Uncategorized'}
