@@ -6,9 +6,20 @@ import { RowPreview } from '@/pages/labtech/components/RowPreview';
 import { InlineTimeline } from '@/pages/labtech/components/InlineTimeline';
 import { StatusSelect } from '@/pages/labtech/components/StatusSelect';
 import { DeptSelect } from '@/pages/labtech/components/DeptSelect';
-import type { FormRecord, FormStatus, FormType, FormDepartment, FormAttachmentRecord } from '@/types/formtypes';
-import { formStatusColors, formStatusLabels, formDepartmentLabels, getTimelineStepsForType, getTransferDepartmentOptions } from '@/types/formtypes';
-import { getForms, createForm, updateForm as updateFormAPI, transferForm, uploadFile, addFormAttachment, resolveFormFileUrl } from '@/services/forms';
+import type { FormRecord, FormStatus, FormType, FormDepartment, FormAttachmentRecord, FormDocumentType } from '@/types/formtypes';
+import {
+  canCompleteRisForm,
+  formDocumentTypeLabels,
+  formStatusColors,
+  formStatusLabels,
+  formDepartmentLabels,
+  getMissingRisCompletionDocumentTypes,
+  getTimelineStepsForType,
+  getTransferDepartmentOptions,
+  hasVisitedFormDepartment,
+  risCompletionDocumentTypes
+} from '@/types/formtypes';
+import { getForms, createForm, updateForm as updateFormAPI, transferForm, uploadFile, addFormAttachment, resolveFormFileUrl, setFormReceived } from '@/services/forms';
 import { useAuth } from '@/context/AuthContext';
 import { useModal } from '@/context/ModalContext';
 import { useNotifications } from '@/context/NotificationContext';
@@ -54,6 +65,8 @@ export default function Forms() {
   const [editedForms, setEditedForms] = useState<Record<string, Partial<FormRecord>>>({});
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
   const [uploadingAttachmentIds, setUploadingAttachmentIds] = useState<Set<string>>(new Set());
+  const [markingReceivedIds, setMarkingReceivedIds] = useState<Set<string>>(new Set());
+  const [attachmentDocumentTypes, setAttachmentDocumentTypes] = useState<Record<string, FormDocumentType>>({});
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   // Helper to map API Form to local FormRecord
@@ -66,6 +79,7 @@ export default function Forms() {
       return {
         id: attachment.Attachment_ID.toString(),
         department: attachment.Department,
+        documentType: attachment.Document_Type || 'PROOF',
         fileName: attachment.File_Name,
         fileUrl: resolveFormFileUrl(attachment.File_URL) || attachment.File_URL,
         fileType: normalizeAttachmentType(attachment.File_Name),
@@ -79,6 +93,7 @@ export default function Forms() {
       attachments.push({
         id: `legacy-${form.Form_ID}`,
         department: form.Department,
+        documentType: 'INITIAL',
         fileName: form.File_Name,
         fileUrl: resolveFormFileUrl(form.File_URL) || form.File_URL,
         fileType: normalizeAttachmentType(form.File_Name),
@@ -101,6 +116,11 @@ export default function Forms() {
       attachmentUrl: primaryAttachment?.fileUrl,
       attachmentType: primaryAttachment?.fileType,
       attachments,
+      isReceived: form.Is_Received === true,
+      receivedAt: form.Received_At || null,
+      receivedByName: form.Receiver
+        ? `${form.Receiver.First_Name} ${form.Receiver.Last_Name}`.trim()
+        : undefined,
       history: form.History?.map(h => ({
         dept: h.Department,
         at: h.Changed_At
@@ -231,7 +251,44 @@ export default function Forms() {
     }
   };
 
-  const handleAddAttachments = async (form: FormRecord, selectedFiles: File[]) => {
+  const isRisAtOrAfterPurchasing = (form: FormRecord) =>
+    form.type === 'RIS' && hasVisitedFormDepartment(
+      form.type,
+      form.department,
+      form.history?.map(h => h.dept) || [],
+      'PURCHASING'
+    );
+
+  const getAttachmentTypeOptions = (form: FormRecord): FormDocumentType[] =>
+    isRisAtOrAfterPurchasing(form)
+      ? [...risCompletionDocumentTypes, 'PROOF', 'OTHER']
+      : ['PROOF', 'OTHER'];
+
+  const getSelectedAttachmentDocumentType = (form: FormRecord): FormDocumentType => {
+    const availableTypes = getAttachmentTypeOptions(form);
+    const selectedType = attachmentDocumentTypes[form.id];
+    return selectedType && availableTypes.includes(selectedType) ? selectedType : availableTypes[0];
+  };
+
+  const getCompletionBlockMessage = (form: FormRecord) => {
+    const missing = getMissingRisCompletionDocumentTypes(form.attachments || []);
+    const missingLabels = missing.map(type => formDocumentTypeLabels[type]);
+    const parts = [];
+
+    if (missingLabels.length > 0) {
+      parts.push(`upload ${missingLabels.join(', ')}`);
+    }
+
+    if (!form.isReceived) {
+      parts.push('mark the form as received');
+    }
+
+    return parts.length > 0
+      ? `Before completing this RIS form, ${parts.join(' and ')}.`
+      : '';
+  };
+
+  const handleAddAttachments = async (form: FormRecord, selectedFiles: File[], documentType: FormDocumentType) => {
     if (selectedFiles.length === 0) return;
 
     setUploadingAttachmentIds(prev => new Set(prev).add(form.id));
@@ -246,7 +303,8 @@ export default function Forms() {
           fileUrl: uploadResult.url,
           fileType: file.type,
           department: form.department as FormDepartment,
-          notes: `Proof uploaded for ${formDepartmentLabels[form.department as FormDepartment] || form.department}`,
+          documentType,
+          notes: `${formDocumentTypeLabels[documentType]} uploaded for ${formDepartmentLabels[form.department as FormDepartment] || form.department}`,
         });
       }
 
@@ -259,6 +317,25 @@ export default function Forms() {
       await modal.showError('Failed to add the selected file(s). Please try again.', 'Upload File Failed');
     } finally {
       setUploadingAttachmentIds(prev => {
+        const next = new Set(prev);
+        next.delete(form.id);
+        return next;
+      });
+    }
+  };
+
+  const handleToggleReceived = async (form: FormRecord, isReceived: boolean) => {
+    setMarkingReceivedIds(prev => new Set(prev).add(form.id));
+
+    try {
+      const updatedForm = await setFormReceived(parseInt(form.id), isReceived);
+      const updatedRecord = mapFormToRecord(updatedForm);
+      setForms(prev => prev.map(current => current.id === form.id ? updatedRecord : current));
+    } catch (error) {
+      console.error('Failed to update received indicator:', error);
+      await modal.showError(error instanceof Error ? error.message : 'Failed to update received indicator.', 'Received Update Failed');
+    } finally {
+      setMarkingReceivedIds(prev => {
         const next = new Set(prev);
         next.delete(form.id);
         return next;
@@ -306,6 +383,7 @@ export default function Forms() {
           fileUrl: uploadResult.url,
           fileType: file.type,
           department: payload.department as FormDepartment,
+          documentType: 'INITIAL',
           notes: 'Initial form attachment',
         })),
         department: payload.department as any,
@@ -348,11 +426,19 @@ export default function Forms() {
 
     try {
       const currentForm = forms.find(f => f.id === id);
+      if (!currentForm) return;
+
+      if (edits.department === 'COMPLETED' && currentForm.type === 'RIS' && !canCompleteRisForm(currentForm)) {
+        await modal.showError(getCompletionBlockMessage(currentForm), 'RIS Completion Blocked');
+        return;
+      }
+
       const needsFormUpdate = edits.status !== undefined || edits.remarks !== undefined;
+      let savedForm: Form | null = null;
 
       // 1. Handle form field updates
       if (needsFormUpdate) {
-        await updateFormAPI(parseInt(id), {
+        savedForm = await updateFormAPI(parseInt(id), {
           status: edits.status as any,
           // Preserve the existing title/form code if only remarks changed.
           title: currentForm?.formId || '',
@@ -362,25 +448,16 @@ export default function Forms() {
 
       // 2. Handle Department Transfer
       if (edits.department) {
-        await transferForm(parseInt(id), edits.department as any, `Transferred to ${edits.department}`);
+        savedForm = await transferForm(parseInt(id), edits.department as any, `Transferred to ${edits.department}`);
       }
 
       // Success: Apply changes locally and clear edit state
-      setForms(prev => prev.map(f => {
-        if (f.id !== id) return f;
-        let updated = {
-          ...f,
-          ...edits,
-          ...(edits.status !== undefined ? { isArchived: edits.status === 'ARCHIVED' } : {}),
-        };
-
-        // If dept changed, append history locally for immediate feedback
-        if (edits.department) {
-          const history = [...(f.history || []), { dept: edits.department, at: new Date().toISOString() }];
-          updated = { ...updated, history };
-        }
-        return updated;
-      }));
+      if (savedForm) {
+        const updatedRecord = mapFormToRecord(savedForm);
+        setForms(prev => prev.map(f => f.id === id ? updatedRecord : f));
+      } else {
+        setForms(prev => prev.map(f => f.id === id ? { ...f, ...edits } : f));
+      }
 
       setEditedForms(prev => {
         const next = { ...prev };
@@ -390,7 +467,7 @@ export default function Forms() {
 
     } catch (error) {
       console.error('Failed to save form:', error);
-      await modal.showError('Failed to save changes. Please try again.', 'Error');
+      await modal.showError(error instanceof Error ? error.message : 'Failed to save changes. Please try again.', 'Error');
     } finally {
       setSavingIds(prev => {
         const next = new Set(prev);
@@ -672,6 +749,73 @@ export default function Forms() {
                           </div>
                         </div>
 
+                        {isRisAtOrAfterPurchasing(f) && (() => {
+                          const missingDocumentTypes = getMissingRisCompletionDocumentTypes(f.attachments || []);
+                          const documentsComplete = missingDocumentTypes.length === 0;
+                          const isMarkingReceived = markingReceivedIds.has(f.id);
+
+                          return (
+                            <div className="bg-white dark:bg-gray-900 p-5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                              <h4 className="text-sm font-medium text-gray-900 dark:text-gray-300 mb-4 flex items-center gap-2">
+                                <Check className="h-4 w-4 text-emerald-500" />
+                                RIS Completion Checklist
+                              </h4>
+                              <div className="grid gap-3 sm:grid-cols-2">
+                                {risCompletionDocumentTypes.map(documentType => {
+                                  const isUploaded = !missingDocumentTypes.includes(documentType);
+                                  return (
+                                    <div
+                                      key={documentType}
+                                      className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${isUploaded
+                                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300'
+                                        : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300'
+                                        }`}
+                                    >
+                                      <span>{formDocumentTypeLabels[documentType]}</span>
+                                      {isUploaded ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+                                    </div>
+                                  );
+                                })}
+                                <div
+                                  className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${f.isReceived
+                                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300'
+                                    : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300'
+                                    }`}
+                                >
+                                  <span>
+                                    Received
+                                    {f.receivedByName ? ` by ${f.receivedByName}` : ''}
+                                  </span>
+                                  {f.isReceived ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+                                </div>
+                              </div>
+                              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                  {documentsComplete
+                                    ? 'All required RIS files are uploaded. Mark received before transferring to Completed.'
+                                    : 'Upload all required RIS files before marking the form received.'}
+                                </p>
+                                <button
+                                  type="button"
+                                  disabled={isMarkingReceived || (!documentsComplete && !f.isReceived)}
+                                  onClick={() => void handleToggleReceived(f, !f.isReceived)}
+                                  className={`inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${f.isReceived
+                                    ? 'bg-slate-600 hover:bg-slate-700'
+                                    : 'bg-emerald-600 hover:bg-emerald-700'
+                                    }`}
+                                >
+                                  {isMarkingReceived ? 'Saving...' : f.isReceived ? 'Unmark Received' : 'Mark Received'}
+                                </button>
+                              </div>
+                              {!canCompleteRisForm(f) && (
+                                <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                                  {getCompletionBlockMessage(f)}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })()}
+
                         <div className="bg-white dark:bg-gray-900 p-5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
                           <h4 className="text-sm font-medium text-gray-900 dark:text-gray-300 mb-4 flex items-center gap-2">
                             <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -688,11 +832,14 @@ export default function Forms() {
                                 f.type,
                                 f.department,
                                 f.history?.map(h => h.dept) || []
-                              )}
+                              ).map(option => ({
+                                ...option,
+                                disabled: option.disabled || (f.type === 'RIS' && option.value === 'COMPLETED' && !canCompleteRisForm(f)),
+                              }))}
                               className="w-full"
                             />
                             <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                              Locked departments appear here but can only be selected after the previous step has been visited.
+                              Locked departments appear here but can only be selected after the previous step has been visited. RIS completion also requires all procurement files and received confirmation.
                             </p>
                           </div>
                         </div>
@@ -740,7 +887,14 @@ export default function Forms() {
                                   return (
                                     <div key={attachment.id} className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/60 sm:flex-row sm:items-center sm:justify-between">
                                       <div className="min-w-0">
-                                        <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">{attachment.fileName}</p>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">{attachment.fileName}</p>
+                                          {attachment.documentType && (
+                                            <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-semibold text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
+                                              {formDocumentTypeLabels[attachment.documentType] || attachment.documentType}
+                                            </span>
+                                          )}
+                                        </div>
                                         <p className="text-xs text-gray-500 dark:text-gray-400">
                                           {formDepartmentLabels[attachment.department] || attachment.department}
                                           {attachment.uploadedByName ? ` by ${attachment.uploadedByName}` : ''}
@@ -784,20 +938,36 @@ export default function Forms() {
                               onChange={(event) => {
                                 const selectedFiles = Array.from(event.target.files || []);
                                 event.target.value = '';
-                                if (selectedFiles.length > 0) void handleAddAttachments(f, selectedFiles);
+                                if (selectedFiles.length > 0) void handleAddAttachments(f, selectedFiles, getSelectedAttachmentDocumentType(f));
                               }}
                             />
-                            <button
-                              type="button"
-                              disabled={uploadingAttachmentIds.has(f.id)}
-                              onClick={() => fileInputRefs.current[f.id]?.click()}
-                              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 border border-transparent rounded-md shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors disabled:opacity-50"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 4v12m0-12l-4 4m4-4l4 4" />
-                              </svg>
-                              {uploadingAttachmentIds.has(f.id) ? 'Uploading...' : 'Add Proof File'}
-                            </button>
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                              <select
+                                value={getSelectedAttachmentDocumentType(f)}
+                                onChange={(event) => setAttachmentDocumentTypes(prev => ({
+                                  ...prev,
+                                  [f.id]: event.target.value as FormDocumentType,
+                                }))}
+                                className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                              >
+                                {getAttachmentTypeOptions(f).map(documentType => (
+                                  <option key={documentType} value={documentType}>
+                                    {formDocumentTypeLabels[documentType]}
+                                  </option>
+                                ))}
+                              </select>
+                              <button
+                                type="button"
+                                disabled={uploadingAttachmentIds.has(f.id)}
+                                onClick={() => fileInputRefs.current[f.id]?.click()}
+                                className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 border border-transparent rounded-md shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors disabled:opacity-50"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 4v12m0-12l-4 4m4-4l4 4" />
+                                </svg>
+                                {uploadingAttachmentIds.has(f.id) ? 'Uploading...' : 'Add File'}
+                              </button>
+                            </div>
                             <p className="text-xs text-gray-500 dark:text-gray-400">
                               New files are attached to the form's current department and do not replace existing files.
                             </p>

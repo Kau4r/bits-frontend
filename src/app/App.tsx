@@ -13,6 +13,7 @@ import Login from '@/pages/Login';
 import SysAdDash from '@/pages/sysad/UserPage';
 import RoomPage from '@/pages/sysad/RoomPage';
 import ScheduleImportPage from '@/pages/sysad/ScheduleImportPage';
+import MaintenancePage from '@/pages/sysad/MaintenancePage';
 import InventoryPage from '@/pages/labtech/InventoryPage';
 import InventoryItemInfo from '@/pages/labtech/InventoryItemInfoPage';
 import Room from '@/pages/labtech/RoomPage';
@@ -110,6 +111,7 @@ function AppContent() {
         {/* Admin routes */}
         <Route path="/room" element={<ProtectedRoute roles={[ROLES.ADMIN]}><RoomPage /></ProtectedRoute>} />
         <Route path="/schedule-import" element={<ProtectedRoute roles={[ROLES.ADMIN]}><ScheduleImportPage /></ProtectedRoute>} />
+        <Route path="/maintenance" element={<ProtectedRoute roles={[ROLES.ADMIN]}><MaintenancePage /></ProtectedRoute>} />
         <Route path="/user/:email" element={<ProtectedRoute roles={[ROLES.ADMIN]}><UserDetails /></ProtectedRoute>} />
 
         {/* LabTech & LabHead routes */}

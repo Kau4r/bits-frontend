@@ -1,5 +1,5 @@
 import api from "@/services/api";
-import type { Form, FormType, FormStatus, FormDepartment } from "@/types/formtypes";
+import type { Form, FormType, FormStatus, FormDepartment, FormDocumentType } from "@/types/formtypes";
 import { getApiBaseUrl, getAppBaseUrl } from "@/utils/apiBaseUrl";
 
 interface ResolveFormFileUrlOptions {
@@ -82,6 +82,7 @@ export interface FormAttachmentInput {
     fileUrl: string;
     fileType?: string | null;
     department?: FormDepartment;
+    documentType?: FormDocumentType;
     notes?: string | null;
 }
 
@@ -132,6 +133,11 @@ export const transferForm = async (id: number, department: FormDepartment, notes
 // Add proof/supporting attachment to a form
 export const addFormAttachment = async (id: number, input: FormAttachmentInput): Promise<Form> => {
     const { data } = await api.post<Form>(`/forms/${id}/attachments`, input);
+    return data;
+};
+
+export const setFormReceived = async (id: number, isReceived: boolean): Promise<Form> => {
+    const { data } = await api.patch<Form>(`/forms/${id}/received`, { isReceived });
     return data;
 };
 

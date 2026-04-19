@@ -10,6 +10,15 @@ export type FormDepartment =
   | 'PPFO'
   | 'COMPLETED';
 
+export type FormDocumentType =
+  | 'INITIAL'
+  | 'PURCHASE_ORDER'
+  | 'DELIVERY_RECEIPT'
+  | 'RECEIVING_REPORT'
+  | 'SALES_INVOICE'
+  | 'PROOF'
+  | 'OTHER';
+
 // Display labels for UI
 export const formTypeLabels: Record<FormType, string> = {
   WRF: 'Work Request Form',
@@ -33,6 +42,23 @@ export const formDepartmentLabels: Record<FormDepartment, string> = {
   PPFO: 'PPFO',
   COMPLETED: 'Completed',
 };
+
+export const formDocumentTypeLabels: Record<FormDocumentType, string> = {
+  INITIAL: 'Initial',
+  PURCHASE_ORDER: 'Purchase Order',
+  DELIVERY_RECEIPT: 'Delivery Receipt',
+  RECEIVING_REPORT: 'Receiving Report',
+  SALES_INVOICE: 'Sales Invoice',
+  PROOF: 'Proof',
+  OTHER: 'Other',
+};
+
+export const risCompletionDocumentTypes: FormDocumentType[] = [
+  'PURCHASE_ORDER',
+  'DELIVERY_RECEIPT',
+  'RECEIVING_REPORT',
+  'SALES_INVOICE',
+];
 
 // Departments available per form type
 export const risDepartments: FormDepartment[] = [
@@ -126,6 +152,30 @@ export const getTransferDepartmentOptions = (
   }));
 };
 
+export const hasVisitedFormDepartment = (
+  formType: FormType,
+  currentDepartment: string,
+  visitedDepartments: string[] = [],
+  targetDepartment: FormDepartment
+): boolean => {
+  const { visited } = getVisitedWorkflowDepartments(formType, currentDepartment, visitedDepartments);
+  return visited.has(targetDepartment);
+};
+
+export const getMissingRisCompletionDocumentTypes = (
+  attachments: FormAttachmentRecord[] = []
+): FormDocumentType[] => {
+  const uploadedTypes = new Set(attachments.map(attachment => attachment.documentType).filter(Boolean));
+  return risCompletionDocumentTypes.filter(documentType => !uploadedTypes.has(documentType));
+};
+
+export const canCompleteRisForm = (
+  form: Pick<FormRecord, 'type' | 'isReceived' | 'attachments'>
+): boolean => {
+  if (form.type !== 'RIS') return true;
+  return form.isReceived === true && getMissingRisCompletionDocumentTypes(form.attachments || []).length === 0;
+};
+
 // Get timeline steps for a given form type
 export const getTimelineStepsForType = (formType: FormType): string[] => {
   return formType === 'RIS' ? risTimelineSteps : wrfTimelineSteps;
@@ -153,6 +203,7 @@ export interface FormAttachment {
   Attachment_ID: number;
   Form_ID: number;
   Department: FormDepartment;
+  Document_Type?: FormDocumentType | null;
   File_Name: string;
   File_Type?: string | null;
   File_URL: string;
@@ -179,6 +230,9 @@ export interface Form {
   Form_Type: FormType;
   Status: FormStatus;
   Department: FormDepartment;
+  Is_Received?: boolean;
+  Received_At?: string | null;
+  Received_By?: number | null;
   Title?: string | null;
   Content?: string | null;
   File_Name?: string | null;
@@ -189,6 +243,7 @@ export interface Form {
   Updated_At: string;
   Creator?: FormUser;
   Approver?: FormUser | null;
+  Receiver?: FormUser | null;
   History?: FormHistory[];
   Attachments?: FormAttachment[];
   Requester_Name?: string | null;
@@ -198,6 +253,7 @@ export interface Form {
 export interface FormAttachmentRecord {
   id: string;
   department: FormDepartment;
+  documentType?: FormDocumentType;
   fileName: string;
   fileUrl: string;
   fileType?: 'pdf' | 'image' | 'docx' | 'doc';
@@ -219,6 +275,9 @@ export interface FormRecord {
   attachmentType?: 'pdf' | 'image' | 'docx' | 'doc';
   attachments?: FormAttachmentRecord[];
   isArchived: boolean;
+  isReceived?: boolean;
+  receivedAt?: string | null;
+  receivedByName?: string;
   history?: Array<{ dept: string; at: string }>;
   requesterName?: string;
   remarks?: string;
