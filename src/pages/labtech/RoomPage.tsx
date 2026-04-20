@@ -10,7 +10,8 @@ import RoomCard from '@/pages/labtech/components/RoomCard'
 import TimeSlotGrid from '@/pages/labtech/components/TimeSlotGrid'
 import { useAuth } from '@/context/AuthContext'
 import Search from '@/components/Search'
-import { Filter, CalendarDays, Building2, Apple, Monitor, HelpCircle } from 'lucide-react'
+import { CalendarDays, Building2, Apple, Monitor, HelpCircle } from 'lucide-react'
+import { FloatingSelect } from '@/ui/FloatingSelect'
 
 
 type TabType = 'rooms' | 'queue';
@@ -439,34 +440,36 @@ export default function Room() {
                     </div>
 
                     {/* Type Filter */}
-                    <div className="relative">
-                        <select
+                    <div className="min-w-48">
+                        <FloatingSelect
+                            id="room-type-filter"
                             value={typeFilter}
-                            onChange={(e) => setTypeFilter(e.target.value as TypeFilterType)}
-                            className="appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-4 pr-10 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
-                        >
-                            <option value="All Types">All Types</option>
-                            <option value="LECTURE">Lecture Room</option>
-                            <option value="CONFERENCE">Conference Room</option>
-                            <option value="CONSULTATION">Consultation Room</option>
-                            <option value="LAB">Lab</option>
-                        </select>
-                        <Filter className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                            placeholder="All Types"
+                            options={[
+                                { value: 'All Types', label: 'All Types' },
+                                { value: 'LECTURE', label: 'Lecture Room' },
+                                { value: 'CONFERENCE', label: 'Conference Room' },
+                                { value: 'CONSULTATION', label: 'Consultation Room' },
+                                { value: 'LAB', label: 'Lab' },
+                            ]}
+                            onChange={(type) => setTypeFilter(type as TypeFilterType)}
+                        />
                     </div>
 
                     {/* Status Filter */}
-                    <div className="relative">
-                        <select
+                    <div className="min-w-44">
+                        <FloatingSelect
+                            id="room-status-filter"
                             value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value as StatusFilterType)}
-                            className="appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-4 pr-10 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
-                        >
-                            <option value="All Status">All Status</option>
-                            <option value="AVAILABLE">Available</option>
-                            <option value="IN_USE">In Use</option>
-                            <option value="MAINTENANCE">Maintenance</option>
-                        </select>
-                        <Filter className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                            placeholder="All Status"
+                            options={[
+                                { value: 'All Status', label: 'All Status' },
+                                { value: 'AVAILABLE', label: 'Available' },
+                                { value: 'IN_USE', label: 'In Use' },
+                                { value: 'MAINTENANCE', label: 'Maintenance' },
+                            ]}
+                            onChange={(status) => setStatusFilter(status as StatusFilterType)}
+                        />
                     </div>
 
                     {/* Results Count */}

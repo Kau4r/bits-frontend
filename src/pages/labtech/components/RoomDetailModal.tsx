@@ -7,6 +7,7 @@ import { useModal } from '@/context/ModalContext';
 import Table from '@/components/Table';
 import InventoryItemCombobox from '@/pages/labtech/components/InventoryItemCombobox';
 import { getNextComputerName, getNumberedComputers } from '@/utils/computerDisplay';
+import { FloatingSelect } from '@/ui/FloatingSelect';
 
 // Asset/Item type from inventory
 interface RoomAsset {
@@ -907,16 +908,18 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                         {/* Status */}
                         <div className="mb-4">
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Status</label>
-                            <select
+                            <FloatingSelect
+                                id="room-detail-computer-status"
                                 value={editStatus}
-                                onChange={(e) => setEditStatus(e.target.value as Computer['Status'])}
-                                className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                                <option value="AVAILABLE">Available</option>
-                                <option value="IN_USE">In Use</option>
-                                <option value="MAINTENANCE">Maintenance</option>
-                                <option value="DECOMMISSIONED">Decommissioned</option>
-                            </select>
+                                placeholder="Select status"
+                                options={[
+                                    { value: 'AVAILABLE', label: 'Available' },
+                                    { value: 'IN_USE', label: 'In Use' },
+                                    { value: 'MAINTENANCE', label: 'Maintenance' },
+                                    { value: 'DECOMMISSIONED', label: 'Decommissioned' },
+                                ]}
+                                onChange={(value) => setEditStatus(value as Computer['Status'])}
+                            />
                         </div>
 
                         {/* Teacher PC Toggle */}

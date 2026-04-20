@@ -1,5 +1,6 @@
 import type { RoomStatus } from '@/types/monitoring';
 import type { HeartbeatStatus } from '@/types/heartbeat';
+import { FloatingSelect } from '@/ui/FloatingSelect';
 
 interface FilterBarProps {
   rooms: RoomStatus[];
@@ -23,20 +24,17 @@ export default function FilterBar({
         <label htmlFor="room-filter" className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
           Room
         </label>
-        <select
+        <FloatingSelect
           id="room-filter"
           value={selectedRoomId ?? ''}
-          onChange={(e) => onRoomChange(e.target.value ? Number(e.target.value) : null)}
-          className="border border-gray-300 rounded px-3 py-2 bg-white text-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
-          aria-label="Filter by room"
-        >
-          <option value="">All Rooms</option>
-          {rooms.map(room => (
-            <option key={room.room_id} value={room.room_id}>
-              {room.room_name}
-            </option>
-          ))}
-        </select>
+          placeholder="All Rooms"
+          options={[
+            { value: '', label: 'All Rooms' },
+            ...rooms.map(room => ({ value: room.room_id, label: room.room_name })),
+          ]}
+          onChange={(roomId) => onRoomChange(roomId === '' ? null : Number(roomId))}
+          className="min-w-48"
+        />
       </div>
 
       {/* Status filter - chip toggles */}

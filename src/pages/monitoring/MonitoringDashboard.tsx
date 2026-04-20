@@ -4,9 +4,10 @@ import StatusGrid from '@/pages/monitoring/components/StatusGrid';
 import ComputerDetailModal from '@/pages/monitoring/components/ComputerDetailModal';
 import LoadingSkeleton from '@/pages/monitoring/components/LoadingSkeleton';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import { Monitor, Filter } from 'lucide-react';
+import { Monitor } from 'lucide-react';
 import Search from '@/components/Search';
 import type { HeartbeatStatus } from '@/types/heartbeat';
+import { FloatingSelect } from '@/ui/FloatingSelect';
 
 export default function MonitoringDashboard() {
   const { rooms, isLoading, error, selectedRoomId, selectedStatus, setRoomFilter, setStatusFilter } = useMonitoringData();
@@ -157,36 +158,34 @@ export default function MonitoringDashboard() {
           </div>
 
           {/* Room Filter */}
-          <div className="relative">
-            <select
+          <div className="min-w-48">
+            <FloatingSelect
+              id="monitoring-room-filter"
               value={selectedRoomId ?? ''}
-              onChange={(e) => setRoomFilter(e.target.value ? Number(e.target.value) : null)}
-              className="appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-4 pr-10 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
-            >
-              <option value="">All Rooms</option>
-              {rooms.map(room => (
-                <option key={room.room_id} value={room.room_id}>
-                  {room.room_name}
-                </option>
-              ))}
-            </select>
-            <Filter className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              placeholder="All Rooms"
+              options={[
+                { value: '', label: 'All Rooms' },
+                ...rooms.map(room => ({ value: room.room_id, label: room.room_name })),
+              ]}
+              onChange={(roomId) => setRoomFilter(roomId === '' ? null : Number(roomId))}
+            />
           </div>
 
           {/* Status Filter */}
-          <div className="relative">
-            <select
+          <div className="min-w-44">
+            <FloatingSelect
+              id="monitoring-status-filter"
               value={selectedStatus}
-              onChange={(e) => setStatusFilter(e.target.value as HeartbeatStatus | 'ALL')}
-              className="appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-4 pr-10 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
-            >
-              <option value="ALL">All Status</option>
-              <option value="ONLINE">Online</option>
-              <option value="IDLE">Idle</option>
-              <option value="WARNING">Warning</option>
-              <option value="OFFLINE">Offline</option>
-            </select>
-            <Filter className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              placeholder="All Status"
+              options={[
+                { value: 'ALL', label: 'All Status' },
+                { value: 'ONLINE', label: 'Online' },
+                { value: 'IDLE', label: 'Idle' },
+                { value: 'WARNING', label: 'Warning' },
+                { value: 'OFFLINE', label: 'Offline' },
+              ]}
+              onChange={(status) => setStatusFilter(status as HeartbeatStatus | 'ALL')}
+            />
           </div>
 
           {/* Results Count */}

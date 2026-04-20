@@ -1,11 +1,15 @@
-import { useState, useEffect } from 'react';
-import { ChevronDown, X } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import type { FormEvent } from 'react';
+import { X } from 'lucide-react';
 import type { Ticket, TicketStatus, TicketPriority, TicketCategory } from '@/types/tickets';
 import { createTicket, updateTicket } from '@/services/tickets';
 import { getRooms } from '@/services/room';
 import type { Room } from '@/types/room';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/services/api';
+import { FloatingSelect } from '@/ui/FloatingSelect';
+import { FloatingCombobox } from '@/ui/FloatingCombobox';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 
 // Asset type for item selection
 interface Asset {
@@ -33,6 +37,8 @@ export default function TicketingModal({
   isCreating,
 }: TicketingModalProps) {
   const { user } = useAuth();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, isOpen);
   const canManageTicketDetails = ['LAB_TECH', 'LAB_HEAD', 'FACULTY'].includes(user?.User_Role ?? '');
 
   const [status, setStatus] = useState<TicketStatus>('PENDING');
@@ -46,6 +52,7 @@ export default function TicketingModal({
     roomId: undefined as number | undefined,
   });
   const [feedbackMessage, setFeedbackMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [assets, setAssets] = useState<Asset[]>([]);
   const [isLoadingAssets, setIsLoadingAssets] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -68,9 +75,6 @@ export default function TicketingModal({
   const canEditExistingTicket = !isCreating && isEditingExisting && canManageTicketDetails && hasAssignedLabTech;
   const canModifyTicketFields = isCreating || canEditExistingTicket;
   const showTicketManagementFields = canManageTicketDetails || (!isCreating && (Boolean(category) || Boolean(priority)));
-  const selectClassName = "w-full pl-4 pr-11 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-none disabled:cursor-not-allowed disabled:opacity-70";
-  const selectStyle = { backgroundImage: 'none' };
-  const selectChevronClassName = "pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 dark:text-gray-400";
   const editButtonClassName = "px-4 py-2 text-white rounded-lg transition-colors text-sm font-medium shadow-sm bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed";
   const activeEditButtonClassName = "px-4 py-2 text-white rounded-lg transition-colors text-sm font-medium shadow-sm bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2";
   const saveButtonClassName = "px-4 py-2 text-white rounded-lg transition-colors text-sm font-medium shadow-sm bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed";
@@ -205,13 +209,13 @@ export default function TicketingModal({
 
   if (!isOpen) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
 
     if (!isCreating && !isEditingExisting) {
       setFeedbackMessage({
-        text: 'Click Update Ticket before saving changes.',
+        text: 'Click Edit before saving changes.',
         type: 'error',
       });
       return;
@@ -234,14 +238,22 @@ export default function TicketingModal({
     }
 
     const reportProblem = formData.reportProblem.trim();
+    const nextFieldErrors: Record<string, string> = {};
+
+    if (category === 'HARDWARE' && !formData.location.trim()) {
+      nextFieldErrors.location = 'Location is required for hardware tickets.';
+    }
+
     if (!reportProblem) {
-      setFeedbackMessage({
-        text: 'Report description cannot be empty.',
-        type: 'error',
-      });
+      nextFieldErrors.reportProblem = 'Report description cannot be empty.';
+    }
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setFieldErrors(nextFieldErrors);
       return;
     }
 
+    setFieldErrors({});
     setIsSubmitting(true);
     try {
       // Find room ID if location matches a room name
@@ -325,6 +337,10 @@ export default function TicketingModal({
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={onClose}>
       <div
+        ref={dialogRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
         className="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 w-full max-w-2xl flex flex-col max-h-[90vh]"
         onClick={e => e.stopPropagation()}
       >
@@ -354,14 +370,14 @@ export default function TicketingModal({
               : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-200'
               }`}>
               {hasAssignedLabTech
-                ? 'Click Update Ticket to modify details or status.'
+              ? 'Click Edit to modify details or status.'
                 : 'Assign this ticket to a Lab Tech before updating details or status.'}
             </div>
           )}
 
           {ticket && !isCreating && isEditingExisting && (
             <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm font-medium text-blue-800 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-200">
-              Update mode is active. Change the ticket details; Save Changes will appear after a change.
+              Editing is active. Change the ticket details; Save will appear after a change.
             </div>
           )}
 
@@ -470,26 +486,28 @@ export default function TicketingModal({
             </div>
           )}
 
-          <form id="ticket-form" onSubmit={handleSubmit} className="space-y-5">
+          <form id="ticket-form" onSubmit={handleSubmit} className="space-y-5" noValidate>
             {/* Category - First Position */}
             {showTicketManagementFields && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Category</label>
-                <div className="relative">
-                  <select
+                <div>
+                  <FloatingSelect
+                    id="ticket-category"
                     value={category}
-                    onChange={(e) => setCategory(e.target.value as TicketCategory)}
-                    className={selectClassName}
-                    style={selectStyle}
+                    placeholder="Select Category"
+                    options={[
+                      { value: 'HARDWARE', label: 'Hardware' },
+                      { value: 'SOFTWARE', label: 'Software' },
+                      { value: 'FACILITY', label: 'Facility' },
+                      { value: 'OTHER', label: 'Other' },
+                    ]}
+                    onChange={(value) => {
+                      setCategory(value as TicketCategory);
+                      setFieldErrors(prev => ({ ...prev, location: '' }));
+                    }}
                     disabled={!canModifyTicketFields}
-                  >
-                    <option value="">Select Category</option>
-                    <option value="HARDWARE">Hardware</option>
-                    <option value="SOFTWARE">Software</option>
-                    <option value="FACILITY">Facility</option>
-                    <option value="OTHER">Other</option>
-                  </select>
-                  <ChevronDown className={selectChevronClassName} strokeWidth={2.25} />
+                  />
                 </div>
               </div>
             )}
@@ -499,23 +517,21 @@ export default function TicketingModal({
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                 Location {category === 'HARDWARE' && <span className="text-red-500">*</span>}
               </label>
-              <input
-                list="room-suggestions"
-                type="text"
+              <FloatingCombobox
+                id="ticket-location"
                 value={formData.location}
-                onChange={(e) => {
-                  setFormData({ ...formData, location: e.target.value, itemId: undefined });
-                }}
-                className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                disabled={!canModifyTicketFields}
                 placeholder="Select a room or type location..."
+                options={rooms.map((room) => ({ value: room.Name, label: room.Name }))}
+                onChange={(value) => {
+                  setFormData({ ...formData, location: value, itemId: undefined });
+                  setFieldErrors(prev => ({ ...prev, location: '' }));
+                }}
+                disabled={!canModifyTicketFields}
                 required={category === 'HARDWARE'}
               />
-              <datalist id="room-suggestions">
-                {rooms.map((room) => (
-                  <option key={room.Room_ID} value={room.Name} />
-                ))}
-              </datalist>
+              {fieldErrors.location && (
+                <p className="mt-1.5 text-xs font-medium text-red-600 dark:text-red-400">{fieldErrors.location}</p>
+              )}
             </div>
 
             {/* Asset/Item Selector - Only for HARDWARE category after location is selected */}
@@ -524,23 +540,18 @@ export default function TicketingModal({
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                   Affected Item (Optional)
                 </label>
-                <div className="relative">
-                  <select
+                <div>
+                  <FloatingSelect
+                    id="ticket-item"
                     value={formData.itemId || ''}
-                    onChange={(e) => setFormData({ ...formData, itemId: e.target.value ? parseInt(e.target.value) : undefined })}
-                    className={selectClassName}
-                    style={selectStyle}
+                    placeholder="Select an item..."
+                    options={assets.map((asset) => ({
+                      value: asset.Item_ID,
+                      label: `${asset.Item_Code} - ${asset.Item_Type.replace('_', ' ')}${asset.Brand ? ` (${asset.Brand})` : ''}`,
+                    }))}
+                    onChange={(value) => setFormData({ ...formData, itemId: Number(value) })}
                     disabled={isLoadingAssets || !canModifyTicketFields}
-                  >
-                    <option value="">Select an item...</option>
-                    {assets.map((asset) => (
-                      <option key={asset.Item_ID} value={asset.Item_ID}>
-                        {asset.Item_Code} - {asset.Item_Type.replace('_', ' ')}
-                        {asset.Brand ? ` (${asset.Brand})` : ''}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className={selectChevronClassName} strokeWidth={2.25} />
+                  />
                 </div>
                 {isLoadingAssets && (
                   <p className="mt-1.5 text-xs text-gray-500">Loading assets from {formData.location}...</p>
@@ -555,20 +566,19 @@ export default function TicketingModal({
             {showTicketManagementFields && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Priority</label>
-                <div className="relative">
-                  <select
+                <div>
+                  <FloatingSelect
+                    id="ticket-priority"
                     value={priority}
-                    onChange={(e) => setPriority(e.target.value as TicketPriority)}
-                    className={selectClassName}
-                    style={selectStyle}
+                    placeholder="Select Priority"
+                    options={[
+                      { value: 'HIGH', label: 'High' },
+                      { value: 'MEDIUM', label: 'Medium' },
+                      { value: 'LOW', label: 'Low' },
+                    ]}
+                    onChange={(value) => setPriority(value as TicketPriority)}
                     disabled={!canModifyTicketFields}
-                  >
-                    <option value="">Select Priority</option>
-                    <option value="HIGH">High</option>
-                    <option value="MEDIUM">Medium</option>
-                    <option value="LOW">Low</option>
-                  </select>
-                  <ChevronDown className={selectChevronClassName} strokeWidth={2.25} />
+                  />
                 </div>
               </div>
             )}
@@ -581,31 +591,37 @@ export default function TicketingModal({
               <textarea
                 rows={4}
                 value={formData.reportProblem}
-                onChange={(e) => setFormData({ ...formData, reportProblem: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, reportProblem: e.target.value });
+                  setFieldErrors(prev => ({ ...prev, reportProblem: '' }));
+                }}
                 className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 disabled={!canModifyTicketFields}
                 required
                 placeholder="Describe the issue in detail..."
               />
+              {fieldErrors.reportProblem && (
+                <p className="mt-1.5 text-xs font-medium text-red-600 dark:text-red-400">{fieldErrors.reportProblem}</p>
+              )}
             </div>
 
             {/* Status (Only for existing tickets) */}
             {!isCreating && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Status</label>
-                <div className="relative">
-                  <select
+                <div>
+                  <FloatingSelect
+                    id="ticket-status"
                     value={status}
-                    onChange={(e) => setStatus(e.target.value as TicketStatus)}
-                    className={selectClassName}
-                    style={selectStyle}
+                    placeholder="Select status"
+                    options={[
+                      { value: 'PENDING', label: 'Pending' },
+                      { value: 'IN_PROGRESS', label: 'In Progress' },
+                      { value: 'RESOLVED', label: 'Resolved' },
+                    ]}
+                    onChange={(value) => setStatus(value as TicketStatus)}
                     disabled={!canModifyTicketFields}
-                  >
-                    <option value="PENDING">Pending</option>
-                    <option value="IN_PROGRESS">In Progress</option>
-                    <option value="RESOLVED">Resolved</option>
-                  </select>
-                  <ChevronDown className={selectChevronClassName} strokeWidth={2.25} />
+                  />
                 </div>
               </div>
             )}
@@ -628,7 +644,7 @@ export default function TicketingModal({
               disabled={!canManageTicketDetails || !hasAssignedLabTech}
               className={editButtonClassName}
             >
-              {hasAssignedLabTech ? 'Update Ticket' : 'Assign before updating'}
+              {hasAssignedLabTech ? 'Edit' : 'Assign before editing'}
             </button>
           ) : !isCreating && !hasTicketChanges ? (
             <button
@@ -636,7 +652,7 @@ export default function TicketingModal({
               onClick={() => setFeedbackMessage({ text: 'Change the ticket details before saving.', type: 'error' })}
               className={activeEditButtonClassName}
             >
-              Update Ticket Active
+              Editing
             </button>
           ) : (
             <button
@@ -645,7 +661,7 @@ export default function TicketingModal({
               disabled={isSubmitting}
               className={saveButtonClassName}
             >
-              {isSubmitting ? 'Saving...' : isCreating ? 'Create Ticket' : 'Save Changes'}
+              {isSubmitting ? 'Saving...' : isCreating ? 'Create Ticket' : 'Save'}
             </button>
           )}
         </div>

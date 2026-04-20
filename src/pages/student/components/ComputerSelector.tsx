@@ -4,6 +4,7 @@ import { getComputers } from '@/services/computers';
 import type { Computer as HeartbeatComputer } from '@/types/heartbeat';
 import type { Computer as ServiceComputer } from '@/services/computers';
 import { getNumberedComputers } from '@/utils/computerDisplay';
+import { FloatingSelect } from '@/ui/FloatingSelect';
 
 export const ComputerSelector: React.FC = () => {
   const { startHeartbeat } = useHeartbeat();
@@ -72,18 +73,16 @@ export const ComputerSelector: React.FC = () => {
         <p className="text-sm font-medium text-yellow-900 mb-2">
           Auto-detection failed. Please select your computer manually:
         </p>
-        <select
+        <FloatingSelect
+          id="manual-computer-select"
           value={selectedId}
-          onChange={(e) => setSelectedId(e.target.value)}
-          className="w-full p-2 border border-yellow-300 rounded-md bg-white focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-        >
-          <option value="">Select a computer...</option>
-          {numberedComputers.map(({ computer, displayName, originalName, wasRenumbered }) => (
-            <option key={computer.Computer_ID} value={computer.Computer_ID}>
-              {displayName}{wasRenumbered ? ` (${originalName})` : ''} - {computer.Room?.Name || 'Unknown Room'}
-            </option>
-          ))}
-        </select>
+          placeholder="Select a computer..."
+          options={numberedComputers.map(({ computer, displayName, originalName, wasRenumbered }) => ({
+            value: String(computer.Computer_ID),
+            label: `${displayName}${wasRenumbered ? ` (${originalName})` : ''} - ${computer.Room?.Name || 'Unknown Room'}`,
+          }))}
+          onChange={setSelectedId}
+        />
       </div>
       <button
         onClick={handleSelect}

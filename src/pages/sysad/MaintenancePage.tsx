@@ -2,6 +2,7 @@
 import { AlertTriangle, Database, RefreshCw, ShieldCheck, Trash2 } from 'lucide-react';
 import { useModal } from '@/context/ModalContext';
 import { getCleanupPreview, runCleanup, type CleanupPreview } from '@/services/maintenance';
+import { SysAdEyebrow, SysAdPageShell } from '@/pages/sysad/components/SysAdPageShell';
 
 const formatLabel = (value: string) => value
   .replace(/([a-z])([A-Z])/g, '$1 $2')
@@ -9,13 +10,13 @@ const formatLabel = (value: string) => value
   .replace(/\b\w/g, char => char.toUpperCase());
 
 const CountGrid = ({ title, counts, tone }: { title: string; counts: Record<string, number>; tone: string }) => (
-  <section className={`rounded-2xl border p-5 ${tone}`}>
+  <section className={`min-h-0 rounded-2xl border p-4 ${tone}`}>
     <h2 className="text-sm font-bold uppercase tracking-[0.18em] opacity-80">{title}</h2>
-    <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+    <div className="mt-3 grid gap-2 sm:grid-cols-2 2xl:grid-cols-3">
       {Object.entries(counts).map(([key, value]) => (
-        <div key={key} className="rounded-xl border border-white/10 bg-white/60 p-3 dark:bg-slate-950/30">
+        <div key={key} className="rounded-xl border border-white/10 bg-white/60 p-2.5 dark:bg-slate-950/30">
           <p className="text-xs font-semibold uppercase tracking-wide opacity-70">{formatLabel(key)}</p>
-          <p className="mt-1 text-2xl font-black">{value ?? 0}</p>
+          <p className="mt-1 text-xl font-black">{value ?? 0}</p>
         </div>
       ))}
     </div>
@@ -80,36 +81,24 @@ export default function MaintenancePage() {
   };
 
   return (
-    <div className="flex min-h-full w-full flex-col bg-white p-6 text-slate-950 dark:bg-gray-900 dark:text-white sm:px-8 lg:px-10">
-      <div className="mx-auto w-full max-w-7xl space-y-6">
-        <header className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
-          <div className="relative p-6 sm:p-8">
-            <div className="absolute right-0 top-0 h-32 w-32 rounded-bl-full bg-red-500/10" />
-            <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-red-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-red-700 dark:bg-red-500/15 dark:text-red-300">
-                  <ShieldCheck className="h-4 w-4" />
-                  Admin Maintenance
-                </div>
-                <h1 className="text-3xl font-black tracking-tight">Operational Data Cleanup</h1>
-                <p className="mt-2 max-w-3xl text-sm text-slate-600 dark:text-slate-300">
-                  Clears operational activity while preserving users, room records, inventory items, and computer records. This does not delete uploaded files from disk.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => void loadPreview()}
-                disabled={loading || running}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
-              >
-                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                Refresh Preview
-              </button>
-            </div>
-          </div>
-        </header>
-
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200">
+    <SysAdPageShell
+      eyebrow={<SysAdEyebrow><ShieldCheck className="h-4 w-4" />Admin Maintenance</SysAdEyebrow>}
+      title="Operational Data Cleanup"
+      description="Clears operational activity while preserving users, room records, inventory items, and computer records. This does not delete uploaded files from disk."
+      action={(
+        <button
+          type="button"
+          onClick={() => void loadPreview()}
+          disabled={loading || running}
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+        >
+          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          Refresh Preview
+        </button>
+      )}
+    >
+      <div className="flex h-full min-h-0 flex-col gap-4">
+        <div className="shrink-0 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200">
           <div className="flex gap-3">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
             <div>
@@ -126,14 +115,14 @@ export default function MaintenancePage() {
             Loading cleanup preview...
           </div>
         ) : preview ? (
-          <>
-            <div className="grid gap-5 xl:grid-cols-3">
+          <div className="grid min-h-0 flex-1 gap-4 2xl:grid-cols-[1fr_1fr_1fr_1.05fr]">
+            <div className="grid min-h-0 gap-4 xl:grid-cols-3 2xl:col-span-3">
               <CountGrid title="Will Delete" counts={preview.willDelete} tone="border-red-200 bg-red-50 text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200" />
               <CountGrid title="Will Reset" counts={preview.willReset} tone="border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200" />
               <CountGrid title="Will Preserve" counts={preview.willPreserve} tone="border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200" />
             </div>
 
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+            <section className="min-h-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
               <div className="flex items-start gap-3">
                 <Database className="mt-1 h-5 w-5 text-red-500" />
                 <div className="flex-1">
@@ -159,9 +148,9 @@ export default function MaintenancePage() {
                 </div>
               </div>
             </section>
-          </>
+          </div>
         ) : null}
       </div>
-    </div>
+    </SysAdPageShell>
   );
 }

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -24,7 +25,7 @@ export default function Login() {
       ? `${redirectFrom.pathname}${redirectFrom.search ?? ''}${redirectFrom.hash ?? ''}`
       : null;
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
 
@@ -122,7 +123,7 @@ export default function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
-                // placeholder="Enter password"
+                  placeholder="********"
                 />
               </div>
             </div>

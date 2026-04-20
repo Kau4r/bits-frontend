@@ -9,6 +9,7 @@ import type { Room } from '@/types/room';
 import { getInventory } from '@/services/inventory';
 import { getRooms } from '@/services/room';
 import { buildInventoryItemPath, parseInventoryQrValue } from '@/utils/inventoryQr';
+import { FloatingSelect } from '@/ui/FloatingSelect';
 
 const InventoryMobilePage = () => {
     const navigate = useNavigate();
@@ -161,29 +162,35 @@ const InventoryMobilePage = () => {
                     >
                         <div>
                             <label className="text-sm font-medium text-gray-900 dark:text-white">Type</label>
-                            <select
-                                className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                            <FloatingSelect
+                                id="mobile-inventory-type"
                                 value={selectedType}
-                                onChange={e => setSelectedType(e.target.value)}
-                            >
-                                <option>All Types</option>
-                                {[...new Set(inventory.map(i => i.Item_Type).filter(Boolean))].map(type => (
-                                    <option key={type}>{type}</option>
-                                ))}
-                            </select>
+                                placeholder="All Types"
+                                options={[
+                                    { value: 'All Types', label: 'All Types' },
+                                    ...[...new Set(inventory.map(i => i.Item_Type).filter(Boolean))].map(type => ({
+                                        value: type,
+                                        label: type,
+                                    })),
+                                ]}
+                                onChange={setSelectedType}
+                            />
                         </div>
                         <div>
                             <label className="text-sm font-medium text-gray-900 dark:text-white">Status</label>
-                            <select
-                                className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                            <FloatingSelect
+                                id="mobile-inventory-status"
                                 value={selectedStatus}
-                                onChange={e => setSelectedStatus(e.target.value)}
-                            >
-                                <option>All Status</option>
-                                {inventoryStatuses.map(status => (
-                                    <option key={status}>{status}</option>
-                                ))}
-                            </select>
+                                placeholder="All Status"
+                                options={[
+                                    { value: 'All Status', label: 'All Status' },
+                                    ...inventoryStatuses.map(status => ({
+                                        value: status,
+                                        label: status,
+                                    })),
+                                ]}
+                                onChange={setSelectedStatus}
+                            />
                         </div>
                         <button
                             className="w-full bg-indigo-600 text-white mt-3 py-2 rounded-md"

@@ -9,15 +9,14 @@ import { getInventory } from '@/services/inventory';
 import type { Item } from '@/types/inventory';
 import Search from '@/components/Search';
 import {
-    Filter,
     Inbox,
     CheckCircle,
     List,
     RefreshCw,
     AlertTriangle,
-    Clock,
-    ArrowUpDown
+    Clock
 } from 'lucide-react';
+import { FloatingSelect } from '@/ui/FloatingSelect';
 
 type TabType = 'pending' | 'active' | 'all';
 type StatusFilter = 'all' | 'PENDING' | 'APPROVED' | 'BORROWED' | 'OVERDUE' | 'RETURNED' | 'REJECTED';
@@ -326,34 +325,36 @@ export default function Borrowing() {
                         />
                     </div>
                     {activeTab === 'all' && (
-                        <div className="relative">
-                            <select
+                        <div className="min-w-44">
+                            <FloatingSelect
+                                id="borrowing-status-filter"
                                 value={statusFilter}
-                                onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-                                className="appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-4 pr-10 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
-                            >
-                                <option value="all">All Status</option>
-                                <option value="PENDING">Pending</option>
-                                <option value="APPROVED">Approved</option>
-                                <option value="BORROWED">Borrowed</option>
-                                <option value="OVERDUE">Overdue</option>
-                                <option value="RETURNED">Returned</option>
-                                <option value="REJECTED">Rejected</option>
-                            </select>
-                            <Filter className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                                placeholder="All Status"
+                                options={[
+                                    { value: 'all', label: 'All Status' },
+                                    { value: 'PENDING', label: 'Pending' },
+                                    { value: 'APPROVED', label: 'Approved' },
+                                    { value: 'BORROWED', label: 'Borrowed' },
+                                    { value: 'OVERDUE', label: 'Overdue' },
+                                    { value: 'RETURNED', label: 'Returned' },
+                                    { value: 'REJECTED', label: 'Rejected' },
+                                ]}
+                                onChange={(status) => setStatusFilter(status as StatusFilter)}
+                            />
                         </div>
                     )}
-                    <div className="relative">
-                        <select
+                    <div className="min-w-44">
+                        <FloatingSelect
+                            id="borrowing-sort-filter"
                             value={sortBy}
-                            onChange={(e) => setSortBy(e.target.value as SortOption)}
-                            className="appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-4 pr-10 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
-                        >
-                            <option value="newest">Newest First</option>
-                            <option value="oldest">Oldest First</option>
-                            <option value="due_soonest">Due Soonest</option>
-                        </select>
-                        <ArrowUpDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                            placeholder="Sort"
+                            options={[
+                                { value: 'newest', label: 'Newest First' },
+                                { value: 'oldest', label: 'Oldest First' },
+                                { value: 'due_soonest', label: 'Due Soonest' },
+                            ]}
+                            onChange={(sort) => setSortBy(sort as SortOption)}
+                        />
                     </div>
                     <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                         <span className="font-semibold text-gray-900 dark:text-white">{filteredRequests.length}</span>

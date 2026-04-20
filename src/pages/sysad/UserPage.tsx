@@ -1,11 +1,13 @@
 import Table, { type SortConfig, type SortDirection } from '@/components/Table'
 import Search from '@/components/Search'
 import { useEffect, useState, useMemo } from 'react'
-import { Users, Filter } from 'lucide-react'
+import { Users } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { fetchUsers } from '@/services/user'
 import type { User } from '@/types/user'
 import { ROLES, type User_Role } from "@/types/user"
+import { FloatingSelect } from '@/ui/FloatingSelect'
+import { SysAdEyebrow, SysAdPageShell } from '@/pages/sysad/components/SysAdPageShell'
 
 
 export function formatRole(role?: string | null) {
@@ -175,35 +177,34 @@ export default function SysAdDash() {
   }
 
   return (
-    <div className="flex h-full w-full flex-col bg-white p-6 sm:px-8 lg:px-10 dark:bg-gray-900">
-      {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Account Management</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Manage user accounts, roles, and permissions</p>
-        </div>
-      </div>
-
-      {/* Filters Bar */}
-      <div className="mb-6 flex flex-wrap items-center gap-3">
+    <SysAdPageShell
+      eyebrow={<SysAdEyebrow><Users className="h-4 w-4" />Admin Accounts</SysAdEyebrow>}
+      title="Account Management"
+      description="Manage user accounts, roles, active access, and account lookup."
+    >
+      <div className="flex h-full min-h-0 flex-col gap-4">
+      <div className="shrink-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <div className="flex flex-wrap items-center gap-3">
         {/* Search */}
         <div className="min-w-[280px] flex-1">
           <Search searchTerm={searchTerm} onChange={setSearchTerm} showLabel={false} placeholder="Search by name or email..." />
         </div>
 
         {/* Role Filter */}
-        <div className="relative">
-          <select
+        <div className="min-w-[180px]">
+          <FloatingSelect
+            id="user-role-filter"
             value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value as User_Role | 'ALL')}
-            className="appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-4 pr-10 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
-          >
-            <option value="ALL">All Roles</option>
-            {Object.values(ROLES).map((role) => (
-              <option key={role} value={role}>{formatRole(role)}</option>
-            ))}
-          </select>
-          <Filter className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            placeholder="All Roles"
+            options={[
+              { value: 'ALL', label: 'All Roles' },
+              ...Object.values(ROLES).map((role) => ({
+                value: role,
+                label: formatRole(role),
+              })),
+            ]}
+            onChange={(value) => setRoleFilter(value as User_Role | 'ALL')}
+          />
         </div>
 
         {/* Status Toggle */}
@@ -233,6 +234,7 @@ export default function SysAdDash() {
           <span className="font-semibold text-gray-900 dark:text-white">{filteredAndSortedUsers.length}</span>
           <span>of {users.length} users</span>
         </div>
+      </div>
       </div>
 
       <div className="flex-1 min-h-0">
@@ -305,6 +307,7 @@ export default function SysAdDash() {
           )}
         </Table>
       </div>
-    </div>
+      </div>
+    </SysAdPageShell>
   )
 }

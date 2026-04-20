@@ -36,6 +36,9 @@ export default function Scheduling() {
   const [selectedRooms, setSelectedRooms] = useState<number[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showReportIssueModal, setShowReportIssueModal] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() =>
+    typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : false
+  );
 
   // Borrowing requests state (for faculty users)
   const [borrowingRequests, setBorrowingRequests] = useState<BorrowingRequest[]>([]);
@@ -107,7 +110,7 @@ export default function Scheduling() {
     try {
       const bookings = await getBookings();
       const mapped = bookings
-        .filter((b: Booking) => b.Status !== 'CANCELLED' && (b.Status !== 'REJECTED' || b.User_ID === currentUserId))
+        .filter((b: Booking) => b.Status !== 'CANCELLED' && b.Status !== 'REJECTED')
         .map((b: Booking) => ({
           id: String(b.Booked_Room_ID),
           title: b.Purpose ?? 'No Title',
@@ -186,6 +189,11 @@ export default function Scheduling() {
     };
     loadInitialData();
   }, [userRole, currentUserId, loadBookings]);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDarkMode);
+    localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode]);
 
   const updateCurrentDate = () => {
     const api: CalendarApi | undefined = calendarRef.current?.getApi();
@@ -538,15 +546,16 @@ export default function Scheduling() {
     e.extendedProps.status !== 'REJECTED'
   );
 
+  const scheduleColor = '#6f7f8f';
+
   const statusColor: Record<string, string> = {
     APPROVED: '#22c55e',
     PENDING: '#eab308',
-    REJECTED: '#ef4444',
     CANCELLED: '#6b7280'
   };
 
   return (
-    <div className="flex h-full bg-gray-50 dark:bg-gray-900">
+    <div className="flex h-full bg-[#f4f7fa] dark:bg-[#232b35]">
       {/* Left Sidebar */}
       <CalendarSidebar
         rooms={rooms}
@@ -564,7 +573,7 @@ export default function Scheduling() {
         onCreateClick={handleCreateClick}
         borrowingRequests={borrowingRequests}
         showBorrowingRequests={userRole === 'FACULTY'}
-        myBookings={events.filter(e => e.extendedProps.createdById === currentUserId)}
+        myBookings={events.filter(e => e.extendedProps.createdById === currentUserId && e.extendedProps.status !== 'REJECTED')}
         onBookingClick={(booking) => {
           const start = new Date(booking.start);
           const end = new Date(booking.end);
@@ -597,47 +606,66 @@ export default function Scheduling() {
       {/* Main Calendar Area */}
       <div className="flex-1 flex flex-col min-h-0">
         {/* Top Navigation */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between border-b border-slate-200 bg-white/90 px-4 py-3 shadow-sm shadow-slate-200/60 dark:border-[#3c4653] dark:bg-[#232b35] dark:shadow-none">
           <div className="flex items-center gap-4">
+            <div className="mr-2 hidden lg:block">
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{selectedRooms.length} room{selectedRooms.length === 1 ? '' : 's'} visible</p>
+            </div>
             <button
               onClick={goToToday}
-              className="px-4 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="rounded-lg border border-slate-200 bg-white px-4 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-[#4a5563] dark:bg-transparent dark:text-gray-300 dark:hover:bg-[#2b3440]"
             >
               Today
             </button>
             <div className="flex items-center gap-1">
-              <button onClick={goToPrev} className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full">
+              <button onClick={goToPrev} className="rounded-full p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-[#2b3440] dark:hover:text-white">
                 ‹
               </button>
-              <button onClick={goToNext} className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full">
+              <button onClick={goToNext} className="rounded-full p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-[#2b3440] dark:hover:text-white">
                 ›
               </button>
             </div>
-            <h1 className="text-xl font-medium text-gray-900 dark:text-white">{currentDate}</h1>
+            <h1 className="text-xl font-semibold text-slate-900 dark:text-white">{currentDate}</h1>
+            <div className="hidden items-center gap-3 rounded-lg bg-slate-100 px-3 py-1.5 text-xs text-slate-600 dark:bg-white/[0.05] dark:text-slate-300 xl:flex">
+              <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-green-500" />Approved</span>
+              <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-yellow-500" />Pending</span>
+            </div>
           </div>
 
-          {/* View Selector */}
-          <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
-            {(['timeGridDay', 'timeGridWeek', 'dayGridMonth', 'listWeek'] as const).map((view) => (
+          <div className="flex items-center gap-3">
+            {userRole === 'SECRETARY' && (
               <button
-                key={view}
-                onClick={() => {
-                  setCalendarView(view);
-                  calendarRef.current?.getApi()?.changeView(view);
-                }}
-                className={`px-3 py-1.5 text-sm rounded-md transition-colors ${calendarView === view
-                  ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                  }`}
+                type="button"
+                onClick={() => setIsDarkMode(prev => !prev)}
+                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-[#4a5563] dark:bg-[#2b3440] dark:text-gray-300 dark:hover:bg-[#34404d]"
               >
-                {view === 'timeGridDay' ? 'Day' : view === 'timeGridWeek' ? 'Week' : view === 'dayGridMonth' ? 'Month' : 'List'}
+                {isDarkMode ? 'Light mode' : 'Dark mode'}
               </button>
-            ))}
+            )}
+
+            {/* View Selector */}
+            <div className="flex rounded-lg bg-slate-100 p-1 ring-1 ring-slate-200 dark:bg-[#2b3440] dark:ring-transparent">
+              {(['timeGridDay', 'timeGridWeek', 'dayGridMonth', 'listWeek'] as const).map((view) => (
+                <button
+                  key={view}
+                  onClick={() => {
+                    setCalendarView(view);
+                    calendarRef.current?.getApi()?.changeView(view);
+                  }}
+                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${calendarView === view
+                    ? 'bg-white text-slate-900 shadow-sm dark:bg-[#3a4451] dark:text-white'
+                    : 'text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white'
+                    }`}
+                >
+                  {view === 'timeGridDay' ? 'Day' : view === 'timeGridWeek' ? 'Week' : view === 'dayGridMonth' ? 'Month' : 'List'}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Calendar */}
-        <div className="flex-1 overflow-auto p-2">
+        <div className="flex-1 overflow-auto p-4">
           <FullCalendar
             ref={calendarRef}
             plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
@@ -666,7 +694,10 @@ export default function Scheduling() {
             }}
             eventMouseLeave={() => setTooltipInfo(prev => ({ ...prev, visible: false }))}
             events={filteredEvents}
-            eventBorderColor="transparent"
+            eventColor={scheduleColor}
+            eventBackgroundColor={scheduleColor}
+            eventBorderColor={scheduleColor}
+            eventTextColor="#ffffff"
             eventContent={({ event }) => {
               const status = event.extendedProps.status as string;
               const timeText = event.start && event.end
@@ -675,7 +706,7 @@ export default function Scheduling() {
 
               return (
                 <div
-                  className="relative h-full overflow-hidden rounded px-2 py-1 pr-5 text-xs"
+                  className="relative h-full w-full overflow-hidden rounded px-2 py-1 pr-5 text-xs text-white"
                 >
                   <span
                     className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full ring-1 ring-white/70 dark:ring-gray-900/70"
@@ -684,7 +715,7 @@ export default function Scheduling() {
                     aria-label={`Status: ${status}`}
                   />
                   <div className="font-medium truncate">{event.title}</div>
-                  <div className="text-gray-500 dark:text-gray-300 opacity-75">{timeText}</div>
+                  <div className="text-white/75">{timeText}</div>
                 </div>
               );
             }}

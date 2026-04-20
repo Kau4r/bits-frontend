@@ -4,11 +4,13 @@ import { type Room, type RoomStatus, roomStatuses } from "@/types/room";
 import RoomCard from "@/pages/sysad/components/RoomCard";
 import RoomModal from "@/pages/sysad/components/RoomModal";
 import Search from "@/components/Search";
-import { Plus, Building2, Filter } from "lucide-react";
+import { Plus, Building2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useModal } from "@/context/ModalContext";
 import toast from "react-hot-toast";
 import { sortRoomsForDisplay } from "@/utils/roomSort";
+import { FloatingSelect } from "@/ui/FloatingSelect";
+import { SysAdEyebrow, SysAdPageShell } from "@/pages/sysad/components/SysAdPageShell";
 
 export default function RoomPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -153,15 +155,13 @@ export default function RoomPage() {
   }
 
   return (
-    <div className="h-full w-full bg-white p-6 sm:px-8 lg:px-10 dark:bg-gray-900">
-      {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Room Management</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Manage rooms, capacity, and availability</p>
-        </div>
+    <SysAdPageShell
+      eyebrow={<SysAdEyebrow><Building2 className="h-4 w-4" />Admin Rooms</SysAdEyebrow>}
+      title="Room Management"
+      description="Manage rooms, capacity, availability, and lab room setup."
+      action={(
         <button
-          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-500 hover:shadow-md focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none active:bg-indigo-700"
+          className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-500 hover:shadow-md focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none active:bg-indigo-700"
           onClick={() => {
             setSelectedRoom(null);
             setModalMode("add");
@@ -171,28 +171,33 @@ export default function RoomPage() {
           <Plus className="h-5 w-5" />
           Add Room
         </button>
-      </div>
+      )}
+    >
+      <div className="flex h-full min-h-0 flex-col gap-4">
 
       {/* Filters Bar */}
-      <div className="mb-6 flex flex-wrap items-center gap-3">
+      <div className="shrink-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <div className="flex flex-wrap items-center gap-3">
         {/* Search */}
         <div className="min-w-[280px] flex-1">
           <Search searchTerm={searchTerm} onChange={setSearchTerm} showLabel={false} placeholder="Search by name or type..." />
         </div>
 
         {/* Status Filter */}
-        <div className="relative">
-          <select
+        <div className="min-w-[180px]">
+          <FloatingSelect
+            id="room-status-filter"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as RoomStatus | 'ALL')}
-            className="appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-4 pr-10 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
-          >
-            <option value="ALL">All Status</option>
-            {roomStatuses.map((status) => (
-              <option key={status} value={status}>{formatStatus(status)}</option>
-            ))}
-          </select>
-          <Filter className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            placeholder="All Status"
+            options={[
+              { value: 'ALL', label: 'All Status' },
+              ...roomStatuses.map((status) => ({
+                value: status,
+                label: formatStatus(status),
+              })),
+            ]}
+            onChange={(value) => setStatusFilter(value as RoomStatus | 'ALL')}
+          />
         </div>
 
         {/* Results Count */}
@@ -201,9 +206,10 @@ export default function RoomPage() {
           <span>of {rooms.length} rooms</span>
         </div>
       </div>
+      </div>
 
       {filteredRooms.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12">
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white py-12 shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <Building2 className="h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
             {hasActiveFilters ? "No rooms match your filters" : "No rooms yet"}
@@ -238,7 +244,8 @@ export default function RoomPage() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {filteredRooms.map((room) => (
             <RoomCard
               key={room.Room_ID}
@@ -250,6 +257,7 @@ export default function RoomPage() {
               }}
             />
           ))}
+        </div>
         </div>
       )}
 
@@ -265,6 +273,7 @@ export default function RoomPage() {
           onEditMode={() => setModalMode("edit")}
         />
       )}
-    </div>
+      </div>
+    </SysAdPageShell>
   );
 }

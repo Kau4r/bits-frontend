@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import type { FormEvent } from 'react';
+import { FloatingSelect } from '@/ui/FloatingSelect';
 
 interface ReportIssueModalProps {
   isOpen: boolean;
@@ -22,7 +24,7 @@ export default function ReportIssueModal({
   const [editablePcNumber, setEditablePcNumber] = useState(isPlaceholderPc ? '' : pcNumber);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!description || !equipment) return;
 
@@ -86,36 +88,37 @@ export default function ReportIssueModal({
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Issue
             </label>
-            <select
+            <FloatingSelect
+              id="report-issue-type"
               value={issueType}
-              onChange={(e) => setIssueType(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-            >
-              <option value="hardware">Hardware</option>
-              <option value="software">Software</option>
-              <option value="network">Network</option>
-              <option value="other">Other</option>
-            </select>
+              placeholder="Select issue"
+              options={[
+                { value: 'hardware', label: 'Hardware' },
+                { value: 'software', label: 'Software' },
+                { value: 'network', label: 'Network' },
+                { value: 'other', label: 'Other' },
+              ]}
+              onChange={setIssueType}
+            />
           </div>
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Select Equipment
             </label>
-            <select
+            <FloatingSelect
               id="equipment"
               value={equipment}
-              onChange={(e) => setEquipment(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-              required
+              placeholder="Select equipment"
+              options={[
+                { value: 'monitor', label: 'Monitor' },
+                { value: 'keyboard', label: 'Keyboard' },
+                { value: 'mouse', label: 'Mouse' },
+                { value: 'system-unit', label: 'System Unit' },
+                { value: 'headset', label: 'Headset' },
+              ]}
+              onChange={setEquipment}
               disabled={isSubmitting}
-            >
-              <option value="">Select equipment</option>
-              <option value="monitor">Monitor</option>
-              <option value="keyboard">Keyboard</option>
-              <option value="mouse">Mouse</option>
-              <option value="system-unit">System Unit</option>
-              <option value="headset">Headset</option>
-            </select>
+            />
           </div>
 
           <div>

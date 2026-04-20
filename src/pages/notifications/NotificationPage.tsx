@@ -2,8 +2,9 @@ import { useState, useMemo } from 'react';
 import { useNotifications } from '@/context/NotificationContext';
 import NotificationCard from '@/components/NotificationCard';
 import Search from '@/components/Search';
-import { Filter, Bell, Inbox, Archive, CheckCircle } from 'lucide-react';
+import { Bell, Inbox, Archive, CheckCircle } from 'lucide-react';
 import type { Notification, NotificationView, NotificationType } from '@/types/notification';
+import { FloatingSelect } from '@/ui/FloatingSelect';
 
 
 const notificationTypes: NotificationType[] = ['System', 'Issue Report', 'Asset Request', 'Form Update'];
@@ -186,20 +187,17 @@ export default function NotificationPage() {
         </div>
 
         {/* Type Filter */}
-        <div className="relative">
-          <select
+        <div className="min-w-48">
+          <FloatingSelect
+            id="notification-type-filter"
             value={selectedType}
-            onChange={(e) => setSelectedType(e.target.value as NotificationType | 'All')}
-            className="appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-4 pr-10 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
-          >
-            <option value="All">All Types</option>
-            {notificationTypes.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
-          <Filter className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            placeholder="All Types"
+            options={[
+              { value: 'All', label: 'All Types' },
+              ...notificationTypes.map((type) => ({ value: type, label: type })),
+            ]}
+            onChange={(type) => setSelectedType(type as NotificationType | 'All')}
+          />
         </div>
       </div>
 

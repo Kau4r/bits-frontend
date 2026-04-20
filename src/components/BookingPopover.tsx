@@ -1,8 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
+import type { FormEvent } from 'react';
 import dayjs from 'dayjs';
-import { AlignLeft, Check, ChevronDown, Clock3, MapPin, Trash2, UserRound, X } from 'lucide-react';
+import { AlignLeft, Check, Clock3, MapPin, Trash2, UserRound, X } from 'lucide-react';
 import type { Room } from '@/types/room';
 import { useModal } from '@/context/ModalContext';
+import { FloatingSelect } from '@/ui/FloatingSelect';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 
 interface ViewingBooking {
     id: string;
@@ -135,6 +138,7 @@ export default function BookingPopover({
 
     const popoverRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+    useFocusTrap(popoverRef, isOpen);
 
     useEffect(() => {
         if (!isOpen) return;
@@ -190,8 +194,10 @@ export default function BookingPopover({
 
     const selectedRoom = rooms.find(r => r.Room_ID === roomId);
     const currentStatus = getStatusTheme(viewingBooking?.status);
+    const timeOptions = TIME_OPTIONS.map(t => ({ value: t, label: formatTimeDisplay(t) }));
+    const roomOptions = rooms.map(room => ({ value: room.Room_ID, label: room.Name }));
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
         if (!title.trim() || !roomId) return;
 
@@ -232,7 +238,10 @@ export default function BookingPopover({
         <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-[2px]" onClick={onClose}>
             <div
                 ref={popoverRef}
-                className="flex max-h-[92vh] w-full max-w-[520px] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/30 dark:border-white/10 dark:bg-[#111827]"
+                tabIndex={-1}
+                role="dialog"
+                aria-modal="true"
+                className="flex max-h-[90vh] w-full max-w-[520px] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/30 dark:border-white/10 dark:bg-[#111827]"
                 onClick={e => e.stopPropagation()}
             >
                 <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/90 px-5 py-3 dark:border-white/10 dark:bg-white/[0.03]">
@@ -370,27 +379,21 @@ export default function BookingPopover({
                                             required
                                         />
                                         <label className="sr-only" htmlFor="booking-start-time">Start time</label>
-                                        <select
+                                        <FloatingSelect
                                             id="booking-start-time"
                                             value={startTimeValue}
-                                            onChange={(e) => setStartTimeValue(e.target.value)}
-                                            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:focus:border-cyan-300 dark:focus:ring-cyan-300/20"
-                                        >
-                                            {TIME_OPTIONS.map((t) => (
-                                                <option key={`start-${t}`} value={t}>{formatTimeDisplay(t)}</option>
-                                            ))}
-                                        </select>
+                                            placeholder="Start time"
+                                            options={timeOptions}
+                                            onChange={setStartTimeValue}
+                                        />
                                         <label className="sr-only" htmlFor="booking-end-time">End time</label>
-                                        <select
+                                        <FloatingSelect
                                             id="booking-end-time"
                                             value={endTimeValue}
-                                            onChange={(e) => setEndTimeValue(e.target.value)}
-                                            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:focus:border-cyan-300 dark:focus:ring-cyan-300/20"
-                                        >
-                                            {TIME_OPTIONS.map((t) => (
-                                                <option key={`end-${t}`} value={t}>{formatTimeDisplay(t)}</option>
-                                            ))}
-                                        </select>
+                                            placeholder="End time"
+                                            options={timeOptions}
+                                            onChange={setEndTimeValue}
+                                        />
                                     </div>
                                 </div>
 
@@ -398,19 +401,13 @@ export default function BookingPopover({
                                     <FieldIcon><MapPin className="h-4 w-4" /></FieldIcon>
                                     <div className="relative flex-1">
                                         <label className="sr-only" htmlFor="booking-room">Room</label>
-                                        <select
+                                        <FloatingSelect
                                             id="booking-room"
                                             value={roomId || ''}
-                                            onChange={(e) => setRoomId(Number(e.target.value))}
-                                            className="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 pr-10 text-sm font-medium text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:focus:border-cyan-300 dark:focus:ring-cyan-300/20"
-                                            required
-                                        >
-                                            <option value="" disabled>Select room</option>
-                                            {rooms.map((room) => (
-                                                <option key={room.Room_ID} value={room.Room_ID}>{room.Name}</option>
-                                            ))}
-                                        </select>
-                                        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                                            placeholder="Select room"
+                                            options={roomOptions}
+                                            onChange={setRoomId}
+                                        />
                                         {selectedRoom && (
                                             <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Selected room: {selectedRoom.Name}</p>
                                         )}

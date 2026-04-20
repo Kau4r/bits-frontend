@@ -14,6 +14,7 @@ import ReportIssueModal from '@/pages/student/components/ReportIssue';
 import { useBorrowingEvents } from '@/hooks/useBorrowingEvents';
 import { createTicket } from '@/services/tickets';
 import { buildTicketLocation } from '@/lib/ticketLocation';
+import { FloatingSelect } from '@/ui/FloatingSelect';
 
 const FacultyScheduling = () => {
   const navigate = useNavigate();
@@ -345,19 +346,13 @@ const FacultyScheduling = () => {
                     <div className="text-sm text-gray-600 dark:text-gray-400">Loading available items...</div>
                   ) : (
                     <>
-                      <select
+                      <FloatingSelect
+                        id="faculty-borrow-item-type"
                         value={selectedType}
-                        onChange={(e) => setSelectedType(e.target.value)}
-                        required
-                        className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      >
-                        <option value="">Select an item type</option>
-                        {uniqueTypes.map((type) => (
-                          <option key={type} value={type}>
-                            {type}
-                          </option>
-                        ))}
-                      </select>
+                        placeholder="Select an item type"
+                        options={uniqueTypes.map((type) => ({ value: type, label: type }))}
+                        onChange={setSelectedType}
+                      />
                       {selectedType && (
                         <p className="text-xs text-green-600 dark:text-green-400 mt-1">
                           ✓ {inventoryItems.filter(item => item.Item_Type === selectedType).length} {selectedType}(s) available - Lab Tech will assign a specific item

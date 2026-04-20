@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import type { FC, FormEvent } from 'react';
 import type { WeeklyReport, ReportCreateInput, ReportUpdateInput, ReportTask, ReportTasks } from '@/types/report';
 import { taskCategoryOptions } from '@/types/report';
 import { getAutoPopulateTickets } from '@/services/reports';
+import { FloatingSelect } from '@/ui/FloatingSelect';
 
 interface Props {
   open: boolean;
@@ -27,7 +29,7 @@ const getMonday = (d: Date) => {
 
 const toDateInput = (d: Date) => d.toISOString().slice(0, 10);
 
-export const WeeklyReportDialog: React.FC<Props> = ({ open, onClose, onSave, existing }) => {
+export const WeeklyReportDialog: FC<Props> = ({ open, onClose, onSave, existing }) => {
   const monday = getMonday(new Date());
   const sunday = new Date(monday);
   sunday.setDate(sunday.getDate() + 6);
@@ -126,7 +128,7 @@ export const WeeklyReportDialog: React.FC<Props> = ({ open, onClose, onSave, exi
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
@@ -252,15 +254,15 @@ export const WeeklyReportDialog: React.FC<Props> = ({ open, onClose, onSave, exi
                       required
                       className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white p-1.5 text-sm"
                     />
-                    <select
+                    <FloatingSelect
+                      id={`weekly-report-task-category-${idx}`}
                       value={task.category}
-                      onChange={e => updateTask(idx, 'category', e.target.value)}
-                      className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white p-1.5 text-sm"
-                    >
-                      {taskCategoryOptions.map(c => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
+                      placeholder="Category"
+                      options={taskCategoryOptions.map(c => ({ value: c, label: c }))}
+                      onChange={value => updateTask(idx, 'category', value)}
+                      className="min-w-36"
+                      buttonClassName="rounded-md px-2 py-1.5 text-sm"
+                    />
                     <button
                       type="button"
                       onClick={() => removeTask(idx)}

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { type Item } from '@/types/inventory'
 import { Plus, Filter } from 'lucide-react'
+import { FloatingSelect } from '@/ui/FloatingSelect'
 import Table, { type SortConfig, type SortDirection } from '@/components/Table'
 import ItemModal from '@/pages/labtech/components/ItemModal'
 import Search from '@/components/Search'
@@ -299,42 +300,40 @@ const InventoryPage = () => {
         </div>
 
         {/* Type Filter */}
-        <div className="relative">
-          <select
+        <div className="min-w-44">
+          <FloatingSelect
+            id="inventory-type-filter"
             value={selectedType}
-            onChange={(e) => setSelectedType(e.target.value)}
-            className="appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-4 pr-10 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
-          >
-            <option key="all-types" value="All Types">All Types</option>
-            {[...new Set(inventory.map(item => item.Item_Type).filter(Boolean))].map(type => (
-              <option key={`type-${type}`} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
-          <Filter className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            placeholder="All Types"
+            options={[
+              { value: 'All Types', label: 'All Types' },
+              ...[...new Set(inventory.map(item => item.Item_Type).filter(Boolean))].map(type => ({
+                value: type,
+                label: type,
+              })),
+            ]}
+            onChange={setSelectedType}
+          />
         </div>
 
         {/* Status Filter */}
-        <div className="relative">
-          <select
+        <div className="min-w-48">
+          <FloatingSelect
+            id="inventory-status-filter"
             value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            className="appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-4 pr-10 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
-          >
-            <option value="All Status">
-              All Status ({inventory.length})
-            </option>
-            {inventoryStatuses.map((status) => {
-              const count = inventory.filter(i => i.Status === status).length;
-              return (
-                <option key={`status-${status}`} value={status}>
-                  {status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()} ({count})
-                </option>
-              );
-            })}
-          </select>
-          <Filter className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            placeholder="All Status"
+            options={[
+              { value: 'All Status', label: `All Status (${inventory.length})` },
+              ...inventoryStatuses.map((status) => {
+                const count = inventory.filter(i => i.Status === status).length;
+                return {
+                  value: status,
+                  label: `${status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()} (${count})`,
+                };
+              }),
+            ]}
+            onChange={setSelectedStatus}
+          />
         </div>
 
         {/* Results Count */}

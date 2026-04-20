@@ -1,6 +1,9 @@
 import { createPortal } from 'react-dom'
 import type { Room } from '@/types/room'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import type { ChangeEvent, FormEvent } from 'react'
+import { FloatingSelect } from '@/ui/FloatingSelect'
+import { useFocusTrap } from '@/hooks/useFocusTrap'
 
 // RoomModal props
 interface RoomModalProps {
@@ -34,6 +37,8 @@ export default function RoomModal({
   onClose,
   onEditMode,
 }: RoomModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null)
+  useFocusTrap(dialogRef, true)
   const [room, setRoom] = useState<Room>({
     Room_ID: initialData?.Room_ID ?? 0,
     Name: initialData?.Name ?? '',
@@ -58,7 +63,7 @@ export default function RoomModal({
     }
   }, [initialData])
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setRoom((prev) => {
       const updated = {
@@ -82,7 +87,7 @@ export default function RoomModal({
     })
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     if (readOnly) return;
     console.log("Submitting from modal:", room);
@@ -105,6 +110,10 @@ export default function RoomModal({
       onClick={handleClose}
     >
       <div
+        ref={dialogRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
         className="w-full max-w-md rounded-xl bg-white dark:bg-gray-900 shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
@@ -147,18 +156,27 @@ export default function RoomModal({
                 <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
                   Room Type
                 </label>
-                <select
-                  name="Room_Type"
+                <FloatingSelect
+                  id="room-modal-type"
                   value={room.Room_Type}
-                  onChange={handleChange}
                   disabled={readOnly}
-                  className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60"
-                >
-                  <option value="CONSULTATION">Consultation</option>
-                  <option value="CONFERENCE">Conference</option>
-                  <option value="LECTURE">Lecture</option>
-                  <option value="LAB">Lab</option>
-                </select>
+                  placeholder="Select room type"
+                  options={[
+                    { value: 'CONSULTATION', label: 'Consultation' },
+                    { value: 'CONFERENCE', label: 'Conference' },
+                    { value: 'LECTURE', label: 'Lecture' },
+                    { value: 'LAB', label: 'Lab' },
+                  ]}
+                  onChange={(value) => {
+                    const roomType = value as Room['Room_Type'];
+                    setRoom((prev) => ({
+                      ...prev,
+                      Room_Type: roomType,
+                      Lab_Type: roomType === 'LAB' ? prev.Lab_Type : undefined,
+                      Capacity: mode === 'add' ? getDefaultCapacity(roomType) : prev.Capacity,
+                    }))
+                  }}
+                />
               </div>
 
               {room.Room_Type === 'LAB' && (
@@ -166,18 +184,17 @@ export default function RoomModal({
                   <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
                     Lab Type {mode === 'add' && <span className="text-red-500">*</span>}
                   </label>
-                  <select
-                    name="Lab_Type"
+                  <FloatingSelect
+                    id="room-modal-lab-type"
                     value={room.Lab_Type || ''}
-                    onChange={handleChange}
                     disabled={readOnly}
-                    required={mode === 'add'}
-                    className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60"
-                  >
-                    <option value="">Select Lab Type</option>
-                    <option value="WINDOWS">Windows</option>
-                    <option value="MAC">Mac</option>
-                  </select>
+                    placeholder="Select Lab Type"
+                    options={[
+                      { value: 'WINDOWS', label: 'Windows' },
+                      { value: 'MAC', label: 'Mac' },
+                    ]}
+                    onChange={(value) => setRoom((prev) => ({ ...prev, Lab_Type: value as Room['Lab_Type'] }))}
+                  />
                 </div>
               )}
 
@@ -185,19 +202,20 @@ export default function RoomModal({
                 <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
                   Status
                 </label>
-                <select
-                  name="Status"
+                <FloatingSelect
+                  id="room-modal-status"
                   value={room.Status}
-                  onChange={handleChange}
                   disabled={readOnly}
-                  className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60"
-                >
-                  <option value="AVAILABLE">Available</option>
-                  <option value="IN_USE">In Use</option>
-                  <option value="MAINTENANCE">Maintenance</option>
-                  <option value="OCCUPIED">Occupied</option>
-                  <option value="RESERVED">Reserved</option>
-                </select>
+                  placeholder="Select status"
+                  options={[
+                    { value: 'AVAILABLE', label: 'Available' },
+                    { value: 'IN_USE', label: 'In Use' },
+                    { value: 'MAINTENANCE', label: 'Maintenance' },
+                    { value: 'OCCUPIED', label: 'Occupied' },
+                    { value: 'RESERVED', label: 'Reserved' },
+                  ]}
+                  onChange={(value) => setRoom((prev) => ({ ...prev, Status: value as Room['Status'] }))}
+                />
               </div>
 
               <div className="flex flex-col">

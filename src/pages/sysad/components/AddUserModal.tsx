@@ -1,6 +1,8 @@
 import { createPortal } from 'react-dom'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { User_Role } from '@/types/user'
+import { FloatingSelect } from '@/ui/FloatingSelect'
+import { useFocusTrap } from '@/hooks/useFocusTrap'
 
 interface UserFormData {
     Username: string
@@ -19,6 +21,8 @@ interface Props {
 }
 
 export default function AddUserModal({ onClose, onSubmit }: Props) {
+    const dialogRef = useRef<HTMLDivElement>(null)
+    useFocusTrap(dialogRef, true)
     const [form, setForm] = useState({
         Username: '',
         First_Name: '',
@@ -55,7 +59,7 @@ export default function AddUserModal({ onClose, onSubmit }: Props) {
         setErrors({})
 
         try {
-            const password = `${form.First_Name[0].toLowerCase()}${form.Last_Name[0].toLowerCase()}123`
+            const password = `${form.First_Name.trim()[0].toLowerCase()}${form.Last_Name.trim()[0].toLowerCase()}123`
             await onSubmit({ ...form, Password: password, Username: form.Username })
         } finally {
             setIsSubmitting(false)
@@ -68,18 +72,16 @@ export default function AddUserModal({ onClose, onSubmit }: Props) {
             : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500'
         } bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:outline-none`
 
-    const selectClassName = (field: string) =>
-        `w-full px-3 py-2.5 rounded-lg border ${errors[field]
-            ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-            : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500'
-        } bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:outline-none`
-
     return createPortal(
         <div
             className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
             onClick={onClose}
         >
             <div
+                ref={dialogRef}
+                tabIndex={-1}
+                role="dialog"
+                aria-modal="true"
                 className="w-full max-w-md rounded-xl bg-white dark:bg-gray-900 shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[90vh]"
                 onClick={(e) => e.stopPropagation()}
             >
@@ -199,18 +201,20 @@ export default function AddUserModal({ onClose, onSubmit }: Props) {
                             <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
                                 Role <span className="text-red-500">*</span>
                             </label>
-                            <select
+                            <FloatingSelect
+                                id="add-user-role"
                                 value={form.User_Role}
-                                onChange={(e) => setForm({ ...form, User_Role: e.target.value as User_Role })}
-                                className={selectClassName('User_Role')}
-                            >
-                                <option value="ADMIN">Admin</option>
-                                <option value="LAB_TECH">Lab Tech</option>
-                                <option value="LAB_HEAD">Lab Head</option>
-                                <option value="FACULTY">Faculty</option>
-                                <option value="SECRETARY">Secretary</option>
-                                <option value="STUDENT">Student</option>
-                            </select>
+                                placeholder="Select role"
+                                options={[
+                                    { value: 'ADMIN', label: 'Admin' },
+                                    { value: 'LAB_TECH', label: 'Lab Tech' },
+                                    { value: 'LAB_HEAD', label: 'Lab Head' },
+                                    { value: 'FACULTY', label: 'Faculty' },
+                                    { value: 'SECRETARY', label: 'Secretary' },
+                                    { value: 'STUDENT', label: 'Student' },
+                                ]}
+                                onChange={(value) => setForm({ ...form, User_Role: value as User_Role })}
+                            />
                         </div>
 
                         {/* Status */}
@@ -218,14 +222,16 @@ export default function AddUserModal({ onClose, onSubmit }: Props) {
                             <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
                                 Status
                             </label>
-                            <select
+                            <FloatingSelect
+                                id="add-user-status"
                                 value={form.Is_Active ? 'Active' : 'Inactive'}
-                                onChange={(e) => setForm({ ...form, Is_Active: e.target.value === 'Active' })}
-                                className={selectClassName('Is_Active')}
-                            >
-                                <option value="Active">Active</option>
-                                <option value="Inactive">Inactive</option>
-                            </select>
+                                placeholder="Select status"
+                                options={[
+                                    { value: 'Active', label: 'Active' },
+                                    { value: 'Inactive', label: 'Inactive' },
+                                ]}
+                                onChange={(value) => setForm({ ...form, Is_Active: value === 'Active' })}
+                            />
                         </div>
                     </div>
                 </div>

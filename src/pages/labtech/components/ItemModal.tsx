@@ -7,6 +7,9 @@ import type { Item, ItemType } from "@/types/inventory";
 import type { Room } from "@/types/room";
 import { useModal } from "@/context/ModalContext";
 import { buildInventoryItemQrUrl } from "@/utils/inventoryQr";
+import { FloatingSelect } from "@/ui/FloatingSelect";
+import { FloatingCombobox } from "@/ui/FloatingCombobox";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 
 // Valid item types from Prisma schema
 const ITEM_TYPES: ItemType[] = [
@@ -65,14 +68,17 @@ export default function ItemModal({
   rooms,
 }: ItemModalProps) {
   const modal = useModal();
+  const dialogRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, isOpen);
 
   const [mode, setMode] = useState(initMode);
   const [quantity, setQuantity] = useState(1);
   const [serials, setSerials] = useState<string[]>([""]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCustomItemType, setIsCustomItemType] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // Form data state
   const [formData, setFormData] = useState<FormData>({
@@ -110,6 +116,7 @@ export default function ItemModal({
       setQuantity(1);
       setSerials([""]);
       setIsCustomItemType(false);
+      setFieldErrors({});
     } else if ((initMode === "edit" || initMode === "view") && item) {
       setFormData({
         itemType: item.Item_Type || "GENERAL",
@@ -122,6 +129,7 @@ export default function ItemModal({
       setQuantity(1);
       setSerials([item.Serial_Number || ""]);
       setIsCustomItemType(false);
+      setFieldErrors({});
     }
 
     setMode(initMode);
@@ -144,9 +152,12 @@ export default function ItemModal({
 
     if (isSubmitting) return;
 
-    // Validation
-    if (!formData.itemType || !formData.brand.trim()) {
-      await modal.showError("Item Type and Brand are required", "Validation Error");
+    const nextFieldErrors: Record<string, string> = {};
+    if (!formData.itemType) nextFieldErrors.itemType = "Item type is required.";
+    if (!formData.brand.trim()) nextFieldErrors.brand = "Brand is required.";
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setFieldErrors(nextFieldErrors);
       return;
     }
 
@@ -428,6 +439,10 @@ export default function ItemModal({
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
         className="w-full max-w-2xl rounded-xl bg-white dark:bg-gray-900 shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
@@ -448,7 +463,7 @@ export default function ItemModal({
         </div>
 
         {/* Form Content - Scrollable */}
-        <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+        <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden" noValidate>
           <div className="flex-1 overflow-y-auto px-6 py-4">
             {/* QR Code with Asset Info for View/Edit */}
             {showAssetInfo && (
@@ -537,35 +552,36 @@ export default function ItemModal({
                 <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
                   Item Type *
                 </label>
-                <select
+                <FloatingSelect
+                  id="item-modal-type"
                   value={isCustomItemType ? CUSTOM_ITEM_TYPE_VALUE : formData.itemType}
-                  onChange={(e) => {
-                    if (e.target.value === CUSTOM_ITEM_TYPE_VALUE) {
+                  onChange={(value) => {
+                    if (value === CUSTOM_ITEM_TYPE_VALUE) {
                       setIsCustomItemType(true);
                       setFormData({ ...formData, itemType: "" });
+                      setFieldErrors(prev => ({ ...prev, itemType: '' }));
                       return;
                     }
 
                     setIsCustomItemType(false);
-                    setFormData({ ...formData, itemType: e.target.value });
+                    setFormData({ ...formData, itemType: value as ItemType });
+                    setFieldErrors(prev => ({ ...prev, itemType: '' }));
                   }}
                   disabled={readOnly}
-                  required
-                  className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60"
-                >
-                  <option value="" disabled>Select item type</option>
-                  {itemTypeOptions.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                  <option value={CUSTOM_ITEM_TYPE_VALUE}>--</option>
-                </select>
+                  placeholder="Select item type"
+                  options={[
+                    ...itemTypeOptions.map((type) => ({ value: type, label: type })),
+                    { value: CUSTOM_ITEM_TYPE_VALUE, label: '--' },
+                  ]}
+                />
                 {isCustomItemType && !readOnly && (
                   <input
                     type="text"
                     value={formData.itemType}
-                    onChange={(e) => setFormData({ ...formData, itemType: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, itemType: e.target.value });
+                      setFieldErrors(prev => ({ ...prev, itemType: '' }));
+                    }}
                     required
                     className="mt-2 w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="Enter new item type..."
@@ -576,6 +592,9 @@ export default function ItemModal({
                     Choose -- to add a new item type.
                   </p>
                 )}
+                {fieldErrors.itemType && (
+                  <p className="mt-1 text-xs font-medium text-red-600 dark:text-red-400">{fieldErrors.itemType}</p>
+                )}
               </div>
 
               {/* Brand */}
@@ -583,21 +602,21 @@ export default function ItemModal({
                 <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
                   Brand *
                 </label>
-                <input
-                  type="text"
-                  list="brands"
+                <FloatingCombobox
+                  id="item-modal-brand"
                   value={formData.brand}
-                  onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+                  onChange={(value) => {
+                    setFormData({ ...formData, brand: value });
+                    setFieldErrors(prev => ({ ...prev, brand: '' }));
+                  }}
                   disabled={readOnly}
                   required
-                  className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60"
                   placeholder="Enter brand name..."
+                  options={existingBrands.map((brand) => ({ value: brand, label: brand }))}
                 />
-                <datalist id="brands">
-                  {existingBrands.map((brand) => (
-                    <option key={brand} value={brand} />
-                  ))}
-                </datalist>
+                {fieldErrors.brand && (
+                  <p className="mt-1 text-xs font-medium text-red-600 dark:text-red-400">{fieldErrors.brand}</p>
+                )}
               </div>
 
               {/* Room */}
@@ -605,18 +624,14 @@ export default function ItemModal({
                 <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
                   Room
                 </label>
-                <select
+                <FloatingSelect
+                  id="item-modal-room"
                   value={formData.roomId}
-                  onChange={(e) => setFormData({ ...formData, roomId: Number(e.target.value) })}
                   disabled={readOnly}
-                  className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60"
-                >
-                  {rooms.map((r) => (
-                    <option key={r.Room_ID} value={r.Room_ID}>
-                      {r.Name}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Select room"
+                  options={rooms.map((r) => ({ value: r.Room_ID, label: r.Name }))}
+                  onChange={(value) => setFormData({ ...formData, roomId: Number(value) })}
+                />
               </div>
 
               {/* Status */}
@@ -624,18 +639,17 @@ export default function ItemModal({
                 <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
                   Status
                 </label>
-                <select
+                <FloatingSelect
+                  id="item-modal-status"
                   value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as Item["Status"] })}
                   disabled={readOnly}
-                  className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60"
-                >
-                  {STATUS_OPTIONS.map((status) => (
-                    <option key={status} value={status}>
-                      {status.charAt(0) + status.slice(1).toLowerCase()}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Select status"
+                  options={STATUS_OPTIONS.map((status) => ({
+                    value: status,
+                    label: status.charAt(0) + status.slice(1).toLowerCase(),
+                  }))}
+                  onChange={(value) => setFormData({ ...formData, status: value as Item["Status"] })}
+                />
               </div>
 
               {/* Quantity (Add mode only) */}

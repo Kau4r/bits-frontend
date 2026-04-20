@@ -4,4 +4,8 @@ export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
 export { Badge, badgeVariants, type BadgeProps } from "./Badge"
 export { Search } from "./Search"
 export { ConfirmModal } from "./ConfirmModal"
+export { FloatingSelect } from "./FloatingSelect"
+export type { FloatingSelectOption } from "./FloatingSelect"
+export { FloatingCombobox } from "./FloatingCombobox"
+export type { FloatingComboboxOption } from "./FloatingCombobox"
 export { LoadingSkeleton, Skeleton } from "./LoadingSkeleton"

@@ -1,4 +1,7 @@
 import { createPortal } from 'react-dom';
+import { useRef, useState } from 'react';
+import type { FormEvent } from 'react';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 
 interface RejectionModalProps {
     isOpen: boolean;
@@ -25,23 +28,33 @@ export default function RejectionModal({
     request,
     isLoading = false,
 }: RejectionModalProps) {
+    const [reasonError, setReasonError] = useState('');
+    const dialogRef = useRef<HTMLDivElement>(null);
+    useFocusTrap(dialogRef, isOpen);
+
     if (!isOpen || !request) return null;
 
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
         const reason = formData.get('reason') as string;
 
         if (!reason || !reason.trim()) {
+            setReasonError('Reason is required.');
             return;
         }
 
+        setReasonError('');
         onConfirm(reason);
     };
 
     return createPortal(
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={onClose}>
             <div
+                ref={dialogRef}
+                tabIndex={-1}
+                role="dialog"
+                aria-modal="true"
                 className="w-full max-w-md rounded-xl bg-white dark:bg-gray-900 shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[90vh]"
                 onClick={e => e.stopPropagation()}
             >
@@ -88,9 +101,13 @@ export default function RejectionModal({
                                 name="reason"
                                 required
                                 rows={4}
+                                onChange={() => setReasonError('')}
                                 placeholder="Please provide a clear reason for rejecting this request..."
                                 className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
                             />
+                            {reasonError && (
+                                <p className="mt-1 text-xs font-medium text-red-600 dark:text-red-400">{reasonError}</p>
+                            )}
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                 This reason will be sent to the faculty member
                             </p>
@@ -114,7 +131,7 @@ export default function RejectionModal({
                         >
                             {isLoading ? (
                                 <>
-                                    <span className="animate-spin">⏳</span>
+                                    <span className="animate-spin">...</span>
                                     Rejecting...
                                 </>
                             ) : (

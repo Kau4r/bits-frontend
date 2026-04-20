@@ -5,12 +5,13 @@ import FormsCard from '@/components/FormsCard';
 import NotificationsCard from '@/components/NotificationsCard';
 import ReportsCard from '@/components/ReportsCard';
 import { getDashboardMetrics, type DashboardMetrics } from '@/services/dashboard';
-import { Ticket, Wrench, Box } from 'lucide-react';
+import { Ticket, Wrench, FileText } from 'lucide-react';
 import { useNotifications } from '@/context/NotificationContext';
 
 export default function LabheadDashboard() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const { notifications } = useNotifications();
+  const activeForms = (metrics?.counts.pendingForms || 0) + (metrics?.counts.inReviewForms || 0);
 
   const fetchMetrics = useCallback(async () => {
     try {
@@ -61,11 +62,11 @@ export default function LabheadDashboard() {
 
           <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700 flex items-center gap-4">
             <div className="p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-lg">
-              <Box className="w-6 h-6" />
+              <FileText className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Low Inventory</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{metrics?.counts.brokenItems || 0}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Active Forms</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{activeForms}</p>
             </div>
           </div>
 

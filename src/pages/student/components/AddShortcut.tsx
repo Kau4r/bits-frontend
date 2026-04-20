@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { FormEvent } from 'react';
 import { Link2, Plus } from 'lucide-react';
 
 interface AddShortcutModalProps {
@@ -11,7 +12,7 @@ export default function AddShortcutModal({ isOpen, onClose, onAddShortcut }: Add
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (name && url) {
       onAddShortcut(name, url);

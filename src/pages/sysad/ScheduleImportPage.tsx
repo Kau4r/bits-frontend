@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, FileSpreadsheet, RefreshCw, Upload, XCircle } from "lucide-react";
 import { useModal } from "@/context/ModalContext";
+import { SysAdEyebrow, SysAdPageShell } from "@/pages/sysad/components/SysAdPageShell";
 import {
   importOfferedCourseSchedules,
   previewOfferedCourseImport,
@@ -140,24 +141,14 @@ export default function ScheduleImportPage() {
   };
 
   return (
-    <div className="flex h-full w-full flex-col bg-white p-6 text-slate-950 dark:bg-gray-900 dark:text-white sm:px-8 lg:px-10">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <div className="flex flex-col gap-4 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800 md:flex-row md:items-center md:justify-between">
-          <div>
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-indigo-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
-              <FileSpreadsheet className="h-4 w-4" />
-              Admin Import
-            </div>
-            <h1 className="text-3xl font-black tracking-tight">Course Schedule Import</h1>
-            <p className="mt-2 max-w-3xl text-sm text-slate-600 dark:text-slate-300">
-              Upload the offered-courses workbook, preview parsed room schedules, then import valid class schedules into room availability.
-            </p>
-          </div>
-        </div>
-
-        <section className="grid grid-cols-1 gap-5 lg:grid-cols-[420px_1fr]">
-          <div className="space-y-5">
-            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+    <SysAdPageShell
+      eyebrow={<SysAdEyebrow><FileSpreadsheet className="h-4 w-4" />Admin Import</SysAdEyebrow>}
+      title="Course Schedule Import"
+      description="Upload the offered-courses workbook, preview parsed room schedules, then import valid class schedules into room availability."
+    >
+        <section className="grid h-full min-h-0 grid-cols-1 gap-4 lg:grid-cols-[420px_1fr]">
+          <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
+            <div className="shrink-0 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
               <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200">Workbook</label>
               <label className="mt-3 flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center transition hover:border-indigo-400 hover:bg-indigo-50 dark:border-slate-700 dark:bg-slate-950/60 dark:hover:border-indigo-500 dark:hover:bg-indigo-950/20">
                 <Upload className="h-10 w-10 text-indigo-500" />
@@ -177,9 +168,11 @@ export default function ScheduleImportPage() {
               </label>
             </div>
 
-            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-              <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Import Options</h2>
-              <div className="mt-4 space-y-4">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+              <div className="shrink-0 border-b border-slate-200 px-5 py-4 dark:border-slate-700">
+                <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Import Options</h2>
+              </div>
+              <div className="min-h-0 flex-1 space-y-4 overflow-x-hidden overflow-y-auto px-5 py-4 pr-4 scrollbar-thin">
                 <div>
                   <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">Sheets</label>
                   <div className="space-y-2">
@@ -221,7 +214,7 @@ export default function ScheduleImportPage() {
                 </div>
               </div>
 
-              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="grid shrink-0 grid-cols-1 gap-3 border-t border-slate-200 px-5 py-4 dark:border-slate-700 sm:grid-cols-2">
                 <button
                   type="button"
                   onClick={handlePreview}
@@ -244,7 +237,7 @@ export default function ScheduleImportPage() {
             </div>
           </div>
 
-          <div className="flex h-full flex-col space-y-5">
+          <div className="flex h-full min-h-0 flex-col space-y-4">
             {result ? (
               <>
                 <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
@@ -305,7 +298,6 @@ export default function ScheduleImportPage() {
             )}
           </div>
         </section>
-      </div>
-    </div>
+    </SysAdPageShell>
   );
 }

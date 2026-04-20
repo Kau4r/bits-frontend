@@ -6,7 +6,8 @@ import { fetchTickets, archiveTicket, restoreTicket } from "@/services/tickets";
 import { formatTicketLocationDisplay } from "@/lib/ticketLocation";
 import type { Ticket } from "@/types/tickets";
 import { useNotifications } from "@/context/NotificationContext";
-import { Plus, Eye, Filter, Inbox, Archive } from "lucide-react";
+import { Plus, Eye, Inbox, Archive } from "lucide-react";
+import { FloatingSelect } from "@/ui/FloatingSelect";
 
 const isActiveTicket = (ticket: Ticket) => !ticket.Archived && ticket.Status !== 'RESOLVED';
 
@@ -229,19 +230,17 @@ export default function Tickets() {
                 </div>
 
                 {/* Status Filter */}
-                <div className="relative">
-                    <select
+                <div className="min-w-44">
+                    <FloatingSelect
+                        id="ticket-status-filter"
                         value={selectedStatus}
-                        onChange={(e) => setSelectedStatus(e.target.value)}
-                        className="appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-4 pr-10 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
-                    >
-                        {statuses.map(status => (
-                            <option key={status} value={status}>
-                                {status.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
-                            </option>
-                        ))}
-                    </select>
-                    <Filter className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                        placeholder="Status"
+                        options={statuses.map(status => ({
+                            value: status,
+                            label: status.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase()),
+                        }))}
+                        onChange={setSelectedStatus}
+                    />
                 </div>
 
                 {/* Results Count */}

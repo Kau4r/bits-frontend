@@ -1,4 +1,8 @@
 import { createPortal } from 'react-dom';
+import { useEffect, useRef, useState } from 'react';
+import type { FormEvent } from 'react';
+import { FloatingSelect } from '@/ui/FloatingSelect';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 
 interface ApprovalModalProps {
     isOpen: boolean;
@@ -33,21 +37,31 @@ export default function ApprovalModal({
     availableItems = [],
     isLoading = false,
 }: ApprovalModalProps) {
+    const [selectedItemId, setSelectedItemId] = useState('');
+    const dialogRef = useRef<HTMLDivElement>(null);
+    useFocusTrap(dialogRef, isOpen);
+
+    useEffect(() => {
+        if (isOpen) setSelectedItemId('');
+    }, [isOpen, request?.id]);
+
     if (!isOpen || !request) return null;
 
     const requiresAssignment = !request.item.Item_ID;
 
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        const formData = new FormData(e.currentTarget);
-        const itemId = formData.get('itemId');
-
-        onConfirm(itemId ? parseInt(itemId as string) : undefined);
+        if (requiresAssignment && availableItems.length > 0 && !selectedItemId) return;
+        onConfirm(selectedItemId ? parseInt(selectedItemId) : undefined);
     };
 
     return createPortal(
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={onClose}>
             <div
+                ref={dialogRef}
+                tabIndex={-1}
+                role="dialog"
+                aria-modal="true"
                 className="w-full max-w-md rounded-xl bg-white dark:bg-gray-900 shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[90vh]"
                 onClick={e => e.stopPropagation()}
             >
@@ -91,20 +105,16 @@ export default function ApprovalModal({
                                 Assign Specific Item {requiresAssignment && <span className="text-red-500">*</span>}
                             </label>
                             {availableItems.length > 0 ? (
-                                <select
-                                    name="itemId"
-                                    required={requiresAssignment}
-                                    className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                >
-                                    <option value="">
-                                        {requiresAssignment ? 'Select an item' : 'Keep currently assigned item'}
-                                    </option>
-                                    {availableItems.map((item) => (
-                                        <option key={item.Item_ID} value={item.Item_ID}>
-                                            {item.Item_Type} - {item.Brand} (SN: {item.Serial_Number})
-                                        </option>
-                                    ))}
-                                </select>
+                                <FloatingSelect
+                                    id="approval-item-select"
+                                    value={selectedItemId}
+                                    placeholder={requiresAssignment ? 'Select an item' : 'Keep currently assigned item'}
+                                    options={availableItems.map((item) => ({
+                                        value: String(item.Item_ID),
+                                        label: `${item.Item_Type} - ${item.Brand} (SN: ${item.Serial_Number})`,
+                                    }))}
+                                    onChange={setSelectedItemId}
+                                />
                             ) : (
                                 <input
                                     type="text"

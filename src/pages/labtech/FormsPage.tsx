@@ -23,8 +23,9 @@ import { getForms, createForm, updateForm as updateFormAPI, transferForm, upload
 import { useAuth } from '@/context/AuthContext';
 import { useModal } from '@/context/ModalContext';
 import { useNotifications } from '@/context/NotificationContext';
-import { Check, X, Plus, Filter, Archive, Inbox, RefreshCw } from 'lucide-react';
+import { Check, X, Plus, Archive, Inbox, RefreshCw } from 'lucide-react';
 import type { Form } from '@/types/formtypes';
+import { FloatingSelect } from '@/ui/FloatingSelect';
 
 // Use the imported formStatusColors for status chips
 const statusChip = formStatusColors;
@@ -553,36 +554,34 @@ export default function Forms() {
         </div>
 
         {/* Type Filter */}
-        <div className="relative">
-          <select
+        <div className="min-w-40">
+          <FloatingSelect
+            id="forms-type-filter"
             value={formTypeFilter}
-            onChange={(e) => setFormTypeFilter(e.target.value as FormType | 'All')}
-            className="appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-4 pr-10 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
-          >
-            {(['All', 'WRF', 'RIS'] as const).map((type) => (
-              <option key={type} value={type}>
-                {type === 'All' ? 'All Types' : type}
-              </option>
-            ))}
-          </select>
-          <Filter className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            placeholder="All Types"
+            options={(['All', 'WRF', 'RIS'] as const).map((type) => ({
+              value: type,
+              label: type === 'All' ? 'All Types' : type,
+            }))}
+            onChange={(type) => setFormTypeFilter(type as FormType | 'All')}
+          />
         </div>
 
         {/* Status Filter */}
-        <div className="relative">
-          <select
+        <div className="min-w-48">
+          <FloatingSelect
+            id="forms-status-filter"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as FormStatus | 'All')}
-            className="appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-4 pr-10 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
-          >
-            <option value="All">All Statuses</option>
-            {(['PENDING', 'APPROVED', 'REJECTED', 'IN_REVIEW', 'ARCHIVED'] as FormStatus[]).map((status) => (
-              <option key={status} value={status}>
-                {formStatusLabels[status]}
-              </option>
-            ))}
-          </select>
-          <Filter className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            placeholder="All Statuses"
+            options={[
+              { value: 'All', label: 'All Statuses' },
+              ...(['PENDING', 'APPROVED', 'REJECTED', 'IN_REVIEW', 'ARCHIVED'] as FormStatus[]).map((status) => ({
+                value: status,
+                label: formStatusLabels[status],
+              })),
+            ]}
+            onChange={(status) => setStatusFilter(status as FormStatus | 'All')}
+          />
         </div>
 
         {/* Results Count */}
@@ -942,20 +941,21 @@ export default function Forms() {
                               }}
                             />
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                              <select
+                              <FloatingSelect
+                                id={`attachment-document-type-${f.id}`}
                                 value={getSelectedAttachmentDocumentType(f)}
-                                onChange={(event) => setAttachmentDocumentTypes(prev => ({
-                                  ...prev,
-                                  [f.id]: event.target.value as FormDocumentType,
+                                placeholder="Document type"
+                                options={getAttachmentTypeOptions(f).map(documentType => ({
+                                  value: documentType,
+                                  label: formDocumentTypeLabels[documentType],
                                 }))}
-                                className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-                              >
-                                {getAttachmentTypeOptions(f).map(documentType => (
-                                  <option key={documentType} value={documentType}>
-                                    {formDocumentTypeLabels[documentType]}
-                                  </option>
-                                ))}
-                              </select>
+                                onChange={(value) => setAttachmentDocumentTypes(prev => ({
+                                  ...prev,
+                                  [f.id]: value as FormDocumentType,
+                                }))}
+                                className="min-w-[190px]"
+                                buttonClassName="rounded-md px-3 py-2 text-sm"
+                              />
                               <button
                                 type="button"
                                 disabled={uploadingAttachmentIds.has(f.id)}

@@ -6,6 +6,8 @@ import { formatRole } from '@/pages/sysad/UserPage'
 import { useModal } from '@/context/ModalContext'
 import { useAuth } from '@/context/AuthContext'
 import { Clock, ArrowUpDown } from 'lucide-react'
+import { FloatingSelect } from '@/ui/FloatingSelect'
+import { SysAdEyebrow, SysAdPageShell } from '@/pages/sysad/components/SysAdPageShell'
 
 export default function UserDetails() {
   const { state } = useLocation()
@@ -200,26 +202,33 @@ export default function UserDetails() {
   }
 
   return (
-    <div className="flex h-full w-full flex-col bg-white p-4 sm:px-8 lg:px-10 dark:bg-gray-900">
-      <button
-        onClick={handleBack}
-        className="mb-4 flex-shrink-0 inline-flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-4 w-4"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          aria-hidden="true"
+    <SysAdPageShell
+      eyebrow={<SysAdEyebrow><Clock className="h-4 w-4" />Admin Account</SysAdEyebrow>}
+      title="User Details"
+      description="Review account access and recent system activity."
+      action={(
+        <button
+          onClick={handleBack}
+          className="inline-flex items-center gap-1 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
         >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
-        Back
-      </button>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            aria-hidden="true"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Back
+        </button>
+      )}
+    >
+      <div className="flex h-full min-h-0 flex-col gap-4">
 
       {/* User Card */}
-      <div className="mb-4 flex flex-shrink-0 items-center gap-4 rounded-lg border border-gray-200 bg-white px-5 py-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+      <div className="flex flex-shrink-0 items-center gap-4 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         {/* Avatar */}
         <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-indigo-600 text-base font-bold text-white">
           {`${user.First_Name?.[0] ?? ""}${user.Last_Name?.[0] ?? ""}`.toUpperCase()}
@@ -236,18 +245,19 @@ export default function UserDetails() {
         {/* Role Dropdown */}
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Role</span>
-          <select
+          <FloatingSelect
             id="role-select"
             value={role}
-            onChange={(e) => handleRoleChange(e.target.value as User_Role)}
+            placeholder="Select role"
+            options={Object.values(ROLES).map((r) => ({
+              value: r,
+              label: formatRole(r),
+            }))}
+            onChange={(value) => handleRoleChange(value as User_Role)}
             disabled={isSelf}
-            title={isSelf ? 'You cannot change your own role' : undefined}
-            className={`rounded-lg border border-gray-300 bg-white py-1.5 pl-3 pr-8 text-sm font-medium text-gray-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white ${isSelf ? 'cursor-not-allowed opacity-50' : ''}`}
-          >
-            {Object.values(ROLES).map((r) => (
-              <option key={r} value={r}>{formatRole(r)}</option>
-            ))}
-          </select>
+            className="min-w-[150px]"
+            buttonClassName="py-1.5 text-sm"
+          />
         </div>
 
         {/* Status Toggle */}
@@ -292,7 +302,7 @@ export default function UserDetails() {
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-600 dark:bg-gray-800">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <div className="mb-3 flex flex-shrink-0 items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
@@ -306,26 +316,35 @@ export default function UserDetails() {
           </div>
           {activities.length > 0 && (
             <div className="flex items-center gap-2">
-              <select
+              <FloatingSelect
+                id="activity-log-type-filter"
                 value={logTypeFilter}
-                onChange={(e) => setLogTypeFilter(e.target.value)}
-                className="rounded-lg border border-gray-300 bg-white py-1.5 pl-3 pr-8 text-sm text-gray-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-              >
-                <option value="ALL">All Types</option>
-                {Object.values(LOG_TYPES).map((type) => (
-                  <option key={type} value={type}>{formatAction(type)}</option>
-                ))}
-              </select>
-              <select
+                placeholder="All Types"
+                options={[
+                  { value: 'ALL', label: 'All Types' },
+                  ...Object.values(LOG_TYPES).map((type) => ({
+                    value: type,
+                    label: formatAction(type),
+                  })),
+                ]}
+                onChange={setLogTypeFilter}
+                className="min-w-[140px]"
+                buttonClassName="py-1.5 text-sm"
+              />
+              <FloatingSelect
+                id="activity-date-filter"
                 value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value as 'all' | '24h' | '7d' | '30d')}
-                className="rounded-lg border border-gray-300 bg-white py-1.5 pl-3 pr-8 text-sm text-gray-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-              >
-                <option value="all">All Time</option>
-                <option value="24h">Last 24 Hours</option>
-                <option value="7d">Last 7 Days</option>
-                <option value="30d">Last 30 Days</option>
-              </select>
+                placeholder="All Time"
+                options={[
+                  { value: 'all', label: 'All Time' },
+                  { value: '24h', label: 'Last 24 Hours' },
+                  { value: '7d', label: 'Last 7 Days' },
+                  { value: '30d', label: 'Last 30 Days' },
+                ]}
+                onChange={(value) => setDateFilter(value as 'all' | '24h' | '7d' | '30d')}
+                className="min-w-[150px]"
+                buttonClassName="py-1.5 text-sm"
+              />
               <button
                 onClick={() => setSortOrder(prev => prev === 'newest' ? 'oldest' : 'newest')}
                 className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
@@ -405,6 +424,7 @@ export default function UserDetails() {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </SysAdPageShell>
   )
 }
