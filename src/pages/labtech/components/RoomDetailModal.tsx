@@ -4,6 +4,7 @@ import { fetchComputers, createComputer, updateComputer, deleteComputer, importC
 import { importRoomItemsCsv, type CsvImportResult } from '@/services/inventory';
 import api from '@/services/api';
 import { useModal } from '@/context/ModalContext';
+import { useAuth } from '@/context/AuthContext';
 import Table from '@/components/Table';
 import InventoryItemCombobox from '@/pages/labtech/components/InventoryItemCombobox';
 import { getNextComputerName, getNumberedComputers } from '@/utils/computerDisplay';
@@ -47,6 +48,8 @@ const formatItemType = (type: string) => {
 
 export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }: RoomDetailModalProps) {
     const modal = useModal();
+    const { userRole } = useAuth();
+    const canDeleteComputer = userRole === 'LAB_HEAD' || userRole === 'ADMIN';
     const [activeTab, setActiveTab] = useState<'Computers' | 'Assets' | 'Schedule'>('Computers');
     const [computers, setComputers] = useState<Computer[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -526,23 +529,25 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                                 onMouseLeave={() => setHoveredPc(null)}
                                             >
                                                 {/* Delete button (appears on hover) */}
-                                                <button
-                                                    onClick={(e) => handleDeleteComputer(pc.Computer_ID, e)}
-                                                    className="absolute top-2 right-2 p-1 text-gray-500 dark:text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                                                    title="Delete computer"
-                                                >
-                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                                    </svg>
-                                                </button>
+                                                {canDeleteComputer && (
+                                                    <button
+                                                        onClick={(e) => handleDeleteComputer(pc.Computer_ID, e)}
+                                                        className="absolute top-2 right-2 p-1 text-gray-500 dark:text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                                        title="Delete computer"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                        </svg>
+                                                    </button>
+                                                )}
 
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className={`w-2.5 h-2.5 rounded-full ${statusColor === 'green' ? 'bg-green-500' :
+                                                <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 min-w-0">
+                                                    <div className="flex items-center gap-2 min-w-0">
+                                                        <div className={`shrink-0 w-2.5 h-2.5 rounded-full ${statusColor === 'green' ? 'bg-green-500' :
                                                             statusColor === 'yellow' ? 'bg-yellow-500' :
                                                                 statusColor === 'red' ? 'bg-red-500' : 'bg-gray-500'
                                                             }`} />
-                                                        <span className={`text-xs font-medium ${statusColor === 'green' ? 'text-green-600 dark:text-green-400' :
+                                                        <span className={`text-xs font-medium truncate ${statusColor === 'green' ? 'text-green-600 dark:text-green-400' :
                                                             statusColor === 'yellow' ? 'text-yellow-600 dark:text-yellow-400' :
                                                                 statusColor === 'red' ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'
                                                             }`}>
@@ -551,7 +556,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                                     </div>
                                                     {pc.Is_Teacher && (
                                                         <span
-                                                            className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:bg-amber-500/20 dark:text-amber-300"
+                                                            className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:bg-amber-500/20 dark:text-amber-300"
                                                             title="Teacher's PC"
                                                         >
                                                             <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">

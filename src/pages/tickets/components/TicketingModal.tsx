@@ -78,6 +78,12 @@ export default function TicketingModal({
   const editButtonClassName = "px-4 py-2 text-white rounded-lg transition-colors text-sm font-medium shadow-sm bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed";
   const activeEditButtonClassName = "px-4 py-2 text-white rounded-lg transition-colors text-sm font-medium shadow-sm bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2";
   const saveButtonClassName = "px-4 py-2 text-white rounded-lg transition-colors text-sm font-medium shadow-sm bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed";
+  const readOnlyFieldClass = "w-full px-4 py-3 bg-gray-50 dark:bg-[#1e2939] border border-gray-200 dark:border-[#334155] rounded-lg text-gray-900 dark:text-white";
+  const categoryLabels: Record<string, string> = { HARDWARE: 'Hardware', SOFTWARE: 'Software', FACILITY: 'Facility', OTHER: 'Other' };
+  const priorityLabels: Record<string, string> = { HIGH: 'High', MEDIUM: 'Medium', LOW: 'Low' };
+  const statusLabels: Record<string, string> = { PENDING: 'Pending', IN_PROGRESS: 'In Progress', RESOLVED: 'Resolved' };
+  const selectedAsset = assets.find(a => a.Item_ID === formData.itemId);
+
   const hasTicketChanges = !isCreating && Boolean(editBaseline) && (
     status !== editBaseline?.status ||
     (priority || '') !== (editBaseline?.priority || '') ||
@@ -492,22 +498,25 @@ export default function TicketingModal({
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Category</label>
                 <div>
-                  <FloatingSelect
-                    id="ticket-category"
-                    value={category}
-                    placeholder="Select Category"
-                    options={[
-                      { value: 'HARDWARE', label: 'Hardware' },
-                      { value: 'SOFTWARE', label: 'Software' },
-                      { value: 'FACILITY', label: 'Facility' },
-                      { value: 'OTHER', label: 'Other' },
-                    ]}
-                    onChange={(value) => {
-                      setCategory(value as TicketCategory);
-                      setFieldErrors(prev => ({ ...prev, location: '' }));
-                    }}
-                    disabled={!canModifyTicketFields}
-                  />
+                  {canModifyTicketFields ? (
+                    <FloatingSelect
+                      id="ticket-category"
+                      value={category}
+                      placeholder="Select Category"
+                      options={[
+                        { value: 'HARDWARE', label: 'Hardware' },
+                        { value: 'SOFTWARE', label: 'Software' },
+                        { value: 'FACILITY', label: 'Facility' },
+                        { value: 'OTHER', label: 'Other' },
+                      ]}
+                      onChange={(value) => {
+                        setCategory(value as TicketCategory);
+                        setFieldErrors(prev => ({ ...prev, location: '' }));
+                      }}
+                    />
+                  ) : (
+                    <div className={readOnlyFieldClass}>{category ? categoryLabels[category] : '—'}</div>
+                  )}
                 </div>
               </div>
             )}
@@ -517,18 +526,21 @@ export default function TicketingModal({
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                 Location {category === 'HARDWARE' && <span className="text-red-500">*</span>}
               </label>
-              <FloatingCombobox
-                id="ticket-location"
-                value={formData.location}
-                placeholder="Select a room or type location..."
-                options={rooms.map((room) => ({ value: room.Name, label: room.Name }))}
-                onChange={(value) => {
-                  setFormData({ ...formData, location: value, itemId: undefined });
-                  setFieldErrors(prev => ({ ...prev, location: '' }));
-                }}
-                disabled={!canModifyTicketFields}
-                required={category === 'HARDWARE'}
-              />
+              {canModifyTicketFields ? (
+                <FloatingCombobox
+                  id="ticket-location"
+                  value={formData.location}
+                  placeholder="Select a room or type location..."
+                  options={rooms.map((room) => ({ value: room.Name, label: room.Name }))}
+                  onChange={(value) => {
+                    setFormData({ ...formData, location: value, itemId: undefined });
+                    setFieldErrors(prev => ({ ...prev, location: '' }));
+                  }}
+                  required={category === 'HARDWARE'}
+                />
+              ) : (
+                <div className={readOnlyFieldClass}>{formData.location || '—'}</div>
+              )}
               {fieldErrors.location && (
                 <p className="mt-1.5 text-xs font-medium text-red-600 dark:text-red-400">{fieldErrors.location}</p>
               )}
@@ -541,17 +553,25 @@ export default function TicketingModal({
                   Affected Item (Optional)
                 </label>
                 <div>
-                  <FloatingSelect
-                    id="ticket-item"
-                    value={formData.itemId || ''}
-                    placeholder="Select an item..."
-                    options={assets.map((asset) => ({
-                      value: asset.Item_ID,
-                      label: `${asset.Item_Code} - ${asset.Item_Type.replace('_', ' ')}${asset.Brand ? ` (${asset.Brand})` : ''}`,
-                    }))}
-                    onChange={(value) => setFormData({ ...formData, itemId: Number(value) })}
-                    disabled={isLoadingAssets || !canModifyTicketFields}
-                  />
+                  {canModifyTicketFields ? (
+                    <FloatingSelect
+                      id="ticket-item"
+                      value={formData.itemId || ''}
+                      placeholder="Select an item..."
+                      options={assets.map((asset) => ({
+                        value: asset.Item_ID,
+                        label: `${asset.Item_Code} - ${asset.Item_Type.replace('_', ' ')}${asset.Brand ? ` (${asset.Brand})` : ''}`,
+                      }))}
+                      onChange={(value) => setFormData({ ...formData, itemId: Number(value) })}
+                      disabled={isLoadingAssets}
+                    />
+                  ) : (
+                    <div className={readOnlyFieldClass}>
+                      {selectedAsset
+                        ? `${selectedAsset.Item_Code} - ${selectedAsset.Item_Type.replace('_', ' ')}${selectedAsset.Brand ? ` (${selectedAsset.Brand})` : ''}`
+                        : '—'}
+                    </div>
+                  )}
                 </div>
                 {isLoadingAssets && (
                   <p className="mt-1.5 text-xs text-gray-500">Loading assets from {formData.location}...</p>
@@ -567,18 +587,21 @@ export default function TicketingModal({
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Priority</label>
                 <div>
-                  <FloatingSelect
-                    id="ticket-priority"
-                    value={priority}
-                    placeholder="Select Priority"
-                    options={[
-                      { value: 'HIGH', label: 'High' },
-                      { value: 'MEDIUM', label: 'Medium' },
-                      { value: 'LOW', label: 'Low' },
-                    ]}
-                    onChange={(value) => setPriority(value as TicketPriority)}
-                    disabled={!canModifyTicketFields}
-                  />
+                  {canModifyTicketFields ? (
+                    <FloatingSelect
+                      id="ticket-priority"
+                      value={priority}
+                      placeholder="Select Priority"
+                      options={[
+                        { value: 'HIGH', label: 'High' },
+                        { value: 'MEDIUM', label: 'Medium' },
+                        { value: 'LOW', label: 'Low' },
+                      ]}
+                      onChange={(value) => setPriority(value as TicketPriority)}
+                    />
+                  ) : (
+                    <div className={readOnlyFieldClass}>{priority ? priorityLabels[priority] : '—'}</div>
+                  )}
                 </div>
               </div>
             )}
@@ -610,18 +633,21 @@ export default function TicketingModal({
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Status</label>
                 <div>
-                  <FloatingSelect
-                    id="ticket-status"
-                    value={status}
-                    placeholder="Select status"
-                    options={[
-                      { value: 'PENDING', label: 'Pending' },
-                      { value: 'IN_PROGRESS', label: 'In Progress' },
-                      { value: 'RESOLVED', label: 'Resolved' },
-                    ]}
-                    onChange={(value) => setStatus(value as TicketStatus)}
-                    disabled={!canModifyTicketFields}
-                  />
+                  {canModifyTicketFields ? (
+                    <FloatingSelect
+                      id="ticket-status"
+                      value={status}
+                      placeholder="Select status"
+                      options={[
+                        { value: 'PENDING', label: 'Pending' },
+                        { value: 'IN_PROGRESS', label: 'In Progress' },
+                        { value: 'RESOLVED', label: 'Resolved' },
+                      ]}
+                      onChange={(value) => setStatus(value as TicketStatus)}
+                    />
+                  ) : (
+                    <div className={readOnlyFieldClass}>{statusLabels[status] || status}</div>
+                  )}
                 </div>
               </div>
             )}

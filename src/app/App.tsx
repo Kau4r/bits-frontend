@@ -31,6 +31,7 @@ import { normalizeUserRole, ROLES } from '@/types/user';
 import InventoryMobile from '@/pages/labtech/InventoryMobile';
 import Borrowing from '@/pages/labtech/BorrowingPage';
 import Reports from '@/pages/labtech/ReportsPage';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 // 🔒 Protects routes based on auth + role
 const ProtectedRoute = ({ children, roles }: { children: JSX.Element, roles: string[] }) => {
@@ -69,6 +70,7 @@ const Logout = () => {
 function AppContent() {
   const { isAuthenticated, userRole, loading } = useAuth();
   const normalizedRole = normalizeUserRole(userRole);
+  const isMobile = useIsMobile();
 
   if (loading) return null;
 
@@ -100,7 +102,7 @@ function AppContent() {
         {/* Redirect default / to dashboard based on role */}
         <Route path="/" element={
           normalizedRole === ROLES.ADMIN ? <SysAdDash /> :
-            normalizedRole === ROLES.LAB_TECH ? <LabtechDashboard /> :
+            normalizedRole === ROLES.LAB_TECH ? (isMobile ? <Navigate to="/labtech-mobile" replace /> : <LabtechDashboard />) :
               normalizedRole === ROLES.LAB_HEAD ? <LabheadDashboard /> :
                 normalizedRole === ROLES.STUDENT ? <StudentSession /> :
                   normalizedRole === ROLES.FACULTY ? <FacultyScheduling /> :

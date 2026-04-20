@@ -432,6 +432,9 @@ export default function ItemModal({
   const modeTitle = mode === "add" ? "Add Item" : mode === "edit" ? "Edit Item" : "View Item";
   const showAssetInfo = (mode === "view" || mode === "edit") && item;
   const qrItemUrl = showAssetInfo && item?.Item_Code ? buildInventoryItemQrUrl(item.Item_Code) : "";
+  const readOnlyFieldClass = "w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-[#334155] bg-gray-50 dark:bg-[#1e2939] text-gray-900 dark:text-white";
+  const selectedRoomName = rooms.find(r => r.Room_ID === formData.roomId)?.Name || "—";
+  const statusDisplay = formData.status ? formData.status.charAt(0) + formData.status.slice(1).toLowerCase() : "—";
 
   return createPortal(
     <div
@@ -552,28 +555,31 @@ export default function ItemModal({
                 <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
                   Item Type *
                 </label>
-                <FloatingSelect
-                  id="item-modal-type"
-                  value={isCustomItemType ? CUSTOM_ITEM_TYPE_VALUE : formData.itemType}
-                  onChange={(value) => {
-                    if (value === CUSTOM_ITEM_TYPE_VALUE) {
-                      setIsCustomItemType(true);
-                      setFormData({ ...formData, itemType: "" });
-                      setFieldErrors(prev => ({ ...prev, itemType: '' }));
-                      return;
-                    }
+                {readOnly ? (
+                  <div className={readOnlyFieldClass}>{formData.itemType || "—"}</div>
+                ) : (
+                  <FloatingSelect
+                    id="item-modal-type"
+                    value={isCustomItemType ? CUSTOM_ITEM_TYPE_VALUE : formData.itemType}
+                    onChange={(value) => {
+                      if (value === CUSTOM_ITEM_TYPE_VALUE) {
+                        setIsCustomItemType(true);
+                        setFormData({ ...formData, itemType: "" });
+                        setFieldErrors(prev => ({ ...prev, itemType: '' }));
+                        return;
+                      }
 
-                    setIsCustomItemType(false);
-                    setFormData({ ...formData, itemType: value as ItemType });
-                    setFieldErrors(prev => ({ ...prev, itemType: '' }));
-                  }}
-                  disabled={readOnly}
-                  placeholder="Select item type"
-                  options={[
-                    ...itemTypeOptions.map((type) => ({ value: type, label: type })),
-                    { value: CUSTOM_ITEM_TYPE_VALUE, label: '--' },
-                  ]}
-                />
+                      setIsCustomItemType(false);
+                      setFormData({ ...formData, itemType: value as ItemType });
+                      setFieldErrors(prev => ({ ...prev, itemType: '' }));
+                    }}
+                    placeholder="Select item type"
+                    options={[
+                      ...itemTypeOptions.map((type) => ({ value: type, label: type })),
+                      { value: CUSTOM_ITEM_TYPE_VALUE, label: '--' },
+                    ]}
+                  />
+                )}
                 {isCustomItemType && !readOnly && (
                   <input
                     type="text"
@@ -602,18 +608,21 @@ export default function ItemModal({
                 <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
                   Brand *
                 </label>
-                <FloatingCombobox
-                  id="item-modal-brand"
-                  value={formData.brand}
-                  onChange={(value) => {
-                    setFormData({ ...formData, brand: value });
-                    setFieldErrors(prev => ({ ...prev, brand: '' }));
-                  }}
-                  disabled={readOnly}
-                  required
-                  placeholder="Enter brand name..."
-                  options={existingBrands.map((brand) => ({ value: brand, label: brand }))}
-                />
+                {readOnly ? (
+                  <div className={readOnlyFieldClass}>{formData.brand || "—"}</div>
+                ) : (
+                  <FloatingCombobox
+                    id="item-modal-brand"
+                    value={formData.brand}
+                    onChange={(value) => {
+                      setFormData({ ...formData, brand: value });
+                      setFieldErrors(prev => ({ ...prev, brand: '' }));
+                    }}
+                    required
+                    placeholder="Enter brand name..."
+                    options={existingBrands.map((brand) => ({ value: brand, label: brand }))}
+                  />
+                )}
                 {fieldErrors.brand && (
                   <p className="mt-1 text-xs font-medium text-red-600 dark:text-red-400">{fieldErrors.brand}</p>
                 )}
@@ -624,14 +633,17 @@ export default function ItemModal({
                 <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
                   Room
                 </label>
-                <FloatingSelect
-                  id="item-modal-room"
-                  value={formData.roomId}
-                  disabled={readOnly}
-                  placeholder="Select room"
-                  options={rooms.map((r) => ({ value: r.Room_ID, label: r.Name }))}
-                  onChange={(value) => setFormData({ ...formData, roomId: Number(value) })}
-                />
+                {readOnly ? (
+                  <div className={readOnlyFieldClass}>{selectedRoomName}</div>
+                ) : (
+                  <FloatingSelect
+                    id="item-modal-room"
+                    value={formData.roomId}
+                    placeholder="Select room"
+                    options={rooms.map((r) => ({ value: r.Room_ID, label: r.Name }))}
+                    onChange={(value) => setFormData({ ...formData, roomId: Number(value) })}
+                  />
+                )}
               </div>
 
               {/* Status */}
@@ -639,17 +651,20 @@ export default function ItemModal({
                 <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
                   Status
                 </label>
-                <FloatingSelect
-                  id="item-modal-status"
-                  value={formData.status}
-                  disabled={readOnly}
-                  placeholder="Select status"
-                  options={STATUS_OPTIONS.map((status) => ({
-                    value: status,
-                    label: status.charAt(0) + status.slice(1).toLowerCase(),
-                  }))}
-                  onChange={(value) => setFormData({ ...formData, status: value as Item["Status"] })}
-                />
+                {readOnly ? (
+                  <div className={readOnlyFieldClass}>{statusDisplay}</div>
+                ) : (
+                  <FloatingSelect
+                    id="item-modal-status"
+                    value={formData.status}
+                    placeholder="Select status"
+                    options={STATUS_OPTIONS.map((status) => ({
+                      value: status,
+                      label: status.charAt(0) + status.slice(1).toLowerCase(),
+                    }))}
+                    onChange={(value) => setFormData({ ...formData, status: value as Item["Status"] })}
+                  />
+                )}
               </div>
 
               {/* Quantity (Add mode only) */}
