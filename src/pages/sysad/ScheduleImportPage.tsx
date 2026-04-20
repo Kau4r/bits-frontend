@@ -182,7 +182,7 @@ export default function ScheduleImportPage() {
                           type="checkbox"
                           checked={selectedSheets.includes(sheet)}
                           onChange={() => handleSheetToggle(sheet)}
-                          className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                          className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-[#334155] dark:bg-[#1e2939]"
                         />
                         <span>{sheet}</span>
                       </label>
@@ -192,12 +192,12 @@ export default function ScheduleImportPage() {
 
                 <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-2 text-sm dark:border-slate-700">
                   <span>Only import approved requests</span>
-                  <input type="checkbox" checked={approvedOnly} onChange={event => setApprovedOnly(event.target.checked)} />
+                  <input className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-[#334155] dark:bg-[#1e2939]" type="checkbox" checked={approvedOnly} onChange={event => setApprovedOnly(event.target.checked)} />
                 </label>
 
                 <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-2 text-sm dark:border-slate-700">
                   <span>Skip dissolved courses</span>
-                  <input type="checkbox" checked={skipDissolved} onChange={event => setSkipDissolved(event.target.checked)} />
+                  <input className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-[#334155] dark:bg-[#1e2939]" type="checkbox" checked={skipDissolved} onChange={event => setSkipDissolved(event.target.checked)} />
                 </label>
 
                 <div>
@@ -206,7 +206,7 @@ export default function ScheduleImportPage() {
                     type="date"
                     value={anchorDate}
                     onChange={event => setAnchorDate(event.target.value)}
-                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-[#334155] dark:bg-[#1e2939] dark:text-white"
                   />
                   <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                     The imported schedules are recurring. This date only anchors the stored time of day.

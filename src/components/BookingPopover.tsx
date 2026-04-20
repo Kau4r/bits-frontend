@@ -171,7 +171,10 @@ export default function BookingPopover({
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
+            const target = event.target as HTMLElement | null;
+            if (target?.closest('[data-floating-dropdown="true"]')) return;
+
+            if (popoverRef.current && target && !popoverRef.current.contains(target)) {
                 onClose();
             }
         };
@@ -360,7 +363,7 @@ export default function BookingPopover({
                                     value={title}
                                     onChange={(e) => setTitle(e.target.value)}
                                     placeholder="Add title"
-                                    className="w-full border-0 border-b border-slate-300 bg-transparent px-0 pb-2 text-2xl font-semibold tracking-tight text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-0 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-500 dark:focus:border-cyan-300"
+                                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-2xl font-semibold tracking-tight text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-[#334155] dark:bg-[#1e2939] dark:text-white dark:placeholder:text-slate-500 dark:focus:border-[#615fff] dark:focus:ring-[#615fff]/20"
                                     required
                                 />
                             </div>
@@ -431,7 +434,7 @@ export default function BookingPopover({
                                             type="checkbox"
                                             checked={repeat}
                                             onChange={(e) => setRepeat(e.target.checked)}
-                                            className="h-4 w-4 rounded border-slate-300 bg-white text-indigo-600 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-900 dark:text-cyan-400 dark:focus:ring-cyan-300"
+                                            className="h-4 w-4 rounded border-slate-300 bg-white text-indigo-600 focus:ring-indigo-500 dark:border-[#334155] dark:bg-[#1e2939] dark:text-cyan-400 dark:focus:ring-cyan-300"
                                         />
                                         Repeat event
                                     </label>

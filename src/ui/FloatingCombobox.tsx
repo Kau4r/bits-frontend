@@ -144,7 +144,7 @@ export function FloatingCombobox({
           required={required}
           placeholder={placeholder}
           autoComplete="off"
-          className={`w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 pr-10 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-300 hover:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/[0.05] dark:text-white dark:placeholder:text-slate-500 dark:hover:border-white/20 dark:hover:bg-white/[0.08] dark:focus:border-cyan-300 dark:focus:ring-cyan-300/20 ${inputClassName}`}
+          className={`w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 pr-10 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-300 hover:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-[#334155] dark:bg-[#1e2939] dark:text-white dark:placeholder:text-slate-500 dark:hover:border-[#475569] dark:hover:bg-[#1e2939] dark:focus:border-[#615fff] dark:focus:ring-[#615fff]/20 ${inputClassName}`}
           role="combobox"
           aria-expanded={isOpen}
           aria-controls={`${id}-menu`}
@@ -157,9 +157,13 @@ export function FloatingCombobox({
         <div
           ref={menuRef}
           id={`${id}-menu`}
-          className={`fixed z-[1200] max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl shadow-slate-950/10 scrollbar-thin dark:border-white/10 dark:bg-[#252d38] dark:shadow-black/30 ${menuClassName}`}
+          data-floating-dropdown="true"
+          className={`fixed z-[1200] max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl shadow-slate-950/10 scrollbar-thin dark:border-[#334155] dark:bg-[#1e2939] dark:shadow-black/30 ${menuClassName}`}
           style={{ left: menuRect.left, top: menuRect.top, width: menuRect.width }}
           role="listbox"
+          onPointerDown={(event) => event.stopPropagation()}
+          onMouseDown={(event) => event.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
         >
           {filteredOptions.length > 0 ? filteredOptions.map((option, index) => {
             const selected = option.value === value;

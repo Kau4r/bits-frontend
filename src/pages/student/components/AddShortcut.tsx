@@ -49,7 +49,7 @@ export default function AddShortcutModal({ isOpen, onClose, onAddShortcut }: Add
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-[#334155] dark:bg-[#1e2939] dark:text-white"
                 placeholder="e.g., Google Drive"
                 required
               />
@@ -69,7 +69,7 @@ export default function AddShortcutModal({ isOpen, onClose, onAddShortcut }: Add
                 id="url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 bg-white pl-10 pr-4 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                className="w-full rounded-lg border border-gray-300 bg-white pl-10 pr-4 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-[#334155] dark:bg-[#1e2939] dark:text-white"
                 placeholder="https://example.com"
                 required
               />

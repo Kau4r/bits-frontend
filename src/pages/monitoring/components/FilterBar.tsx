@@ -26,11 +26,11 @@ export default function FilterBar({
         </label>
         <FloatingSelect
           id="room-filter"
-          value={selectedRoomId ?? ''}
+          value={selectedRoomId === null ? '' : String(selectedRoomId)}
           placeholder="All Rooms"
           options={[
             { value: '', label: 'All Rooms' },
-            ...rooms.map(room => ({ value: room.room_id, label: room.room_name })),
+            ...rooms.map(room => ({ value: String(room.room_id), label: room.room_name })),
           ]}
           onChange={(roomId) => onRoomChange(roomId === '' ? null : Number(roomId))}
           className="min-w-48"

@@ -68,7 +68,7 @@ export default function ReportIssueModal({
               type="text"
               value={room}
               readOnly
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-gray-100 dark:bg-gray-700 dark:text-gray-300 cursor-not-allowed"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-[#334155] rounded-md shadow-sm bg-gray-100 dark:bg-[#1e2939] dark:text-gray-300 cursor-not-allowed"
             />
           </div>
           <div className="mb-4">
@@ -80,7 +80,7 @@ export default function ReportIssueModal({
               value={editablePcNumber}
               onChange={(e) => setEditablePcNumber(e.target.value)}
               placeholder="Enter PC number"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-[#334155] rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-[#1e2939] dark:text-white"
               disabled={isSubmitting}
             />
           </div>
@@ -130,7 +130,7 @@ export default function ReportIssueModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-[#334155] dark:bg-[#1e2939] dark:text-white"
               placeholder="Please provide detailed information about the issue..."
               required
               disabled={isSubmitting}

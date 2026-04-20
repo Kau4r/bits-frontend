@@ -24,6 +24,11 @@ export interface Ticket {
     Created_At: string;
     Updated_At: string;
     Archived: boolean;
+    AuditLogs?: {
+        Log_ID: number;
+        Action: string;
+        Timestamp: string;
+    }[];
 }
 
 export interface NewTicketInput {

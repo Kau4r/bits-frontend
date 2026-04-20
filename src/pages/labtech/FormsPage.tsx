@@ -55,10 +55,11 @@ export default function Forms() {
   const [loading, setLoading] = useState(true);
 
   const tableHeaders = [
-    { label: 'File', key: 'attachmentName' },
-    { label: 'Form ID', key: 'formId' },
-    { label: 'Status', key: 'status' },
+    { label: 'Title', key: 'title' },
     { label: 'Department', key: 'department' },
+    { label: 'Status', key: 'status' },
+    { label: 'Form ID', key: 'formId' },
+    { label: 'Attached Files', key: 'attachments' },
     { label: 'Actions', align: 'right' as const }
   ];
 
@@ -108,6 +109,7 @@ export default function Forms() {
     return {
       id: form.Form_ID.toString(),
       formId: form.Form_Code,
+      title: form.Title || form.Form_Code,
       type: form.Form_Type,
       status: form.Status,
       department: form.Department,
@@ -180,7 +182,7 @@ export default function Forms() {
       .filter(f => (showArchived ? f.isArchived : !f.isArchived))
       .filter(f => {
         const attachmentSearch = (f.attachments || []).map(attachment => attachment.fileName).join(' ');
-        const matchesSearch = `${f.formId} ${f.type} ${f.status} ${f.department} ${f.attachmentName || ''} ${attachmentSearch}`
+        const matchesSearch = `${f.title || ''} ${f.formId} ${f.type} ${f.status} ${f.department} ${f.attachmentName || ''} ${attachmentSearch}`
           .toLowerCase()
           .includes(q);
         const matchesFormType = formTypeFilter === 'All' || f.type === formTypeFilter;
@@ -374,7 +376,7 @@ export default function Forms() {
       const createdForm = await createForm({
         creatorId: user.User_ID,
         formType: payload.type,
-        title: payload.formId,
+        title: payload.title,
         content: payload.department,
         fileName: primaryUpload.file.name,
         fileUrl: primaryUpload.uploadResult.url,
@@ -434,21 +436,28 @@ export default function Forms() {
         return;
       }
 
+      const isDepartmentTransfer = edits.department !== undefined;
+      const effectiveStatus = edits.status ?? currentForm.status;
+
+      if (isDepartmentTransfer && effectiveStatus !== 'APPROVED') {
+        await modal.showError('Set this form status to Approved before transferring it to another department.', 'Approval Required');
+        return;
+      }
+
       const needsFormUpdate = edits.status !== undefined || edits.remarks !== undefined;
       let savedForm: Form | null = null;
 
-      // 1. Handle form field updates
+      // 1. Save status/remarks first. Transfers are allowed only after approval.
       if (needsFormUpdate) {
         savedForm = await updateFormAPI(parseInt(id), {
           status: edits.status as any,
-          // Preserve the existing title/form code if only remarks changed.
-          title: currentForm?.formId || '',
+          title: currentForm?.title || currentForm?.formId || '',
           remarks: edits.remarks,
         });
       }
 
-      // 2. Handle Department Transfer
-      if (edits.department) {
+      // 2. Transfer department. The backend resets the transferred form to Pending.
+      if (isDepartmentTransfer) {
         savedForm = await transferForm(parseInt(id), edits.department as any, `Transferred to ${edits.department}`);
       }
 
@@ -548,7 +557,7 @@ export default function Forms() {
           <Search
             searchTerm={searchTerm}
             onChange={setSearchTerm}
-            placeholder="Search by filename or form code..."
+            placeholder="Search by title, filename, or form code..."
             showLabel={false}
           />
         </div>
@@ -600,7 +609,7 @@ export default function Forms() {
             ))}
           </div>
         ) : (
-          <Table headers={tableHeaders} columnWidths="4fr 2fr 2fr 2fr 2fr">
+          <Table headers={tableHeaders} columnWidths="3fr 2fr 1.5fr 1.6fr 1.5fr 1fr">
             {filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center flex-1 w-full min-h-full" data-full-row>
                 <div className="p-4 bg-gray-100 dark:bg-gray-800/50 rounded-full mb-4">
@@ -637,21 +646,18 @@ export default function Forms() {
                   onClick={() => setExpandedRow(expandedRow === f.id ? null : f.id)}
                   className="group w-full cursor-pointer items-center text-left transition-all duration-150 hover:bg-indigo-50/50 focus:bg-indigo-50 focus:outline-none dark:hover:bg-indigo-900/10 dark:focus:bg-indigo-900/20"
                 >
-                  <div className="flex items-center gap-3 min-w-0 w-full">
-                    <RowPreview url={f.attachmentUrl} name={f.attachmentName} type={f.attachmentType} />
-                    <div className="min-w-0">
-                      <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-[200px]">
-                        {f.attachmentName || 'No file'}
+                  <div className="min-w-0">
+                    <span className="block max-w-[260px] truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      {f.title || f.formId}
+                    </span>
+                    {f.attachmentName && (
+                      <span className="block max-w-[260px] truncate text-xs text-gray-500 dark:text-gray-400">
+                        {f.attachmentName}
                       </span>
-                      {(f.attachments?.length || 0) > 1 && (
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          +{(f.attachments?.length || 0) - 1} more file(s)
-                        </span>
-                      )}
-                    </div>
+                    )}
                   </div>
 
-                  <span className="text-sm text-gray-700 dark:text-gray-300">{f.formId}</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">{formDepartmentLabels[f.department as FormDepartment] || f.department}</span>
 
                   <div>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusChip[f.status as FormStatus] || statusChip.ARCHIVED}`}>
@@ -659,7 +665,21 @@ export default function Forms() {
                     </span>
                   </div>
 
-                  <span className="text-sm text-gray-700 dark:text-gray-300">{formDepartmentLabels[f.department as FormDepartment] || f.department}</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">{f.formId}</span>
+
+                  <div className="flex items-center gap-3 min-w-0 w-full">
+                    <RowPreview url={f.attachmentUrl} name={f.attachmentName} type={f.attachmentType} />
+                    <div className="min-w-0">
+                      <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-[200px]">
+                        {(f.attachments?.length || 0)} {(f.attachments?.length || 0) === 1 ? 'file' : 'files'}
+                      </span>
+                      {f.attachmentName && (
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {f.attachmentName}
+                        </span>
+                      )}
+                    </div>
+                  </div>
 
                   <div className="flex items-center justify-end">
                     <div className="p-1.5 text-gray-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
@@ -827,6 +847,7 @@ export default function Forms() {
                               value={editedForms[f.id]?.department ?? f.department}
                               onChange={(d: FormDepartment) => handleLocalChange(f.id, 'department', d)}
                               formType={f.type}
+                              disabled={(editedForms[f.id]?.status ?? f.status) !== 'APPROVED'}
                               options={getTransferDepartmentOptions(
                                 f.type,
                                 f.department,
@@ -837,6 +858,11 @@ export default function Forms() {
                               }))}
                               className="w-full"
                             />
+                            {(editedForms[f.id]?.status ?? f.status) !== 'APPROVED' && (
+                              <p className="mt-2 text-xs text-amber-600 dark:text-amber-300">
+                                Set status to Approved to unlock department transfer.
+                              </p>
+                            )}
                             <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                               Locked departments appear here but can only be selected after the previous step has been visited. RIS completion also requires all procurement files and received confirmation.
                             </p>
@@ -856,7 +882,7 @@ export default function Forms() {
                             onChange={(e) => handleLocalChange(f.id, 'remarks', e.target.value)}
                             placeholder="Add remarks or notes..."
                             rows={3}
-                            className="block w-full pl-3 pr-3 py-2.5 text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 hover:border-gray-400 dark:hover:border-gray-500 resize-none"
+                            className="block w-full pl-3 pr-3 py-2.5 text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-[#1e2939] border border-gray-300 dark:border-[#334155] rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 hover:border-gray-400 dark:hover:border-[#475569] resize-none"
                           />
                           {f.requesterName && (
                             <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">

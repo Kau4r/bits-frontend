@@ -13,10 +13,10 @@ export interface User {
 
 export const ROLES = {
     ADMIN: 'ADMIN',
-    LAB_TECH: 'LAB_TECH',
-    LAB_HEAD: 'LAB_HEAD',
-    FACULTY: 'FACULTY',
     SECRETARY: 'SECRETARY',
+    LAB_HEAD: 'LAB_HEAD',
+    LAB_TECH: 'LAB_TECH',
+    FACULTY: 'FACULTY',
     STUDENT: 'STUDENT',
 } as const;
 

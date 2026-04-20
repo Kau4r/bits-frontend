@@ -11,6 +11,39 @@ import { FloatingSelect } from "@/ui/FloatingSelect";
 
 const isActiveTicket = (ticket: Ticket) => !ticket.Archived && ticket.Status !== 'RESOLVED';
 
+const formatTicketDateTime = (value?: string | null) => {
+    if (!value) return '-';
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return '-';
+
+    return parsed.toLocaleString([], {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+    });
+};
+
+const getTicketTitle = (ticket: Ticket) => {
+    const firstLine = ticket.Report_Problem.split(/\r?\n/).find(line => line.trim());
+    return firstLine?.trim() || 'Untitled ticket';
+};
+
+const getTicketDescription = (ticket: Ticket) => {
+    const description = ticket.Report_Problem.trim();
+    return description || 'No description provided';
+};
+
+const getTicketResolvedAt = (ticket: Ticket) => {
+    const resolvedLog = ticket.AuditLogs
+        ?.filter(log => log.Action === 'TICKET_RESOLVED')
+        .sort((a, b) => new Date(b.Timestamp).getTime() - new Date(a.Timestamp).getTime())[0];
+
+    return resolvedLog?.Timestamp || (ticket.Status === 'RESOLVED' ? ticket.Updated_At : null);
+};
+
 export default function Tickets() {
     const { notifications } = useNotifications();
     const [searchTerm, setSearchTerm] = useState('');
@@ -144,13 +177,25 @@ export default function Tickets() {
 
     const hasActiveFilters = searchTerm || selectedStatus !== 'All';
 
-    const tableHeaders = [
-        { label: 'Reported By', key: 'reported_by' },
-        { label: 'Location', key: 'location' },
-        { label: 'Category', key: 'category' },
-        { label: 'Status', key: 'status' },
-        { label: 'Actions', align: 'center' as const }
-    ];
+    const tableHeaders = useMemo(() => {
+        const headers: Array<{ label: string; key?: string; align?: 'left' | 'center' | 'right' }> = [
+            { label: 'Reported By', key: 'reported_by' },
+            { label: 'Title / Description', key: 'description' },
+            { label: 'Location', key: 'location' },
+            { label: 'Category', key: 'category' },
+            { label: 'Status', key: 'status' },
+        ];
+
+        if (showArchived) {
+            headers.push({ label: 'Resolved Time', key: 'resolved_time' });
+        }
+
+        return [...headers, { label: 'Actions', align: 'center' as const }];
+    }, [showArchived]);
+
+    const ticketColumnWidths = showArchived
+        ? '1.4fr 2.2fr 1.4fr 1fr 1.2fr 1.4fr 1fr'
+        : '1.5fr 2.3fr 1.4fr 1fr 1.2fr 1fr';
 
     if (loading) {
         return (
@@ -251,7 +296,7 @@ export default function Tickets() {
             </div>
 
             <div className="flex-1 min-h-0">
-                <Table headers={tableHeaders} columnWidths="2fr 1.5fr 1fr 1.5fr 1fr">
+                <Table headers={tableHeaders} columnWidths={ticketColumnWidths}>
                     {filteredTickets.length === 0 ? (
                         <div className="flex flex-col items-center justify-center flex-1 w-full min-h-full" data-full-row>
                             <div className="p-4 bg-gray-100 dark:bg-gray-800/50 rounded-full mb-4">
@@ -287,7 +332,7 @@ export default function Tickets() {
                                 type="button"
                                 onClick={() => handleViewTicket(ticket)}
                                 className="group grid w-full cursor-pointer items-center px-6 py-4 text-left transition-all duration-150 hover:bg-indigo-50/50 focus:bg-indigo-50 focus:outline-none dark:hover:bg-indigo-900/10 dark:focus:bg-indigo-900/20"
-                                style={{ gridTemplateColumns: '2fr 1.5fr 1fr 1.5fr 1fr' }}
+                                style={{ gridTemplateColumns: ticketColumnWidths }}
                             >
                                 <div>
                                     <p className="font-semibold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
@@ -295,6 +340,14 @@ export default function Tickets() {
                                     </p>
                                     <p className="text-xs text-gray-500 dark:text-gray-400">
                                         {ticket.Reported_By.User_Role.replace('_', ' ')} • {new Date(ticket.Created_At).toLocaleDateString()}
+                                    </p>
+                                </div>
+                                <div className="min-w-0 pr-3">
+                                    <p className="truncate text-sm font-semibold text-gray-900 dark:text-white">
+                                        {getTicketTitle(ticket)}
+                                    </p>
+                                    <p className="mt-1 line-clamp-2 text-xs text-gray-500 dark:text-gray-400">
+                                        {getTicketDescription(ticket)}
                                     </p>
                                 </div>
                                 <div className="text-sm text-gray-600 dark:text-gray-300">{formatTicketLocationDisplay(ticket.Location, ticket.Room?.Name || '-')}</div>
@@ -317,6 +370,11 @@ export default function Tickets() {
                                         <p className="text-[10px] text-gray-500 mt-1 dark:text-gray-400">Assignee: {ticket.Technician.First_Name}</p>
                                     )}
                                 </div>
+                                {showArchived && (
+                                    <div className="text-sm text-gray-600 dark:text-gray-300">
+                                        {formatTicketDateTime(getTicketResolvedAt(ticket))}
+                                    </div>
+                                )}
                                 <div className="flex items-center justify-center gap-2" onClick={(e) => e.stopPropagation()}>
                                     <button
                                         onClick={() => handleViewTicket(ticket)}

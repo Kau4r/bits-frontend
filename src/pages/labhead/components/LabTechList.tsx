@@ -128,7 +128,7 @@ export default function LabTechList({ selectedTech, onSelect }: Props) {
             placeholder="Find technician..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 border-none rounded-lg focus:ring-1 focus:ring-indigo-500 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
+            className="w-full pl-9 pr-3 py-2 text-sm bg-gray-50 dark:bg-[#1e2939] border-none rounded-lg focus:ring-1 focus:ring-indigo-500 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
           />
         </div>
       </div>

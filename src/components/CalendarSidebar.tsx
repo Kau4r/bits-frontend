@@ -17,6 +17,7 @@ interface CalendarSidebarProps {
     borrowingRequests?: BorrowingRequest[];
     showBorrowingRequests?: boolean;
     myBookings?: any[];
+    showRejectedBookings?: boolean;
     onBookingClick?: (booking: any) => void;
 }
 
@@ -31,12 +32,16 @@ export default function CalendarSidebar({
     borrowingRequests: _borrowingRequests = [],
     showBorrowingRequests: _showBorrowingRequests = false,
     myBookings = [],
+    showRejectedBookings = false,
     onBookingClick,
 }: CalendarSidebarProps) {
     const allSelected = rooms.length > 0 && selectedRooms.length === rooms.length;
-    const visibleBookings = myBookings.filter(b => b.extendedProps.status !== 'REJECTED');
+    const visibleBookings = showRejectedBookings
+        ? myBookings
+        : myBookings.filter(b => b.extendedProps.status !== 'REJECTED');
     const requestedSchedules = visibleBookings.filter(b => b.extendedProps.status === 'PENDING').length;
     const acceptedSchedules = visibleBookings.filter(b => b.extendedProps.status === 'APPROVED').length;
+    const rejectedSchedules = visibleBookings.filter(b => b.extendedProps.status === 'REJECTED').length;
 
     const [isRoomsCollapsed, setIsRoomsCollapsed] = useState(false);
     const [isSchedulesCollapsed, setIsSchedulesCollapsed] = useState(false);
@@ -65,7 +70,7 @@ export default function CalendarSidebar({
     };
 
     return (
-        <div className="flex h-full w-72 shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white/95 p-4 shadow-sm shadow-slate-200/60 dark:border-[#3c4653] dark:bg-[#232b35] dark:shadow-none">
+        <div className="flex h-full w-72 shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white/95 p-4 shadow-sm shadow-slate-200/60 dark:border-[#334155] dark:bg-[#1e2939] dark:shadow-none">
             <button
                 type="button"
                 onClick={onCreateClick}
@@ -121,7 +126,7 @@ export default function CalendarSidebar({
                                     type="checkbox"
                                     checked={allSelected}
                                     onChange={() => onSelectAll(!allSelected)}
-                                    className="h-4 w-4 shrink-0 cursor-pointer rounded border border-gray-400 bg-white text-[#615fff] checked:border-[#615fff] checked:bg-[#615fff] focus:ring-2 focus:ring-[#615fff] dark:border-gray-500 dark:bg-gray-700"
+                                    className="h-4 w-4 shrink-0 cursor-pointer rounded border border-gray-400 bg-white text-[#615fff] checked:border-[#615fff] checked:bg-[#615fff] focus:ring-2 focus:ring-[#615fff] dark:border-[#334155] dark:bg-[#1e2939]"
                                 />
                                 <span className="text-sm font-medium text-slate-700 group-hover:text-slate-950 dark:text-gray-200 dark:group-hover:text-white">All Rooms</span>
                             </label>
@@ -135,7 +140,7 @@ export default function CalendarSidebar({
                                         type="checkbox"
                                         checked={selectedRooms.includes(room.Room_ID)}
                                         onChange={() => onRoomToggle(room.Room_ID)}
-                                        className="h-4 w-4 shrink-0 cursor-pointer rounded border border-gray-400 bg-white text-[#615fff] checked:border-[#615fff] checked:bg-[#615fff] focus:ring-2 focus:ring-[#615fff] dark:border-gray-500 dark:bg-gray-700"
+                                        className="h-4 w-4 shrink-0 cursor-pointer rounded border border-gray-400 bg-white text-[#615fff] checked:border-[#615fff] checked:bg-[#615fff] focus:ring-2 focus:ring-[#615fff] dark:border-[#334155] dark:bg-[#1e2939]"
                                     />
                                     <span className="h-2.5 w-2.5 rounded-full bg-[#6f7f8f]" />
                                     <span className="text-sm text-slate-600 group-hover:text-slate-950 dark:text-gray-300 dark:group-hover:text-white">
@@ -181,7 +186,7 @@ export default function CalendarSidebar({
 
                             {!isSchedulesCollapsed && (
                                 <>
-                                    <div className="mb-3 grid shrink-0 grid-cols-2 gap-2">
+                                    <div className={`mb-3 grid shrink-0 gap-2 ${showRejectedBookings ? 'grid-cols-3' : 'grid-cols-2'}`}>
                                         <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-2 dark:border-yellow-500/20 dark:bg-yellow-500/10">
                                             <div className="text-xs text-yellow-700 dark:text-yellow-400">Requested</div>
                                             <div className="text-lg font-bold text-yellow-700 dark:text-yellow-300">{requestedSchedules}</div>
@@ -190,6 +195,12 @@ export default function CalendarSidebar({
                                             <div className="text-xs text-green-700 dark:text-green-400">Accepted</div>
                                             <div className="text-lg font-bold text-green-700 dark:text-green-300">{acceptedSchedules}</div>
                                         </div>
+                                        {showRejectedBookings && (
+                                            <div className="rounded-lg border border-rose-200 bg-rose-50 p-2 dark:border-rose-500/20 dark:bg-rose-500/10">
+                                                <div className="text-xs text-rose-700 dark:text-rose-400">Rejected</div>
+                                                <div className="text-lg font-bold text-rose-700 dark:text-rose-300">{rejectedSchedules}</div>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">

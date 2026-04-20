@@ -11,9 +11,10 @@ interface DeptSelectProps {
   departments?: FormDepartment[];
   options?: FormDepartmentOption[];
   className?: string;
+  disabled?: boolean;
 }
 
-export const DeptSelect: React.FC<DeptSelectProps> = ({ value, onChange, formType, departments, options, className = '' }) => {
+export const DeptSelect: React.FC<DeptSelectProps> = ({ value, onChange, formType, departments, options, className = '', disabled = false }) => {
   // If formType is specified, only show departments for that type; otherwise show all
   const selectableDepartments: FormDepartment[] = departments ?? (formType
     ? getDepartmentsForType(formType)
@@ -32,6 +33,7 @@ export const DeptSelect: React.FC<DeptSelectProps> = ({ value, onChange, formTyp
       }))}
       onChange={onChange}
       className={className}
+      disabled={disabled}
     />
   );
 };

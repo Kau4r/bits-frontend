@@ -134,7 +134,7 @@ export default function MaintenancePage() {
                     value={confirmation}
                     onChange={(event) => setConfirmation(event.target.value)}
                     placeholder={requiredText}
-                    className="mt-4 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 font-mono text-sm text-slate-950 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-500/30 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                    className="mt-4 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 font-mono text-sm text-slate-950 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-500/30 dark:border-[#334155] dark:bg-[#1e2939] dark:text-white"
                   />
                   <button
                     type="button"

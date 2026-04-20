@@ -266,6 +266,7 @@ export interface FormAttachmentRecord {
 export interface FormRecord {
   id: string;
   formId: string;
+  title?: string;
   type: FormType;
   status: FormStatus;
   department: string;

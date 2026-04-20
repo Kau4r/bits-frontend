@@ -12,6 +12,7 @@ export const AddFormDialog: FC<{
   existing?: FormRecord[];
 }> = ({ open, onClose, onCreate, existing = [] }) => {
   const [type, setType] = useState<FormType>('WRF');
+  const [title, setTitle] = useState('');
   const [department, setDepartment] = useState<FormDepartment>('REQUESTOR');
   const [status, setStatus] = useState<FormStatus>('PENDING');
   const [requesterName, setRequesterName] = useState('');
@@ -31,6 +32,7 @@ export const AddFormDialog: FC<{
   useEffect(() => {
     if (!open) {
       setType('WRF');
+      setTitle('');
       setDepartment('REQUESTOR');
       setStatus('PENDING');
       setRequesterName('');
@@ -71,11 +73,17 @@ export const AddFormDialog: FC<{
       return;
     }
 
+    if (!title.trim()) {
+      setSubmitError('Please enter a title before tracking the form.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       await onCreate({
         formId: nextId,
+        title: title.trim(),
         type,
         status,
         department,
@@ -141,72 +149,90 @@ export const AddFormDialog: FC<{
 
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden" noValidate>
           <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Form Type
-              </label>
-              <FloatingSelect
-                id="add-form-type"
-                value={type}
-                onChange={(value) => setType(value as FormType)}
-                disabled={isSubmitting}
-                placeholder="Select form type"
-                options={[
-                  { value: 'WRF', label: 'WRF' },
-                  { value: 'RIS', label: 'RIS' },
-                ]}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Department
-              </label>
-              <FloatingSelect
-                id="add-form-department"
-                value={department}
-                onChange={(value) => setDepartment(value as FormDepartment)}
-                disabled={isSubmitting}
-                placeholder="Select department"
-                options={departments.map((dept) => ({
-                  value: dept,
-                  label: formDepartmentLabels[dept],
-                }))}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Status
-              </label>
-              <FloatingSelect
-                id="add-form-status"
-                value={status}
-                onChange={(value) => setStatus(value as FormStatus)}
-                disabled={isSubmitting}
-                placeholder="Select status"
-                options={[
-                  { value: 'PENDING', label: 'Pending' },
-                  { value: 'IN_REVIEW', label: 'In Review' },
-                  { value: 'APPROVED', label: 'Approved' },
-                  { value: 'REJECTED', label: 'Rejected' },
-                ]}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Form ID
+                Title <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                value={nextId}
-                readOnly
-                className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white p-2 text-sm cursor-not-allowed"
+                value={title}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  setSubmitError(null);
+                }}
+                disabled={isSubmitting}
+                placeholder="Enter form title"
+                className="w-full rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white p-2 text-sm"
+                required
               />
             </div>
-          </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Form Type
+                </label>
+                <FloatingSelect
+                  id="add-form-type"
+                  value={type}
+                  onChange={(value) => setType(value as FormType)}
+                  disabled={isSubmitting}
+                  placeholder="Select form type"
+                  options={[
+                    { value: 'WRF', label: 'WRF' },
+                    { value: 'RIS', label: 'RIS' },
+                  ]}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Department
+                </label>
+                <FloatingSelect
+                  id="add-form-department"
+                  value={department}
+                  onChange={(value) => setDepartment(value as FormDepartment)}
+                  disabled={isSubmitting}
+                  placeholder="Select department"
+                  options={departments.map((dept) => ({
+                    value: dept,
+                    label: formDepartmentLabels[dept],
+                  }))}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Status
+                </label>
+                <FloatingSelect
+                  id="add-form-status"
+                  value={status}
+                  onChange={(value) => setStatus(value as FormStatus)}
+                  disabled={isSubmitting}
+                  placeholder="Select status"
+                  options={[
+                    { value: 'PENDING', label: 'Pending' },
+                    { value: 'IN_REVIEW', label: 'In Review' },
+                    { value: 'APPROVED', label: 'Approved' },
+                    { value: 'REJECTED', label: 'Rejected' },
+                  ]}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Form ID
+                </label>
+                <input
+                  type="text"
+                  value={nextId}
+                  readOnly
+                  className="w-full rounded-md border border-gray-300 dark:border-[#334155] bg-gray-100 dark:bg-[#1e2939] text-gray-900 dark:text-white p-2 text-sm cursor-not-allowed"
+                />
+              </div>
+            </div>
 
           {/* Requester Name */}
           <div>
@@ -219,7 +245,7 @@ export const AddFormDialog: FC<{
               onChange={(e) => setRequesterName(e.target.value)}
               disabled={isSubmitting}
               placeholder="Name of the person requesting"
-              className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-2 text-sm"
+              className="w-full rounded-md border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white p-2 text-sm"
             />
           </div>
 
@@ -234,7 +260,7 @@ export const AddFormDialog: FC<{
               disabled={isSubmitting}
               placeholder="Any additional notes or context..."
               rows={3}
-              className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-2 text-sm resize-none"
+              className="w-full rounded-md border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white p-2 text-sm resize-none"
             />
           </div>
 

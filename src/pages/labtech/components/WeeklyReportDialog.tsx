@@ -184,7 +184,7 @@ export const WeeklyReportDialog: FC<Props> = ({ open, onClose, onSave, existing 
                 value={weekStart}
                 onChange={e => setWeekStart(e.target.value)}
                 required
-                className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-2 text-sm"
+                className="w-full rounded-md border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white p-2 text-sm"
               />
             </div>
             <div>
@@ -196,7 +196,7 @@ export const WeeklyReportDialog: FC<Props> = ({ open, onClose, onSave, existing 
                 value={weekEnd}
                 onChange={e => setWeekEnd(e.target.value)}
                 required
-                className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-2 text-sm"
+                className="w-full rounded-md border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white p-2 text-sm"
               />
             </div>
           </div>
@@ -252,7 +252,7 @@ export const WeeklyReportDialog: FC<Props> = ({ open, onClose, onSave, existing 
                       value={task.title}
                       onChange={e => updateTask(idx, 'title', e.target.value)}
                       required
-                      className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white p-1.5 text-sm"
+                      className="flex-1 rounded-md border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white p-1.5 text-sm"
                     />
                     <FloatingSelect
                       id={`weekly-report-task-category-${idx}`}
@@ -279,7 +279,7 @@ export const WeeklyReportDialog: FC<Props> = ({ open, onClose, onSave, existing 
                     placeholder="Description (optional)"
                     value={task.description}
                     onChange={e => updateTask(idx, 'description', e.target.value)}
-                    className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white p-1.5 text-sm"
+                    className="w-full rounded-md border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white p-1.5 text-sm"
                   />
                   {task.ticketId && (
                     <span className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
@@ -315,7 +315,7 @@ export const WeeklyReportDialog: FC<Props> = ({ open, onClose, onSave, existing 
               onChange={e => setNotes(e.target.value)}
               rows={3}
               placeholder="Any additional notes..."
-              className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-2 text-sm resize-none"
+              className="w-full rounded-md border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white p-2 text-sm resize-none"
             />
           </div>
 

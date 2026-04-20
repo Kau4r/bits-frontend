@@ -78,4 +78,31 @@ describe('FloatingSelect', () => {
     expect(within(modalBody).queryByRole('listbox')).not.toBeInTheDocument()
     expect(screen.getByRole('listbox')).toBeInTheDocument()
   })
+
+  it('does not bubble portal option clicks to modal overlays', async () => {
+    const user = userEvent.setup()
+    const onClose = vi.fn()
+    const onChange = vi.fn()
+
+    render(
+      <div data-testid="overlay" onClick={onClose}>
+        <div onClick={(event) => event.stopPropagation()}>
+          <FloatingSelect
+            id="status"
+            value="pending"
+            placeholder="Status"
+            options={options}
+            onChange={onChange}
+          />
+        </div>
+      </div>
+    )
+
+    await user.click(screen.getByRole('button', { name: /pending/i }))
+    onClose.mockClear()
+    await user.click(screen.getByRole('option', { name: /approved/i }))
+
+    expect(onChange).toHaveBeenCalledWith('approved')
+    expect(onClose).not.toHaveBeenCalled()
+  })
 })

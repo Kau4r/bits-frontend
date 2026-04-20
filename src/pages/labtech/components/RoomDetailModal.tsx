@@ -816,7 +816,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                 value={newComputerName}
                                 onChange={(e) => setNewComputerName(e.target.value)}
                                 placeholder="e.g., PC 1"
-                                className="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full px-4 py-2 bg-white dark:bg-[#1e2939] border border-gray-300 dark:border-[#334155] rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                 Defaults to the next available PC number for this room.
@@ -830,7 +830,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                     type="checkbox"
                                     checked={newComputerIsTeacher}
                                     onChange={(e) => setNewComputerIsTeacher(e.target.checked)}
-                                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500 dark:border-[#334155] dark:bg-[#1e2939]"
                                 />
                                 <span>
                                     <span className="block text-sm font-semibold text-gray-900 dark:text-white">Mark as Teacher's PC</span>
@@ -901,7 +901,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                 value={editName}
                                 onChange={(e) => setEditName(e.target.value)}
                                 placeholder="e.g., PC 1"
-                                className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full px-4 py-2.5 bg-white dark:bg-[#1e2939] border border-gray-300 dark:border-[#334155] rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
 
@@ -929,7 +929,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                     type="checkbox"
                                     checked={editIsTeacher}
                                     onChange={(e) => setEditIsTeacher(e.target.checked)}
-                                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500 dark:border-[#334155] dark:bg-[#1e2939]"
                                 />
                                 <span>
                                     <span className="block text-sm font-semibold text-gray-900 dark:text-white">Teacher's PC</span>
@@ -952,14 +952,14 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                             value={item.brand}
                                             onChange={(e) => updateEditItem(index, 'brand', e.target.value)}
                                             placeholder="Brand"
-                                            className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            className="px-3 py-2 bg-white dark:bg-[#1e2939] border border-gray-300 dark:border-[#334155] rounded-lg text-gray-900 dark:text-white text-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         />
                                         <input
                                             type="text"
                                             value={item.serialNumber}
                                             onChange={(e) => updateEditItem(index, 'serialNumber', e.target.value)}
                                             placeholder="Serial Number"
-                                            className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            className="px-3 py-2 bg-white dark:bg-[#1e2939] border border-gray-300 dark:border-[#334155] rounded-lg text-gray-900 dark:text-white text-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         />
                                     </div>
                                 </div>

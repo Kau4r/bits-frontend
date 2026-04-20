@@ -14,8 +14,8 @@ const SecretaryScheduling = () => {
   };
 
   return (
-    <div className="flex h-screen flex-col bg-gray-50 dark:bg-gray-900">
-      <nav className="bg-white shadow-sm dark:bg-gray-800">
+    <div className="flex h-screen flex-col bg-[#f4f7fa] dark:bg-[#101828]">
+      <nav className="bg-white shadow-sm dark:bg-[#1e2939]">
         <div className="w-full px-6">
           <div className="flex h-18 items-center justify-between">
             <div className="flex items-center space-x-6">
@@ -37,7 +37,7 @@ const SecretaryScheduling = () => {
         </div>
       </nav>
 
-      <div className="flex-1 overflow-hidden p-4">
+      <div className="flex-1 overflow-hidden">
         <Scheduling />
       </div>
     </div>

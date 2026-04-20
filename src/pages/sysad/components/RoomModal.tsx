@@ -148,7 +148,7 @@ export default function RoomModal({
                   onChange={handleChange}
                   required
                   readOnly={readOnly}
-                  className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60"
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60"
                 />
               </div>
 
@@ -230,7 +230,7 @@ export default function RoomModal({
                   required
                   readOnly={readOnly}
                   min={1}
-                  className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60"
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60"
                 />
                 <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
                   Default capacity: {getDefaultCapacity(room.Room_Type)} (can be customized)

@@ -103,7 +103,7 @@ export function ComboBox({ label, value, options, onChange, onRemove, readOnly }
                     onFocus={() => setOpen(true)}
                     onKeyDown={handleKeyDown}
                     placeholder={`Select or add ${label.toLowerCase()}...`}
-                    className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                    className="flex-1 rounded-md border border-gray-300 dark:border-[#334155] px-3 py-2 bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white"
                 />
                 <button
                     type="button"
@@ -119,14 +119,14 @@ export function ComboBox({ label, value, options, onChange, onRemove, readOnly }
             </div>
 
             {open && !readOnly && (
-                <div className="absolute top-full left-0 mt-1 max-h-40 w-full overflow-y-auto rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-lg z-10">
+                <div className="absolute top-full left-0 mt-1 max-h-40 w-full overflow-y-auto rounded border border-gray-200 dark:border-[#334155] bg-white dark:bg-[#1e2939] shadow-lg z-10">
                     {displayedOptions.map((opt, idx) => {
                         const isAddNew = opt === inputValue.trim() && !options.includes(opt);
                         return (
                             <div
                                 key={opt}
                                 onClick={() => isAddNew ? handleAdd() : handleSelect(opt)}
-                                className={`px-3 py-1 cursor-pointer text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 ${highlightedIndex === idx ? "bg-gray-200 dark:bg-gray-700" : ""
+                                className={`px-3 py-1 cursor-pointer text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-white/10 ${highlightedIndex === idx ? "bg-gray-200 dark:bg-white/10" : ""
                                     } ${isAddNew ? "text-blue-600 dark:text-blue-400" : ""}`}
                             >
                                 {isAddNew ? `+ Add "${opt}"` : opt}

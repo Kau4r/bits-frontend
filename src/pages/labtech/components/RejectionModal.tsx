@@ -103,7 +103,7 @@ export default function RejectionModal({
                                 rows={4}
                                 onChange={() => setReasonError('')}
                                 placeholder="Please provide a clear reason for rejecting this request..."
-                                className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                                className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
                             />
                             {reasonError && (
                                 <p className="mt-1 text-xs font-medium text-red-600 dark:text-red-400">{reasonError}</p>

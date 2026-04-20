@@ -203,13 +203,13 @@ export default function QueueModal({
                                     setEndDropdownOpen(false);
                                 }}
                                 disabled={readOnly}
-                                className={`w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-left text-gray-900 dark:text-white flex justify-between items-center text-sm ${readOnly ? 'opacity-60 cursor-not-allowed' : 'hover:border-gray-400 dark:hover:border-gray-500'}`}
+                                className={`w-full px-4 py-2 bg-white dark:bg-[#1e2939] border border-gray-300 dark:border-[#334155] rounded-md text-left text-gray-900 dark:text-white flex justify-between items-center text-sm ${readOnly ? 'opacity-60 cursor-not-allowed' : 'hover:border-gray-400 dark:hover:border-[#475569]'}`}
                             >
                                 {startTime ? formatTimeDisplay(startTime) : 'Select time'}
                                 {!readOnly && <span className="text-gray-400">▼</span>}
                             </button>
                             {startDropdownOpen && (
-                                <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                                <div className="absolute z-10 mt-1 w-full bg-white dark:bg-[#1e2939] border border-gray-300 dark:border-[#334155] rounded-md shadow-lg max-h-48 overflow-y-auto">
                                     {timeSlots.map((time) => {
                                         const occupied = isTimeOccupied(time);
                                         return (
@@ -228,7 +228,7 @@ export default function QueueModal({
                                                     ? 'bg-red-50 text-red-600 dark:bg-red-500/30 dark:text-red-300'
                                                     : time === startTime
                                                         ? 'bg-blue-50 text-blue-600 dark:bg-blue-600 dark:text-white'
-                                                        : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                                        : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/10'
                                                     }`}
                                             >
                                                 {formatTimeDisplay(time)}
@@ -254,13 +254,13 @@ export default function QueueModal({
                                     setStartDropdownOpen(false);
                                 }}
                                 disabled={readOnly}
-                                className={`w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-left text-gray-900 dark:text-white flex justify-between items-center text-sm ${readOnly ? 'opacity-60 cursor-not-allowed' : 'hover:border-gray-400 dark:hover:border-gray-500'}`}
+                                className={`w-full px-4 py-2 bg-white dark:bg-[#1e2939] border border-gray-300 dark:border-[#334155] rounded-md text-left text-gray-900 dark:text-white flex justify-between items-center text-sm ${readOnly ? 'opacity-60 cursor-not-allowed' : 'hover:border-gray-400 dark:hover:border-[#475569]'}`}
                             >
                                 {endTime ? formatTimeDisplay(endTime) : 'Select time'}
                                 {!readOnly && <span className="text-gray-400">▼</span>}
                             </button>
                             {endDropdownOpen && (
-                                <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                                <div className="absolute z-10 mt-1 w-full bg-white dark:bg-[#1e2939] border border-gray-300 dark:border-[#334155] rounded-md shadow-lg max-h-48 overflow-y-auto">
                                     {getEndTimeOptions().map((time) => {
                                         const occupied = isTimeOccupied(time, true);
                                         return (
@@ -275,7 +275,7 @@ export default function QueueModal({
                                                     ? 'bg-red-50 text-red-600 dark:bg-red-500/30 dark:text-red-300'
                                                     : time === endTime
                                                         ? 'bg-blue-50 text-blue-600 dark:bg-blue-600 dark:text-white'
-                                                        : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                                        : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/10'
                                                     }`}
                                             >
                                                 {formatTimeDisplay(time)}

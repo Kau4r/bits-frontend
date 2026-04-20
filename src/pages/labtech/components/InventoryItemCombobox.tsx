@@ -103,7 +103,7 @@ export default function InventoryItemCombobox({
                 <button
                     type="button"
                     onClick={() => setIsOpen(!isOpen)}
-                    className="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-left text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                    className="flex w-full items-center justify-between rounded-lg border border-gray-300 bg-white px-4 py-2 text-left text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-[#334155] dark:bg-[#1e2939] dark:text-white dark:placeholder-gray-500"
                 >
                     <span className={value ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}>
                         {displayValue || placeholder}
@@ -134,15 +134,15 @@ export default function InventoryItemCombobox({
 
             {/* Dropdown */}
             {isOpen && (
-                <div className="absolute z-10 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-64 overflow-hidden flex flex-col">
+                <div className="absolute z-10 mt-2 flex max-h-64 w-full flex-col overflow-hidden rounded-lg border border-gray-300 bg-white shadow-lg dark:border-[#334155] dark:bg-[#1e2939]">
                     {/* Search Input */}
-                    <div className="p-2 border-b border-gray-200 dark:border-gray-700">
+                    <div className="border-b border-gray-200 p-2 dark:border-[#334155]">
                         <input
                             type="text"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder="Search by brand, serial, or code..."
-                            className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-[#334155] dark:bg-[#1e2939] dark:text-white dark:placeholder-gray-500"
                             autoFocus
                         />
                     </div>
@@ -167,7 +167,7 @@ export default function InventoryItemCombobox({
                                     key={item.Item_ID}
                                     type="button"
                                     onClick={() => handleSelect(item)}
-                                    className="w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-b border-gray-200 dark:border-gray-700 last:border-b-0"
+                                    className="w-full border-b border-gray-200 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-gray-100 dark:border-[#334155] dark:hover:bg-white/[0.07]"
                                 >
                                     <div className="flex justify-between items-start">
                                         <div>

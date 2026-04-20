@@ -69,8 +69,8 @@ export default function AddUserModal({ onClose, onSubmit }: Props) {
     const inputClassName = (field: string) =>
         `w-full px-3 py-2.5 rounded-lg border ${errors[field]
             ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-            : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500'
-        } bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:outline-none`
+            : 'border-gray-300 dark:border-[#334155] focus:ring-blue-500 focus:border-blue-500'
+        } bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white focus:ring-2 focus:outline-none`
 
     return createPortal(
         <div
@@ -207,10 +207,10 @@ export default function AddUserModal({ onClose, onSubmit }: Props) {
                                 placeholder="Select role"
                                 options={[
                                     { value: 'ADMIN', label: 'Admin' },
-                                    { value: 'LAB_TECH', label: 'Lab Tech' },
-                                    { value: 'LAB_HEAD', label: 'Lab Head' },
-                                    { value: 'FACULTY', label: 'Faculty' },
                                     { value: 'SECRETARY', label: 'Secretary' },
+                                    { value: 'LAB_HEAD', label: 'Lab Head' },
+                                    { value: 'LAB_TECH', label: 'Lab Tech' },
+                                    { value: 'FACULTY', label: 'Faculty' },
                                     { value: 'STUDENT', label: 'Student' },
                                 ]}
                                 onChange={(value) => setForm({ ...form, User_Role: value as User_Role })}

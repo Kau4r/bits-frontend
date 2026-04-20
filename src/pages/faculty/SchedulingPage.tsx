@@ -16,6 +16,32 @@ import { createTicket } from '@/services/tickets';
 import { buildTicketLocation } from '@/lib/ticketLocation';
 import { FloatingSelect } from '@/ui/FloatingSelect';
 
+const formatDateInput = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const formatTimeInput = (date: Date) => {
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
+};
+
+const getBorrowDefaults = () => {
+  const borrow = new Date();
+  borrow.setSeconds(0, 0);
+  const expectedReturn = new Date(borrow.getTime() + 60 * 60 * 1000);
+
+  return {
+    borrowDate: formatDateInput(borrow),
+    borrowTime: formatTimeInput(borrow),
+    returnDate: formatDateInput(expectedReturn),
+    returnTime: formatTimeInput(expectedReturn),
+  };
+};
+
 const FacultyScheduling = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -34,12 +60,14 @@ const FacultyScheduling = () => {
   const [inventoryItems, setInventoryItems] = useState<Item[]>([]);
   const [selectedType, setSelectedType] = useState<string>('');
   const [isLoadingItems, setIsLoadingItems] = useState(false);
+  const [borrowSchedule, setBorrowSchedule] = useState(getBorrowDefaults);
 
   // Fetch items when modal opens
   useEffect(() => {
     if (isBorrowModalOpen) {
       loadItems();
       setSelectedType(''); // Reset type
+      setBorrowSchedule(getBorrowDefaults());
     }
   }, [isBorrowModalOpen]);
 
@@ -99,6 +127,24 @@ const FacultyScheduling = () => {
     console.log('Logging out...');
     await logout();
     navigate('/login');
+  };
+
+  const handleBorrowDateTimeChange = (field: 'borrowDate' | 'borrowTime', value: string) => {
+    setBorrowSchedule(prev => {
+      const next = { ...prev, [field]: value };
+      const borrowDateTime = new Date(`${next.borrowDate}T${next.borrowTime}`);
+
+      if (Number.isNaN(borrowDateTime.getTime())) {
+        return next;
+      }
+
+      const expectedReturn = new Date(borrowDateTime.getTime() + 60 * 60 * 1000);
+      return {
+        ...next,
+        returnDate: formatDateInput(expectedReturn),
+        returnTime: formatTimeInput(expectedReturn),
+      };
+    });
   };
 
 
@@ -168,9 +214,9 @@ const FacultyScheduling = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900 relative">
+    <div className="relative flex h-screen flex-col bg-[#f4f7fa] dark:bg-[#101828]">
       {/* Navigation Bar */}
-      <nav className="bg-white dark:bg-gray-800 shadow-sm">
+      <nav className="bg-white shadow-sm dark:bg-[#1e2939]">
         <div className="w-full px-6">
           <div className="flex justify-between items-center h-18">
             <div className="flex items-center space-x-6">
@@ -258,8 +304,8 @@ const FacultyScheduling = () => {
         </div>
       </nav>
 
-      <div className="flex-1 overflow-hidden p-4">
-        <Scheduling />
+      <div className="flex-1 overflow-hidden">
+        <Scheduling showRejectedMyBookings />
       </div>
 
 
@@ -372,8 +418,10 @@ const FacultyScheduling = () => {
                       type="date"
                       name="borrowDate"
                       required
-                      min={new Date().toISOString().split('T')[0]}
-                      className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      min={formatDateInput(new Date())}
+                      value={borrowSchedule.borrowDate}
+                      onChange={(event) => handleBorrowDateTimeChange('borrowDate', event.target.value)}
+                      className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
                   <div className="flex flex-col">
@@ -384,7 +432,9 @@ const FacultyScheduling = () => {
                       type="time"
                       name="borrowTime"
                       required
-                      className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      value={borrowSchedule.borrowTime}
+                      onChange={(event) => handleBorrowDateTimeChange('borrowTime', event.target.value)}
+                      className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
                 </div>
@@ -399,8 +449,10 @@ const FacultyScheduling = () => {
                       type="date"
                       name="returnDate"
                       required
-                      min={new Date().toISOString().split('T')[0]}
-                      className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      min={borrowSchedule.borrowDate || formatDateInput(new Date())}
+                      value={borrowSchedule.returnDate}
+                      onChange={(event) => setBorrowSchedule(prev => ({ ...prev, returnDate: event.target.value }))}
+                      className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
                   <div className="flex flex-col">
@@ -411,7 +463,9 @@ const FacultyScheduling = () => {
                       type="time"
                       name="returnTime"
                       required
-                      className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      value={borrowSchedule.returnTime}
+                      onChange={(event) => setBorrowSchedule(prev => ({ ...prev, returnTime: event.target.value }))}
+                      className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
                 </div>
@@ -426,7 +480,7 @@ const FacultyScheduling = () => {
                     required
                     rows={3}
                     placeholder="Briefly describe why you need this device..."
-                    className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                    className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
                   />
                 </div>
               </div>

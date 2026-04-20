@@ -97,8 +97,8 @@ export default function LabTechDetailPanel({ labTech, onTicketReassigned }: Prop
     });
 
   return (
-    <div className="flex-1 overflow-auto gap-4 custom-scrollbar h-full pr-2">
-      <header className="mb-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 flex flex-col gap-2 transition-colors">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden pr-2">
+      <header className="mb-6 flex shrink-0 flex-col gap-2 rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-700 dark:bg-gray-800">
         <div className="flex items-center gap-4">
           <span className="rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-200 w-16 h-16 flex items-center justify-center text-2xl font-bold">
             {labTech.name.charAt(0)}
@@ -118,7 +118,7 @@ export default function LabTechDetailPanel({ labTech, onTicketReassigned }: Prop
         </div>
       </header>
 
-      <nav className="mb-6 flex border-b border-gray-200 dark:border-gray-700 gap-6">
+      <nav className="mb-6 flex shrink-0 gap-6 border-b border-gray-200 dark:border-gray-700">
         <button
           onClick={() => setActiveTab('Tickets')}
           className={`relative pb-3 text-sm font-medium outline-none transition-colors ${activeTab === 'Tickets'
@@ -152,19 +152,19 @@ export default function LabTechDetailPanel({ labTech, onTicketReassigned }: Prop
       </nav>
 
       {activeTab === 'Tickets' && (
-        <section className="animate-fade-in">
+        <section className="flex min-h-0 flex-1 animate-fade-in">
           {isLoadingTickets ? (
-            <div className="flex justify-center p-8">
+            <div className="flex flex-1 items-center justify-center p-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 dark:border-indigo-400" />
             </div>
           ) : activeTickets.length === 0 ? (
-            <div className="text-center py-10 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
+            <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50 py-10 text-center text-gray-500 dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-400">
               <p>No active tickets assigned.</p>
             </div>
           ) : (
-            <div className="overflow-hidden border border-gray-200 dark:border-gray-700 rounded-lg">
+            <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-gray-200 custom-scrollbar dark:border-gray-700">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-800">
+                <thead className="sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">
                   <tr>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Priority</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Issue</th>
@@ -227,7 +227,7 @@ export default function LabTechDetailPanel({ labTech, onTicketReassigned }: Prop
       )}
 
       {activeTab === 'Reports' && (
-        <section className="animate-fade-in">
+        <section className="min-h-0 flex-1 overflow-y-auto pr-1 custom-scrollbar animate-fade-in">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">Weekly Reports</h2>
             <span className="text-sm text-gray-500 dark:text-gray-400">{reports.length} report{reports.length !== 1 ? 's' : ''} found</span>

@@ -97,8 +97,8 @@ export default function AssignTicketDropdown({
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 z-50 mt-1 w-56 rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800 overflow-hidden">
-                    <div className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                <div className="absolute right-0 z-50 mt-1 w-56 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg dark:border-[#334155] dark:bg-[#1e2939]">
+                    <div className="border-b border-gray-100 bg-gray-50 px-3 py-2 text-xs font-medium text-gray-500 dark:border-[#334155] dark:bg-[#1e2939] dark:text-gray-400">
                         Select Technician
                     </div>
                     {isLoading ? (

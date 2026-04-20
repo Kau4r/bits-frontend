@@ -1,6 +1,6 @@
 import { getRooms } from "@/services/room";
-import type { Room } from '@/types/room';
-import { useRef, useState, useEffect, useCallback } from 'react';
+import type { Room, RoomType } from '@/types/room';
+import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import type { CalendarApi, DateSelectArg, EventDropArg } from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -21,11 +21,23 @@ import ConfirmModal from '@/pages/scheduling/components/ConfirmModal';
 import { useBookingEvents } from '@/hooks/useBookingEvents';
 import type { BorrowingRequest } from '@/components/RequestCard';
 
-export default function Scheduling() {
+interface SchedulingProps {
+  allowedRoomTypes?: RoomType[];
+  showRejectedMyBookings?: boolean;
+}
+
+export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = false }: SchedulingProps = {}) {
   const { user } = useAuth();
   const modal = useModal();
   const currentUserId = user?.User_ID ?? 0;
   const userRole = user?.User_Role.toUpperCase() ?? 'FACULTY';
+  const allowedRoomTypeSet = useMemo(
+    () => allowedRoomTypes ? new Set(allowedRoomTypes) : null,
+    [allowedRoomTypes]
+  );
+  const noRoomsMessage = allowedRoomTypes?.length
+    ? 'No rooms matching the allowed room types are available for booking.'
+    : 'No rooms are available for booking.';
   type CalendarViewType = 'dayGridMonth' | 'timeGridWeek' | 'timeGridDay' | 'listWeek';
 
   const calendarRef = useRef<FullCalendar | null>(null);
@@ -36,9 +48,6 @@ export default function Scheduling() {
   const [selectedRooms, setSelectedRooms] = useState<number[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showReportIssueModal, setShowReportIssueModal] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(() =>
-    typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : false
-  );
 
   // Borrowing requests state (for faculty users)
   const [borrowingRequests, setBorrowingRequests] = useState<BorrowingRequest[]>([]);
@@ -110,7 +119,7 @@ export default function Scheduling() {
     try {
       const bookings = await getBookings();
       const mapped = bookings
-        .filter((b: Booking) => b.Status !== 'CANCELLED' && b.Status !== 'REJECTED')
+        .filter((b: Booking) => b.Status !== 'CANCELLED')
         .map((b: Booking) => ({
           id: String(b.Booked_Room_ID),
           title: b.Purpose ?? 'No Title',
@@ -172,9 +181,14 @@ export default function Scheduling() {
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        const roomsData = await getRooms();
+        const allRooms = await getRooms();
+        const roomsData = allowedRoomTypeSet
+          ? allRooms.filter(room => allowedRoomTypeSet.has(room.Room_Type))
+          : allRooms;
         if (roomsData.length > 0) {
           setSelectedRooms(roomsData.map(r => r.Room_ID)); // Select ALL rooms by default
+        } else {
+          setSelectedRooms([]);
         }
         setRooms(roomsData);
         await loadBookings();
@@ -188,12 +202,7 @@ export default function Scheduling() {
       }
     };
     loadInitialData();
-  }, [userRole, currentUserId, loadBookings]);
-
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', isDarkMode);
-    localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
-  }, [isDarkMode]);
+  }, [userRole, currentUserId, loadBookings, allowedRoomTypeSet]);
 
   const updateCurrentDate = () => {
     const api: CalendarApi | undefined = calendarRef.current?.getApi();
@@ -230,6 +239,16 @@ export default function Scheduling() {
 
   const handleDateSelect = (selectInfo: DateSelectArg) => {
     calendarRef.current?.getApi()?.unselect();
+
+    if (rooms.length === 0) {
+      setWarningModal({
+        isOpen: true,
+        title: 'No Rooms Available',
+        message: noRoomsMessage,
+        type: 'info',
+      });
+      return;
+    }
 
     // Check all selected rooms for overlap
     for (const roomId of selectedRooms) {
@@ -280,6 +299,16 @@ export default function Scheduling() {
   };
 
   const handleCreateClick = () => {
+    if (rooms.length === 0) {
+      setWarningModal({
+        isOpen: true,
+        title: 'No Rooms Available',
+        message: noRoomsMessage,
+        type: 'info',
+      });
+      return;
+    }
+
     // Open popover with default times
     const now = new Date();
     const start = new Date(now.setMinutes(0, 0, 0));
@@ -463,8 +492,7 @@ export default function Scheduling() {
 
     // Determine if user can edit this booking
     const isOwner = event.extendedProps.createdById === currentUserId;
-    const isAdmin = userRole === 'ADMIN';
-    const canEdit = isOwner || isAdmin;
+    const canEdit = isOwner || userRole === 'ADMIN';
 
     setViewingBooking({
       id: event.id,
@@ -555,58 +583,63 @@ export default function Scheduling() {
   };
 
   return (
-    <div className="flex h-full bg-[#f4f7fa] dark:bg-[#232b35]">
-      {/* Left Sidebar */}
-      <CalendarSidebar
-        rooms={rooms}
-        selectedRooms={selectedRooms}
-        onRoomToggle={handleRoomToggle}
-        onSelectAll={(selectAll) => {
-          if (selectAll) {
-            setSelectedRooms(rooms.map(r => r.Room_ID));
-          } else {
-            setSelectedRooms([]);
-          }
-        }}
-        onDateSelect={handleSidebarDateSelect}
-        selectedDate={selectedDate}
-        onCreateClick={handleCreateClick}
-        borrowingRequests={borrowingRequests}
-        showBorrowingRequests={userRole === 'FACULTY'}
-        myBookings={events.filter(e => e.extendedProps.createdById === currentUserId && e.extendedProps.status !== 'REJECTED')}
-        onBookingClick={(booking) => {
-          const start = new Date(booking.start);
-          const end = new Date(booking.end);
+    <div className="box-border h-full bg-[#f4f7fa] p-4 dark:bg-[#101828]">
+      <div className="flex h-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-[#334155] dark:bg-[#1e2939]">
+        {/* Left Sidebar */}
+        <CalendarSidebar
+          rooms={rooms}
+          selectedRooms={selectedRooms}
+          onRoomToggle={handleRoomToggle}
+          onSelectAll={(selectAll) => {
+            if (selectAll) {
+              setSelectedRooms(rooms.map(r => r.Room_ID));
+            } else {
+              setSelectedRooms([]);
+            }
+          }}
+          onDateSelect={handleSidebarDateSelect}
+          selectedDate={selectedDate}
+          onCreateClick={handleCreateClick}
+          borrowingRequests={borrowingRequests}
+          showBorrowingRequests={userRole === 'FACULTY'}
+          showRejectedBookings={showRejectedMyBookings}
+          myBookings={events.filter(e =>
+            e.extendedProps.createdById === currentUserId &&
+            (showRejectedMyBookings || e.extendedProps.status !== 'REJECTED')
+          )}
+          onBookingClick={(booking) => {
+            const start = new Date(booking.start);
+            const end = new Date(booking.end);
 
-          setViewingBooking({
-            id: booking.id,
-            title: booking.title,
-            description: booking.extendedProps.description || '',
-            roomId: booking.extendedProps.roomId,
-            roomName: booking.extendedProps.roomName || 'Unknown',
-            date: dayjs(start).format('YYYY-MM-DD'),
-            startTime: dayjs(start).format('HH:mm'),
-            endTime: dayjs(end).format('HH:mm'),
-            createdBy: booking.extendedProps.createdBy || 'Unknown',
-            createdById: booking.extendedProps.createdById,
-            status: booking.extendedProps.status || 'PENDING',
-          });
-          setCanEditBooking(booking.extendedProps.createdById === currentUserId || userRole === 'ADMIN');
+            setViewingBooking({
+              id: booking.id,
+              title: booking.title,
+              description: booking.extendedProps.description || '',
+              roomId: booking.extendedProps.roomId,
+              roomName: booking.extendedProps.roomName || 'Unknown',
+              date: dayjs(start).format('YYYY-MM-DD'),
+              startTime: dayjs(start).format('HH:mm'),
+              endTime: dayjs(end).format('HH:mm'),
+              createdBy: booking.extendedProps.createdBy || 'Unknown',
+              createdById: booking.extendedProps.createdById,
+              status: booking.extendedProps.status || 'PENDING',
+            });
+            setCanEditBooking(booking.extendedProps.createdById === currentUserId || userRole === 'ADMIN');
 
-          // Center the popover
-          setPopoverPosition({
-            x: window.innerWidth / 2,
-            y: window.innerHeight / 2
-          });
-          setPopoverTimes({ start, end });
-          setShowPopover(true);
-        }}
-      />
+            // Center the popover
+            setPopoverPosition({
+              x: window.innerWidth / 2,
+              y: window.innerHeight / 2
+            });
+            setPopoverTimes({ start, end });
+            setShowPopover(true);
+          }}
+        />
 
-      {/* Main Calendar Area */}
-      <div className="flex-1 flex flex-col min-h-0">
-        {/* Top Navigation */}
-        <div className="flex items-center justify-between border-b border-slate-200 bg-white/90 px-4 py-3 shadow-sm shadow-slate-200/60 dark:border-[#3c4653] dark:bg-[#232b35] dark:shadow-none">
+        {/* Main Calendar Area */}
+        <div className="flex min-h-0 flex-1 flex-col">
+          {/* Top Navigation */}
+          <div className="flex items-center justify-between border-b border-slate-200 bg-white/90 px-4 py-3 shadow-sm shadow-slate-200/60 dark:border-[#334155] dark:bg-[#1e2939] dark:shadow-none">
           <div className="flex items-center gap-4">
             <div className="mr-2 hidden lg:block">
               <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{selectedRooms.length} room{selectedRooms.length === 1 ? '' : 's'} visible</p>
@@ -633,16 +666,6 @@ export default function Scheduling() {
           </div>
 
           <div className="flex items-center gap-3">
-            {userRole === 'SECRETARY' && (
-              <button
-                type="button"
-                onClick={() => setIsDarkMode(prev => !prev)}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-[#4a5563] dark:bg-[#2b3440] dark:text-gray-300 dark:hover:bg-[#34404d]"
-              >
-                {isDarkMode ? 'Light mode' : 'Dark mode'}
-              </button>
-            )}
-
             {/* View Selector */}
             <div className="flex rounded-lg bg-slate-100 p-1 ring-1 ring-slate-200 dark:bg-[#2b3440] dark:ring-transparent">
               {(['timeGridDay', 'timeGridWeek', 'dayGridMonth', 'listWeek'] as const).map((view) => (
@@ -706,7 +729,7 @@ export default function Scheduling() {
 
               return (
                 <div
-                  className="relative h-full w-full overflow-hidden rounded px-2 py-1 pr-5 text-xs text-white"
+                  className="schedule-calendar-event relative h-full w-full overflow-hidden rounded px-2 py-1 pr-5 text-xs text-white"
                 >
                   <span
                     className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full ring-1 ring-white/70 dark:ring-gray-900/70"
@@ -729,6 +752,7 @@ export default function Scheduling() {
             slotLabelFormat={{ hour: 'numeric', minute: '2-digit', hour12: true }}
           />
         </div>
+      </div>
       </div>
 
       {/* Booking Popover */}
@@ -796,7 +820,7 @@ export default function Scheduling() {
         isSubmitting={isSubmitting}
         viewingBooking={viewingBooking}
         canEdit={canEditBooking}
-        canApprove={userRole === 'LAB_HEAD'}
+        canApprove={userRole === 'SECRETARY' || userRole === 'LAB_HEAD'}
       />
 
       <ReportIssueModal
