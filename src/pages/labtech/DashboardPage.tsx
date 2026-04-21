@@ -1,51 +1,32 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import BookingCard from '@/components/BookingCard';
 import NotificationsCard from '@/components/NotificationsCard';
 import { getDashboardMetrics, type DashboardMetrics } from '@/services/dashboard';
-import { ClipboardCheck, Wrench, PackageCheck } from 'lucide-react';
+import { ClipboardCheck, Wrench, Tablet, FileText } from 'lucide-react';
 import { useNotifications } from '@/context/NotificationContext';
-
-const SummaryTile = ({
-  label,
-  value,
-  tone = 'gray',
-}: {
-  label: string;
-  value?: number;
-  tone?: 'gray' | 'green' | 'amber' | 'blue';
-}) => {
-  const toneClass = {
-    gray: 'border-gray-200 bg-gray-50 text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white',
-    green: 'border-green-200 bg-green-50 text-green-900 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-100',
-    amber: 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100',
-    blue: 'border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-100',
-  }[tone];
-
-  return (
-    <div className={`rounded-lg border p-4 ${toneClass}`}>
-      <p className="text-xs font-semibold uppercase tracking-wide opacity-70">{label}</p>
-      <p className="mt-1 text-2xl font-black">{value || 0}</p>
-    </div>
-  );
-};
 
 export default function LabtechDashboard() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
   const { notifications } = useNotifications();
 
-  const fetchMetrics = useCallback(async () => {
+  const fetchMetrics = useCallback(async (showSkeleton = false) => {
+    if (showSkeleton) setLoading(true);
     try {
       const data = await getDashboardMetrics();
       setMetrics(data);
     } catch (error) {
       console.error("Failed to load dashboard metrics");
     } finally {
+      setLoading(false);
     }
   }, []);
 
   // Initial load
   useEffect(() => {
-    fetchMetrics();
+    fetchMetrics(true);
   }, [fetchMetrics]);
 
   // Real-time updates
@@ -57,7 +38,7 @@ export default function LabtechDashboard() {
 
       if (isRelevant) {
         console.log('[Dashboard] Real-time update detected, refreshing metrics...');
-        fetchMetrics();
+        fetchMetrics(false);
       }
     }
   }, [notifications, fetchMetrics]);
@@ -69,57 +50,91 @@ export default function LabtechDashboard() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             Lab Technician Dashboard
           </h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Overview of tickets, room reports, inventory, and scheduling updates</p>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Overview of your assigned tasks, maintenance activities, and system alerts</p>
+        </div>
+
+        {/* Stats Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+          <div
+            onClick={() => navigate('/tickets')}
+            className="cursor-pointer bg-white dark:bg-gray-800 p-5 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-700"
+          >
+            <div className="p-3 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-lg">
+              <ClipboardCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">My Assigned Tickets</p>
+              {loading ? (
+                <div className="h-8 w-16 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+              ) : (
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{metrics?.counts.myAssignedTickets || 0}</p>
+              )}
+            </div>
+          </div>
+
+          <div
+            onClick={() => navigate('/labtech/room')}
+            className="cursor-pointer bg-white dark:bg-gray-800 p-5 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-700"
+          >
+            <div className="p-3 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-lg">
+              <Wrench className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Maintenance</p>
+              {loading ? (
+                <div className="h-8 w-16 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+              ) : (
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{metrics?.counts.activeMaintenance || 0}</p>
+              )}
+            </div>
+          </div>
+
+          <div
+            onClick={() => navigate('/labtech/borrowing')}
+            className="cursor-pointer bg-white dark:bg-gray-800 p-5 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-700"
+          >
+            <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg">
+              <Tablet className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Borrowed Items</p>
+              {loading ? (
+                <div className="h-8 w-16 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+              ) : (
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{metrics?.counts.activeBorrowings || 0}</p>
+              )}
+            </div>
+          </div>
+
+          <div
+            onClick={() => navigate('/forms')}
+            className="cursor-pointer bg-white dark:bg-gray-800 p-5 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-700"
+          >
+            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg">
+              <FileText className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Pending Forms</p>
+              {loading ? (
+                <div className="h-8 w-16 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+              ) : (
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{metrics?.counts.pendingForms || 0}</p>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="mb-6 grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-          <div className="mb-4 flex items-center gap-2">
-            <ClipboardCheck className="h-5 w-5 text-purple-600 dark:text-purple-300" />
-            <h2 className="text-sm font-bold text-gray-900 dark:text-white">Ticket Summary</h2>
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0">
+        {/* Left Side (2 columns wide) */}
+        <div className="lg:col-span-2 flex flex-col gap-6 h-full min-h-0">
+          <div className="flex-1 min-h-0">
+            <BookingCard />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <SummaryTile label="Assigned To Me" value={metrics?.summaries?.tickets?.assignedToMe} tone="blue" />
-            <SummaryTile label="Completed" value={metrics?.summaries?.tickets?.completedByMe} tone="green" />
-            <SummaryTile label="Pending" value={metrics?.summaries?.tickets?.pending} tone="amber" />
-            <SummaryTile label="Unassigned" value={metrics?.summaries?.tickets?.unassigned} />
-          </div>
-        </section>
-
-        <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-          <div className="mb-4 flex items-center gap-2">
-            <Wrench className="h-5 w-5 text-orange-600 dark:text-orange-300" />
-            <h2 className="text-sm font-bold text-gray-900 dark:text-white">Room And Report Summary</h2>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <SummaryTile label="Rooms In Maintenance" value={metrics?.summaries?.rooms?.maintenance} tone="amber" />
-            <SummaryTile label="Hardware Tasks" value={metrics?.summaries?.rooms?.hardwareTasks} />
-            <SummaryTile label="Draft Reports" value={metrics?.summaries?.reports?.drafts} tone="blue" />
-            <SummaryTile label="Submitted Reports" value={metrics?.summaries?.reports?.submitted} tone="green" />
-          </div>
-        </section>
-
-        <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-          <div className="mb-4 flex items-center gap-2">
-            <PackageCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-300" />
-            <h2 className="text-sm font-bold text-gray-900 dark:text-white">Inventory Summary</h2>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <SummaryTile label="Total Items" value={metrics?.summaries?.inventory?.total} />
-            <SummaryTile label="Available" value={metrics?.summaries?.inventory?.available} tone="green" />
-            <SummaryTile label="Defective" value={metrics?.summaries?.inventory?.defective} tone="amber" />
-            <SummaryTile label="Disposed" value={metrics?.summaries?.inventory?.disposed} />
-          </div>
-        </section>
-      </div>
-
-      <div className="grid flex-1 grid-cols-1 gap-6 min-h-0 lg:grid-cols-[1fr_360px]">
-        <div className="min-h-0 overflow-hidden">
-          <BookingCard />
         </div>
 
-        <div className="min-h-0">
+        {/* Right Side: Notifications full height */}
+        <div className="h-full min-h-0">
           <NotificationsCard />
         </div>
       </div>
