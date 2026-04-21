@@ -19,11 +19,12 @@ const ITEM_TYPES: ItemType[] = [
 
 const CUSTOM_ITEM_TYPE_VALUE = "__CUSTOM_ITEM_TYPE__";
 
-const STATUS_OPTIONS = ["AVAILABLE", "BORROWED", "DEFECTIVE", "LOST", "REPLACED"] as const;
+const STATUS_OPTIONS = ["AVAILABLE", "BORROWED", "DEFECTIVE", "LOST", "REPLACED", "DISPOSED"] as const;
 
 interface FormData {
   itemType: ItemType;
   brand: string;
+  location: string;
   roomId: number;
   status: Item["Status"];
   serialNumber: string;
@@ -84,6 +85,7 @@ export default function ItemModal({
   const [formData, setFormData] = useState<FormData>({
     itemType: "GENERAL",
     brand: "",
+    location: "",
     roomId: rooms?.[0]?.Room_ID ?? 0,
     status: "AVAILABLE",
     serialNumber: "",
@@ -108,6 +110,7 @@ export default function ItemModal({
       setFormData({
         itemType: "GENERAL",
         brand: "",
+        location: "",
         roomId: rooms?.[0]?.Room_ID ?? 0,
         status: "AVAILABLE",
         serialNumber: "",
@@ -121,6 +124,7 @@ export default function ItemModal({
       setFormData({
         itemType: item.Item_Type || "GENERAL",
         brand: item.Brand || "",
+        location: item.Location || "",
         roomId: item.Room_ID ?? rooms?.[0]?.Room_ID ?? 0,
         status: item.Status || "AVAILABLE",
         serialNumber: item.Serial_Number || "",
@@ -169,6 +173,7 @@ export default function ItemModal({
         const updateData: Partial<Item> = {
           Item_Type: formData.itemType,
           Brand: formData.brand,
+          Location: formData.location || null,
           Serial_Number: formData.serialNumber,
           Status: formData.status,
           Room_ID: formData.roomId,
@@ -184,6 +189,7 @@ export default function ItemModal({
           itemsToAdd = serials.map((sn) => ({
             Item_Type: formData.itemType,
             Brand: formData.brand,
+            Location: formData.location || null,
             Serial_Number: sn.trim(),
             Status: formData.status,
             Room_ID: formData.roomId,
@@ -195,6 +201,7 @@ export default function ItemModal({
           itemsToAdd = [{
             Item_Type: formData.itemType,
             Brand: formData.brand,
+            Location: formData.location || null,
             Serial_Number: formData.serialNumber.trim(),
             Status: formData.status,
             Room_ID: formData.roomId,
@@ -434,6 +441,7 @@ export default function ItemModal({
   const qrItemUrl = showAssetInfo && item?.Item_Code ? buildInventoryItemQrUrl(item.Item_Code) : "";
   const readOnlyFieldClass = "w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-[#334155] bg-gray-50 dark:bg-[#1e2939] text-gray-900 dark:text-white";
   const selectedRoomName = rooms.find(r => r.Room_ID === formData.roomId)?.Name || "—";
+  const locationDisplay = formData.location || selectedRoomName;
   const statusDisplay = formData.status ? formData.status.charAt(0) + formData.status.slice(1).toLowerCase() : "—";
 
   return createPortal(
@@ -646,6 +654,29 @@ export default function ItemModal({
                 )}
               </div>
 
+              {/* Location */}
+              <div className="flex flex-col">
+                <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Location
+                </label>
+                {readOnly ? (
+                  <div className={readOnlyFieldClass}>{locationDisplay}</div>
+                ) : (
+                  <input
+                    type="text"
+                    value={formData.location}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Storage shelf, office, or exact area..."
+                  />
+                )}
+                {!readOnly && (
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Leave blank to use the room as the location.
+                  </p>
+                )}
+              </div>
+
               {/* Status */}
               <div className="flex flex-col">
                 <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -736,6 +767,7 @@ export default function ItemModal({
                     setFormData({
                       itemType: item.Item_Type || "GENERAL",
                       brand: item.Brand || "",
+                      location: item.Location || "",
                       roomId: item.Room_ID ?? rooms?.[0]?.Room_ID ?? 0,
                       status: item.Status || "AVAILABLE",
                       serialNumber: item.Serial_Number || "",

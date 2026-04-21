@@ -11,7 +11,7 @@ export const ITEM_STATUS_VARIANT: Record<string, BadgeProps["variant"]> = {
   DEFECTIVE: "orange",
   LOST: "danger",
   REPLACED: "info",
-  INACTIVE: "default",
+  DISPOSED: "default",
 } as const
 
 /** Ticket statuses */

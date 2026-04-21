@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   Ban,
   RefreshCcw,
+  ArchiveX,
   type LucideIcon,
 } from 'lucide-react'
 import {
@@ -29,6 +30,7 @@ const STATUS_META: Record<
   DEFECTIVE: { label: 'Defective', icon: AlertTriangle },
   LOST: { label: 'Lost', icon: Ban },
   REPLACED: { label: 'Replaced', icon: RefreshCcw },
+  DISPOSED: { label: 'Disposed', icon: ArchiveX },
 }
 
 const InventoryStatCards = ({
@@ -43,6 +45,7 @@ const InventoryStatCards = ({
       DEFECTIVE: 0,
       LOST: 0,
       REPLACED: 0,
+      DISPOSED: 0,
     }
     for (const item of inventory) {
       if (item.Status && acc[item.Status] !== undefined) {

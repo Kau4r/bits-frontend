@@ -13,6 +13,7 @@ export interface DashboardMetrics {
         brokenItems?: number;
         availableItems?: number;
         borrowedItems?: number;
+        disposedItems?: number;
         roomsInMaintenance?: number;
         pendingForms?: number;
         approvedForms?: number;

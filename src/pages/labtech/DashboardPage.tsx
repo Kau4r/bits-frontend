@@ -109,7 +109,7 @@ export default function LabtechDashboard() {
             <SummaryTile label="Total Items" value={metrics?.summaries?.inventory?.total} />
             <SummaryTile label="Available" value={metrics?.summaries?.inventory?.available} tone="green" />
             <SummaryTile label="Defective" value={metrics?.summaries?.inventory?.defective} tone="amber" />
-            <SummaryTile label="Borrowed" value={metrics?.summaries?.inventory?.borrowed} tone="blue" />
+            <SummaryTile label="Disposed" value={metrics?.summaries?.inventory?.disposed} />
           </div>
         </section>
       </div>

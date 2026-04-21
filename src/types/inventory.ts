@@ -8,10 +8,11 @@ export interface Item {
   Item_Code?: string;
   Item_Type: ItemType;
   Brand: string;
+  Location?: string | null;
   Room_ID?: number;
   User_ID?: number;
   Serial_Number: string;
-  Status: "AVAILABLE" | "BORROWED" | "DEFECTIVE" | "LOST" | "REPLACED";
+  Status: "AVAILABLE" | "BORROWED" | "DEFECTIVE" | "LOST" | "REPLACED" | "DISPOSED";
   Updated_At?: string;
   Room?: Room;
   User?: User;
@@ -26,9 +27,10 @@ export const statusColors: Record<InventoryStatus, string> = {
   DEFECTIVE: 'bg-orange-100 text-orange-800 dark:bg-orange-800 dark:text-orange-100',
   LOST: 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100',
   REPLACED: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100',
+  DISPOSED: 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-100',
 };
 
-export const inventoryStatuses: InventoryStatus[] = ['AVAILABLE', 'BORROWED', 'DEFECTIVE', 'LOST', 'REPLACED'];
+export const inventoryStatuses: InventoryStatus[] = ['AVAILABLE', 'BORROWED', 'DEFECTIVE', 'LOST', 'REPLACED', 'DISPOSED'];
 
 export interface Computer {
   Computer_ID: number;

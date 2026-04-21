@@ -11,6 +11,7 @@ import {
   type SchoolYearArchiveResult
 } from '@/services/maintenance';
 import { SysAdEyebrow, SysAdPageShell } from '@/pages/sysad/components/SysAdPageShell';
+import { getApiBaseUrl } from '@/utils/apiBaseUrl';
 
 const formatLabel = (value: string) => value
   .replace(/([a-z])([A-Z])/g, '$1 $2')
@@ -63,9 +64,10 @@ export default function MaintenancePage() {
   const archiveTotal = useMemo(() => (
     archivePreview ? Object.values(archivePreview.willArchive).reduce((sum, value) => sum + (value || 0), 0) : 0
   ), [archivePreview]);
+  const hasExcludedArchiveRows = archivePreview ? Object.keys(archivePreview.excludedFromArchive).length > 0 : false;
 
   const archiveDownloadHref = lastArchive?.downloadUrl
-    ? `${import.meta.env.VITE_API_URL.replace(/\/+$/, '')}/api${lastArchive.downloadUrl}`
+    ? `${getApiBaseUrl().replace(/\/+$/, '')}${lastArchive.downloadUrl}`
     : '';
 
   const loadPreview = async () => {
@@ -107,7 +109,7 @@ export default function MaintenancePage() {
     }
 
     const confirmed = await modal.showConfirm(
-      `This will archive ${archiveTotal} record(s) for SY ${archivePreview.schoolYear}, exclude notifications and schedules from the archive, then reset operational data. Continue?`,
+      `This will archive ${archiveTotal} record(s) for SY ${archivePreview.schoolYear}, then reset only that school year's operational data. Continue?`,
       'Archive School Year and Cleanup'
     );
     if (!confirmed) return;
@@ -180,7 +182,7 @@ export default function MaintenancePage() {
               <div>
                 <h2 className="text-lg font-black text-slate-950 dark:text-white">Recommended flow</h2>
                 <p className="mt-1 max-w-3xl text-sm text-slate-600 dark:text-slate-300">
-                  Archive the selected school year first, then reset operational records. The archive keeps long-term records such as tickets, forms, borrowing, reports, inventory, rooms, and computers. Short-lived alerts and class schedules are left out because they are regenerated or only useful during active operations.
+                  Archive the selected school year first, then reset operational records for that same year. The archive keeps long-term records such as tickets, forms, borrowing, reports, schedules, notifications, inventory, rooms, and computers.
                 </p>
                 <div className="mt-4 grid gap-2 text-sm sm:grid-cols-3">
                   <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-900">
@@ -220,22 +222,24 @@ export default function MaintenancePage() {
         </section>
 
         {archivePreview && (
-          <section className="grid shrink-0 gap-4 xl:grid-cols-[1fr_1fr_1fr_1.05fr]">
+          <section className={`grid shrink-0 gap-4 ${hasExcludedArchiveRows ? 'xl:grid-cols-[1fr_1fr_1fr_1.05fr]' : 'xl:grid-cols-[1fr_1fr_1.05fr]'}`}>
             <CountGrid
               title="Archive"
               description="Long-term records saved into the compressed file."
               counts={archivePreview.willArchive}
               tone="border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-100"
             />
-            <CountGrid
-              title="Excluded"
-              description="Temporary data not written into the archive."
-              counts={archivePreview.excludedFromArchive}
-              tone="border-slate-200 bg-slate-50 text-slate-800 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-            />
+            {hasExcludedArchiveRows && (
+              <CountGrid
+                title="Excluded"
+                description="Temporary data not written into the archive."
+                counts={archivePreview.excludedFromArchive}
+                tone="border-slate-200 bg-slate-50 text-slate-800 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              />
+            )}
             <CountGrid
               title="Cleanup"
-              description="Records removed or reset after the archive is created."
+              description="Selected school-year records removed or reset after archive creation."
               counts={archivePreview.willDelete}
               tone="border-red-200 bg-red-50 text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200"
             />

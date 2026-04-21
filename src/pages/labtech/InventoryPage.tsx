@@ -25,6 +25,7 @@ const statusBorder: Record<InventoryStatus, string> = {
   DEFECTIVE: 'border-l-orange-500',
   LOST: 'border-l-red-500',
   REPLACED: 'border-l-gray-400',
+  DISPOSED: 'border-l-slate-500',
 }
 
 const InventoryPage = () => {
@@ -113,7 +114,7 @@ const InventoryPage = () => {
   // const archiveStatuses: Item['Status'][] = ['AVAILABLE', 'BORROWED'];
   const filteredAndSortedInventory = useMemo(() => {
     let result = inventory.filter(item => {
-      const matchesSearch = (item.Brand + item.Item_Code + (item.Item_Type ?? ''))
+      const matchesSearch = (item.Brand + item.Item_Code + (item.Item_Type ?? '') + (item.Location ?? '') + (item.Room?.Name ?? ''))
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
       const matchesType = selectedType === 'All Types' || item.Item_Type === selectedType;
@@ -147,8 +148,8 @@ const InventoryPage = () => {
             bValue = b.Status?.toLowerCase() || ''
             break
           case 'room':
-            aValue = (a.Room?.Name || (a as any).Computers?.[0]?.Room?.Name || '').toLowerCase()
-            bValue = (b.Room?.Name || (b as any).Computers?.[0]?.Room?.Name || '').toLowerCase()
+            aValue = (a.Location || a.Room?.Name || (a as any).Computers?.[0]?.Room?.Name || '').toLowerCase()
+            bValue = (b.Location || b.Room?.Name || (b as any).Computers?.[0]?.Room?.Name || '').toLowerCase()
             break
           case 'updated':
             aValue = a.Updated_At ? new Date(a.Updated_At).getTime() : 0
@@ -198,6 +199,7 @@ const InventoryPage = () => {
           Brand: p.Brand!,
           Serial_Number: p.Serial_Number ?? "",
           Status: p.Status ?? "AVAILABLE",
+          Location: p.Location ?? "",
           Room_ID: p.Room_ID ?? rooms?.[0]?.Room_ID ?? 0,
           Updated_At: p.Updated_At ?? new Date().toISOString(),
           IsBorrowable: p.IsBorrowable ?? false,
@@ -216,6 +218,7 @@ const InventoryPage = () => {
           Brand: payload.Brand!,
           Serial_Number: payload.Serial_Number ?? "",
           Status: payload.Status ?? "AVAILABLE",
+          Location: payload.Location ?? "",
           Room_ID: payload.Room_ID ?? rooms?.[0]?.Room_ID ?? 0,
           Updated_At: payload.Updated_At ?? new Date().toISOString(),
           IsBorrowable: payload.IsBorrowable ?? false,
@@ -252,6 +255,7 @@ const InventoryPage = () => {
             Item_Code: updatedItem.Item_Code ?? "",
             Item_Type: updatedItem.Item_Type ?? "Unknown",
             Brand: updatedItem.Brand ?? "Unknown",
+            Location: updatedItem.Location ?? null,
             Serial_Number: updatedItem.Serial_Number ?? "",
             Status: updatedItem.Status ?? "AVAILABLE",
             Room_ID: updatedItem.Room_ID,
@@ -285,6 +289,7 @@ const InventoryPage = () => {
           Item_Code: item.Item_Code ?? "",
           Item_Type: item.Item_Type ?? "Unknown",
           Brand: item.Brand ?? "Unknown",
+          Location: item.Location ?? null,
           Serial_Number: item.Serial_Number ?? "",
           Status: item.Status ?? "AVAILABLE",
           Room_ID: item.Room_ID,
@@ -311,7 +316,7 @@ const InventoryPage = () => {
     }
   };
 
-  // Column layout: [checkbox] [asset code] [brand] [type] [status] [room] [updated] [actions]
+  // Column layout: [checkbox] [asset code] [brand] [type] [status] [location] [updated] [actions]
   const columnWidths = '48px 1.3fr 1fr 1fr 1fr 1fr 1fr 110px'
 
   const visibleIds = useMemo(
@@ -649,7 +654,7 @@ const InventoryPage = () => {
             { label: 'Brand', key: 'brand' },
             { label: 'Item Type', key: 'type' },
             { label: 'Status', key: 'status' },
-            { label: 'Room Name', key: 'room' },
+            { label: 'Location', key: 'room' },
             { label: 'Last Updated', key: 'updated' },
             { label: '', align: 'right' as const },
             ]}
@@ -749,16 +754,18 @@ const InventoryPage = () => {
                               ? "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400"
                               : item.Status === "REPLACED"
                                 ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400"
-                                : "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
+                                : item.Status === "DISPOSED"
+                                  ? "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300"
+                                  : "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
                         }`}
                     >
                       {(item.Status ?? "AVAILABLE").charAt(0).toUpperCase() + (item.Status ?? "AVAILABLE").slice(1).toLowerCase()}
                     </span>
                   </div>
 
-                  {/* Room */}
+                  {/* Location */}
                   <div className="flex justify-center text-sm text-gray-600 dark:text-gray-400">
-                    {item.Room?.Name ?? ((item as any).Computers?.[0]?.Room?.Name) ?? '—'}
+                    {item.Location || item.Room?.Name || ((item as any).Computers?.[0]?.Room?.Name) || '—'}
                   </div>
 
                   {/* Updated */}

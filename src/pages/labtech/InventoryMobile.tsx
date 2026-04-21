@@ -24,6 +24,7 @@ interface MobileInventoryModalProps {
     onSave: (payload: {
         Item_Type: string;
         Brand: string;
+        Location?: string | null;
         Serial_Number: string;
         Status: Item['Status'];
         Room_ID?: number;
@@ -44,6 +45,7 @@ const MobileInventoryModal = ({
     const [formData, setFormData] = useState({
         Item_Type: 'GENERAL',
         Brand: '',
+        Location: '',
         Serial_Number: '',
         Status: 'AVAILABLE' as Item['Status'],
         Room_ID: 0,
@@ -57,6 +59,7 @@ const MobileInventoryModal = ({
         setFormData({
             Item_Type: item?.Item_Type || itemTypes[0] || 'GENERAL',
             Brand: item?.Brand || '',
+            Location: item?.Location || '',
             Serial_Number: item?.Serial_Number || '',
             Status: item?.Status || 'AVAILABLE',
             Room_ID: item?.Room_ID || rooms[0]?.Room_ID || 0,
@@ -86,6 +89,7 @@ const MobileInventoryModal = ({
                 ...formData,
                 Item_Type: formData.Item_Type.trim().toUpperCase().replace(/[\s-]+/g, '_'),
                 Brand: formData.Brand.trim(),
+                Location: formData.Location.trim() || null,
                 Serial_Number: formData.Serial_Number.trim(),
                 Room_ID: formData.Room_ID || undefined,
             });
@@ -136,8 +140,8 @@ const MobileInventoryModal = ({
                                     <p className="mt-1 text-base font-bold text-gray-900 dark:text-white">{formData.Status}</p>
                                 </div>
                                 <div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-900">
-                                    <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Room</p>
-                                    <p className="mt-1 text-base font-bold text-gray-900 dark:text-white">{selectedRoom?.Name || 'N/A'}</p>
+                                    <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Location</p>
+                                    <p className="mt-1 text-base font-bold text-gray-900 dark:text-white">{formData.Location || selectedRoom?.Name || 'N/A'}</p>
                                 </div>
                             </div>
                             <div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-900">
@@ -190,12 +194,21 @@ const MobileInventoryModal = ({
                                 />
                             </div>
                             <div>
+                                <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-200">Location</label>
+                                <input
+                                    value={formData.Location || ''}
+                                    onChange={event => setFormData(prev => ({ ...prev, Location: event.target.value }))}
+                                    className={fieldClass}
+                                    placeholder="Storage shelf, office, or exact area"
+                                />
+                            </div>
+                            <div>
                                 <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-200">Status</label>
                                 <FloatingSelect
                                     id="mobile-item-modal-status"
                                     value={formData.Status}
                                     placeholder="Select status"
-                                    options={['AVAILABLE', 'BORROWED', 'DEFECTIVE', 'LOST', 'REPLACED'].map(status => ({ value: status, label: status }))}
+                                    options={['AVAILABLE', 'BORROWED', 'DEFECTIVE', 'LOST', 'REPLACED', 'DISPOSED'].map(status => ({ value: status, label: status }))}
                                     onChange={value => setFormData(prev => ({ ...prev, Status: value as Item['Status'] }))}
                                 />
                             </div>
@@ -255,7 +268,7 @@ const InventoryMobilePage = () => {
     const [selectedType, setSelectedType] = useState('All Types');
     const [selectedStatus, setSelectedStatus] = useState('All Status');
     const [isFilterOpen, setIsFilterOpen] = useState(false);
-    const inventoryStatuses = ['AVAILABLE', 'BORROWED', 'DEFECTIVE'];
+    const inventoryStatuses = ['AVAILABLE', 'BORROWED', 'DEFECTIVE', 'LOST', 'REPLACED', 'DISPOSED'];
     const itemTypes = [...new Set(['GENERAL', 'HDMI', 'VGA', 'ADAPTER', 'PROJECTOR', 'EXTENSION', 'MOUSE', 'KEYBOARD', 'MONITOR', 'SYSTEM_UNIT', 'OTHER', ...inventory.map(item => item.Item_Type).filter(Boolean)])];
 
     const loadInventory = async () => {
@@ -289,6 +302,7 @@ const InventoryMobilePage = () => {
     const handleSaveItem = async (payload: {
         Item_Type: string;
         Brand: string;
+        Location?: string | null;
         Serial_Number: string;
         Status: Item['Status'];
         Room_ID?: number;
@@ -315,7 +329,7 @@ const InventoryMobilePage = () => {
 
     // Filtered inventory
     const filteredInventory = inventory.filter(item => {
-        const matchesSearch = (item.Brand + item.Item_Code + (item.Item_Type ?? ''))
+        const matchesSearch = (item.Brand + item.Item_Code + (item.Item_Type ?? '') + (item.Location ?? '') + (item.Room?.Name ?? ''))
             .toLowerCase()
             .includes(searchTerm.toLowerCase());
         const matchesType = selectedType === 'All Types' || item.Item_Type === selectedType;
@@ -494,7 +508,7 @@ const InventoryMobilePage = () => {
                             >
                                 {item.Status}
                             </span>
-                            <span className="text-xs text-gray-600 dark:text-gray-400">{item.Room?.Name ?? '—'}</span>
+                            <span className="text-xs text-gray-600 dark:text-gray-400">{item.Location || item.Room?.Name || '—'}</span>
                         </div>
                     </div>
                 ))}

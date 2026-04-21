@@ -169,8 +169,8 @@ export default function InventoryItemInfoPage() {
             <div className="flex items-center gap-3">
               <MapPin className="h-5 w-5 text-indigo-500" />
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Room</p>
-                <p className="mt-1 text-lg font-semibold text-slate-950 dark:text-white">{item.Room?.Name || "Unassigned"}</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Location</p>
+                <p className="mt-1 text-lg font-semibold text-slate-950 dark:text-white">{item.Location || item.Room?.Name || "Unassigned"}</p>
               </div>
             </div>
           </div>

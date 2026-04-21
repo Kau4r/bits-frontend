@@ -9,7 +9,7 @@ export interface ComputerItem {
     Item_Type: string;
     Brand: string | null;
     Serial_Number: string | null;
-    Status: 'AVAILABLE' | 'BORROWED' | 'DEFECTIVE' | 'LOST' | 'REPLACED';
+    Status: 'AVAILABLE' | 'BORROWED' | 'DEFECTIVE' | 'LOST' | 'REPLACED' | 'DISPOSED';
 }
 
 export interface ComputerRoom {

@@ -152,7 +152,7 @@ export default function LabheadDashboard() {
         >
           <SummaryTile label="Rooms In Maintenance" value={metrics?.counts.roomsInMaintenance} />
           <SummaryTile label="Defective Items" value={metrics?.counts.brokenItems} />
-          <SummaryTile label="Borrowed Items" value={metrics?.counts.borrowedItems} />
+          <SummaryTile label="Disposed Items" value={metrics?.counts.disposedItems} />
         </SummaryPanel>
         <SummaryPanel
           title="Forms"
