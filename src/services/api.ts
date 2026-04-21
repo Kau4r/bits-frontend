@@ -10,6 +10,16 @@ type ApiEnvelope = {
     meta?: unknown;
 };
 
+type SilentRequestConfig = {
+    silent?: boolean;
+};
+
+const isCancelledRequest = (error: unknown): boolean => {
+    if (!error || typeof error !== 'object') return false;
+    const maybeError = error as { code?: string; name?: string; __CANCEL__?: boolean };
+    return maybeError.__CANCEL__ === true || maybeError.code === 'ERR_CANCELED' || maybeError.name === 'CanceledError';
+};
+
 const api = axios.create({
     baseURL: getApiBaseUrl(),
     headers: { "Content-Type": "application/json" },
@@ -49,10 +59,11 @@ api.interceptors.response.use(
                 error.message = serverError;
             }
         }
+        const requestConfig = error.config as SilentRequestConfig | undefined;
         if (
-            !axios.isCancel(error) &&
+            !isCancelledRequest(error) &&
             error.response?.status !== 401 &&
-            error.config?.silent !== true
+            requestConfig?.silent !== true
         ) {
             toast.error(error.message || 'Something went wrong', { duration: 6000 });
         }
@@ -61,9 +72,3 @@ api.interceptors.response.use(
 );
 
 export default api;
-
-declare module 'axios' {
-    interface AxiosRequestConfig {
-        silent?: boolean;
-    }
-}

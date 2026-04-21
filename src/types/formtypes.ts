@@ -1,6 +1,6 @@
 // Form types matching backend schema
 export type FormType = 'WRF' | 'RIS';
-export type FormStatus = 'PENDING' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED' | 'ARCHIVED';
+export type FormStatus = 'PENDING' | 'IN_REVIEW' | 'APPROVED' | 'CANCELLED' | 'ARCHIVED';
 export type FormDepartment =
   | 'REQUESTOR'
   | 'DEPARTMENT_HEAD'
@@ -29,7 +29,7 @@ export const formStatusLabels: Record<FormStatus, string> = {
   PENDING: 'Pending',
   IN_REVIEW: 'In Review',
   APPROVED: 'Approved',
-  REJECTED: 'Cancelled',
+  CANCELLED: 'Cancelled',
   ARCHIVED: 'Archived',
 };
 
@@ -186,14 +186,14 @@ export const formStatusColors: Record<FormStatus, string> = {
   PENDING: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
   IN_REVIEW: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
   APPROVED: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
-  REJECTED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+  CANCELLED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
   ARCHIVED: 'bg-gray-200 text-gray-800 dark:bg-gray-700/30 dark:text-gray-300',
 };
 
 export type FormHistoryAction =
   | 'CREATED'
   | 'APPROVED'
-  | 'REJECTED'
+  | 'CANCELLED'
   | 'TRANSFERRED'
   | 'RETURNED'
   | 'ARCHIVED'
@@ -202,7 +202,7 @@ export type FormHistoryAction =
 export const formHistoryActionLabels: Record<FormHistoryAction, string> = {
   CREATED: 'Created',
   APPROVED: 'Approved',
-  REJECTED: 'Cancelled',
+  CANCELLED: 'Cancelled',
   TRANSFERRED: 'Transferred',
   RETURNED: 'Returned for revision',
   ARCHIVED: 'Archived',
@@ -274,7 +274,7 @@ export interface Form {
 }
 
 export const isFormTerminal = (form: Pick<Form, 'Department' | 'Status'>): boolean =>
-  form.Department === 'COMPLETED' || form.Status === 'REJECTED';
+  form.Department === 'COMPLETED' || form.Status === 'CANCELLED' || form.Status === 'ARCHIVED';
 
 /**
  * Returns true if the current step has an attachment uploaded AFTER

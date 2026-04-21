@@ -79,7 +79,7 @@ export default function Forms() {
 
   // Terminal check for local FormRecord (no FormRecord `Department`/`Status` casing — project `Is_*` equivalents)
   const isRecordTerminal = useCallback((form: FormRecord): boolean =>
-    form.department === 'COMPLETED' || form.status === 'REJECTED', []);
+    form.department === 'COMPLETED' || form.status === 'CANCELLED' || form.status === 'ARCHIVED', []);
 
   // True if the form has visited at least one workflow step earlier than its current step.
   const hasPriorVisitedStep = useCallback((form: FormRecord): boolean => {
@@ -321,6 +321,23 @@ export default function Forms() {
       : '';
   };
 
+  const formHasCurrentStepAttachment = (form: FormRecord): boolean => {
+    const currentDept = normalizeFormDepartment(form.department);
+    return currentDept
+      ? hasCurrentStepAttachment(
+          currentDept,
+          form.history,
+          form.attachments || [],
+          form.createdAt,
+        )
+      : true;
+  };
+
+  const getCurrentStepLabel = (form: FormRecord): string => {
+    const currentDept = normalizeFormDepartment(form.department);
+    return currentDept ? (formDepartmentLabels[currentDept] ?? currentDept) : form.department;
+  };
+
   const handleAddAttachments = async (form: FormRecord, selectedFiles: File[], documentType: FormDocumentType) => {
     if (selectedFiles.length === 0) return;
 
@@ -378,7 +395,7 @@ export default function Forms() {
 
   const handleArchiveForm = async (form: FormRecord) => {
     if (!isRecordTerminal(form)) {
-      await modal.showError('Form must be Completed or Rejected before archiving.', 'Archive Blocked');
+      await modal.showError('Form must be Completed or Cancelled before archiving.', 'Archive Blocked');
       return;
     }
 
@@ -520,6 +537,14 @@ export default function Forms() {
     try {
       const currentForm = forms.find(f => f.id === id);
       if (!currentForm) return;
+
+      if (edits.status === 'APPROVED' && !formHasCurrentStepAttachment(currentForm)) {
+        await modal.showError(
+          `Upload the updated form for ${getCurrentStepLabel(currentForm)} before approval.`,
+          'Upload Required'
+        );
+        return;
+      }
 
       if (edits.department === 'COMPLETED' && currentForm.type === 'RIS' && !canCompleteRisForm(currentForm)) {
         await modal.showError(getCompletionBlockMessage(currentForm), 'RIS Completion Blocked');
@@ -674,7 +699,7 @@ export default function Forms() {
             placeholder="All Statuses"
             options={[
               { value: 'All', label: 'All Statuses' },
-              ...(['PENDING', 'IN_REVIEW', 'APPROVED', 'REJECTED'] as FormStatus[]).map((status) => ({
+              ...(['PENDING', 'IN_REVIEW', 'APPROVED', 'CANCELLED'] as FormStatus[]).map((status) => ({
                 value: status,
                 label: formStatusLabels[status],
               })),
@@ -813,7 +838,7 @@ export default function Forms() {
                           <div className="flex items-center gap-3 rounded-lg border border-gray-300 bg-gray-100 dark:bg-gray-800/70 dark:border-gray-700 px-4 py-3 text-sm text-gray-700 dark:text-gray-200">
                             <Lock className="h-4 w-4 flex-shrink-0 text-gray-500 dark:text-gray-400" />
                             <span>
-                              This form is {f.status === 'REJECTED' ? 'Rejected' : 'Completed'} and is locked from further changes.
+                              This form is {f.status === 'CANCELLED' ? 'Cancelled' : f.status === 'ARCHIVED' ? 'Archived' : 'Completed'} and is locked from further changes.
                             </span>
                           </div>
                         )}
@@ -835,7 +860,7 @@ export default function Forms() {
                               type="button"
                               disabled={!isRecordTerminal(f) || archivingIds.has(f.id)}
                               onClick={() => void handleArchiveForm(f)}
-                              title={isRecordTerminal(f) ? 'Archive this form' : 'Form must be Completed or Rejected before archiving'}
+                              title={isRecordTerminal(f) ? 'Archive this form' : 'Form must be Completed or Cancelled before archiving'}
                               className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                             >
                               <Archive className="h-4 w-4" />
@@ -887,11 +912,24 @@ export default function Forms() {
                               Update Status
                             </h4>
                             <div className="w-full">
-                              <StatusSelect
-                                value={editedForms[f.id]?.status ?? f.status}
-                                onChange={(s: FormStatus) => handleLocalChange(f.id, 'status', s)}
-                                className="w-full"
-                              />
+                              {(() => {
+                                const stepHasAttachment = formHasCurrentStepAttachment(f);
+                                return (
+                                  <>
+                                    <StatusSelect
+                                      value={editedForms[f.id]?.status ?? f.status}
+                                      onChange={(s: FormStatus) => handleLocalChange(f.id, 'status', s)}
+                                      disabledStatuses={!stepHasAttachment ? ['APPROVED'] : []}
+                                      className="w-full"
+                                    />
+                                    {!stepHasAttachment && (
+                                      <p className="mt-2 text-xs text-amber-600 dark:text-amber-300">
+                                        Upload the updated form for {getCurrentStepLabel(f)} before approval.
+                                      </p>
+                                    )}
+                                  </>
+                                );
+                              })()}
                             </div>
                           </div>
                         )}
@@ -973,18 +1011,8 @@ export default function Forms() {
                           </h4>
                           <div className="w-full">
                             {(() => {
-                              const currentDept = normalizeFormDepartment(f.department);
-                              const stepHasAttachment = currentDept
-                                ? hasCurrentStepAttachment(
-                                    currentDept,
-                                    f.history,
-                                    f.attachments || [],
-                                    f.createdAt,
-                                  )
-                                : true;
-                              const deptLabel = currentDept
-                                ? (formDepartmentLabels[currentDept] ?? currentDept)
-                                : f.department;
+                              const stepHasAttachment = formHasCurrentStepAttachment(f);
+                              const deptLabel = getCurrentStepLabel(f);
                               const isApproved = (editedForms[f.id]?.status ?? f.status) === 'APPROVED';
                               const deptSelectDisabled = !isApproved || !stepHasAttachment;
 

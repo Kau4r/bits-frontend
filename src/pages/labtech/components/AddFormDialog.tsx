@@ -216,7 +216,7 @@ export const AddFormDialog: FC<{
                     { value: 'PENDING', label: 'Pending' },
                     { value: 'IN_REVIEW', label: 'In Review' },
                     { value: 'APPROVED', label: 'Approved' },
-                    { value: 'REJECTED', label: 'Rejected' },
+                    { value: 'CANCELLED', label: 'Cancelled' },
                   ]}
                 />
               </div>

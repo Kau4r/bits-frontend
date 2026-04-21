@@ -6,7 +6,8 @@ import type { RegisterComputerResponse, HeartbeatData, HeartbeatResponse, EndSes
  */
 export const registerComputer = async (clientIp: string | null): Promise<RegisterComputerResponse> => {
   try {
-    const response = await api.post<RegisterComputerResponse>('/heartbeat/register', { client_ip: clientIp }, { silent: true });
+    const silentConfig = { silent: true } as unknown as Parameters<typeof api.post>[2];
+    const response = await api.post<RegisterComputerResponse>('/heartbeat/register', { client_ip: clientIp }, silentConfig);
     // After interceptor unwraps envelope, response.data is the payload directly.
     // Add success: true since the interceptor strips it from the envelope.
     return { ...response.data, success: true };
