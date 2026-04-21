@@ -94,8 +94,8 @@ export default function MonitoringDashboard() {
   return (
     <ErrorBoundary>
       <div className="h-full w-full bg-white p-6 sm:px-8 lg:px-10 dark:bg-gray-900">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Computer Monitoring</h1>
-        <p className="mt-1 mb-4 text-sm text-gray-500 dark:text-gray-400">View real-time status of computer systems across all labs</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Lab Workstation Overview</h1>
+        <p className="mt-1 mb-4 text-sm text-gray-500 dark:text-gray-400">Review workstation records and room coverage across laboratory areas.</p>
 
         {/* Live region for status updates - screen reader only */}
         <div role="status" aria-live="polite" className="sr-only">

@@ -117,7 +117,7 @@ const InventorySidePanel = ({ inventory }: InventorySidePanelProps) => {
       }))
       .filter((row) => row.item)
       .sort((a, b) => b.count - a.count)
-      .slice(0, 5)
+      .slice(0, 3)
   }, [borrowings, inventory])
 
   // --- b. Recently Defective (last 30 days, updated) ---
@@ -135,7 +135,7 @@ const InventorySidePanel = ({ inventory }: InventorySidePanelProps) => {
         const tb = new Date(b.Updated_At ?? 0).getTime()
         return tb - ta
       })
-      .slice(0, 5)
+      .slice(0, 3)
   }, [inventory])
 
   // --- c. Recently Added (by Updated_At desc) ---
@@ -147,13 +147,13 @@ const InventorySidePanel = ({ inventory }: InventorySidePanelProps) => {
         const tb = new Date(b.Updated_At ?? 0).getTime()
         return tb - ta
       })
-      .slice(0, 5)
+      .slice(0, 3)
   }, [inventory])
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+    <div className="grid h-full min-h-0 grid-cols-1 gap-3 md:grid-cols-3">
       {/* Most Borrowed */}
-      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+      <div className="flex h-full min-h-[160px] flex-col rounded-lg border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
         <SectionHeader
           icon={TrendingUp}
           label="Most Borrowed This Week"
@@ -171,7 +171,7 @@ const InventorySidePanel = ({ inventory }: InventorySidePanelProps) => {
         ) : mostBorrowed.length === 0 ? (
           <EmptyRow text="No borrows in the past 7 days" />
         ) : (
-          <ul className="divide-y divide-gray-100 dark:divide-gray-700">
+          <ul className="min-h-0 flex-1 divide-y divide-gray-100 overflow-y-auto dark:divide-gray-700">
             {mostBorrowed.map(({ item, count }) => (
               <li
                 key={item!.Item_ID}
@@ -195,7 +195,7 @@ const InventorySidePanel = ({ inventory }: InventorySidePanelProps) => {
       </div>
 
       {/* Recently Defective */}
-      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+      <div className="flex h-full min-h-[160px] flex-col rounded-lg border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
         <SectionHeader
           icon={AlertTriangle}
           label="Recently Defective"
@@ -204,7 +204,7 @@ const InventorySidePanel = ({ inventory }: InventorySidePanelProps) => {
         {recentlyDefective.length === 0 ? (
           <EmptyRow text="None flagged recently" />
         ) : (
-          <ul className="divide-y divide-gray-100 dark:divide-gray-700">
+          <ul className="min-h-0 flex-1 divide-y divide-gray-100 overflow-y-auto dark:divide-gray-700">
             {recentlyDefective.map((item) => (
               <li
                 key={item.Item_ID}
@@ -228,7 +228,7 @@ const InventorySidePanel = ({ inventory }: InventorySidePanelProps) => {
       </div>
 
       {/* Recently Added */}
-      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+      <div className="flex h-full min-h-[160px] flex-col rounded-lg border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
         <SectionHeader
           icon={PackagePlus}
           label="Recently Added"
@@ -237,7 +237,7 @@ const InventorySidePanel = ({ inventory }: InventorySidePanelProps) => {
         {recentlyAdded.length === 0 ? (
           <EmptyRow text="No items yet" />
         ) : (
-          <ul className="divide-y divide-gray-100 dark:divide-gray-700">
+          <ul className="min-h-0 flex-1 divide-y divide-gray-100 overflow-y-auto dark:divide-gray-700">
             {recentlyAdded.map((item) => (
               <li
                 key={item.Item_ID}

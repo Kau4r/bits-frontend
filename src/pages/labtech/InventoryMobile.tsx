@@ -1,15 +1,242 @@
 import { useState, useRef, useEffect } from 'react';
 import { BrowserQRCodeReader } from '@zxing/browser';
-import { QrCode, Plus, Filter } from 'lucide-react';
+import { Edit3, Filter, Plus, QrCode, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import ItemModal from '@/pages/labtech/components/ItemModal';
 import Search from '@/components/Search';
 import { type Item } from '@/types/inventory';
 import type { Room } from '@/types/room';
-import { getInventory } from '@/services/inventory';
+import { createInventoryBulk, getInventory, updateInventoryItem } from '@/services/inventory';
 import { getRooms } from '@/services/room';
 import { buildInventoryItemPath, parseInventoryQrValue } from '@/utils/inventoryQr';
 import { FloatingSelect } from '@/ui/FloatingSelect';
+import toast from 'react-hot-toast';
+
+type ModalMode = 'view' | 'edit' | 'add';
+
+interface MobileInventoryModalProps {
+    isOpen: boolean;
+    mode: ModalMode;
+    item: Item | null;
+    rooms: Room[];
+    itemTypes: string[];
+    onClose: () => void;
+    onEdit: () => void;
+    onSave: (payload: {
+        Item_Type: string;
+        Brand: string;
+        Serial_Number: string;
+        Status: Item['Status'];
+        Room_ID?: number;
+        IsBorrowable: boolean;
+    }) => Promise<void>;
+}
+
+const MobileInventoryModal = ({
+    isOpen,
+    mode,
+    item,
+    rooms,
+    itemTypes,
+    onClose,
+    onEdit,
+    onSave,
+}: MobileInventoryModalProps) => {
+    const [formData, setFormData] = useState({
+        Item_Type: 'GENERAL',
+        Brand: '',
+        Serial_Number: '',
+        Status: 'AVAILABLE' as Item['Status'],
+        Room_ID: 0,
+        IsBorrowable: false,
+    });
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        if (!isOpen) return;
+
+        setFormData({
+            Item_Type: item?.Item_Type || itemTypes[0] || 'GENERAL',
+            Brand: item?.Brand || '',
+            Serial_Number: item?.Serial_Number || '',
+            Status: item?.Status || 'AVAILABLE',
+            Room_ID: item?.Room_ID || rooms[0]?.Room_ID || 0,
+            IsBorrowable: Boolean(item?.IsBorrowable),
+        });
+    }, [isOpen, item, itemTypes, rooms]);
+
+    if (!isOpen) return null;
+
+    const readOnly = mode === 'view';
+    const title = mode === 'add' ? 'Add Item' : mode === 'edit' ? 'Edit Item' : 'Item Details';
+    const selectedRoom = rooms.find(room => room.Room_ID === formData.Room_ID);
+
+    const handleSubmit = async () => {
+        if (!formData.Item_Type.trim()) {
+            toast.error('Item type is required');
+            return;
+        }
+        if (!formData.Brand.trim()) {
+            toast.error('Brand is required');
+            return;
+        }
+
+        setSaving(true);
+        try {
+            await onSave({
+                ...formData,
+                Item_Type: formData.Item_Type.trim().toUpperCase().replace(/[\s-]+/g, '_'),
+                Brand: formData.Brand.trim(),
+                Serial_Number: formData.Serial_Number.trim(),
+                Room_ID: formData.Room_ID || undefined,
+            });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const fieldClass = "w-full rounded-lg border border-gray-300 bg-white px-3 py-3 text-sm text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 disabled:bg-gray-100 disabled:text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:disabled:bg-gray-800";
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-end bg-black/50" onClick={onClose}>
+            <div
+                className="max-h-[88vh] w-full overflow-hidden rounded-t-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-950"
+                onClick={event => event.stopPropagation()}
+            >
+                <div className="flex items-center justify-between border-b border-gray-200 px-4 py-4 dark:border-gray-800">
+                    <div>
+                        <h2 className="text-lg font-bold text-gray-900 dark:text-white">{title}</h2>
+                        {item?.Item_Code && (
+                            <p className="mt-0.5 font-mono text-xs text-gray-500 dark:text-gray-400">{item.Item_Code}</p>
+                        )}
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                        aria-label="Close item modal"
+                    >
+                        <X className="h-5 w-5" />
+                    </button>
+                </div>
+
+                <div className="max-h-[calc(88vh-145px)] overflow-y-auto px-4 py-4">
+                    {readOnly ? (
+                        <div className="space-y-3">
+                            <div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-900">
+                                <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Item Type</p>
+                                <p className="mt-1 text-base font-bold text-gray-900 dark:text-white">{formData.Item_Type || 'N/A'}</p>
+                            </div>
+                            <div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-900">
+                                <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Brand</p>
+                                <p className="mt-1 text-base font-bold text-gray-900 dark:text-white">{formData.Brand || 'N/A'}</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-900">
+                                    <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Status</p>
+                                    <p className="mt-1 text-base font-bold text-gray-900 dark:text-white">{formData.Status}</p>
+                                </div>
+                                <div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-900">
+                                    <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Room</p>
+                                    <p className="mt-1 text-base font-bold text-gray-900 dark:text-white">{selectedRoom?.Name || 'N/A'}</p>
+                                </div>
+                            </div>
+                            <div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-900">
+                                <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Serial Number</p>
+                                <p className="mt-1 break-all text-base font-bold text-gray-900 dark:text-white">{formData.Serial_Number || 'N/A'}</p>
+                            </div>
+                            <div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-900">
+                                <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Borrowable</p>
+                                <p className="mt-1 text-base font-bold text-gray-900 dark:text-white">{formData.IsBorrowable ? 'Yes' : 'No'}</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <div>
+                                <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-200">Item Type</label>
+                                <FloatingSelect
+                                    id="mobile-item-modal-type"
+                                    value={formData.Item_Type}
+                                    placeholder="Select item type"
+                                    options={itemTypes.map(type => ({ value: type, label: type }))}
+                                    onChange={value => setFormData(prev => ({ ...prev, Item_Type: String(value) }))}
+                                />
+                            </div>
+                            <div>
+                                <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-200">Brand</label>
+                                <input
+                                    value={formData.Brand}
+                                    onChange={event => setFormData(prev => ({ ...prev, Brand: event.target.value }))}
+                                    className={fieldClass}
+                                    placeholder="Enter brand"
+                                />
+                            </div>
+                            <div>
+                                <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-200">Serial Number</label>
+                                <input
+                                    value={formData.Serial_Number}
+                                    onChange={event => setFormData(prev => ({ ...prev, Serial_Number: event.target.value }))}
+                                    className={fieldClass}
+                                    placeholder="Enter serial number"
+                                />
+                            </div>
+                            <div>
+                                <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-200">Room</label>
+                                <FloatingSelect
+                                    id="mobile-item-modal-room"
+                                    value={formData.Room_ID}
+                                    placeholder="Select room"
+                                    options={rooms.map(room => ({ value: room.Room_ID, label: room.Name }))}
+                                    onChange={value => setFormData(prev => ({ ...prev, Room_ID: Number(value) }))}
+                                />
+                            </div>
+                            <div>
+                                <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-200">Status</label>
+                                <FloatingSelect
+                                    id="mobile-item-modal-status"
+                                    value={formData.Status}
+                                    placeholder="Select status"
+                                    options={['AVAILABLE', 'BORROWED', 'DEFECTIVE', 'LOST', 'REPLACED'].map(status => ({ value: status, label: status }))}
+                                    onChange={value => setFormData(prev => ({ ...prev, Status: value as Item['Status'] }))}
+                                />
+                            </div>
+                            <label className="flex items-center justify-between rounded-lg border border-gray-200 p-3 text-sm font-semibold text-gray-700 dark:border-gray-700 dark:text-gray-200">
+                                Borrowable Item
+                                <input
+                                    type="checkbox"
+                                    checked={formData.IsBorrowable}
+                                    onChange={event => setFormData(prev => ({ ...prev, IsBorrowable: event.target.checked }))}
+                                    className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                />
+                            </label>
+                        </div>
+                    )}
+                </div>
+
+                <div className="flex gap-2 border-t border-gray-200 px-4 py-4 dark:border-gray-800">
+                    {readOnly ? (
+                        <button
+                            type="button"
+                            onClick={onEdit}
+                            className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-yellow-600 px-4 py-3 text-sm font-bold text-white"
+                        >
+                            <Edit3 className="h-4 w-4" />
+                            Edit
+                        </button>
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={() => void handleSubmit()}
+                            disabled={saving}
+                            className="flex-1 rounded-lg bg-indigo-600 px-4 py-3 text-sm font-bold text-white disabled:opacity-60"
+                        >
+                            {saving ? 'Saving...' : 'Save'}
+                        </button>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const InventoryMobilePage = () => {
     const navigate = useNavigate();
@@ -17,7 +244,7 @@ const InventoryMobilePage = () => {
     const [inventory, setInventory] = useState<Item[]>([]);
     const [selectedItem, setSelectedItem] = useState<Item | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [modalMode, setModalMode] = useState<'view' | 'edit' | 'add'>('view');
+    const [modalMode, setModalMode] = useState<ModalMode>('view');
 
     const [rooms, setRooms] = useState<Room[]>([]);
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -29,6 +256,17 @@ const InventoryMobilePage = () => {
     const [selectedStatus, setSelectedStatus] = useState('All Status');
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const inventoryStatuses = ['AVAILABLE', 'BORROWED', 'DEFECTIVE'];
+    const itemTypes = [...new Set(['GENERAL', 'HDMI', 'VGA', 'ADAPTER', 'PROJECTOR', 'EXTENSION', 'MOUSE', 'KEYBOARD', 'MONITOR', 'SYSTEM_UNIT', 'OTHER', ...inventory.map(item => item.Item_Type).filter(Boolean)])];
+
+    const loadInventory = async () => {
+        try {
+            const data = await getInventory();
+            setInventory(data.filter((item): item is Item => !!item));
+        } catch (err) {
+            console.error('Error fetching inventory:', err);
+            toast.error('Failed to load inventory');
+        }
+    };
 
     // Load rooms for adding/updating items
     useEffect(() => {
@@ -45,16 +283,35 @@ const InventoryMobilePage = () => {
 
     // Load inventory
     useEffect(() => {
-        const loadInventory = async () => {
-            try {
-                const data = await getInventory();
-                setInventory(data.filter((item): item is Item => !!item));
-            } catch (err) {
-                console.error('Error fetching inventory:', err);
-            }
-        };
-        loadInventory();
+        void loadInventory();
     }, []);
+
+    const handleSaveItem = async (payload: {
+        Item_Type: string;
+        Brand: string;
+        Serial_Number: string;
+        Status: Item['Status'];
+        Room_ID?: number;
+        IsBorrowable: boolean;
+    }) => {
+        try {
+            if (modalMode === 'edit' && selectedItem?.Item_ID) {
+                await updateInventoryItem(selectedItem.Item_ID, payload);
+                toast.success('Item updated');
+            } else {
+                const userId = Number(localStorage.getItem('userId') || 0);
+                await createInventoryBulk([payload as Omit<Item, 'Item_ID'>], userId);
+                toast.success('Item added');
+            }
+            setIsModalOpen(false);
+            setSelectedItem(null);
+            setModalMode('view');
+            await loadInventory();
+        } catch (error) {
+            console.error('Error saving inventory item:', error);
+            toast.error(error instanceof Error ? error.message : 'Failed to save item');
+        }
+    };
 
     // Filtered inventory
     const filteredInventory = inventory.filter(item => {
@@ -275,14 +532,15 @@ const InventoryMobilePage = () => {
                 </div>
             )}
 
-            <ItemModal
+            <MobileInventoryModal
                 isOpen={isModalOpen}
-                initMode={modalMode}
                 item={modalMode !== 'add' ? selectedItem : null}
-                items={inventory}
+                mode={modalMode}
                 rooms={rooms}
+                itemTypes={itemTypes}
                 onClose={() => { setIsModalOpen(false); setSelectedItem(null); }}
-                onSave={() => { }}
+                onEdit={() => setModalMode('edit')}
+                onSave={handleSaveItem}
             />
         </div>
     );

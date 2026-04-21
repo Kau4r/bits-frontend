@@ -432,7 +432,7 @@ const InventoryPage = () => {
   }
 
   return (
-    <div className="h-full w-full overflow-y-auto bg-white p-6 sm:px-8 lg:px-10 dark:bg-gray-900 flex flex-col">
+    <div className="flex h-full w-full flex-col overflow-hidden bg-white p-6 sm:px-8 lg:px-10 dark:bg-gray-900">
       {/* Dashboard (LAB_TECH / LAB_HEAD only) */}
       {showDashboard && !loading && (
         <InventoryDashboard
@@ -443,7 +443,7 @@ const InventoryPage = () => {
       )}
 
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-4 flex shrink-0 items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Inventory Management</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Track and manage laboratory equipment and assets</p>
@@ -461,7 +461,7 @@ const InventoryPage = () => {
       </div>
 
       {/* Filters Bar */}
-      <div className="mb-6 flex flex-wrap items-center gap-3">
+      <div className="mb-4 flex shrink-0 flex-wrap items-center gap-3">
         {/* Search */}
         <div className="min-w-[280px] flex-1">
           <Search searchTerm={searchTerm} onChange={setSearchTerm} showLabel={false} placeholder="Search by brand, code, or type..." />
@@ -627,9 +627,10 @@ const InventoryPage = () => {
         </div>
       )}
 
-      <div className="flex-1">
-        <Table
-          headers={[
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="min-h-0 flex-1">
+          <Table
+            headers={[
             {
               label: (
                 <input
@@ -651,37 +652,37 @@ const InventoryPage = () => {
             { label: 'Room Name', key: 'room' },
             { label: 'Last Updated', key: 'updated' },
             { label: '', align: 'right' as const },
-          ]}
-          sortConfig={sortConfig}
-          onSort={handleSort}
-          columnWidths={columnWidths}
-        >
-          {loading ? (
-            <LoadingSkeleton rows={8} type="table" />
-          ) : filteredAndSortedInventory.length === 0 && inventory.length === 0 ? (
-            <EmptyState
-              icon={Package}
-              title="No inventory items"
-              description="Add your first item to get started."
-              action={{ label: 'Add Item', onClick: () => { setModalMode('add'); setSelectedItem(null); setIsModalOpen(true); } }}
-            />
-          ) : filteredAndSortedInventory.length === 0 ? (
-            <div className="flex flex-col items-center justify-center flex-1 w-full min-h-full" data-full-row>
-              <div className="p-4 bg-gray-100 dark:bg-gray-800/50 rounded-full mb-4">
-                <Filter className="h-12 w-12 text-gray-400" />
+            ]}
+            sortConfig={sortConfig}
+            onSort={handleSort}
+            columnWidths={columnWidths}
+          >
+            {loading ? (
+              <LoadingSkeleton rows={8} type="table" />
+            ) : filteredAndSortedInventory.length === 0 && inventory.length === 0 ? (
+              <EmptyState
+                icon={Package}
+                title="No inventory items"
+                description="Add your first item to get started."
+                action={{ label: 'Add Item', onClick: () => { setModalMode('add'); setSelectedItem(null); setIsModalOpen(true); } }}
+              />
+            ) : filteredAndSortedInventory.length === 0 ? (
+              <div className="flex flex-col items-center justify-center flex-1 w-full min-h-full" data-full-row>
+                <div className="p-4 bg-gray-100 dark:bg-gray-800/50 rounded-full mb-4">
+                  <Filter className="h-12 w-12 text-gray-400" />
+                </div>
+                <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
+                  No items match your filters
+                </h3>
+                <button
+                  onClick={() => { setSearchTerm(''); setSelectedType('All Types'); setSelectedStatus('All Status'); }}
+                  className="mt-4 inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
+                >
+                  Clear Filters
+                </button>
               </div>
-              <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
-                No items match your filters
-              </h3>
-              <button
-                onClick={() => { setSearchTerm(''); setSelectedType('All Types'); setSelectedStatus('All Status'); }}
-                className="mt-4 inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
-              >
-                Clear Filters
-              </button>
-            </div>
-          ) : (
-            paginatedInventory.map((item) => {
+            ) : (
+              paginatedInventory.map((item) => {
               const rowPad = density === 'compact' ? 'py-2' : 'py-4'
               const border = item.Status ? statusBorder[item.Status] : 'border-l-gray-300'
               const isSelected = item.Item_ID != null && selectedIds.has(item.Item_ID)
@@ -828,12 +829,13 @@ const InventoryPage = () => {
                   </div>
                 </div>
               )
-            })
-          )}
-        </Table>
+              })
+            )}
+          </Table>
+        </div>
 
         {/* Pagination Bar */}
-        <div className="mt-4 flex items-center justify-between gap-4 text-sm">
+        <div className="mt-3 flex shrink-0 items-center justify-between gap-4 text-sm">
           {/* Showing X–Y of Z */}
           <span className="text-gray-500 dark:text-gray-400">
             {filteredAndSortedInventory.length === 0

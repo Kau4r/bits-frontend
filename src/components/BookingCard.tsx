@@ -63,7 +63,15 @@ export default function BookingCard() {
 
   if (loading) {
     return (
-      <Card title="Bookings" className="h-full">
+      <Card
+        title={(
+          <span className="flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-300" />
+            <span>{isLabHead ? 'Schedules' : 'Room Schedules'}</span>
+          </span>
+        )}
+        className="h-full"
+      >
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
             <div key={i} className="flex items-center gap-3 p-2.5 animate-pulse">
@@ -81,7 +89,12 @@ export default function BookingCard() {
 
   return (
     <Card
-      title={isLabHead ? 'Bookings' : 'Room Schedule'}
+      title={(
+        <span className="flex items-center gap-2">
+          <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-300" />
+          <span>{isLabHead ? 'Scheduling' : 'Room Schedule'}</span>
+        </span>
+      )}
       className="h-full"
       headerRight={
         isLabHead ? (
@@ -100,6 +113,7 @@ export default function BookingCard() {
         )
       }
     >
+      
       {bookings.length === 0 ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center py-8">
