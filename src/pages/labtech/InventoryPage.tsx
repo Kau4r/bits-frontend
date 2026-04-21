@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { type Item, type InventoryStatus } from '@/types/inventory'
-import { Plus, Filter, Package, ChevronLeft, ChevronRight, Pencil, Tag, X, Download, List, BarChart3 } from 'lucide-react'
+import { Plus, Filter, Package, ChevronLeft, ChevronRight, Pencil, Tag, X, Upload, List, BarChart3 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { LoadingSkeleton } from '@/ui/LoadingSkeleton'
 import { EmptyState } from '@/ui/EmptyState'
@@ -9,8 +9,7 @@ import Table, { type SortConfig, type SortDirection } from '@/components/Table'
 import ItemModal from '@/pages/labtech/components/ItemModal'
 import Search from '@/components/Search'
 import { getRooms } from "@/services/room";
-import { getInventory, updateInventoryItem, createInventoryBulk, createInventoryItem } from "@/services/inventory"
-import { downloadInventoryReportCsv } from '@/services/reports'
+import { getInventory, updateInventoryItem, createInventoryBulk, createInventoryItem, importInventoryCsv, type CsvImportResult } from "@/services/inventory"
 import { inventoryStatuses } from "@/types/inventory"
 import type { Room } from '@/types/room'
 import { useAuth } from '@/context/AuthContext'
@@ -49,6 +48,8 @@ const InventoryPage = () => {
   const [bulkRoomOpen, setBulkRoomOpen] = useState(false)
   const [bulkBusy, setBulkBusy] = useState(false)
   const [activeView, setActiveView] = useState<InventoryView>('list')
+  const [isImportingCsv, setIsImportingCsv] = useState(false)
+  const inventoryCsvInputRef = useRef<HTMLInputElement | null>(null)
 
   // Responsive state
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -83,22 +84,23 @@ const InventoryPage = () => {
     loadRoomsAndUsers();
   }, []);
 
+  const loadInventory = useCallback(async () => {
+    setLoading(true)
+    try {
+      const data = await getInventory()
+      setInventory(data.filter((item): item is Item => !!item));
+      console.log("Fetched inventory:", data);
+    } catch (err) {
+      console.error("Error fetching inventory:", err)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   // Fetch inventory from backend on mount
   useEffect(() => {
-    const loadInventory = async () => {
-      setLoading(true)
-      try {
-        const data = await getInventory()
-        setInventory(data.filter((item): item is Item => !!item));
-        console.log("Fetched inventory:", data);
-      } catch (err) {
-        console.error("Error fetching inventory:", err)
-      } finally {
-        setLoading(false)
-      }
-    }
     loadInventory()
-  }, [])
+  }, [loadInventory])
 
   const handleSort = (key: string) => {
     setSortConfig(prev => {
@@ -437,11 +439,37 @@ const InventoryPage = () => {
     }
   }
 
-  const handleExportInventory = () => {
-    downloadInventoryReportCsv({
-      status: selectedStatus !== 'All Status' ? selectedStatus : undefined,
-      type: selectedType !== 'All Types' ? selectedType : undefined,
-    })
+  const summarizeImport = (result: CsvImportResult) => {
+    const { summary } = result
+    const issueParts = [
+      summary.skipped ? `${summary.skipped} skipped` : '',
+      summary.invalid ? `${summary.invalid} invalid` : '',
+      summary.duplicates ? `${summary.duplicates} duplicate` : '',
+    ].filter(Boolean)
+
+    const issueText = issueParts.length > 0 ? ` (${issueParts.join(', ')})` : ''
+    return `Inventory import: imported ${summary.imported} of ${summary.totalRows} row(s)${issueText}.`
+  }
+
+  const handleImportInventoryCsv = async (file?: File) => {
+    if (!file) return
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      toast.error('Please choose a .csv file.')
+      if (inventoryCsvInputRef.current) inventoryCsvInputRef.current.value = ''
+      return
+    }
+
+    setIsImportingCsv(true)
+    try {
+      const result = await importInventoryCsv(file)
+      await loadInventory()
+      toast.success(summarizeImport(result), { duration: 6000 })
+    } catch (err) {
+      toast.error(err instanceof Error && err.message ? err.message : 'Failed to import inventory CSV')
+    } finally {
+      setIsImportingCsv(false)
+      if (inventoryCsvInputRef.current) inventoryCsvInputRef.current.value = ''
+    }
   }
 
   return (
@@ -483,12 +511,20 @@ const InventoryPage = () => {
               </button>
             )}
           </div>
+          <input
+            ref={inventoryCsvInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={(e) => handleImportInventoryCsv(e.target.files?.[0])}
+          />
           <button
             className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition-all hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-            onClick={handleExportInventory}
+            onClick={() => inventoryCsvInputRef.current?.click()}
+            disabled={isImportingCsv}
           >
-            <Download className="h-5 w-5" />
-            Export CSV
+            <Upload className="h-5 w-5" />
+            {isImportingCsv ? 'Importing...' : 'Import CSV'}
           </button>
           <button
             className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-500 hover:shadow-md focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none active:bg-indigo-700"

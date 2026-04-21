@@ -92,13 +92,18 @@ export const updateInventoryItem = async (id: number, item: Partial<Item | Compu
     return data;
 };
 
-export const importRoomItemsCsv = async (file: File, roomId: number): Promise<CsvImportResult> => {
+export const importInventoryCsv = async (file: File, roomId?: number): Promise<CsvImportResult> => {
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("roomId", String(roomId));
+    if (roomId) {
+        formData.append("roomId", String(roomId));
+    }
 
     const { data } = await api.post<CsvImportResult>("/inventory/import-csv", formData, {
         headers: { "Content-Type": "multipart/form-data" },
     });
     return data;
 };
+
+/** @deprecated Inventory CSV import should be launched from the Inventory page. */
+export const importRoomItemsCsv = importInventoryCsv;

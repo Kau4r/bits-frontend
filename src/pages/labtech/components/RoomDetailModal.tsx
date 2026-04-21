@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import type { Room, RoomSession } from '@/types/room';
 import { fetchComputers, createComputer, updateComputer, deleteComputer, importComputersCsv, type Computer, type CreateComputerPayload, type UpdateComputerPayload } from '@/services/computers';
-import { importRoomItemsCsv, type CsvImportResult } from '@/services/inventory';
+import { type CsvImportResult } from '@/services/inventory';
 import { downloadInventoryReportCsv, downloadRoomReportCsv } from '@/services/reports';
 import api from '@/services/api';
 import { useModal } from '@/context/ModalContext';
@@ -92,7 +92,6 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
     const [isLoadingAssets, setIsLoadingAssets] = useState(false);
     const numberedComputers = useMemo(() => getNumberedComputers(computers), [computers]);
     const computerCsvInputRef = useRef<HTMLInputElement | null>(null);
-    const assetCsvInputRef = useRef<HTMLInputElement | null>(null);
     const [isImportingCsv, setIsImportingCsv] = useState(false);
 
     // Fetch computers when modal opens
@@ -348,33 +347,6 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
         } finally {
             setIsImportingCsv(false);
             if (computerCsvInputRef.current) computerCsvInputRef.current.value = '';
-        }
-    };
-
-    const handleAssetCsvImport = async (file?: File) => {
-        if (!file) return;
-        if (!file.name.toLowerCase().endsWith('.csv')) {
-            await modal.showError('Please choose a .csv file. If you have an Excel workbook, export the asset sheet as CSV first.', 'Invalid File');
-            if (assetCsvInputRef.current) assetCsvInputRef.current.value = '';
-            return;
-        }
-
-        setIsImportingCsv(true);
-        setError(null);
-        try {
-            const result = await importRoomItemsCsv(file, room.Room_ID);
-            await loadAssets();
-            await modal.showSuccess(
-                `${summarizeImport(result, 'Asset import')}\n\nSupported headers: Item_Code, Item_Type, Brand, Serial_Number, Status, IsBorrowable.`,
-                'Import Complete'
-            );
-        } catch (err) {
-            const message = getImportErrorMessage(err, 'Failed to import assets CSV');
-            setError(message);
-            await modal.showError(message, 'Import Failed');
-        } finally {
-            setIsImportingCsv(false);
-            if (assetCsvInputRef.current) assetCsvInputRef.current.value = '';
         }
     };
 
@@ -634,30 +606,16 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                 <div>
                                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Room Assets</h3>
                                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                                        Import standalone room items that are not assembled into a computer.
+                                        Export the inventory items currently assigned to this room.
                                     </p>
                                 </div>
                                 <div className="flex flex-wrap justify-end gap-2">
-                                    <input
-                                        ref={assetCsvInputRef}
-                                        type="file"
-                                        accept=".csv,text/csv"
-                                        className="hidden"
-                                        onChange={(e) => handleAssetCsvImport(e.target.files?.[0])}
-                                    />
                                     <button
                                         type="button"
                                         onClick={handleExportRoomAssets}
                                         className="px-4 py-2 border border-gray-300 text-gray-700 dark:border-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg text-sm font-medium transition-colors"
                                     >
                                         Export This Room CSV
-                                    </button>
-                                    <button
-                                        onClick={() => assetCsvInputRef.current?.click()}
-                                        disabled={isImportingCsv}
-                                        className="px-4 py-2 border border-blue-500/60 text-blue-600 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-500/10 disabled:opacity-60 disabled:cursor-not-allowed rounded-lg text-sm font-medium transition-colors"
-                                    >
-                                        {isImportingCsv ? 'Importing...' : 'Import Assets CSV'}
                                     </button>
                                 </div>
                             </div>
