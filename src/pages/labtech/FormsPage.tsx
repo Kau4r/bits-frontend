@@ -6,7 +6,7 @@ import { RowPreview } from '@/pages/labtech/components/RowPreview';
 import { InlineTimeline } from '@/pages/labtech/components/InlineTimeline';
 import { StatusSelect } from '@/pages/labtech/components/StatusSelect';
 import { DeptSelect } from '@/pages/labtech/components/DeptSelect';
-import type { FormRecord, FormStatus, FormType, FormDepartment, FormAttachmentRecord, FormDocumentType } from '@/types/formtypes';
+import type { FormRecord, FormStatus, FormType, FormDepartment, FormAttachmentRecord, FormDocumentType, FormHistoryAction } from '@/types/formtypes';
 import {
   canCompleteRisForm,
   formDocumentTypeLabels,
@@ -16,16 +16,20 @@ import {
   getMissingRisCompletionDocumentTypes,
   getTimelineStepsForType,
   getTransferDepartmentOptions,
+  hasCurrentStepAttachment,
   hasVisitedFormDepartment,
+  normalizeFormDepartment,
+  getDepartmentsForType,
   risCompletionDocumentTypes
 } from '@/types/formtypes';
-import { getForms, createForm, updateForm as updateFormAPI, transferForm, uploadFile, addFormAttachment, resolveFormFileUrl, setFormReceived } from '@/services/forms';
+import { getForms, createForm, updateForm as updateFormAPI, transferForm, uploadFile, addFormAttachment, resolveFormFileUrl, setFormReceived, archiveForm } from '@/services/forms';
 import { useAuth } from '@/context/AuthContext';
 import { useModal } from '@/context/ModalContext';
 import { useNotifications } from '@/context/NotificationContext';
-import { Check, X, Plus, Archive, Inbox, RefreshCw } from 'lucide-react';
+import { Check, X, Plus, Archive, Inbox, RefreshCw, Lock, CornerUpLeft, AlertTriangle } from 'lucide-react';
 import type { Form } from '@/types/formtypes';
 import { FloatingSelect } from '@/ui/FloatingSelect';
+import ReturnForRevisionModal from '@/pages/labtech/components/ReturnForRevisionModal';
 
 // Use the imported formStatusColors for status chips
 const statusChip = formStatusColors;
@@ -69,7 +73,28 @@ export default function Forms() {
   const [uploadingAttachmentIds, setUploadingAttachmentIds] = useState<Set<string>>(new Set());
   const [markingReceivedIds, setMarkingReceivedIds] = useState<Set<string>>(new Set());
   const [attachmentDocumentTypes, setAttachmentDocumentTypes] = useState<Record<string, FormDocumentType>>({});
+  const [archivingIds, setArchivingIds] = useState<Set<string>>(new Set());
+  const [returnModalFormId, setReturnModalFormId] = useState<string | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  // Terminal check for local FormRecord (no FormRecord `Department`/`Status` casing — project `Is_*` equivalents)
+  const isRecordTerminal = useCallback((form: FormRecord): boolean =>
+    form.department === 'COMPLETED' || form.status === 'REJECTED', []);
+
+  // True if the form has visited at least one workflow step earlier than its current step.
+  const hasPriorVisitedStep = useCallback((form: FormRecord): boolean => {
+    const workflow = getDepartmentsForType(form.type);
+    const normalizedCurrent = normalizeFormDepartment(form.department);
+    const currentIndex = normalizedCurrent ? workflow.indexOf(normalizedCurrent) : -1;
+    if (currentIndex <= 0) return false;
+
+    const visited = new Set<FormDepartment>();
+    (form.history || []).forEach(entry => {
+      const normalized = normalizeFormDepartment(entry.dept);
+      if (normalized) visited.add(normalized);
+    });
+    return workflow.slice(0, currentIndex).some(step => visited.has(step));
+  }, []);
 
   // Helper to map API Form to local FormRecord
   const mapFormToRecord = useCallback((form: Form): FormRecord => {
@@ -126,7 +151,12 @@ export default function Forms() {
         : undefined,
       history: form.History?.map(h => ({
         dept: h.Department,
-        at: h.Changed_At
+        at: h.Changed_At,
+        action: h.Action,
+        performedByName: h.Performer
+          ? `${h.Performer.First_Name} ${h.Performer.Last_Name}`.trim()
+          : null,
+        reason: h.Reason ?? null,
       })) || [],
       requesterName: form.Requester_Name || undefined,
       remarks: form.Remarks || undefined,
@@ -345,6 +375,66 @@ export default function Forms() {
       });
     }
   };
+
+  const handleArchiveForm = async (form: FormRecord) => {
+    if (!isRecordTerminal(form)) {
+      await modal.showError('Form must be Completed or Rejected before archiving.', 'Archive Blocked');
+      return;
+    }
+
+    setArchivingIds(prev => new Set(prev).add(form.id));
+    try {
+      const archived = await archiveForm(parseInt(form.id));
+      const updatedRecord = mapFormToRecord(archived);
+      setForms(prev => prev.map(current => current.id === form.id ? updatedRecord : current));
+    } catch (error) {
+      console.error('Failed to archive form:', error);
+      await modal.showError(error instanceof Error ? error.message : 'Failed to archive this form.', 'Archive Failed');
+    } finally {
+      setArchivingIds(prev => {
+        const next = new Set(prev);
+        next.delete(form.id);
+        return next;
+      });
+    }
+  };
+
+  const handleReturnSuccess = (updated: Form) => {
+    const updatedRecord = mapFormToRecord(updated);
+    setForms(prev => prev.map(current => current.id === updatedRecord.id ? updatedRecord : current));
+    setEditedForms(prev => {
+      const next = { ...prev };
+      delete next[updatedRecord.id];
+      return next;
+    });
+  };
+
+  const returnModalForm = useMemo<Form | null>(() => {
+    if (!returnModalFormId) return null;
+    const record = forms.find(f => f.id === returnModalFormId);
+    if (!record) return null;
+    // Synthesize a minimal Form object from the FormRecord for the modal.
+    // The modal only reads: Form_ID, Form_Code, Form_Type, Department, Status, History.
+    return {
+      Form_ID: parseInt(record.id),
+      Form_Code: record.formId,
+      Creator_ID: 0,
+      Form_Type: record.type,
+      Status: record.status,
+      Department: (normalizeFormDepartment(record.department) || 'REQUESTOR') as FormDepartment,
+      Is_Archived: record.isArchived,
+      Created_At: record.createdAt,
+      Updated_At: record.createdAt,
+      History: (record.history || []).map((entry, index) => ({
+        History_ID: index,
+        Form_ID: parseInt(record.id),
+        Department: (normalizeFormDepartment(entry.dept) || 'REQUESTOR') as FormDepartment,
+        Changed_At: entry.at,
+        Action: entry.action as FormHistoryAction | undefined,
+        Reason: entry.reason ?? null,
+      })),
+    } satisfies Form;
+  }, [returnModalFormId, forms]);
 
   const clearFilters = () => {
     setSearchTerm('');
@@ -584,7 +674,7 @@ export default function Forms() {
             placeholder="All Statuses"
             options={[
               { value: 'All', label: 'All Statuses' },
-              ...(['PENDING', 'APPROVED', 'REJECTED', 'IN_REVIEW', 'ARCHIVED'] as FormStatus[]).map((status) => ({
+              ...(['PENDING', 'IN_REVIEW', 'APPROVED', 'REJECTED'] as FormStatus[]).map((status) => ({
                 value: status,
                 label: formStatusLabels[status],
               })),
@@ -718,8 +808,44 @@ export default function Forms() {
                       </div>
 
                       <div className="lg:col-span-2 space-y-5">
+                        {/* Terminal-state lock banner */}
+                        {isRecordTerminal(f) && (
+                          <div className="flex items-center gap-3 rounded-lg border border-gray-300 bg-gray-100 dark:bg-gray-800/70 dark:border-gray-700 px-4 py-3 text-sm text-gray-700 dark:text-gray-200">
+                            <Lock className="h-4 w-4 flex-shrink-0 text-gray-500 dark:text-gray-400" />
+                            <span>
+                              This form is {f.status === 'REJECTED' ? 'Rejected' : 'Completed'} and is locked from further changes.
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Row actions: Return for Revision / Archive */}
+                        <div className="flex flex-wrap items-center gap-2">
+                          {!isRecordTerminal(f) && hasPriorVisitedStep(f) && (
+                            <button
+                              type="button"
+                              onClick={() => setReturnModalFormId(f.id)}
+                              className="inline-flex items-center gap-2 rounded-md border border-amber-300 bg-white px-3 py-1.5 text-sm font-medium text-amber-700 hover:bg-amber-50 dark:border-amber-500/40 dark:bg-gray-900 dark:text-amber-300 dark:hover:bg-amber-500/10 transition-colors"
+                            >
+                              <CornerUpLeft className="h-4 w-4" />
+                              Return for Revision
+                            </button>
+                          )}
+                          {!f.isArchived && (
+                            <button
+                              type="button"
+                              disabled={!isRecordTerminal(f) || archivingIds.has(f.id)}
+                              onClick={() => void handleArchiveForm(f)}
+                              title={isRecordTerminal(f) ? 'Archive this form' : 'Form must be Completed or Rejected before archiving'}
+                              className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              <Archive className="h-4 w-4" />
+                              {archivingIds.has(f.id) ? 'Archiving...' : 'Archive'}
+                            </button>
+                          )}
+                        </div>
+
                         {/* Save Actions Logic */}
-                        {editedForms[f.id] && (
+                        {!isRecordTerminal(f) && editedForms[f.id] && (
                           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-800 rounded-lg p-4 flex items-center justify-between animate-fadeIn">
                             <div className="text-sm text-blue-900 dark:text-blue-200 font-medium">
                               You have unsaved changes ({Object.keys(editedForms[f.id]!).length})
@@ -752,23 +878,25 @@ export default function Forms() {
                           </div>
                         )}
 
-                        <div className="bg-white dark:bg-gray-900 p-5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
-                          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-300 mb-4 flex items-center gap-2">
-                            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            Update Status
-                          </h4>
-                          <div className="w-full">
-                            <StatusSelect
-                              value={editedForms[f.id]?.status ?? f.status}
-                              onChange={(s: FormStatus) => handleLocalChange(f.id, 'status', s)}
-                              className="w-full"
-                            />
+                        {!isRecordTerminal(f) && (
+                          <div className="bg-white dark:bg-gray-900 p-5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                            <h4 className="text-sm font-medium text-gray-900 dark:text-gray-300 mb-4 flex items-center gap-2">
+                              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              Update Status
+                            </h4>
+                            <div className="w-full">
+                              <StatusSelect
+                                value={editedForms[f.id]?.status ?? f.status}
+                                onChange={(s: FormStatus) => handleLocalChange(f.id, 'status', s)}
+                                className="w-full"
+                              />
+                            </div>
                           </div>
-                        </div>
+                        )}
 
-                        {isRisAtOrAfterPurchasing(f) && (() => {
+                        {!isRecordTerminal(f) && isRisAtOrAfterPurchasing(f) && (() => {
                           const missingDocumentTypes = getMissingRisCompletionDocumentTypes(f.attachments || []);
                           const documentsComplete = missingDocumentTypes.length === 0;
                           const isMarkingReceived = markingReceivedIds.has(f.id);
@@ -835,6 +963,7 @@ export default function Forms() {
                           );
                         })()}
 
+                        {!isRecordTerminal(f) && (
                         <div className="bg-white dark:bg-gray-900 p-5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
                           <h4 className="text-sm font-medium text-gray-900 dark:text-gray-300 mb-4 flex items-center gap-2">
                             <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -843,31 +972,61 @@ export default function Forms() {
                             Transfer Department
                           </h4>
                           <div className="w-full">
-                            <DeptSelect
-                              value={editedForms[f.id]?.department ?? f.department}
-                              onChange={(d: FormDepartment) => handleLocalChange(f.id, 'department', d)}
-                              formType={f.type}
-                              disabled={(editedForms[f.id]?.status ?? f.status) !== 'APPROVED'}
-                              options={getTransferDepartmentOptions(
-                                f.type,
-                                f.department,
-                                f.history?.map(h => h.dept) || []
-                              ).map(option => ({
-                                ...option,
-                                disabled: option.disabled || (f.type === 'RIS' && option.value === 'COMPLETED' && !canCompleteRisForm(f)),
-                              }))}
-                              className="w-full"
-                            />
-                            {(editedForms[f.id]?.status ?? f.status) !== 'APPROVED' && (
-                              <p className="mt-2 text-xs text-amber-600 dark:text-amber-300">
-                                Set status to Approved to unlock department transfer.
-                              </p>
-                            )}
+                            {(() => {
+                              const currentDept = normalizeFormDepartment(f.department);
+                              const stepHasAttachment = currentDept
+                                ? hasCurrentStepAttachment(
+                                    currentDept,
+                                    f.history,
+                                    f.attachments || [],
+                                    f.createdAt,
+                                  )
+                                : true;
+                              const deptLabel = currentDept
+                                ? (formDepartmentLabels[currentDept] ?? currentDept)
+                                : f.department;
+                              const isApproved = (editedForms[f.id]?.status ?? f.status) === 'APPROVED';
+                              const deptSelectDisabled = !isApproved || !stepHasAttachment;
+
+                              return (
+                                <>
+                                  {!stepHasAttachment && (
+                                    <div className="mb-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-300">
+                                      <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                                      <span>
+                                        Upload the updated form for <span className="font-semibold">{deptLabel}</span> before transferring to the next step.
+                                      </span>
+                                    </div>
+                                  )}
+                                  <DeptSelect
+                                    value={editedForms[f.id]?.department ?? f.department}
+                                    onChange={(d: FormDepartment) => handleLocalChange(f.id, 'department', d)}
+                                    formType={f.type}
+                                    disabled={deptSelectDisabled}
+                                    options={getTransferDepartmentOptions(
+                                      f.type,
+                                      f.department,
+                                      f.history?.map(h => h.dept) || []
+                                    ).map(option => ({
+                                      ...option,
+                                      disabled: option.disabled || (f.type === 'RIS' && option.value === 'COMPLETED' && !canCompleteRisForm(f)),
+                                    }))}
+                                    className="w-full"
+                                  />
+                                  {!isApproved && (
+                                    <p className="mt-2 text-xs text-amber-600 dark:text-amber-300">
+                                      Set status to Approved to unlock department transfer.
+                                    </p>
+                                  )}
+                                </>
+                              );
+                            })()}
                             <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                               Locked departments appear here but can only be selected after the previous step has been visited. RIS completion also requires all procurement files and received confirmation.
                             </p>
                           </div>
                         </div>
+                        )}
 
                         {/* Remarks / Notes */}
                         <div className="bg-white dark:bg-gray-900 p-5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
@@ -1015,6 +1174,15 @@ export default function Forms() {
         onCreate={handleCreateForm}
         existing={forms}
       />
+
+      {returnModalForm && (
+        <ReturnForRevisionModal
+          isOpen={!!returnModalFormId}
+          form={returnModalForm}
+          onClose={() => setReturnModalFormId(null)}
+          onSuccess={handleReturnSuccess}
+        />
+      )}
     </div>
   );
 }

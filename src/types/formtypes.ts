@@ -29,7 +29,7 @@ export const formStatusLabels: Record<FormStatus, string> = {
   PENDING: 'Pending',
   IN_REVIEW: 'In Review',
   APPROVED: 'Approved',
-  REJECTED: 'Rejected',
+  REJECTED: 'Cancelled',
   ARCHIVED: 'Archived',
 };
 
@@ -190,6 +190,25 @@ export const formStatusColors: Record<FormStatus, string> = {
   ARCHIVED: 'bg-gray-200 text-gray-800 dark:bg-gray-700/30 dark:text-gray-300',
 };
 
+export type FormHistoryAction =
+  | 'CREATED'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'TRANSFERRED'
+  | 'RETURNED'
+  | 'ARCHIVED'
+  | 'RECEIVED';
+
+export const formHistoryActionLabels: Record<FormHistoryAction, string> = {
+  CREATED: 'Created',
+  APPROVED: 'Approved',
+  REJECTED: 'Cancelled',
+  TRANSFERRED: 'Transferred',
+  RETURNED: 'Returned for revision',
+  ARCHIVED: 'Archived',
+  RECEIVED: 'Received',
+};
+
 // Form history entry for tracking department transfers
 export interface FormHistory {
   History_ID: number;
@@ -197,6 +216,10 @@ export interface FormHistory {
   Department: FormDepartment;
   Changed_At: string;
   Notes?: string;
+  Performed_By?: number | null;
+  Action?: FormHistoryAction;
+  Reason?: string | null;
+  Performer?: FormUser | null;
 }
 
 export interface FormAttachment {
@@ -250,6 +273,57 @@ export interface Form {
   Remarks?: string | null;
 }
 
+export const isFormTerminal = (form: Pick<Form, 'Department' | 'Status'>): boolean =>
+  form.Department === 'COMPLETED' || form.Status === 'REJECTED';
+
+/**
+ * Returns true if the current step has an attachment uploaded AFTER
+ * the form most recently arrived at this step. Used to gate forward transfers.
+ *
+ * Requestor step: any attachment for REQUESTOR counts (including INITIAL).
+ * Other steps: must have a non-INITIAL attachment uploaded after the latest
+ * TRANSFERRED/RETURNED history entry at this step.
+ */
+export const hasCurrentStepAttachment = (
+  currentDepartment: FormDepartment,
+  history: FormRecord['history'],
+  attachments: FormAttachmentRecord[],
+  createdAt?: string,
+): boolean => {
+  if (currentDepartment === 'REQUESTOR') {
+    return attachments.some(a => a.department === currentDepartment);
+  }
+
+  const deptHistory = (history || []).filter(
+    h => normalizeFormDepartment(h.dept) === currentDepartment,
+  );
+
+  // Most recent arrival at this dept (TRANSFERRED or RETURNED)
+  const arrivalEntry = deptHistory
+    .filter(h => {
+      const action = h.action ? String(h.action).toUpperCase() : 'TRANSFERRED';
+      return action === 'TRANSFERRED' || action === 'RETURNED';
+    })
+    .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())[0];
+
+  // Fallback: any history entry for this dept
+  const fallbackEntry = !arrivalEntry
+    ? deptHistory.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())[0]
+    : null;
+
+  const arrivalTime = arrivalEntry?.at || fallbackEntry?.at || createdAt;
+  if (!arrivalTime) return false;
+
+  const arrivalMs = new Date(arrivalTime).getTime();
+
+  return attachments.some(a => {
+    if (a.department !== currentDepartment) return false;
+    const docType = (a.documentType || 'PROOF').toString().toUpperCase();
+    if (docType === 'INITIAL') return false;
+    return new Date(a.uploadedAt).getTime() > arrivalMs;
+  });
+};
+
 export interface FormAttachmentRecord {
   id: string;
   department: FormDepartment;
@@ -279,7 +353,13 @@ export interface FormRecord {
   isReceived?: boolean;
   receivedAt?: string | null;
   receivedByName?: string;
-  history?: Array<{ dept: string; at: string }>;
+  history?: Array<{
+    dept: string;
+    at: string;
+    action?: FormHistoryAction;
+    performedByName?: string | null;
+    reason?: string | null;
+  }>;
   requesterName?: string;
   remarks?: string;
 }

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import toast from 'react-hot-toast';
 import { getApiBaseUrl } from '@/utils/apiBaseUrl';
 
 type ApiEnvelope = {
@@ -48,8 +49,21 @@ api.interceptors.response.use(
                 error.message = serverError;
             }
         }
+        if (
+            !axios.isCancel(error) &&
+            error.response?.status !== 401 &&
+            error.config?.silent !== true
+        ) {
+            toast.error(error.message || 'Something went wrong', { duration: 6000 });
+        }
         return Promise.reject(error);
     }
 );
 
 export default api;
+
+declare module 'axios' {
+    interface AxiosRequestConfig {
+        silent?: boolean;
+    }
+}

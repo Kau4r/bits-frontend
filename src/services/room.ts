@@ -1,4 +1,5 @@
 import api from "@/services/api";
+import toast from 'react-hot-toast';
 import type { Room } from "@/types/room";
 import { sortRoomsForDisplay } from "@/utils/roomSort";
 
@@ -76,6 +77,7 @@ export interface OpenedLabRoom extends Room {
 // Set room availability for students
 export const setRoomStudentAvailability = async (id: number, data: { startTime: string; endTime: string; notes?: string }): Promise<StudentAvailabilityResponse> => {
     const response = await api.post<StudentAvailabilityResponse>(`/rooms/${id}/student-availability`, data);
+    toast.success('Availability updated');
     return response.data;
 };
 

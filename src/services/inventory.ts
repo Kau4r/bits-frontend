@@ -1,4 +1,5 @@
 import api from "@/services/api";
+import toast from 'react-hot-toast';
 import type { Item, Computer } from "@/types/inventory";
 
 export type CsvImportRowStatus = 'valid' | 'imported' | 'skipped' | 'invalid' | 'duplicate';
@@ -61,6 +62,7 @@ export const createInventoryItem = async (
         User_ID
     });
     // Return the first item from the created items
+    toast.success('Item added');
     return data.items?.[0] || data;
 };
 
@@ -86,6 +88,7 @@ export const addInventoryBulk = createInventoryBulk;
 export const updateInventoryItem = async (id: number, item: Partial<Item | Computer>): Promise<Item | Computer> => {
     const { data } = await api.put<Item | Computer>(`/inventory/${id}`, item);
     // After interceptor unwraps envelope, data is the item directly
+    toast.success('Item updated');
     return data;
 };
 

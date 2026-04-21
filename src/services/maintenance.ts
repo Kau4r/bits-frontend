@@ -1,4 +1,5 @@
 ﻿import api from '@/services/api';
+import toast from 'react-hot-toast';
 
 export interface CleanupPreview {
   confirmationText: string;
@@ -23,5 +24,6 @@ export const getCleanupPreview = async (): Promise<CleanupPreview> => {
 
 export const runCleanup = async (confirmation: string): Promise<CleanupResult> => {
   const { data } = await api.post<CleanupResult>('/maintenance/cleanup', { confirmation });
+  toast.success('Cleanup completed');
   return data;
 };

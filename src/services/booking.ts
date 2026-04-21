@@ -1,6 +1,7 @@
 import api from "@/services/api";
 import type { Booking, CreateBookingDTO, UpdateBookingStatusDTO } from "@/types/booking";
 import type { Room } from "@/types/room";
+import toast from "react-hot-toast";
 
 // Fetch bookings with optional filters
 export const getBookings = async (filters?: {
@@ -15,6 +16,7 @@ export const getBookings = async (filters?: {
 // Create a new booking
 export const createBooking = async (dto: CreateBookingDTO): Promise<Booking> => {
     const { data } = await api.post<Booking>("/bookings", dto);
+    toast.success("Booking created");
     return data;
 };
 
@@ -24,6 +26,7 @@ export const updateBookingStatus = async (
     dto: UpdateBookingStatusDTO
 ): Promise<Booking> => {
     const { data } = await api.patch<Booking>(`/bookings/${id}/status`, dto);
+    toast.success("Booking status updated");
     return data;
 };
 
@@ -33,6 +36,7 @@ export const updateBooking = async (
     dto: Partial<CreateBookingDTO>
 ): Promise<Booking> => {
     const { data } = await api.patch<Booking>(`/bookings/${id}`, dto);
+    toast.success("Booking updated");
     return data;
 };
 

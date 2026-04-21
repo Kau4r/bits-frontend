@@ -1,5 +1,6 @@
 import api from "@/services/api";
 import type { Ticket, NewTicketInput, TicketStatus, TicketPriority, TicketCategory } from "@/types/tickets";
+import toast from "react-hot-toast";
 
 // Filter types
 export interface TicketFilters {
@@ -26,6 +27,7 @@ export const fetchTicketById = async (id: number): Promise<Ticket> => {
 // Create ticket
 export const createTicket = async (ticket: NewTicketInput): Promise<Ticket> => {
     const { data } = await api.post<Ticket>("/tickets", ticket);
+    toast.success("Ticket created");
     return data;
 };
 
@@ -50,6 +52,7 @@ const cleanTicketPayload = <T extends Record<string, unknown>>(data: T): Partial
 // Update ticket
 export const updateTicket = async (ticketId: number, data: TicketUpdateInput): Promise<Ticket> => {
     const { data: updated } = await api.put<Ticket>(`${"/tickets"}/${ticketId}`, cleanTicketPayload(data));
+    toast.success("Ticket updated");
     return updated;
 };
 
@@ -71,4 +74,5 @@ export const assignTicket = async (ticketId: number, technicianId: number): Prom
 // Delete ticket
 export const deleteTicket = async (id: number): Promise<void> => {
     await api.delete(`${"/tickets"}/${id}`);
+    toast.success("Ticket deleted");
 };

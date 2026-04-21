@@ -1,10 +1,15 @@
 // components/labtech/InlineTimeline.tsx
 import React from 'react';
 import { Check } from 'lucide-react';
+import type { FormHistoryAction } from '@/types/formtypes';
+import { formHistoryActionLabels } from '@/types/formtypes';
 
 export interface TimelineHistoryEntry {
   dept: string;
   at: string;
+  action?: FormHistoryAction;
+  performedByName?: string | null;
+  reason?: string | null;
 }
 
 interface TimelineProps {
@@ -29,13 +34,13 @@ const formatTimestamp = (iso: string): string => {
 export const InlineTimeline: React.FC<TimelineProps> = ({ steps, current, completedSteps = [], history = [] }) => {
   const normalizeStep = (value: string) => value.trim().toUpperCase().replace(/\s+/g, '_');
 
-  // Build a map of stepKey -> latest timestamp
-  const stepTimestamps = new Map<string, string>();
+  // Build a map of stepKey -> latest history entry (full entry, so action/performer/reason are available)
+  const stepEntries = new Map<string, TimelineHistoryEntry>();
   history.forEach(entry => {
     const key = normalizeStep(entry.dept);
-    const existing = stepTimestamps.get(key);
-    if (!existing || new Date(entry.at).getTime() > new Date(existing).getTime()) {
-      stepTimestamps.set(key, entry.at);
+    const existing = stepEntries.get(key);
+    if (!existing || new Date(entry.at).getTime() > new Date(existing.at).getTime()) {
+      stepEntries.set(key, entry);
     }
   });
 
@@ -46,8 +51,8 @@ export const InlineTimeline: React.FC<TimelineProps> = ({ steps, current, comple
     const normalizedCompletedSteps = completedSteps.map(normalizeStep);
     const isCompleted = normalizedCompletedSteps.includes(normalizedStep);
     const isCurrent = normalizedStep === normalizedCurrent;
-    const timestamp = stepTimestamps.get(normalizedStep);
-    return { isCompleted, isCurrent, timestamp };
+    const entry = stepEntries.get(normalizedStep);
+    return { isCompleted, isCurrent, entry };
   };
 
   return (
@@ -56,7 +61,7 @@ export const InlineTimeline: React.FC<TimelineProps> = ({ steps, current, comple
 
       <div className="space-y-6">
         {steps.map((step, index) => {
-          const { isCompleted, isCurrent, timestamp } = getStepStatus(step);
+          const { isCompleted, isCurrent, entry } = getStepStatus(step);
 
           // Determine colors
           let circleClass = 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300';
@@ -72,7 +77,22 @@ export const InlineTimeline: React.FC<TimelineProps> = ({ steps, current, comple
             textClass = 'text-blue-600 dark:text-blue-400';
           }
 
-          const formattedTime = timestamp ? formatTimestamp(timestamp) : '';
+          const formattedTime = entry ? formatTimestamp(entry.at) : '';
+          const actionLabel = entry?.action ? formHistoryActionLabels[entry.action] : undefined;
+          const performerName = entry?.performedByName;
+
+          // Accountability sub-line: prefer action-led text when we have an action,
+          // otherwise show plain "by <name>" when a performer is available.
+          let accountabilityLine: string | undefined;
+          if (actionLabel && performerName) {
+            accountabilityLine = `${actionLabel} by ${performerName}`;
+          } else if (actionLabel) {
+            accountabilityLine = actionLabel;
+          } else if (performerName) {
+            accountabilityLine = `by ${performerName}`;
+          }
+
+          const showReason = entry?.action === 'RETURNED' && entry.reason;
 
           return (
             <div key={step} className="relative flex items-start">
@@ -90,7 +110,7 @@ export const InlineTimeline: React.FC<TimelineProps> = ({ steps, current, comple
                 </div>
                 {isCurrent && (
                   <div className="mt-1 text-xs text-blue-500 dark:text-blue-400">
-                    Current Department
+                    Current Step
                   </div>
                 )}
                 {isCompleted && !isCurrent && (
@@ -99,8 +119,18 @@ export const InlineTimeline: React.FC<TimelineProps> = ({ steps, current, comple
                   </div>
                 )}
                 {formattedTime && (
-                  <div className="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400" title={timestamp}>
+                  <div className="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400" title={entry?.at}>
                     {formattedTime}
+                  </div>
+                )}
+                {accountabilityLine && (
+                  <div className="mt-0.5 text-[11px] text-gray-600 dark:text-gray-300">
+                    {accountabilityLine}
+                  </div>
+                )}
+                {showReason && (
+                  <div className="mt-0.5 text-[11px] italic text-gray-500 dark:text-gray-400">
+                    Reason: {entry!.reason}
                   </div>
                 )}
               </div>

@@ -8,21 +8,25 @@ import { useNotifications } from '@/context/NotificationContext';
 
 export default function LabtechDashboard() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { notifications } = useNotifications();
 
-  const fetchMetrics = useCallback(async () => {
+  const fetchMetrics = useCallback(async (showSkeleton = false) => {
+    if (showSkeleton) setLoading(true);
     try {
       const data = await getDashboardMetrics();
       setMetrics(data);
     } catch (error) {
       console.error("Failed to load dashboard metrics");
+    } finally {
+      setLoading(false);
     }
   }, []);
 
   // Initial load
   useEffect(() => {
-    fetchMetrics();
+    fetchMetrics(true);
   }, [fetchMetrics]);
 
   // Real-time updates
@@ -34,7 +38,7 @@ export default function LabtechDashboard() {
 
       if (isRelevant) {
         console.log('[Dashboard] Real-time update detected, refreshing metrics...');
-        fetchMetrics();
+        fetchMetrics(false);
       }
     }
   }, [notifications, fetchMetrics]);
@@ -60,7 +64,11 @@ export default function LabtechDashboard() {
             </div>
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">My Assigned Tickets</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{metrics?.counts.myAssignedTickets || 0}</p>
+              {loading ? (
+                <div className="h-8 w-16 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+              ) : (
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{metrics?.counts.myAssignedTickets || 0}</p>
+              )}
             </div>
           </div>
 
@@ -73,7 +81,11 @@ export default function LabtechDashboard() {
             </div>
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Maintenance</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{metrics?.counts.activeMaintenance || 0}</p>
+              {loading ? (
+                <div className="h-8 w-16 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+              ) : (
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{metrics?.counts.activeMaintenance || 0}</p>
+              )}
             </div>
           </div>
 
@@ -86,7 +98,11 @@ export default function LabtechDashboard() {
             </div>
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Borrowed Items</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{metrics?.counts.activeBorrowings || 0}</p>
+              {loading ? (
+                <div className="h-8 w-16 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+              ) : (
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{metrics?.counts.activeBorrowings || 0}</p>
+              )}
             </div>
           </div>
 
@@ -99,7 +115,11 @@ export default function LabtechDashboard() {
             </div>
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Pending Forms</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{metrics?.counts.pendingForms || 0}</p>
+              {loading ? (
+                <div className="h-8 w-16 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+              ) : (
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{metrics?.counts.pendingForms || 0}</p>
+              )}
             </div>
           </div>
         </div>

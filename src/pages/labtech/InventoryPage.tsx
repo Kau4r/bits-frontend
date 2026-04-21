@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { type Item } from '@/types/inventory'
-import { Plus, Filter } from 'lucide-react'
+import { Plus, Filter, Package } from 'lucide-react'
+import { LoadingSkeleton } from '@/ui/LoadingSkeleton'
+import { EmptyState } from '@/ui/EmptyState'
 import { FloatingSelect } from '@/ui/FloatingSelect'
 import Table, { type SortConfig, type SortDirection } from '@/components/Table'
 import ItemModal from '@/pages/labtech/components/ItemModal'
@@ -23,6 +25,7 @@ const InventoryPage = () => {
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
   const [rooms, setRooms] = useState<Room[]>([])
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'item_code', direction: 'asc' })
+  const [loading, setLoading] = useState(true)
 
   // Responsive state
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -50,12 +53,15 @@ const InventoryPage = () => {
   // Fetch inventory from backend on mount
   useEffect(() => {
     const loadInventory = async () => {
+      setLoading(true)
       try {
         const data = await getInventory()
         setInventory(data.filter((item): item is Item => !!item));
         console.log("Fetched inventory:", data);
       } catch (err) {
         console.error("Error fetching inventory:", err)
+      } finally {
+        setLoading(false)
       }
     }
     loadInventory()
@@ -350,7 +356,16 @@ const InventoryPage = () => {
           onSort={handleSort}
           columnWidths="1.5fr 1fr 1fr 1fr 1fr 1fr"
         >
-          {filteredAndSortedInventory.length === 0 ? (
+          {loading ? (
+            <LoadingSkeleton rows={8} type="table" />
+          ) : filteredAndSortedInventory.length === 0 && inventory.length === 0 ? (
+            <EmptyState
+              icon={Package}
+              title="No inventory items"
+              description="Add your first item to get started."
+              action={{ label: 'Add Item', onClick: () => { setModalMode('add'); setSelectedItem(null); setIsModalOpen(true); } }}
+            />
+          ) : filteredAndSortedInventory.length === 0 ? (
             <div className="flex flex-col items-center justify-center flex-1 w-full min-h-full" data-full-row>
               <div className="p-4 bg-gray-100 dark:bg-gray-800/50 rounded-full mb-4">
                 <Filter className="h-12 w-12 text-gray-400" />

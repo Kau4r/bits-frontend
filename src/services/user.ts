@@ -1,5 +1,6 @@
 import api from "@/services/api";
 import type { User, User_Role, ActivityLog } from "@/types/user";
+import toast from 'react-hot-toast';
 
 // Fetch all users
 export const fetchUsers = async (): Promise<User[]> => {
@@ -22,12 +23,14 @@ export const fetchUserById = async (userId: number): Promise<User> => {
 // Add a new user
 export const addUser = async (user: Omit<User, "User_ID">): Promise<User> => {
     const { data } = await api.post<User>("/users", user);
+    toast.success('User created');
     return data;
 };
 
 // Update user
 export const updateUser = async (userId: number, user: Partial<Omit<User, "User_ID">>): Promise<User> => {
     const { data } = await api.put<User>(`/users/${userId}`, user);
+    toast.success('User updated');
     return data;
 };
 

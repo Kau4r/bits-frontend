@@ -1,5 +1,6 @@
 import api from '@/services/api';
 import type { CsvImportResult } from '@/services/inventory';
+import toast from 'react-hot-toast';
 
 // Types
 export interface ComputerItem {
@@ -85,16 +86,19 @@ export const fetchComputerById = async (id: number): Promise<Computer> => {
 
 export const createComputer = async (data: CreateComputerPayload): Promise<Computer> => {
     const response = await api.post<Computer>('/computers', data);
+    toast.success('Computer added');
     return response.data;
 };
 
 export const updateComputer = async (id: number, data: UpdateComputerPayload): Promise<Computer> => {
     const response = await api.put<Computer>(`/computers/${id}`, data);
+    toast.success('Computer updated');
     return response.data;
 };
 
 export const deleteComputer = async (id: number): Promise<void> => {
     await api.delete(`/computers/${id}`);
+    toast.success('Computer deleted');
 };
 
 export const importComputersCsv = async (file: File, roomId: number): Promise<CsvImportResult> => {

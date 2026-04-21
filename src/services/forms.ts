@@ -1,4 +1,5 @@
 import api from "@/services/api";
+import toast from 'react-hot-toast';
 import type { Form, FormType, FormStatus, FormDepartment, FormDocumentType } from "@/types/formtypes";
 import { getApiBaseUrl, getAppBaseUrl } from "@/utils/apiBaseUrl";
 
@@ -109,41 +110,53 @@ export const getFormById = async (id: number): Promise<Form> => {
 // Create new form
 export const createForm = async (input: FormCreateInput): Promise<Form> => {
     const { data } = await api.post<Form>("/forms", input);
+    toast.success('Form created');
     return data;
 };
 
 // Update form (status, approver, etc.)
 export const updateForm = async (id: number, input: FormUpdateInput): Promise<Form> => {
     const { data } = await api.patch<Form>(`/forms/${id}`, input);
+    toast.success('Form updated');
     return data;
 };
 
 // Archive form
 export const archiveForm = async (id: number): Promise<Form> => {
     const { data } = await api.patch<Form>(`/forms/${id}/archive`);
+    toast.success('Form archived');
     return data;
 };
 
 // Transfer form to department
-export const transferForm = async (id: number, department: FormDepartment, notes?: string): Promise<Form> => {
-    const { data } = await api.post<Form>(`/forms/${id}/transfer`, { department, notes });
+export const transferForm = async (
+    id: number,
+    department: FormDepartment,
+    notes?: string,
+    reason?: string,
+): Promise<Form> => {
+    const { data } = await api.post<Form>(`/forms/${id}/transfer`, { department, notes, reason });
+    toast.success(reason ? 'Form returned for revision' : 'Form transferred');
     return data;
 };
 
 // Add proof/supporting attachment to a form
 export const addFormAttachment = async (id: number, input: FormAttachmentInput): Promise<Form> => {
     const { data } = await api.post<Form>(`/forms/${id}/attachments`, input);
+    toast.success('Attachment uploaded');
     return data;
 };
 
 export const setFormReceived = async (id: number, isReceived: boolean): Promise<Form> => {
     const { data } = await api.patch<Form>(`/forms/${id}/received`, { isReceived });
+    toast.success('Form updated');
     return data;
 };
 
 // Delete form
 export const deleteForm = async (id: number): Promise<void> => {
     await api.delete(`/forms/${id}`);
+    toast.success('Form deleted');
 };
 
 // Upload file

@@ -10,7 +10,7 @@ interface StatusSelectProps {
   className?: string;
 }
 
-const statuses: FormStatus[] = ['PENDING', 'IN_REVIEW', 'APPROVED', 'REJECTED', 'ARCHIVED'];
+const statuses: FormStatus[] = ['PENDING', 'IN_REVIEW', 'APPROVED', 'REJECTED'];
 
 export const StatusSelect: React.FC<StatusSelectProps> = ({ value, onChange, className = '' }) => {
   return (
