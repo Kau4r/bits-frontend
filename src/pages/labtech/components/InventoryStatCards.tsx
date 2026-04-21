@@ -56,7 +56,7 @@ const InventoryStatCards = ({
   }, [inventory])
 
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6">
       {inventoryStatuses.map((status) => {
         const meta = STATUS_META[status]
         const Icon = meta.icon
@@ -68,7 +68,7 @@ const InventoryStatCards = ({
             key={status}
             type="button"
             onClick={() => onFilterByStatus(isActive ? null : status)}
-            className={`group relative flex flex-col gap-3 rounded-xl border bg-white p-5 text-left shadow-sm transition-all hover:shadow-md dark:bg-gray-800 ${
+            className={`group relative flex min-h-[120px] flex-col justify-between gap-4 rounded-2xl border bg-white p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:bg-gray-800 ${
               isActive
                 ? 'border-indigo-500 ring-2 ring-indigo-500 dark:border-indigo-400'
                 : 'border-gray-200 dark:border-gray-700'

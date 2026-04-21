@@ -1,8 +1,17 @@
-import { useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import type { InventoryStatus, Item } from '@/types/inventory'
 import { inventoryStatuses } from '@/types/inventory'
 import InventorySidePanel from './InventorySidePanel'
+import InventoryStatCards from './InventoryStatCards'
 import { formatItemType } from '@/lib/utils'
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Layers3,
+  MapPinned,
+  PackageSearch,
+  type LucideIcon,
+} from 'lucide-react'
 
 interface InventoryDashboardProps {
   inventory: Item[]
@@ -10,22 +19,71 @@ interface InventoryDashboardProps {
   activeStatusFilter: string
 }
 
-const chartColors = ['#2563eb', '#16a34a', '#f59e0b', '#dc2626', '#7c3aed', '#0891b2', '#4b5563']
+const chartColors = ['#2563eb', '#16a34a', '#f59e0b', '#dc2626', '#7c3aed', '#0891b2', '#4b5563', '#0f766e']
 
-const MiniPieChart = ({
+const formatPercent = (value: number, total: number) => {
+  if (!total) return '0%'
+  return `${Math.round((value / total) * 100)}%`
+}
+
+const normalizeLocation = (item: Item) => item.Room?.Name || item.Location || (item.Room_ID ? `Room ${item.Room_ID}` : '')
+
+const MetricCard = ({
+  label,
+  value,
+  hint,
+  icon: Icon,
+  tone,
+}: {
+  label: string
+  value: number
+  hint: string
+  icon: LucideIcon
+  tone: 'blue' | 'green' | 'amber' | 'slate'
+}) => {
+  const toneClass = {
+    blue: 'from-blue-500/15 to-cyan-500/5 text-blue-600 dark:text-blue-300',
+    green: 'from-emerald-500/15 to-lime-500/5 text-emerald-600 dark:text-emerald-300',
+    amber: 'from-amber-500/20 to-orange-500/5 text-amber-600 dark:text-amber-300',
+    slate: 'from-slate-500/15 to-gray-500/5 text-slate-600 dark:text-slate-300',
+  }[tone]
+
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">{label}</p>
+          <p className="mt-3 text-3xl font-black text-gray-900 dark:text-white">{value}</p>
+        </div>
+        <span className={`rounded-2xl bg-gradient-to-br p-3 ${toneClass}`}>
+          <Icon className="h-5 w-5" />
+        </span>
+      </div>
+      <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">{hint}</p>
+    </div>
+  )
+}
+
+const DistributionCard = ({
   title,
+  eyebrow,
   data,
   labels,
+  emptyText,
 }: {
   title: string
+  eyebrow: string
   data: Record<string, number>
   labels?: string[]
+  emptyText: string
 }) => {
-  const entries = labels?.length
+  const rawEntries = labels?.length
     ? labels.map(label => [label, data[label] || 0] as [string, number])
-    : Object.entries(data).filter(([, value]) => value > 0)
-  const filledEntries = entries.filter(([, value]) => value > 0)
-  const total = entries.reduce((sum, [, value]) => sum + value, 0)
+    : Object.entries(data).sort((a, b) => b[1] - a[1])
+  const total = rawEntries.reduce((sum, [, value]) => sum + value, 0)
+  const filledEntries = rawEntries.filter(([, value]) => value > 0)
+  const legendEntries = labels?.length ? rawEntries : filledEntries
+
   let cursor = 0
   const gradient = filledEntries.length
     ? filledEntries.map(([, value], index) => {
@@ -37,30 +95,44 @@ const MiniPieChart = ({
     : '#e5e7eb 0% 100%'
 
   return (
-    <section className="flex h-full min-h-0 flex-col rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-      <div className="mb-3 text-left">
-        <h2 className="text-sm font-bold text-gray-900 dark:text-white">{title}</h2>
-        <p className="text-xs text-gray-500 dark:text-gray-400">{total} record{total === 1 ? '' : 's'}</p>
-      </div>
-      <div className="flex min-h-0 flex-1 flex-col justify-between">
-        <div className="flex justify-center">
-          <div
-            className="h-20 w-20 shrink-0 rounded-full border border-gray-200 dark:border-gray-700"
-            style={{ background: `conic-gradient(${gradient})` }}
-            aria-label={`${title} pie chart`}
-          />
+    <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+      <div className="mb-5 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-300">{eyebrow}</p>
+          <h2 className="mt-1 text-lg font-bold text-gray-900 dark:text-white">{title}</h2>
         </div>
-        <div className="mt-3 grid gap-1.5 overflow-hidden">
-          {entries.length ? entries.map(([label, value], index) => (
-            <div key={label} className="flex items-center justify-between gap-2 text-xs">
-              <span className="flex min-w-0 items-center gap-2 text-gray-600 dark:text-gray-300">
-                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: chartColors[index % chartColors.length] }} />
-                <span className="truncate">{formatItemType(label) || label}</span>
-              </span>
-              <span className="font-bold text-gray-900 dark:text-white">{value}</span>
+        <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600 dark:bg-gray-900 dark:text-gray-300">
+          {total} record{total === 1 ? '' : 's'}
+        </span>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-[180px_minmax(0,1fr)] md:items-center">
+        <div className="relative mx-auto h-44 w-44 rounded-full border border-gray-200 shadow-inner dark:border-gray-700" style={{ background: `conic-gradient(${gradient})` }}>
+          <div className="absolute inset-8 flex flex-col items-center justify-center rounded-full bg-white text-center shadow-sm dark:bg-gray-800">
+            <span className="text-3xl font-black text-gray-900 dark:text-white">{total}</span>
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">items</span>
+          </div>
+        </div>
+
+        <div className="grid max-h-72 gap-2 overflow-y-auto pr-1">
+          {legendEntries.length ? legendEntries.map(([label, value], index) => (
+            <div key={label} className="rounded-2xl border border-gray-100 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-900/70">
+              <div className="flex items-center justify-between gap-3">
+                <span className="flex min-w-0 items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                  <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: chartColors[index % chartColors.length] }} />
+                  <span className="truncate">{formatItemType(label) || label}</span>
+                </span>
+                <span className="text-sm font-black text-gray-900 dark:text-white">{value}</span>
+              </div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                <div
+                  className="h-full rounded-full"
+                  style={{ width: formatPercent(value, total), backgroundColor: chartColors[index % chartColors.length] }}
+                />
+              </div>
             </div>
           )) : (
-            <p className="text-xs text-gray-500 dark:text-gray-400">No data yet.</p>
+            <p className="rounded-2xl border border-dashed border-gray-300 p-4 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">{emptyText}</p>
           )}
         </div>
       </div>
@@ -68,8 +140,17 @@ const MiniPieChart = ({
   )
 }
 
+const Panel = ({ title, children }: { title: string; children: ReactNode }) => (
+  <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+    <h2 className="mb-4 text-lg font-bold text-gray-900 dark:text-white">{title}</h2>
+    {children}
+  </section>
+)
+
 const InventoryDashboard = ({
   inventory,
+  onFilterByStatus,
+  activeStatusFilter,
 }: InventoryDashboardProps) => {
   const itemTypeCounts = useMemo(() => {
     return inventory.reduce<Record<string, number>>((acc, item) => {
@@ -86,11 +167,70 @@ const InventoryDashboard = ({
     }, {})
   }, [inventory])
 
+  const totalItems = inventory.length
+  const availableCount = statusCounts.AVAILABLE || 0
+  const attentionCount = (statusCounts.DEFECTIVE || 0) + (statusCounts.LOST || 0) + (statusCounts.DISPOSED || 0)
+  const withLocationCount = inventory.filter(item => Boolean(normalizeLocation(item))).length
+  const uniqueTypeCount = Object.keys(itemTypeCounts).length
+  const activeLabel = activeStatusFilter !== 'All Status'
+    ? `${formatItemType(activeStatusFilter) || activeStatusFilter} filter active`
+    : 'All statuses included'
+
   return (
-    <div className="mb-4 grid shrink-0 grid-cols-1 gap-4 lg:grid-cols-[1fr_1fr_2fr]">
-      <MiniPieChart title="Inventory By Item Type" data={itemTypeCounts} />
-      <MiniPieChart title="Inventory By Status" data={statusCounts} labels={inventoryStatuses} />
-      <InventorySidePanel inventory={inventory} />
+    <div className="space-y-5 pb-6">
+      <section className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <div className="relative p-5 sm:p-6">
+          <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-indigo-500/10 blur-3xl" />
+          <div className="relative flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-indigo-600 dark:text-indigo-300">Inventory Information</p>
+              <h2 className="mt-2 text-2xl font-black text-gray-900 dark:text-white">Asset health, movement, and coverage</h2>
+              <p className="mt-2 max-w-3xl text-sm text-gray-500 dark:text-gray-400">
+                A cleaner summary of what is available, what needs attention, and where items are assigned.
+              </p>
+            </div>
+            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+              <PackageSearch className="h-4 w-4 text-indigo-500" />
+              {activeLabel}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard label="Total Assets" value={totalItems} hint={`${uniqueTypeCount} item type${uniqueTypeCount === 1 ? '' : 's'} tracked`} icon={Layers3} tone="blue" />
+        <MetricCard label="Available" value={availableCount} hint={`${formatPercent(availableCount, totalItems)} ready for use`} icon={CheckCircle2} tone="green" />
+        <MetricCard label="Needs Attention" value={attentionCount} hint="Defective, lost, or disposed items" icon={AlertTriangle} tone="amber" />
+        <MetricCard label="With Location" value={withLocationCount} hint={`${formatPercent(withLocationCount, totalItems)} assigned to a room or location`} icon={MapPinned} tone="slate" />
+      </div>
+
+      <Panel title="Status Breakdown">
+        <InventoryStatCards
+          inventory={inventory}
+          activeStatusFilter={activeStatusFilter}
+          onFilterByStatus={onFilterByStatus}
+        />
+      </Panel>
+
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+        <DistributionCard
+          title="Inventory by item type"
+          eyebrow="Distribution"
+          data={itemTypeCounts}
+          emptyText="No item types found yet."
+        />
+        <DistributionCard
+          title="Inventory by status"
+          eyebrow="Condition"
+          data={statusCounts}
+          labels={inventoryStatuses}
+          emptyText="No status data found yet."
+        />
+      </div>
+
+      <Panel title="Inventory Activity">
+        <InventorySidePanel inventory={inventory} />
+      </Panel>
     </div>
   )
 }
