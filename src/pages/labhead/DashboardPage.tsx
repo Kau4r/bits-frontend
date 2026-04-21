@@ -3,9 +3,8 @@ import BookingCard from '@/components/BookingCard';
 import NotificationsCard from '@/components/NotificationsCard';
 import { getDashboardMetrics, type DashboardMetrics } from '@/services/dashboard';
 import { inventoryStatuses } from '@/types/inventory';
-import { ClipboardList, FileText, PackageCheck, Download } from 'lucide-react';
+import { ClipboardList, FileText, PackageCheck } from 'lucide-react';
 import { useNotifications } from '@/context/NotificationContext';
-import { downloadDashboardSummaryCsv } from '@/services/reports';
 
 const chartColors = ['#2563eb', '#16a34a', '#f59e0b', '#dc2626', '#7c3aed', '#0891b2', '#4b5563'];
 
@@ -129,21 +128,11 @@ export default function LabheadDashboard() {
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-white p-6 sm:px-8 lg:px-10 dark:bg-gray-900">
-      <div className="mb-4 flex shrink-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Good Day, Labhead
-          </h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Overview of lab operations, tickets, and inventory status</p>
-        </div>
-        <button
-          type="button"
-          onClick={downloadDashboardSummaryCsv}
-          className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-        >
-          <Download className="h-4 w-4" />
-          Export Summary
-        </button>
+      <div className="mb-4 shrink-0">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          Good Day, Labhead
+        </h1>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Overview of lab operations, tickets, and inventory status</p>
       </div>
 
       <div className="grid shrink-0 grid-cols-1 items-stretch gap-4 md:grid-cols-2 xl:grid-cols-5">

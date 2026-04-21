@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { type Item, type InventoryStatus } from '@/types/inventory'
-import { Plus, Filter, Package, ChevronLeft, ChevronRight, Pencil, Tag, Rows3, Rows4, X, Download, List, BarChart3 } from 'lucide-react'
+import { Plus, Filter, Package, ChevronLeft, ChevronRight, Pencil, Tag, X, Download, List, BarChart3 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { LoadingSkeleton } from '@/ui/LoadingSkeleton'
 import { EmptyState } from '@/ui/EmptyState'
@@ -18,7 +18,6 @@ import InventoryMobilePage from '@/pages/labtech/InventoryMobile'
 import InventoryDashboard from '@/pages/labtech/components/InventoryDashboard'
 import { formatItemType } from '@/lib/utils'
 
-type Density = 'comfortable' | 'compact'
 type InventoryView = 'list' | 'information'
 
 const statusBorder: Record<InventoryStatus, string> = {
@@ -44,7 +43,6 @@ const InventoryPage = () => {
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
-  const [density, setDensity] = useState<Density>('comfortable')
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [statusPopoverItemId, setStatusPopoverItemId] = useState<number | null>(null)
   const [bulkStatusOpen, setBulkStatusOpen] = useState(false)
@@ -563,40 +561,8 @@ const InventoryPage = () => {
           />
         </div>
 
-        {/* Density Toggle */}
-        <div className="ml-auto inline-flex h-11 items-center rounded-lg border border-gray-300 bg-white p-0.5 shadow-sm dark:border-gray-600 dark:bg-gray-800">
-          <button
-            type="button"
-            onClick={() => setDensity('comfortable')}
-            aria-pressed={density === 'comfortable'}
-            title="Comfortable density"
-            className={`inline-flex h-full items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors ${
-              density === 'comfortable'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
-            }`}
-          >
-            <Rows3 className="h-4 w-4" />
-            Comfortable
-          </button>
-          <button
-            type="button"
-            onClick={() => setDensity('compact')}
-            aria-pressed={density === 'compact'}
-            title="Compact density"
-            className={`inline-flex h-full items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors ${
-              density === 'compact'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
-            }`}
-          >
-            <Rows4 className="h-4 w-4" />
-            Compact
-          </button>
-        </div>
-
         {/* Page Size Selector */}
-        <div className="min-w-36">
+        <div className="ml-auto min-w-36">
           <FloatingSelect
             id="inventory-page-size"
             value={String(pageSize)}
@@ -742,7 +708,6 @@ const InventoryPage = () => {
               </div>
             ) : (
               paginatedInventory.map((item) => {
-              const rowPad = density === 'compact' ? 'py-2' : 'py-4'
               const border = item.Status ? statusBorder[item.Status] : 'border-l-gray-300'
               const isSelected = item.Item_ID != null && selectedIds.has(item.Item_ID)
               const openRow = () => {
@@ -763,7 +728,7 @@ const InventoryPage = () => {
                       openRow()
                     }
                   }}
-                  className={`group relative grid w-full cursor-pointer items-center border-b border-l-4 ${border} border-gray-200 px-6 ${rowPad} text-left transition-all duration-150 hover:bg-indigo-50/50 focus:bg-indigo-50 focus:outline-none dark:border-gray-700/50 dark:hover:bg-indigo-900/10 dark:focus:bg-indigo-900/20 ${isSelected ? 'bg-indigo-50/60 dark:bg-indigo-900/20' : ''}`}
+                  className={`group relative grid w-full cursor-pointer items-center border-b border-l-4 ${border} border-gray-200 px-6 py-4 text-left transition-all duration-150 hover:bg-indigo-50/50 focus:bg-indigo-50 focus:outline-none dark:border-gray-700/50 dark:hover:bg-indigo-900/10 dark:focus:bg-indigo-900/20 ${isSelected ? 'bg-indigo-50/60 dark:bg-indigo-900/20' : ''}`}
                   style={{ display: 'grid', gridTemplateColumns: columnWidths }}
                 >
                   {/* Checkbox */}
