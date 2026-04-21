@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { type Item, type InventoryStatus } from '@/types/inventory'
-import { Plus, Filter, Package, ChevronLeft, ChevronRight, Pencil, Tag, Rows3, Rows4, X, Download } from 'lucide-react'
+import { Plus, Filter, Package, ChevronLeft, ChevronRight, Pencil, Tag, Rows3, Rows4, X, Download, List, BarChart3 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { LoadingSkeleton } from '@/ui/LoadingSkeleton'
 import { EmptyState } from '@/ui/EmptyState'
@@ -19,6 +19,7 @@ import InventoryDashboard from '@/pages/labtech/components/InventoryDashboard'
 import { formatItemType } from '@/lib/utils'
 
 type Density = 'comfortable' | 'compact'
+type InventoryView = 'list' | 'information'
 
 const statusBorder: Record<InventoryStatus, string> = {
   AVAILABLE: 'border-l-green-500',
@@ -49,6 +50,7 @@ const InventoryPage = () => {
   const [bulkStatusOpen, setBulkStatusOpen] = useState(false)
   const [bulkRoomOpen, setBulkRoomOpen] = useState(false)
   const [bulkBusy, setBulkBusy] = useState(false)
+  const [activeView, setActiveView] = useState<InventoryView>('list')
 
   // Responsive state
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -446,22 +448,43 @@ const InventoryPage = () => {
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-white p-6 sm:px-8 lg:px-10 dark:bg-gray-900">
-      {/* Dashboard (LAB_TECH / LAB_HEAD only) */}
-      {showDashboard && !loading && (
-        <InventoryDashboard
-          inventory={inventory}
-          onFilterByStatus={handleFilterByStatus}
-          activeStatusFilter={selectedStatus}
-        />
-      )}
-
       {/* Header */}
-      <div className="mb-4 flex shrink-0 items-center justify-between">
+      <div className="mb-4 flex shrink-0 flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Inventory Management</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Track and manage laboratory equipment and assets</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex rounded-lg border border-gray-300 bg-white p-0.5 shadow-sm dark:border-gray-600 dark:bg-gray-800">
+            <button
+              type="button"
+              onClick={() => setActiveView('list')}
+              aria-pressed={activeView === 'list'}
+              className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
+                activeView === 'list'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+              }`}
+            >
+              <List className="h-4 w-4" />
+              Inventory List
+            </button>
+            {showDashboard && (
+              <button
+                type="button"
+                onClick={() => setActiveView('information')}
+                aria-pressed={activeView === 'information'}
+                className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
+                  activeView === 'information'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+                }`}
+              >
+                <BarChart3 className="h-4 w-4" />
+                Information
+              </button>
+            )}
+          </div>
           <button
             className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition-all hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
             onClick={handleExportInventory}
@@ -482,6 +505,20 @@ const InventoryPage = () => {
         </div>
       </div>
 
+      {activeView === 'information' && showDashboard ? (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {loading ? (
+            <LoadingSkeleton rows={6} type="card" />
+          ) : (
+            <InventoryDashboard
+              inventory={inventory}
+              onFilterByStatus={handleFilterByStatus}
+              activeStatusFilter={selectedStatus}
+            />
+          )}
+        </div>
+      ) : (
+        <>
       {/* Filters Bar */}
       <div className="mb-4 flex shrink-0 flex-wrap items-center gap-3">
         {/* Search */}
@@ -924,6 +961,8 @@ const InventoryPage = () => {
           )}
         </div>
       </div>
+        </>
+      )}
 
       <ItemModal
         isOpen={isModalOpen}
