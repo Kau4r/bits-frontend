@@ -5,6 +5,7 @@ import {
   createReport,
   updateReport,
   submitReport,
+  downloadWeeklyReportsCsv,
 } from '@/services/reports';
 import type { WeeklyReport, ReportCreateInput, ReportUpdateInput } from '@/types/report';
 import { reportStatusLabels, reportStatusColors } from '@/types/report';
@@ -80,6 +81,15 @@ export default function Reports() {
           </p>
         </div>
         <div className="flex items-center gap-4">
+          <button
+            onClick={() => downloadWeeklyReportsCsv()}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition-all hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v12m0 0l4-4m-4 4l-4-4M4 21h16" />
+            </svg>
+            Export CSV
+          </button>
           <button
             onClick={handleOpenNew}
             className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-500 hover:shadow-md focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none active:bg-indigo-700"

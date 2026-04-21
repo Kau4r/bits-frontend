@@ -2,8 +2,9 @@ import { useEffect, useState, useCallback } from 'react';
 import BookingCard from '@/components/BookingCard';
 import NotificationsCard from '@/components/NotificationsCard';
 import { getDashboardMetrics, type DashboardMetrics } from '@/services/dashboard';
-import { ClipboardCheck, Wrench, PackageCheck } from 'lucide-react';
+import { ClipboardCheck, Wrench, PackageCheck, Download } from 'lucide-react';
 import { useNotifications } from '@/context/NotificationContext';
+import { downloadDashboardSummaryCsv } from '@/services/reports';
 
 const SummaryTile = ({
   label,
@@ -71,6 +72,14 @@ export default function LabtechDashboard() {
           </h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Overview of tickets, room reports, inventory, and scheduling updates</p>
         </div>
+        <button
+          type="button"
+          onClick={downloadDashboardSummaryCsv}
+          className="mt-4 inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+        >
+          <Download className="h-4 w-4" />
+          Export Summary
+        </button>
       </div>
 
       <div className="mb-6 grid grid-cols-1 gap-4 xl:grid-cols-3">

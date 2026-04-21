@@ -7,6 +7,33 @@ export interface ReportFilters {
   status?: ReportStatus;
 }
 
+export interface InventoryReportFilters {
+  roomId?: number;
+  status?: string;
+  type?: string;
+}
+
+const downloadCsv = async (path: string, filename: string, params?: object) => {
+  const response = await api.get<Blob>(path, {
+    params,
+    responseType: 'blob',
+  });
+
+  const blob = response.data instanceof Blob
+    ? response.data
+    : new Blob([response.data as unknown as BlobPart], { type: 'text/csv;charset=utf-8;' });
+
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+  toast.success('Report download started');
+};
+
 export const getReports = async (filters?: ReportFilters): Promise<WeeklyReport[]> => {
   const { data } = await api.get<WeeklyReport[]>("/reports", { params: filters });
   return data;
@@ -47,3 +74,15 @@ export const getAutoPopulateTickets = async (weekStart: string, weekEnd: string)
   });
   return data;
 };
+
+export const downloadDashboardSummaryCsv = () =>
+  downloadCsv('/reports/summary.csv', 'dashboard-summary-report.csv');
+
+export const downloadInventoryReportCsv = (filters?: InventoryReportFilters) =>
+  downloadCsv('/reports/inventory.csv', filters?.roomId ? `inventory-room-${filters.roomId}-report.csv` : 'inventory-report.csv', filters);
+
+export const downloadRoomReportCsv = () =>
+  downloadCsv('/reports/rooms.csv', 'room-report.csv');
+
+export const downloadWeeklyReportsCsv = (filters?: ReportFilters) =>
+  downloadCsv('/reports/weekly.csv', 'weekly-reports.csv', filters);

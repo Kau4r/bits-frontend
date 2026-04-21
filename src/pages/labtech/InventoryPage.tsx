@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { type Item, type InventoryStatus } from '@/types/inventory'
-import { Plus, Filter, Package, ChevronLeft, ChevronRight, Pencil, Tag, Rows3, Rows4, X } from 'lucide-react'
+import { Plus, Filter, Package, ChevronLeft, ChevronRight, Pencil, Tag, Rows3, Rows4, X, Download } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { LoadingSkeleton } from '@/ui/LoadingSkeleton'
 import { EmptyState } from '@/ui/EmptyState'
@@ -10,6 +10,7 @@ import ItemModal from '@/pages/labtech/components/ItemModal'
 import Search from '@/components/Search'
 import { getRooms } from "@/services/room";
 import { getInventory, updateInventoryItem, createInventoryBulk, createInventoryItem } from "@/services/inventory"
+import { downloadInventoryReportCsv } from '@/services/reports'
 import { inventoryStatuses } from "@/types/inventory"
 import type { Room } from '@/types/room'
 import { useAuth } from '@/context/AuthContext'
@@ -436,6 +437,13 @@ const InventoryPage = () => {
     }
   }
 
+  const handleExportInventory = () => {
+    downloadInventoryReportCsv({
+      status: selectedStatus !== 'All Status' ? selectedStatus : undefined,
+      type: selectedType !== 'All Types' ? selectedType : undefined,
+    })
+  }
+
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-white p-6 sm:px-8 lg:px-10 dark:bg-gray-900">
       {/* Dashboard (LAB_TECH / LAB_HEAD only) */}
@@ -453,16 +461,25 @@ const InventoryPage = () => {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Inventory Management</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Track and manage laboratory equipment and assets</p>
         </div>
-        <button
-          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-500 hover:shadow-md focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none active:bg-indigo-700"
-          onClick={() => {
-            setModalMode('add')
-            setIsModalOpen(true)
-          }}
-        >
-          <Plus className="h-5 w-5" />
-          Add Item
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition-all hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+            onClick={handleExportInventory}
+          >
+            <Download className="h-5 w-5" />
+            Export CSV
+          </button>
+          <button
+            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-500 hover:shadow-md focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none active:bg-indigo-700"
+            onClick={() => {
+              setModalMode('add')
+              setIsModalOpen(true)
+            }}
+          >
+            <Plus className="h-5 w-5" />
+            Add Item
+          </button>
+        </div>
       </div>
 
       {/* Filters Bar */}

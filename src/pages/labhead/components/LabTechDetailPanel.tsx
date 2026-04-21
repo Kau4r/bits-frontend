@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { fetchTickets } from '@/services/tickets';
 import AssignTicketDropdown from '@/pages/labhead/components/AssignTicketDropdown';
-import { getReports, reviewReport } from '@/services/reports';
+import { getReports, reviewReport, downloadWeeklyReportsCsv } from '@/services/reports';
 import type { Ticket } from '@/types/tickets';
 import type { WeeklyReport } from '@/types/report';
 import { reportStatusLabels, reportStatusColors } from '@/types/report';
@@ -230,7 +230,16 @@ export default function LabTechDetailPanel({ labTech, onTicketReassigned }: Prop
         <section className="min-h-0 flex-1 overflow-y-auto pr-1 custom-scrollbar animate-fade-in">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">Weekly Reports</h2>
-            <span className="text-sm text-gray-500 dark:text-gray-400">{reports.length} report{reports.length !== 1 ? 's' : ''} found</span>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-500 dark:text-gray-400">{reports.length} report{reports.length !== 1 ? 's' : ''} found</span>
+              <button
+                type="button"
+                onClick={() => downloadWeeklyReportsCsv({ userId: labTech.dbId })}
+                className="rounded-lg border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+              >
+                Export CSV
+              </button>
+            </div>
           </div>
 
           {isLoadingReports ? (
