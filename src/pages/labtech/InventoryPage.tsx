@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from 'react'
-import { type Item } from '@/types/inventory'
-import { Plus, Filter, Package } from 'lucide-react'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { type Item, type InventoryStatus } from '@/types/inventory'
+import { Plus, Filter, Package, ChevronLeft, ChevronRight, Pencil, Tag, Rows3, Rows4, X } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { LoadingSkeleton } from '@/ui/LoadingSkeleton'
 import { EmptyState } from '@/ui/EmptyState'
 import { FloatingSelect } from '@/ui/FloatingSelect'
@@ -13,6 +14,18 @@ import { inventoryStatuses } from "@/types/inventory"
 import type { Room } from '@/types/room'
 import { useAuth } from '@/context/AuthContext'
 import InventoryMobilePage from '@/pages/labtech/InventoryMobile'
+import InventoryDashboard from '@/pages/labtech/components/InventoryDashboard'
+import { formatItemType } from '@/lib/utils'
+
+type Density = 'comfortable' | 'compact'
+
+const statusBorder: Record<InventoryStatus, string> = {
+  AVAILABLE: 'border-l-green-500',
+  BORROWED: 'border-l-blue-500',
+  DEFECTIVE: 'border-l-orange-500',
+  LOST: 'border-l-red-500',
+  REPLACED: 'border-l-gray-400',
+}
 
 const InventoryPage = () => {
   const { user } = useAuth();
@@ -26,6 +39,14 @@ const InventoryPage = () => {
   const [rooms, setRooms] = useState<Room[]>([])
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'item_code', direction: 'asc' })
   const [loading, setLoading] = useState(true)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const [density, setDensity] = useState<Density>('comfortable')
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [statusPopoverItemId, setStatusPopoverItemId] = useState<number | null>(null)
+  const [bulkStatusOpen, setBulkStatusOpen] = useState(false)
+  const [bulkRoomOpen, setBulkRoomOpen] = useState(false)
+  const [bulkBusy, setBulkBusy] = useState(false)
 
   // Responsive state
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -35,6 +56,16 @@ const InventoryPage = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Reset to page 1 when filters or page size change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, selectedType, selectedStatus, pageSize])
+
+  // Reset selection when filters change (mirrors pagination reset)
+  useEffect(() => {
+    setSelectedIds(new Set())
+  }, [searchTerm, selectedType, selectedStatus])
 
   useEffect(() => {
     const loadRoomsAndUsers = async () => {
@@ -77,11 +108,6 @@ const InventoryPage = () => {
       }
       return { key, direction: 'asc' }
     })
-  }
-
-  // If mobile, render the mobile view immediately
-  if (isMobile) {
-    return <InventoryMobilePage />;
   }
 
   // const archiveStatuses: Item['Status'][] = ['AVAILABLE', 'BORROWED'];
@@ -139,6 +165,24 @@ const InventoryPage = () => {
     return result
   }, [inventory, searchTerm, selectedType, selectedStatus, sortConfig])
 
+  const totalPages = Math.max(1, Math.ceil(filteredAndSortedInventory.length / pageSize))
+
+  // Clamp currentPage down if filter results shrank
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
+  }, [totalPages, currentPage])
+
+  const paginatedInventory = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return filteredAndSortedInventory.slice(start, start + pageSize)
+  }, [filteredAndSortedInventory, currentPage, pageSize])
+
+  // If mobile, render the mobile view immediately
+  if (isMobile) {
+    return <InventoryMobilePage />;
+  }
 
   const handleSaveItem = async (
     payload: Partial<Item> | Partial<Item>[] | { id: number; data: Partial<Item> }
@@ -267,19 +311,137 @@ const InventoryPage = () => {
     }
   };
 
-  const tableHeaders = [
-    { label: 'Asset Code', key: 'item_code' },
-    { label: 'Brand', key: 'brand' },
-    { label: 'Item Type', key: 'type' },
-    { label: 'Status', key: 'status' },
-    { label: 'Room Name', key: 'room' },
-    { label: 'Last Updated', key: 'updated' },
-  ]
+  // Column layout: [checkbox] [asset code] [brand] [type] [status] [room] [updated] [actions]
+  const columnWidths = '48px 1.3fr 1fr 1fr 1fr 1fr 1fr 110px'
 
+  const visibleIds = useMemo(
+    () => paginatedInventory.map(i => i.Item_ID!).filter((id): id is number => id != null),
+    [paginatedInventory],
+  )
 
+  const allVisibleSelected =
+    visibleIds.length > 0 && visibleIds.every(id => selectedIds.has(id))
+  const someVisibleSelected =
+    visibleIds.some(id => selectedIds.has(id)) && !allVisibleSelected
+
+  const headerCheckboxRef = useRef<HTMLInputElement | null>(null)
+  useEffect(() => {
+    if (headerCheckboxRef.current) {
+      headerCheckboxRef.current.indeterminate = someVisibleSelected
+    }
+  }, [someVisibleSelected])
+
+  const toggleSelectAllVisible = () => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (allVisibleSelected) {
+        visibleIds.forEach(id => next.delete(id))
+      } else {
+        visibleIds.forEach(id => next.add(id))
+      }
+      return next
+    })
+  }
+
+  const toggleSelectOne = (id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const handleInlineStatusChange = async (item: Item, newStatus: InventoryStatus) => {
+    if (item.Item_ID == null) return
+    setStatusPopoverItemId(null)
+    try {
+      const updated = await updateInventoryItem(item.Item_ID, { Status: newStatus })
+      if (updated && 'Item_ID' in updated) {
+        setInventory(prev =>
+          prev.map(i =>
+            i.Item_ID === item.Item_ID
+              ? { ...i, Status: (updated as Item).Status ?? newStatus, Updated_At: (updated as Item).Updated_At ?? new Date().toISOString() }
+              : i,
+          ),
+        )
+      }
+    } catch (err) {
+      console.error('Inline status update failed:', err)
+    }
+  }
+
+  const runBulkUpdate = async (patch: Partial<Item>, labelForToast: string) => {
+    const ids = Array.from(selectedIds)
+    if (ids.length === 0) return
+    setBulkBusy(true)
+    let ok = 0
+    let fail = 0
+    try {
+      // Sequential loop — simpler error accounting and avoids hammering the API.
+      // NOTE: updateInventoryItem already fires its own per-item success toast; we can't
+      // suppress it without changing the service. We fire ONE additional summary toast
+      // at the end so the user sees the aggregate outcome.
+      for (const id of ids) {
+        try {
+          const updated = await updateInventoryItem(id, patch)
+          if (updated && 'Item_ID' in updated) {
+            setInventory(prev =>
+              prev.map(i =>
+                i.Item_ID === id
+                  ? {
+                      ...i,
+                      ...patch,
+                      Updated_At: (updated as Item).Updated_At ?? new Date().toISOString(),
+                      Room: patch.Room_ID != null ? rooms.find(r => r.Room_ID === patch.Room_ID) ?? i.Room : i.Room,
+                    }
+                  : i,
+              ),
+            )
+          }
+          ok++
+        } catch (err) {
+          console.error('Bulk update failed for item', id, err)
+          fail++
+        }
+      }
+      if (fail === 0) {
+        toast.success(`${labelForToast}: updated ${ok} items`)
+      } else {
+        toast.error(`${labelForToast}: ${ok} updated, ${fail} failed`)
+      }
+      setSelectedIds(new Set())
+    } finally {
+      setBulkBusy(false)
+      setBulkStatusOpen(false)
+      setBulkRoomOpen(false)
+    }
+  }
+
+  const showDashboard =
+    user?.User_Role === 'LAB_TECH' || user?.User_Role === 'LAB_HEAD'
+
+  const handleFilterByStatus = (status: InventoryStatus | null) => {
+    if (status === null) {
+      setSelectedStatus('All Status')
+    } else if (selectedStatus === status) {
+      setSelectedStatus('All Status')
+    } else {
+      setSelectedStatus(status)
+    }
+  }
 
   return (
-    <div className="flex h-full w-full flex-col bg-white p-6 sm:px-8 lg:px-10 dark:bg-gray-900">
+    <div className="h-full w-full overflow-y-auto bg-white p-6 sm:px-8 lg:px-10 dark:bg-gray-900 flex flex-col">
+      {/* Dashboard (LAB_TECH / LAB_HEAD only) */}
+      {showDashboard && !loading && (
+        <InventoryDashboard
+          inventory={inventory}
+          onFilterByStatus={handleFilterByStatus}
+          activeStatusFilter={selectedStatus}
+        />
+      )}
+
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
@@ -315,7 +477,7 @@ const InventoryPage = () => {
               { value: 'All Types', label: 'All Types' },
               ...[...new Set(inventory.map(item => item.Item_Type).filter(Boolean))].map(type => ({
                 value: type,
-                label: type,
+                label: formatItemType(type) || type,
               })),
             ]}
             onChange={setSelectedType}
@@ -342,19 +504,157 @@ const InventoryPage = () => {
           />
         </div>
 
-        {/* Results Count */}
-        <div className="ml-auto flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-          <span className="font-semibold text-gray-900 dark:text-white">{filteredAndSortedInventory.length}</span>
-          <span>of {inventory.length} items</span>
+        {/* Density Toggle */}
+        <div className="ml-auto inline-flex h-11 items-center rounded-lg border border-gray-300 bg-white p-0.5 shadow-sm dark:border-gray-600 dark:bg-gray-800">
+          <button
+            type="button"
+            onClick={() => setDensity('comfortable')}
+            aria-pressed={density === 'comfortable'}
+            title="Comfortable density"
+            className={`inline-flex h-full items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors ${
+              density === 'comfortable'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+            }`}
+          >
+            <Rows3 className="h-4 w-4" />
+            Comfortable
+          </button>
+          <button
+            type="button"
+            onClick={() => setDensity('compact')}
+            aria-pressed={density === 'compact'}
+            title="Compact density"
+            className={`inline-flex h-full items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors ${
+              density === 'compact'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+            }`}
+          >
+            <Rows4 className="h-4 w-4" />
+            Compact
+          </button>
+        </div>
+
+        {/* Page Size Selector */}
+        <div className="min-w-36">
+          <FloatingSelect
+            id="inventory-page-size"
+            value={String(pageSize)}
+            placeholder="25 per page"
+            options={[
+              { value: '10', label: '10 per page' },
+              { value: '25', label: '25 per page' },
+              { value: '50', label: '50 per page' },
+              { value: '100', label: '100 per page' },
+            ]}
+            onChange={(val) => setPageSize(Number(val))}
+          />
         </div>
       </div>
 
-      <div className="flex-1 min-h-0">
+      {/* Bulk Action Bar */}
+      {selectedIds.size > 0 && (
+        <div
+          className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm dark:border-indigo-900/40 dark:bg-indigo-950/30"
+        >
+          <span className="font-semibold text-indigo-900 dark:text-indigo-200">
+            {selectedIds.size} selected
+          </span>
+
+          {/* Change Status */}
+          <div className="relative">
+            <button
+              type="button"
+              disabled={bulkBusy}
+              onClick={() => { setBulkStatusOpen(v => !v); setBulkRoomOpen(false); }}
+              className="inline-flex items-center gap-1.5 rounded-md border border-indigo-300 bg-white px-3 py-1.5 text-xs font-medium text-indigo-700 shadow-sm hover:bg-indigo-50 disabled:opacity-50 dark:border-indigo-700 dark:bg-gray-800 dark:text-indigo-300 dark:hover:bg-gray-700"
+            >
+              <Tag className="h-3.5 w-3.5" />
+              Change Status
+            </button>
+            {bulkStatusOpen && (
+              <div className="absolute left-0 top-full z-20 mt-1 min-w-[160px] overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                {inventoryStatuses.map(status => (
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() => runBulkUpdate({ Status: status }, `Status → ${formatItemType(status)}`)}
+                    className="block w-full px-3 py-2 text-left text-xs text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 dark:text-gray-200 dark:hover:bg-gray-700"
+                  >
+                    {formatItemType(status)}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Move to Room */}
+          <div className="relative">
+            <button
+              type="button"
+              disabled={bulkBusy || rooms.length === 0}
+              onClick={() => { setBulkRoomOpen(v => !v); setBulkStatusOpen(false); }}
+              className="inline-flex items-center gap-1.5 rounded-md border border-indigo-300 bg-white px-3 py-1.5 text-xs font-medium text-indigo-700 shadow-sm hover:bg-indigo-50 disabled:opacity-50 dark:border-indigo-700 dark:bg-gray-800 dark:text-indigo-300 dark:hover:bg-gray-700"
+            >
+              Move to Room
+            </button>
+            {bulkRoomOpen && (
+              <div className="absolute left-0 top-full z-20 mt-1 max-h-64 min-w-[200px] overflow-auto rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                {rooms.map(room => (
+                  <button
+                    key={room.Room_ID}
+                    type="button"
+                    onClick={() => runBulkUpdate({ Room_ID: room.Room_ID }, `Moved to ${room.Name}`)}
+                    className="block w-full px-3 py-2 text-left text-xs text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 dark:text-gray-200 dark:hover:bg-gray-700"
+                  >
+                    {room.Name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <button
+            type="button"
+            disabled={bulkBusy}
+            onClick={() => setSelectedIds(new Set())}
+            className="ml-auto inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-white/60 hover:text-gray-900 disabled:opacity-50 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-white"
+          >
+            <X className="h-3.5 w-3.5" />
+            Clear
+          </button>
+        </div>
+      )}
+
+      <div className="flex-1">
         <Table
-          headers={tableHeaders}
+          headers={[
+            {
+              label: (
+                <input
+                  ref={headerCheckboxRef}
+                  type="checkbox"
+                  aria-label="Select all on this page"
+                  checked={allVisibleSelected}
+                  onChange={toggleSelectAllVisible}
+                  onClick={(e) => e.stopPropagation()}
+                  className="h-4 w-4 cursor-pointer rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                />
+              ),
+              align: 'center' as const,
+            },
+            { label: 'Asset Code', key: 'item_code' },
+            { label: 'Brand', key: 'brand' },
+            { label: 'Item Type', key: 'type' },
+            { label: 'Status', key: 'status' },
+            { label: 'Room Name', key: 'room' },
+            { label: 'Last Updated', key: 'updated' },
+            { label: '', align: 'right' as const },
+          ]}
           sortConfig={sortConfig}
           onSort={handleSort}
-          columnWidths="1.5fr 1fr 1fr 1fr 1fr 1fr"
+          columnWidths={columnWidths}
         >
           {loading ? (
             <LoadingSkeleton rows={8} type="table" />
@@ -381,63 +681,222 @@ const InventoryPage = () => {
               </button>
             </div>
           ) : (
-            filteredAndSortedInventory.map((item) => (
-              <button
-                key={item.Item_ID}
-                type="button"
-                className="group grid w-full cursor-pointer items-center px-6 py-4 text-left transition-all duration-150 hover:bg-indigo-50/50 focus:bg-indigo-50 focus:outline-none dark:hover:bg-indigo-900/10 dark:focus:bg-indigo-900/20"
-                style={{ gridTemplateColumns: '1.5fr 1fr 1fr 1fr 1fr 1fr' }}
-                onClick={() => {
-                  setSelectedItem({ ...item });
-                  setModalMode('view');
-                  setIsModalOpen(true);
-                }}
-              >
-                <div className="truncate text-sm font-semibold text-gray-900 group-hover:text-indigo-600 dark:text-white dark:group-hover:text-indigo-400">
-                  {item.Item_Code ?? '—'}
-                </div>
-                <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {item.Brand ?? '—'}
-                </div>
-                <div>
-                  <span className="inline-flex items-center justify-center gap-1.5 rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-800 dark:bg-blue-900/50 dark:text-blue-200">
-                    {item.Item_Type ?? '—'}
-                  </span>
-                </div>
-                <div className="flex justify-center">
-                  <span
-                    className={`inline-flex items-center justify-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${item.Status === "AVAILABLE"
-                      ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400"
-                      : item.Status === "BORROWED"
-                        ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-400"
-                        : item.Status === "DEFECTIVE"
-                          ? "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-400"
-                          : item.Status === "LOST"
-                            ? "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400"
-                            : item.Status === "REPLACED"
-                              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400"
-                              : "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
-                      }`}
+            paginatedInventory.map((item) => {
+              const rowPad = density === 'compact' ? 'py-2' : 'py-4'
+              const border = item.Status ? statusBorder[item.Status] : 'border-l-gray-300'
+              const isSelected = item.Item_ID != null && selectedIds.has(item.Item_ID)
+              const openRow = () => {
+                setSelectedItem({ ...item });
+                setModalMode('view');
+                setIsModalOpen(true);
+              }
+              return (
+                <div
+                  key={item.Item_ID}
+                  data-full-row
+                  role="button"
+                  tabIndex={0}
+                  onClick={openRow}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      openRow()
+                    }
+                  }}
+                  className={`group relative grid w-full cursor-pointer items-center border-b border-l-4 ${border} border-gray-200 px-6 ${rowPad} text-left transition-all duration-150 hover:bg-indigo-50/50 focus:bg-indigo-50 focus:outline-none dark:border-gray-700/50 dark:hover:bg-indigo-900/10 dark:focus:bg-indigo-900/20 ${isSelected ? 'bg-indigo-50/60 dark:bg-indigo-900/20' : ''}`}
+                  style={{ display: 'grid', gridTemplateColumns: columnWidths }}
+                >
+                  {/* Checkbox */}
+                  <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${item.Item_Code ?? 'item'}`}
+                      checked={isSelected}
+                      onChange={() => item.Item_ID != null && toggleSelectOne(item.Item_ID)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="h-4 w-4 cursor-pointer rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                    />
+                  </div>
+
+                  {/* Asset Code */}
+                  <div className="truncate text-sm font-semibold text-gray-900 group-hover:text-indigo-600 dark:text-white dark:group-hover:text-indigo-400">
+                    {item.Item_Code ?? '—'}
+                  </div>
+
+                  {/* Brand */}
+                  <div className="flex justify-center text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {item.Brand ?? '—'}
+                  </div>
+
+                  {/* Item Type (title-cased display) */}
+                  <div className="flex justify-center">
+                    <span className="inline-flex items-center justify-center gap-1.5 rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-800 dark:bg-blue-900/50 dark:text-blue-200">
+                      {formatItemType(item.Item_Type) || '—'}
+                    </span>
+                  </div>
+
+                  {/* Status pill */}
+                  <div className="flex justify-center">
+                    <span
+                      className={`inline-flex items-center justify-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${item.Status === "AVAILABLE"
+                        ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400"
+                        : item.Status === "BORROWED"
+                          ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-400"
+                          : item.Status === "DEFECTIVE"
+                            ? "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-400"
+                            : item.Status === "LOST"
+                              ? "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400"
+                              : item.Status === "REPLACED"
+                                ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400"
+                                : "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
+                        }`}
+                    >
+                      {(item.Status ?? "AVAILABLE").charAt(0).toUpperCase() + (item.Status ?? "AVAILABLE").slice(1).toLowerCase()}
+                    </span>
+                  </div>
+
+                  {/* Room */}
+                  <div className="flex justify-center text-sm text-gray-600 dark:text-gray-400">
+                    {item.Room?.Name ?? ((item as any).Computers?.[0]?.Room?.Name) ?? '—'}
+                  </div>
+
+                  {/* Updated */}
+                  <div className="flex justify-center text-sm text-gray-600 dark:text-gray-400">
+                    {item.Updated_At
+                      ? new Date(item.Updated_At).toLocaleDateString(undefined, {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                      })
+                      : '—'}
+                  </div>
+
+                  {/* Hover actions */}
+                  <div
+                    className="relative flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    {(item.Status ?? "AVAILABLE").charAt(0).toUpperCase() + (item.Status ?? "AVAILABLE").slice(1).toLowerCase()}
-                  </span>
+                    <button
+                      type="button"
+                      title="Edit"
+                      aria-label="Edit item"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSelectedItem({ ...item });
+                        setModalMode('edit');
+                        setIsModalOpen(true);
+                      }}
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-md text-gray-500 hover:bg-indigo-100 hover:text-indigo-700 dark:text-gray-400 dark:hover:bg-indigo-900/40 dark:hover:text-indigo-300"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      title="Change status"
+                      aria-label="Change status"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setStatusPopoverItemId(
+                          statusPopoverItemId === item.Item_ID ? null : item.Item_ID ?? null,
+                        )
+                      }}
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-md text-gray-500 hover:bg-indigo-100 hover:text-indigo-700 dark:text-gray-400 dark:hover:bg-indigo-900/40 dark:hover:text-indigo-300"
+                    >
+                      <Tag className="h-3.5 w-3.5" />
+                    </button>
+
+                    {statusPopoverItemId === item.Item_ID && (
+                      <div
+                        className="absolute right-0 top-full z-20 mt-1 min-w-[140px] overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {inventoryStatuses.map(status => (
+                          <button
+                            key={status}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleInlineStatusChange(item, status)
+                            }}
+                            className={`block w-full px-3 py-1.5 text-left text-xs hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-gray-700 ${item.Status === status ? 'bg-indigo-50 font-semibold text-indigo-700 dark:bg-gray-700 dark:text-indigo-300' : 'text-gray-700 dark:text-gray-200'}`}
+                          >
+                            {formatItemType(status)}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  {item.Room?.Name ?? ((item as any).Computers?.[0]?.Room?.Name) ?? '—'}
-                </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  {item.Updated_At
-                    ? new Date(item.Updated_At).toLocaleDateString(undefined, {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                    })
-                    : '—'}
-                </div>
-              </button>
-            ))
+              )
+            })
           )}
         </Table>
+
+        {/* Pagination Bar */}
+        <div className="mt-4 flex items-center justify-between gap-4 text-sm">
+          {/* Showing X–Y of Z */}
+          <span className="text-gray-500 dark:text-gray-400">
+            {filteredAndSortedInventory.length === 0
+              ? 'Showing 0 of 0 items'
+              : `Showing ${(currentPage - 1) * pageSize + 1}–${Math.min(currentPage * pageSize, filteredAndSortedInventory.length)} of ${filteredAndSortedInventory.length} items`}
+          </span>
+
+          {/* Page controls — hidden when no results */}
+          {filteredAndSortedInventory.length > 0 && (
+            <div className="flex items-center gap-1">
+              {/* Prev */}
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="inline-flex h-8 min-w-8 items-center justify-center rounded-md border border-gray-300 bg-white px-2 font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+
+              {/* Page numbers */}
+              {(() => {
+                const pages: (number | 'ellipsis-start' | 'ellipsis-end')[] = []
+                if (totalPages <= 7) {
+                  for (let i = 1; i <= totalPages; i++) pages.push(i)
+                } else {
+                  pages.push(1)
+                  if (currentPage > 4) pages.push('ellipsis-start')
+                  const start = Math.max(2, currentPage - 2)
+                  const end = Math.min(totalPages - 1, currentPage + 2)
+                  for (let i = start; i <= end; i++) pages.push(i)
+                  if (currentPage < totalPages - 3) pages.push('ellipsis-end')
+                  pages.push(totalPages)
+                }
+                return pages.map((p, idx) =>
+                  p === 'ellipsis-start' || p === 'ellipsis-end' ? (
+                    <span key={`${p}-${idx}`} className="inline-flex h-8 min-w-8 items-center justify-center text-gray-500">…</span>
+                  ) : (
+                    <button
+                      key={p}
+                      onClick={() => setCurrentPage(p)}
+                      className={`inline-flex h-8 min-w-8 items-center justify-center rounded-md border px-2 font-medium transition-colors ${
+                        p === currentPage
+                          ? 'border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-700'
+                          : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  )
+                )
+              })()}
+
+              {/* Next */}
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="inline-flex h-8 min-w-8 items-center justify-center rounded-md border border-gray-300 bg-white px-2 font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <ItemModal

@@ -9,7 +9,7 @@ export interface SortConfig {
 }
 
 interface TableHeader {
-  label: string
+  label: React.ReactNode
   key?: string // If provided, column is sortable
   align?: 'left' | 'center' | 'right'
 }
