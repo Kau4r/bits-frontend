@@ -118,7 +118,7 @@ export default function BookingCard() {
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center py-8">
             <Calendar className="h-10 w-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
-            <p className="text-sm text-gray-500 dark:text-gray-400">No bookings yet</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">No schedules yet</p>
           </div>
         </div>
       ) : (

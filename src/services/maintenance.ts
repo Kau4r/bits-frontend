@@ -44,6 +44,26 @@ export interface SchoolYearArchiveResult {
   };
 }
 
+export interface ArchiveFile {
+  fileName: string;
+  sizeBytes: number;
+  createdAt: string;
+  modifiedAt: string;
+  downloadUrl: string;
+}
+
+export interface MaintenanceHistoryEntry {
+  id: number;
+  action: string;
+  details: string;
+  timestamp: string;
+  user: {
+    firstName?: string;
+    lastName?: string;
+    username?: string;
+  } | null;
+}
+
 export const getCleanupPreview = async (): Promise<CleanupPreview> => {
   const { data } = await api.get<CleanupPreview>('/maintenance/cleanup-preview');
   return data;
@@ -53,6 +73,16 @@ export const getSchoolYearArchivePreview = async (schoolYear: string): Promise<S
   const { data } = await api.get<SchoolYearArchivePreview>('/maintenance/school-year-archive-preview', {
     params: { schoolYear },
   });
+  return data;
+};
+
+export const getArchiveFiles = async (): Promise<ArchiveFile[]> => {
+  const { data } = await api.get<ArchiveFile[]>('/maintenance/archives');
+  return data;
+};
+
+export const getMaintenanceHistory = async (): Promise<MaintenanceHistoryEntry[]> => {
+  const { data } = await api.get<MaintenanceHistoryEntry[]>('/maintenance/history');
   return data;
 };
 

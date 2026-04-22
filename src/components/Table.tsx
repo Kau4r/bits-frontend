@@ -1,5 +1,5 @@
 import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
-import React from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 
 export type SortDirection = 'asc' | 'desc' | null
 
@@ -20,11 +20,39 @@ interface TableProps {
   sortConfig?: SortConfig
   onSort?: (key: string) => void
   columnWidths?: string // e.g., "2fr 2fr 1fr 1fr"
+  density?: 'comfortable' | 'compact'
+  scrollShadow?: boolean
 }
 
-const Table = ({ headers, children, sortConfig, onSort, columnWidths }: TableProps) => {
+const Table = ({ headers, children, sortConfig, onSort, columnWidths, density = 'comfortable', scrollShadow = false }: TableProps) => {
   const colCount = headers.length
   const gridCols = columnWidths || `repeat(${colCount}, minmax(0, 1fr))`
+  const cellPadding = density === 'compact' ? 'px-4 py-3' : 'px-6 py-4'
+  const headerPadding = density === 'compact' ? 'px-4 py-3' : 'px-6 py-4'
+  const scrollRef = useRef<HTMLDivElement | null>(null)
+  const [scrollState, setScrollState] = useState({ top: false, bottom: false })
+
+  const updateScrollState = () => {
+    const element = scrollRef.current
+    if (!element) return
+
+    const maxScrollTop = element.scrollHeight - element.clientHeight
+    setScrollState({
+      top: element.scrollTop > 4,
+      bottom: maxScrollTop - element.scrollTop > 4,
+    })
+  }
+
+  useEffect(() => {
+    updateScrollState()
+
+    const element = scrollRef.current
+    if (!element || typeof ResizeObserver === 'undefined') return
+
+    const observer = new ResizeObserver(updateScrollState)
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [children])
 
   const handleHeaderClick = (header: string | TableHeader) => {
     if (typeof header === 'string' || !header.key || !onSort) return
@@ -73,7 +101,7 @@ const Table = ({ headers, children, sortConfig, onSort, columnWidths }: TablePro
       const justifyClass = align === 'left' ? 'justify-start' : align === 'right' ? 'justify-end' : 'justify-center'
 
       return (
-        <div key={idx} className={`flex items-center px-6 py-4 min-w-0 ${justifyClass}`}>
+        <div key={idx} className={`flex min-w-0 items-center ${cellPadding} ${justifyClass}`}>
           {cell}
         </div>
       )
@@ -94,8 +122,14 @@ const Table = ({ headers, children, sortConfig, onSort, columnWidths }: TablePro
   })
 
   return (
-    <div className="flex w-full flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800 h-full">
-      <div className="flex-1 overflow-auto min-h-0">
+    <div className="relative flex h-full w-full flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+      {scrollShadow && (
+        <>
+          <div className={`pointer-events-none absolute inset-x-0 top-0 z-20 h-8 bg-gradient-to-b from-black/12 to-transparent transition-opacity dark:from-black/35 ${scrollState.top ? 'opacity-100' : 'opacity-0'}`} />
+          <div className={`pointer-events-none absolute inset-x-0 bottom-0 z-20 h-8 bg-gradient-to-t from-black/12 to-transparent transition-opacity dark:from-black/35 ${scrollState.bottom ? 'opacity-100' : 'opacity-0'}`} />
+        </>
+      )}
+      <div ref={scrollRef} onScroll={updateScrollState} className="min-h-0 flex-1 overflow-auto">
         <div className="min-w-full min-h-full flex flex-col align-middle">
           {/* Header */}
           <div
@@ -114,7 +148,7 @@ const Table = ({ headers, children, sortConfig, onSort, columnWidths }: TablePro
                   key={idx}
                   type="button"
                   disabled={!isSortable}
-                  className={`group flex items-center px-6 py-4 ${justifyClass} ${isSortable
+                  className={`group flex items-center ${headerPadding} ${justifyClass} ${isSortable
                     ? 'cursor-pointer select-none transition-colors hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200'
                     : 'cursor-default'
                     } ${isActive ? 'text-indigo-600 dark:text-indigo-400' : ''}`}

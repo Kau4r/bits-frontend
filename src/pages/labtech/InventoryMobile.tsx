@@ -1,17 +1,27 @@
-import { useState, useRef, useEffect } from 'react';
-import { BrowserQRCodeReader } from '@zxing/browser';
-import { Edit3, Filter, Plus, QrCode, X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Edit3, Filter, Plus, X } from 'lucide-react';
 import Search from '@/components/Search';
-import { type Item } from '@/types/inventory';
+import { inventoryStatuses, statusColors, type Item } from '@/types/inventory';
 import type { Room } from '@/types/room';
 import { createInventoryBulk, getInventory, updateInventoryItem } from '@/services/inventory';
 import { getRooms } from '@/services/room';
-import { buildInventoryItemPath, parseInventoryQrValue } from '@/utils/inventoryQr';
 import { FloatingSelect } from '@/ui/FloatingSelect';
 import toast from 'react-hot-toast';
+import { useAuth } from '@/context/AuthContext';
+import { formatItemType } from '@/lib/utils';
+import { isLabStaffRole } from '@/types/user';
 
 type ModalMode = 'view' | 'edit' | 'add';
+
+type InventoryFormData = {
+    Item_Type: string;
+    Brand: string;
+    Location: string;
+    Serial_Number: string;
+    Status: Item['Status'];
+    Room_ID: number;
+    IsBorrowable: boolean;
+};
 
 interface MobileInventoryModalProps {
     isOpen: boolean;
@@ -19,6 +29,7 @@ interface MobileInventoryModalProps {
     item: Item | null;
     rooms: Room[];
     itemTypes: string[];
+    canEdit: boolean;
     onClose: () => void;
     onEdit: () => void;
     onSave: (payload: {
@@ -32,39 +43,35 @@ interface MobileInventoryModalProps {
     }) => Promise<void>;
 }
 
+const normalizeItemType = (value: string) => value.trim().toUpperCase().replace(/[\s-]+/g, '_');
+
+const getDefaultFormData = (item: Item | null, rooms: Room[], itemTypes: string[]): InventoryFormData => ({
+    Item_Type: item?.Item_Type || itemTypes[0] || 'GENERAL',
+    Brand: item?.Brand || '',
+    Location: item?.Location || '',
+    Serial_Number: item?.Serial_Number || '',
+    Status: item?.Status || 'AVAILABLE',
+    Room_ID: item?.Room_ID || rooms[0]?.Room_ID || 0,
+    IsBorrowable: Boolean(item?.IsBorrowable),
+});
+
 const MobileInventoryModal = ({
     isOpen,
     mode,
     item,
     rooms,
     itemTypes,
+    canEdit,
     onClose,
     onEdit,
     onSave,
 }: MobileInventoryModalProps) => {
-    const [formData, setFormData] = useState({
-        Item_Type: 'GENERAL',
-        Brand: '',
-        Location: '',
-        Serial_Number: '',
-        Status: 'AVAILABLE' as Item['Status'],
-        Room_ID: 0,
-        IsBorrowable: false,
-    });
+    const [formData, setFormData] = useState<InventoryFormData>(() => getDefaultFormData(item, rooms, itemTypes));
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         if (!isOpen) return;
-
-        setFormData({
-            Item_Type: item?.Item_Type || itemTypes[0] || 'GENERAL',
-            Brand: item?.Brand || '',
-            Location: item?.Location || '',
-            Serial_Number: item?.Serial_Number || '',
-            Status: item?.Status || 'AVAILABLE',
-            Room_ID: item?.Room_ID || rooms[0]?.Room_ID || 0,
-            IsBorrowable: Boolean(item?.IsBorrowable),
-        });
+        setFormData(getDefaultFormData(item, rooms, itemTypes));
     }, [isOpen, item, itemTypes, rooms]);
 
     if (!isOpen) return null;
@@ -87,7 +94,7 @@ const MobileInventoryModal = ({
         try {
             await onSave({
                 ...formData,
-                Item_Type: formData.Item_Type.trim().toUpperCase().replace(/[\s-]+/g, '_'),
+                Item_Type: normalizeItemType(formData.Item_Type),
                 Brand: formData.Brand.trim(),
                 Location: formData.Location.trim() || null,
                 Serial_Number: formData.Serial_Number.trim(),
@@ -98,19 +105,20 @@ const MobileInventoryModal = ({
         }
     };
 
-    const fieldClass = "w-full rounded-lg border border-gray-300 bg-white px-3 py-3 text-sm text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 disabled:bg-gray-100 disabled:text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:disabled:bg-gray-800";
+    const fieldClass = 'w-full rounded-lg border border-gray-300 bg-white px-3 py-3 text-sm font-semibold text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-white';
+    const detailCardClass = 'rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900';
 
     return (
-        <div className="fixed inset-0 z-50 flex items-end bg-black/50" onClick={onClose}>
+        <div className="fixed inset-0 z-50 flex items-end bg-black/50 backdrop-blur-sm" onClick={onClose}>
             <div
-                className="max-h-[88vh] w-full overflow-hidden rounded-t-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-950"
+                className="max-h-[90vh] w-full overflow-hidden rounded-t-lg border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-950"
                 onClick={event => event.stopPropagation()}
             >
-                <div className="flex items-center justify-between border-b border-gray-200 px-4 py-4 dark:border-gray-800">
+                <div className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-4 dark:border-gray-800 dark:bg-gray-950">
                     <div>
-                        <h2 className="text-lg font-bold text-gray-900 dark:text-white">{title}</h2>
+                        <h2 className="text-lg font-black text-gray-900 dark:text-white">{title}</h2>
                         {item?.Item_Code && (
-                            <p className="mt-0.5 font-mono text-xs text-gray-500 dark:text-gray-400">{item.Item_Code}</p>
+                            <p className="mt-0.5 font-mono text-xs font-semibold text-gray-500 dark:text-gray-400">{item.Item_Code}</p>
                         )}
                     </div>
                     <button
@@ -123,50 +131,49 @@ const MobileInventoryModal = ({
                     </button>
                 </div>
 
-                <div className="max-h-[calc(88vh-145px)] overflow-y-auto px-4 py-4">
+                <div className="max-h-[calc(90vh-145px)] overflow-y-auto px-4 py-4">
                     {readOnly ? (
                         <div className="space-y-3">
-                            <div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-900">
-                                <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Item Type</p>
-                                <p className="mt-1 text-base font-bold text-gray-900 dark:text-white">{formData.Item_Type || 'N/A'}</p>
+                            <div className={detailCardClass}>
+                                <p className="text-xs font-bold uppercase text-gray-500 dark:text-gray-400">Item Type</p>
+                                <p className="mt-1 text-base font-black text-gray-900 dark:text-white">{formatItemType(formData.Item_Type) || 'N/A'}</p>
                             </div>
-                            <div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-900">
-                                <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Brand</p>
-                                <p className="mt-1 text-base font-bold text-gray-900 dark:text-white">{formData.Brand || 'N/A'}</p>
+                            <div className={detailCardClass}>
+                                <p className="text-xs font-bold uppercase text-gray-500 dark:text-gray-400">Brand</p>
+                                <p className="mt-1 text-base font-black text-gray-900 dark:text-white">{formData.Brand || 'N/A'}</p>
                             </div>
                             <div className="grid grid-cols-2 gap-3">
-                                <div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-900">
-                                    <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Status</p>
-                                    <p className="mt-1 text-base font-bold text-gray-900 dark:text-white">{formData.Status}</p>
+                                <div className={detailCardClass}>
+                                    <p className="text-xs font-bold uppercase text-gray-500 dark:text-gray-400">Status</p>
+                                    <p className="mt-1 text-base font-black text-gray-900 dark:text-white">{formatItemType(formData.Status)}</p>
                                 </div>
-                                <div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-900">
-                                    <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Location</p>
-                                    <p className="mt-1 text-base font-bold text-gray-900 dark:text-white">{formData.Location || selectedRoom?.Name || 'N/A'}</p>
+                                <div className={detailCardClass}>
+                                    <p className="text-xs font-bold uppercase text-gray-500 dark:text-gray-400">Location</p>
+                                    <p className="mt-1 text-base font-black text-gray-900 dark:text-white">{formData.Location || selectedRoom?.Name || 'N/A'}</p>
                                 </div>
                             </div>
-                            <div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-900">
-                                <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Serial Number</p>
-                                <p className="mt-1 break-all text-base font-bold text-gray-900 dark:text-white">{formData.Serial_Number || 'N/A'}</p>
+                            <div className={detailCardClass}>
+                                <p className="text-xs font-bold uppercase text-gray-500 dark:text-gray-400">Serial Number</p>
+                                <p className="mt-1 break-all text-base font-black text-gray-900 dark:text-white">{formData.Serial_Number || 'N/A'}</p>
                             </div>
-                            <div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-900">
-                                <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Borrowable</p>
-                                <p className="mt-1 text-base font-bold text-gray-900 dark:text-white">{formData.IsBorrowable ? 'Yes' : 'No'}</p>
+                            <div className={detailCardClass}>
+                                <p className="text-xs font-bold uppercase text-gray-500 dark:text-gray-400">Borrowable</p>
+                                <p className="mt-1 text-base font-black text-gray-900 dark:text-white">{formData.IsBorrowable ? 'Yes' : 'No'}</p>
                             </div>
                         </div>
                     ) : (
                         <div className="space-y-4">
                             <div>
-                                <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-200">Item Type</label>
-                                <FloatingSelect
-                                    id="mobile-item-modal-type"
+                                <label className="mb-1.5 block text-sm font-bold text-gray-700 dark:text-gray-200">Item Type</label>
+                                <input
                                     value={formData.Item_Type}
-                                    placeholder="Select item type"
-                                    options={itemTypes.map(type => ({ value: type, label: type }))}
-                                    onChange={value => setFormData(prev => ({ ...prev, Item_Type: String(value) }))}
+                                    onChange={event => setFormData(prev => ({ ...prev, Item_Type: event.target.value }))}
+                                    className={fieldClass}
+                                    placeholder="GENERAL, HDMI, PROJECTOR"
                                 />
                             </div>
                             <div>
-                                <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-200">Brand</label>
+                                <label className="mb-1.5 block text-sm font-bold text-gray-700 dark:text-gray-200">Brand</label>
                                 <input
                                     value={formData.Brand}
                                     onChange={event => setFormData(prev => ({ ...prev, Brand: event.target.value }))}
@@ -175,7 +182,7 @@ const MobileInventoryModal = ({
                                 />
                             </div>
                             <div>
-                                <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-200">Serial Number</label>
+                                <label className="mb-1.5 block text-sm font-bold text-gray-700 dark:text-gray-200">Serial Number</label>
                                 <input
                                     value={formData.Serial_Number}
                                     onChange={event => setFormData(prev => ({ ...prev, Serial_Number: event.target.value }))}
@@ -184,7 +191,7 @@ const MobileInventoryModal = ({
                                 />
                             </div>
                             <div>
-                                <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-200">Room</label>
+                                <label className="mb-1.5 block text-sm font-bold text-gray-700 dark:text-gray-200">Room</label>
                                 <FloatingSelect
                                     id="mobile-item-modal-room"
                                     value={formData.Room_ID}
@@ -194,7 +201,7 @@ const MobileInventoryModal = ({
                                 />
                             </div>
                             <div>
-                                <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-200">Location</label>
+                                <label className="mb-1.5 block text-sm font-bold text-gray-700 dark:text-gray-200">Location</label>
                                 <input
                                     value={formData.Location || ''}
                                     onChange={event => setFormData(prev => ({ ...prev, Location: event.target.value }))}
@@ -203,16 +210,16 @@ const MobileInventoryModal = ({
                                 />
                             </div>
                             <div>
-                                <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-200">Status</label>
+                                <label className="mb-1.5 block text-sm font-bold text-gray-700 dark:text-gray-200">Status</label>
                                 <FloatingSelect
                                     id="mobile-item-modal-status"
                                     value={formData.Status}
                                     placeholder="Select status"
-                                    options={['AVAILABLE', 'BORROWED', 'DEFECTIVE', 'LOST', 'REPLACED', 'DISPOSED'].map(status => ({ value: status, label: status }))}
+                                    options={inventoryStatuses.map(status => ({ value: status, label: formatItemType(status) }))}
                                     onChange={value => setFormData(prev => ({ ...prev, Status: value as Item['Status'] }))}
                                 />
                             </div>
-                            <label className="flex items-center justify-between rounded-lg border border-gray-200 p-3 text-sm font-semibold text-gray-700 dark:border-gray-700 dark:text-gray-200">
+                            <label className="flex items-center justify-between rounded-lg border border-gray-200 p-3 text-sm font-bold text-gray-700 dark:border-gray-700 dark:text-gray-200">
                                 Borrowable Item
                                 <input
                                     type="checkbox"
@@ -225,17 +232,17 @@ const MobileInventoryModal = ({
                     )}
                 </div>
 
-                <div className="flex gap-2 border-t border-gray-200 px-4 py-4 dark:border-gray-800">
-                    {readOnly ? (
+                <div className="flex gap-2 border-t border-gray-200 bg-white px-4 py-4 dark:border-gray-800 dark:bg-gray-950">
+                    {readOnly && canEdit ? (
                         <button
                             type="button"
                             onClick={onEdit}
-                            className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-yellow-600 px-4 py-3 text-sm font-bold text-white"
+                            className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-3 text-sm font-bold text-white"
                         >
                             <Edit3 className="h-4 w-4" />
                             Edit
                         </button>
-                    ) : (
+                    ) : !readOnly ? (
                         <button
                             type="button"
                             onClick={() => void handleSubmit()}
@@ -243,6 +250,14 @@ const MobileInventoryModal = ({
                             className="flex-1 rounded-lg bg-indigo-600 px-4 py-3 text-sm font-bold text-white disabled:opacity-60"
                         >
                             {saving ? 'Saving...' : 'Save'}
+                        </button>
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-bold text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                        >
+                            Close
                         </button>
                     )}
                 </div>
@@ -252,36 +267,31 @@ const MobileInventoryModal = ({
 };
 
 const InventoryMobilePage = () => {
-    const navigate = useNavigate();
-    const [isQrOpen, setIsQrOpen] = useState(false);
+    const { user, userRole } = useAuth();
+    const canEditInventory = isLabStaffRole(userRole);
     const [inventory, setInventory] = useState<Item[]>([]);
     const [selectedItem, setSelectedItem] = useState<Item | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<ModalMode>('view');
 
     const [rooms, setRooms] = useState<Room[]>([]);
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const codeReaderRef = useRef<BrowserQRCodeReader | null>(null);
-    const qrControlsRef = useRef<{ stop: () => void } | null>(null);
 
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedType, setSelectedType] = useState('All Types');
     const [selectedStatus, setSelectedStatus] = useState('All Status');
     const [isFilterOpen, setIsFilterOpen] = useState(false);
-    const inventoryStatuses = ['AVAILABLE', 'BORROWED', 'DEFECTIVE', 'LOST', 'REPLACED', 'DISPOSED'];
     const itemTypes = [...new Set(['GENERAL', 'HDMI', 'VGA', 'ADAPTER', 'PROJECTOR', 'EXTENSION', 'MOUSE', 'KEYBOARD', 'MONITOR', 'SYSTEM_UNIT', 'OTHER', ...inventory.map(item => item.Item_Type).filter(Boolean)])];
 
     const loadInventory = async () => {
         try {
             const data = await getInventory();
-            setInventory(data.filter((item): item is Item => !!item));
+            setInventory(data.filter((item): item is Item => !!item && 'Item_Code' in item));
         } catch (err) {
             console.error('Error fetching inventory:', err);
             toast.error('Failed to load inventory');
         }
     };
 
-    // Load rooms for adding/updating items
     useEffect(() => {
         const loadRooms = async () => {
             try {
@@ -294,7 +304,6 @@ const InventoryMobilePage = () => {
         loadRooms();
     }, []);
 
-    // Load inventory
     useEffect(() => {
         void loadInventory();
     }, []);
@@ -311,9 +320,8 @@ const InventoryMobilePage = () => {
         try {
             if (modalMode === 'edit' && selectedItem?.Item_ID) {
                 await updateInventoryItem(selectedItem.Item_ID, payload);
-                toast.success('Item updated');
             } else {
-                const userId = Number(localStorage.getItem('userId') || 0);
+                const userId = user?.User_ID ?? Number(localStorage.getItem('userId') || 0);
                 await createInventoryBulk([payload as Omit<Item, 'Item_ID'>], userId);
                 toast.success('Item added');
             }
@@ -327,7 +335,6 @@ const InventoryMobilePage = () => {
         }
     };
 
-    // Filtered inventory
     const filteredInventory = inventory.filter(item => {
         const matchesSearch = (item.Brand + item.Item_Code + (item.Item_Type ?? '') + (item.Location ?? '') + (item.Room?.Name ?? ''))
             .toLowerCase()
@@ -337,102 +344,45 @@ const InventoryMobilePage = () => {
         return matchesSearch && matchesType && matchesStatus;
     });
 
-    // QR Scanner setup
-    useEffect(() => {
-        if (!isQrOpen || !videoRef.current) return;
-
-        const reader = new BrowserQRCodeReader();
-        codeReaderRef.current = reader;
-
-        let stopped = false;
-
-        const start = async () => {
-            try {
-                const devices = await BrowserQRCodeReader.listVideoInputDevices();
-                const backCamera =
-                    devices.find(d => /back|rear|environment/i.test(d.label))?.deviceId ??
-                    devices[0]?.deviceId;
-
-                const controls = await reader.decodeFromVideoDevice(
-                    backCamera,
-                    videoRef.current!,
-                    (result, error) => {
-                        if (result && !stopped) {
-                            const scan = parseInventoryQrValue(result.getText());
-
-                            if (scan.isItemUrl && scan.itemCode) {
-                                stopped = true;
-                                qrControlsRef.current?.stop();
-                                setIsQrOpen(false);
-                                navigate(buildInventoryItemPath(scan.itemCode));
-                                return;
-                            }
-
-                            const item = inventory.find(
-                                i => i.Serial_Number === scan.rawValue || i.Item_Code === scan.rawValue
-                            );
-
-                            if (item) {
-                                stopped = true;
-                                qrControlsRef.current?.stop();
-                                setIsQrOpen(false);
-                                setSelectedItem(item);
-                                setModalMode('view');
-                                setIsModalOpen(true);
-                            }
-                        }
-
-                        if (error && error.name !== 'NotFoundException') {
-                            console.error(error);
-                        }
-                    }
-                );
-
-                qrControlsRef.current = controls;
-            } catch (err) {
-                console.error('QR start failed:', err);
-            }
-        };
-
-        start();
-
-        return () => {
-            stopped = true;
-            qrControlsRef.current?.stop();
-            qrControlsRef.current = null;
-            codeReaderRef.current = null;
-        };
-    }, [isQrOpen, inventory, navigate]);
-
     return (
-        <div className="px-4 py-4 space-y-4">
-            {/* Search + QR + Filter */}
-            <div className="flex items-center gap-2">
-                <Search searchTerm={searchTerm} onChange={setSearchTerm} showLabel={false} />
-                <button
-                    className="p-2 bg-gray-100 dark:bg-gray-800 rounded-md"
-                    onClick={() => setIsQrOpen(true)}
-                >
-                    <QrCode className="w-5 h-5 text-gray-900 dark:text-gray-200" />
-                </button>
+        <div className="flex min-h-full flex-col gap-4 bg-gray-50 px-4 py-4 dark:bg-gray-950">
+            <header className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                <p className="text-xs font-bold uppercase tracking-wide text-indigo-600 dark:text-indigo-300">Inventory Management</p>
+                <h1 className="mt-1 text-xl font-black text-gray-900 dark:text-white">Mobile Inventory</h1>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Scan, search, and update laboratory assets.</p>
+            </header>
 
+            <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white p-2 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                <div className="min-w-0 flex-1">
+                    <Search searchTerm={searchTerm} onChange={setSearchTerm} showLabel={false} />
+                </div>
                 <button
-                    className="p-2 bg-gray-100 dark:bg-gray-800 rounded-md flex items-center gap-1"
-                    onClick={() => setIsFilterOpen(!isFilterOpen)}
+                    className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+                    onClick={() => setIsFilterOpen(true)}
+                    aria-label="Open inventory filters"
                 >
-                    <Filter className="w-5 h-5 text-gray-900 dark:text-gray-200" />
+                    <Filter className="h-5 w-5" />
                 </button>
             </div>
 
-            {/* Filter Modal */}
             {isFilterOpen && (
-                <div className="fixed inset-0 z-40" onClick={() => setIsFilterOpen(false)}>
+                <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={() => setIsFilterOpen(false)}>
                     <div
-                        className="absolute top-32 left-4 right-4 bg-white dark:bg-gray-900 p-4 rounded-md shadow-lg border border-gray-300 dark:border-gray-700 z-50 space-y-3"
+                        className="absolute bottom-0 left-0 right-0 z-50 space-y-4 rounded-t-lg border border-gray-200 bg-white p-4 shadow-2xl dark:border-gray-700 dark:bg-gray-950"
                         onClick={e => e.stopPropagation()}
                     >
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-base font-black text-gray-900 dark:text-white">Filters</h2>
+                            <button
+                                type="button"
+                                onClick={() => setIsFilterOpen(false)}
+                                className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
                         <div>
-                            <label className="text-sm font-medium text-gray-900 dark:text-white">Type</label>
+                            <label className="mb-1.5 block text-sm font-bold text-gray-900 dark:text-white">Type</label>
                             <FloatingSelect
                                 id="mobile-inventory-type"
                                 value={selectedType}
@@ -441,14 +391,14 @@ const InventoryMobilePage = () => {
                                     { value: 'All Types', label: 'All Types' },
                                     ...[...new Set(inventory.map(i => i.Item_Type).filter(Boolean))].map(type => ({
                                         value: type,
-                                        label: type,
+                                        label: formatItemType(type),
                                     })),
                                 ]}
                                 onChange={setSelectedType}
                             />
                         </div>
                         <div>
-                            <label className="text-sm font-medium text-gray-900 dark:text-white">Status</label>
+                            <label className="mb-1.5 block text-sm font-bold text-gray-900 dark:text-white">Status</label>
                             <FloatingSelect
                                 id="mobile-inventory-status"
                                 value={selectedStatus}
@@ -457,94 +407,58 @@ const InventoryMobilePage = () => {
                                     { value: 'All Status', label: 'All Status' },
                                     ...inventoryStatuses.map(status => ({
                                         value: status,
-                                        label: status,
+                                        label: formatItemType(status),
                                     })),
                                 ]}
                                 onChange={setSelectedStatus}
                             />
                         </div>
                         <button
-                            className="w-full bg-indigo-600 text-white mt-3 py-2 rounded-md"
+                            className="mt-2 w-full rounded-lg bg-indigo-600 py-3 text-sm font-bold text-white"
                             onClick={() => setIsFilterOpen(false)}
                         >
-                            Apply
+                            Apply Filters
                         </button>
                     </div>
                 </div>
             )}
 
-            {/* Add Item */}
-            <button
-                className="w-full flex items-center justify-center gap-2 rounded-md bg-indigo-600 text-white py-2"
-                onClick={() => { setModalMode('add'); setIsModalOpen(true); }}
-            >
-                <Plus className="h-5 w-5" />
-                Add Item
-            </button>
+            {canEditInventory && (
+                <button
+                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 py-3 text-sm font-bold text-white shadow-sm"
+                    onClick={() => { setSelectedItem(null); setModalMode('add'); setIsModalOpen(true); }}
+                >
+                    <Plus className="h-5 w-5" />
+                    Add Item
+                </button>
+            )}
 
-            {/* Inventory List */}
             <div className="flex flex-col gap-3">
-                {filteredInventory.map(item => (
+                {filteredInventory.length > 0 ? filteredInventory.map(item => (
                     <div
                         key={`${item.Item_ID}-${item.Item_Code}`}
                         onClick={() => { setSelectedItem({ ...item }); setModalMode('view'); setIsModalOpen(true); }}
-                        className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-slate-900 cursor-pointer"
+                        className="cursor-pointer rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-colors active:bg-indigo-50 dark:border-gray-700 dark:bg-gray-900 dark:active:bg-indigo-950/30"
                     >
-                        <div className="flex justify-between items-start mb-2">
-                            <span className="font-semibold text-gray-900 dark:text-white">{item.Item_Code}</span>
-                            <span className="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">{item.Item_Type}</span>
+                        <div className="mb-2 flex items-start justify-between gap-3">
+                            <span className="font-mono text-sm font-black text-gray-900 dark:text-white">{item.Item_Code}</span>
+                            <span className="rounded-full bg-indigo-50 px-2 py-1 text-xs font-bold text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-200">{formatItemType(item.Item_Type)}</span>
                         </div>
-                        <div className="text-sm text-gray-600 dark:text-gray-300">{item.Brand}</div>
-                        <div className="flex justify-between mt-2">
-                            <span
-                                className={`text-xs px-2 py-1 rounded-full ${item.Status === 'AVAILABLE'
-                                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                                    : item.Status === 'BORROWED'
-                                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                                        : item.Status === 'DEFECTIVE'
-                                            ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
-                                            : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
-                                    }`}
-                            >
-                                {item.Status}
+                        <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">{item.Brand || 'No brand'}</div>
+                        <div className="mt-3 flex items-center justify-between gap-3">
+                            <span className={`rounded-full px-2 py-1 text-xs font-bold ${statusColors[item.Status] || 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'}`}>
+                                {formatItemType(item.Status)}
                             </span>
-                            <span className="text-xs text-gray-600 dark:text-gray-400">{item.Location || item.Room?.Name || '—'}</span>
+                            <span className="truncate text-xs font-medium text-gray-600 dark:text-gray-400">{item.Location || item.Room?.Name || '-'}</span>
                         </div>
                     </div>
-                ))}
+                )) : (
+                    <div className="rounded-lg border border-dashed border-gray-300 bg-white p-6 text-center dark:border-gray-700 dark:bg-gray-900">
+                        <p className="text-sm font-bold text-gray-900 dark:text-white">No inventory items found</p>
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Try changing your search or filters.</p>
+                    </div>
+                )}
             </div>
-
-            {isQrOpen && (
-                <div
-                    className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
-                    onClick={() => setIsQrOpen(false)}
-                >
-                    <div
-                        className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-xl border border-gray-200 dark:border-gray-700 max-w-sm w-full"
-                        onClick={e => e.stopPropagation()}
-                    >
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Scan QR Code</h3>
-                            <button
-                                onClick={() => setIsQrOpen(false)}
-                                className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
-                            >
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-
-                        <div className="flex justify-center">
-                            <video ref={videoRef} className="w-full aspect-square object-cover border border-gray-200 dark:border-gray-700 rounded-lg bg-black" />
-                        </div>
-
-                        <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">
-                            Point your camera at a QR code to scan
-                        </p>
-                    </div>
-                </div>
-            )}
 
             <MobileInventoryModal
                 isOpen={isModalOpen}
@@ -552,7 +466,8 @@ const InventoryMobilePage = () => {
                 mode={modalMode}
                 rooms={rooms}
                 itemTypes={itemTypes}
-                onClose={() => { setIsModalOpen(false); setSelectedItem(null); }}
+                canEdit={canEditInventory}
+                onClose={() => { setIsModalOpen(false); setSelectedItem(null); setModalMode('view'); }}
                 onEdit={() => setModalMode('edit')}
                 onSave={handleSaveItem}
             />

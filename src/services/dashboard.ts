@@ -34,6 +34,7 @@ export interface DashboardMetrics {
     summaries?: {
         bookings?: Record<string, number>;
         tickets?: Record<string, number>;
+        forms?: Record<string, number>;
         inventory?: Record<string, number>;
         rooms?: Record<string, number>;
         reports?: Record<string, number>;

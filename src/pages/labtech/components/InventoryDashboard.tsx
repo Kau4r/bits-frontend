@@ -49,17 +49,17 @@ const MetricCard = ({
   }[tone]
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+    <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">{label}</p>
           <p className="mt-3 text-3xl font-black text-gray-900 dark:text-white">{value}</p>
         </div>
-        <span className={`rounded-2xl bg-gradient-to-br p-3 ${toneClass}`}>
+        <span className={`rounded-lg bg-gradient-to-br p-2.5 ${toneClass}`}>
           <Icon className="h-5 w-5" />
         </span>
       </div>
-      <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">{hint}</p>
+      <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{hint}</p>
     </div>
   )
 }
@@ -95,18 +95,18 @@ const DistributionCard = ({
     : '#e5e7eb 0% 100%'
 
   return (
-    <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-      <div className="mb-5 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+    <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+      <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-300">{eyebrow}</p>
           <h2 className="mt-1 text-lg font-bold text-gray-900 dark:text-white">{title}</h2>
         </div>
-        <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600 dark:bg-gray-900 dark:text-gray-300">
+        <span className="rounded-md bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600 dark:bg-gray-900 dark:text-gray-300">
           {total} record{total === 1 ? '' : 's'}
         </span>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-[180px_minmax(0,1fr)] md:items-center">
+      <div className="grid gap-4 md:grid-cols-[180px_minmax(0,1fr)] md:items-center">
         <div className="relative mx-auto h-44 w-44 rounded-full border border-gray-200 shadow-inner dark:border-gray-700" style={{ background: `conic-gradient(${gradient})` }}>
           <div className="absolute inset-8 flex flex-col items-center justify-center rounded-full bg-white text-center shadow-sm dark:bg-gray-800">
             <span className="text-3xl font-black text-gray-900 dark:text-white">{total}</span>
@@ -116,7 +116,7 @@ const DistributionCard = ({
 
         <div className="grid max-h-72 gap-2 overflow-y-auto pr-1">
           {legendEntries.length ? legendEntries.map(([label, value], index) => (
-            <div key={label} className="rounded-2xl border border-gray-100 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-900/70">
+            <div key={label} className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-900/70">
               <div className="flex items-center justify-between gap-3">
                 <span className="flex min-w-0 items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
                   <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: chartColors[index % chartColors.length] }} />
@@ -132,7 +132,7 @@ const DistributionCard = ({
               </div>
             </div>
           )) : (
-            <p className="rounded-2xl border border-dashed border-gray-300 p-4 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">{emptyText}</p>
+            <p className="rounded-lg border border-dashed border-gray-300 p-4 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">{emptyText}</p>
           )}
         </div>
       </div>
@@ -141,8 +141,8 @@ const DistributionCard = ({
 }
 
 const Panel = ({ title, children }: { title: string; children: ReactNode }) => (
-  <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-    <h2 className="mb-4 text-lg font-bold text-gray-900 dark:text-white">{title}</h2>
+  <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+    <h2 className="mb-3 text-lg font-bold text-gray-900 dark:text-white">{title}</h2>
     {children}
   </section>
 )
@@ -177,9 +177,9 @@ const InventoryDashboard = ({
     : 'All statuses included'
 
   return (
-    <div className="space-y-5 pb-6">
-      <section className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-        <div className="relative p-5 sm:p-6">
+    <div className="space-y-4 pb-1">
+      <section className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <div className="relative p-4 sm:p-5">
           <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-indigo-500/10 blur-3xl" />
           <div className="relative flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
@@ -189,7 +189,7 @@ const InventoryDashboard = ({
                 A cleaner summary of what is available, what needs attention, and where items are assigned.
               </p>
             </div>
-            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+            <div className="inline-flex w-fit items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
               <PackageSearch className="h-4 w-4 text-indigo-500" />
               {activeLabel}
             </div>

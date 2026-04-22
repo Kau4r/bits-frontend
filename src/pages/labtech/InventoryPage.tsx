@@ -473,9 +473,9 @@ const InventoryPage = () => {
   }
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-white p-6 sm:px-8 lg:px-10 dark:bg-gray-900">
+    <div className="flex h-full w-full flex-col overflow-hidden bg-white p-4 sm:px-6 lg:px-8 dark:bg-gray-900">
       {/* Header */}
-      <div className="mb-4 flex shrink-0 flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+      <div className="mb-3 flex shrink-0 flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Inventory Management</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Track and manage laboratory equipment and assets</p>
@@ -554,7 +554,7 @@ const InventoryPage = () => {
       ) : (
         <>
       {/* Filters Bar */}
-      <div className="mb-4 flex shrink-0 flex-wrap items-center gap-3">
+      <div className="mb-3 flex shrink-0 flex-wrap items-center gap-3">
         {/* Search */}
         <div className="min-w-[280px] flex-1">
           <Search searchTerm={searchTerm} onChange={setSearchTerm} showLabel={false} placeholder="Search by brand, code, or type..." />
@@ -691,6 +691,8 @@ const InventoryPage = () => {
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="min-h-0 flex-1">
           <Table
+            density="compact"
+            scrollShadow
             headers={[
             {
               label: (
@@ -764,7 +766,7 @@ const InventoryPage = () => {
                       openRow()
                     }
                   }}
-                  className={`group relative grid w-full cursor-pointer items-center border-b border-l-4 ${border} border-gray-200 px-6 py-4 text-left transition-all duration-150 hover:bg-indigo-50/50 focus:bg-indigo-50 focus:outline-none dark:border-gray-700/50 dark:hover:bg-indigo-900/10 dark:focus:bg-indigo-900/20 ${isSelected ? 'bg-indigo-50/60 dark:bg-indigo-900/20' : ''}`}
+                  className={`group relative grid w-full cursor-pointer items-center border-b border-l-4 ${border} border-gray-200 px-4 py-3 text-left transition-all duration-150 hover:bg-indigo-50/50 focus:bg-indigo-50 focus:outline-none dark:border-gray-700/50 dark:hover:bg-indigo-900/10 dark:focus:bg-indigo-900/20 ${isSelected ? 'bg-indigo-50/60 dark:bg-indigo-900/20' : ''}`}
                   style={{ display: 'grid', gridTemplateColumns: columnWidths }}
                 >
                   {/* Checkbox */}
