@@ -29,7 +29,6 @@ interface MobileInventoryModalProps {
     mode: ModalMode;
     item: Item | null;
     rooms: Room[];
-    itemTypes: string[];
     canEdit: boolean;
     onClose: () => void;
     onEdit: () => void;
@@ -44,10 +43,13 @@ interface MobileInventoryModalProps {
     }) => Promise<void>;
 }
 
-const normalizeItemType = (value: string) => value.trim().toUpperCase().replace(/[\s-]+/g, '_');
+const normalizeItemType = (value: string) => {
+    const normalized = value.trim().toUpperCase().replace(/[\s-]+/g, '_');
+    return normalized === 'SYSTEM_UNIT' ? 'MINI_PC' : normalized;
+};
 
-const getDefaultFormData = (item: Item | null, rooms: Room[], itemTypes: string[]): InventoryFormData => ({
-    Item_Type: item?.Item_Type || itemTypes[0] || 'OTHER',
+const getDefaultFormData = (item: Item | null, rooms: Room[]): InventoryFormData => ({
+    Item_Type: item?.Item_Type || '',
     Brand: item?.Brand || '',
     Location: item?.Location || '',
     Serial_Number: item?.Serial_Number || '',
@@ -61,19 +63,18 @@ const MobileInventoryModal = ({
     mode,
     item,
     rooms,
-    itemTypes,
     canEdit,
     onClose,
     onEdit,
     onSave,
 }: MobileInventoryModalProps) => {
-    const [formData, setFormData] = useState<InventoryFormData>(() => getDefaultFormData(item, rooms, itemTypes));
+    const [formData, setFormData] = useState<InventoryFormData>(() => getDefaultFormData(item, rooms));
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         if (!isOpen) return;
-        setFormData(getDefaultFormData(item, rooms, itemTypes));
-    }, [isOpen, item, itemTypes, rooms]);
+        setFormData(getDefaultFormData(item, rooms));
+    }, [isOpen, item, rooms]);
 
     if (!isOpen) return null;
 
@@ -97,7 +98,6 @@ const MobileInventoryModal = ({
                 ...formData,
                 Item_Type: normalizeItemType(formData.Item_Type),
                 Brand: formData.Brand.trim(),
-                Location: formData.Location.trim() || null,
                 Serial_Number: formData.Serial_Number.trim(),
                 Room_ID: formData.Room_ID || undefined,
             });
@@ -192,22 +192,13 @@ const MobileInventoryModal = ({
                                 />
                             </div>
                             <div>
-                                <label className="mb-1.5 block text-sm font-bold text-gray-700 dark:text-gray-200">Room</label>
+                                <label className="mb-1.5 block text-sm font-bold text-gray-700 dark:text-gray-200">Location</label>
                                 <FloatingSelect
                                     id="mobile-item-modal-room"
                                     value={formData.Room_ID}
-                                    placeholder="Select room"
+                                    placeholder="Select location"
                                     options={rooms.map(room => ({ value: room.Room_ID, label: room.Name }))}
                                     onChange={value => setFormData(prev => ({ ...prev, Room_ID: Number(value) }))}
-                                />
-                            </div>
-                            <div>
-                                <label className="mb-1.5 block text-sm font-bold text-gray-700 dark:text-gray-200">Location</label>
-                                <input
-                                    value={formData.Location || ''}
-                                    onChange={event => setFormData(prev => ({ ...prev, Location: event.target.value }))}
-                                    className={fieldClass}
-                                    placeholder="Storage shelf, office, or exact area"
                                 />
                             </div>
                             <div>
@@ -280,9 +271,8 @@ const InventoryMobilePage = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedType, setSelectedType] = useState('All Types');
     const [selectedStatus, setSelectedStatus] = useState('All Status');
+    const [selectedRoomFilter, setSelectedRoomFilter] = useState('All Rooms');
     const [isFilterOpen, setIsFilterOpen] = useState(false);
-    const itemTypes = [...new Set(['HDMI', 'VGA', 'ADAPTER', 'PROJECTOR', 'EXTENSION', 'MOUSE', 'KEYBOARD', 'MONITOR', 'SYSTEM_UNIT', 'OTHER', ...inventory.map(item => resolveItemType(item.Item_Type))])];
-
     const loadInventory = async () => {
         try {
             const data = await getInventory();
@@ -342,7 +332,9 @@ const InventoryMobilePage = () => {
             .includes(searchTerm.toLowerCase());
         const matchesType = selectedType === 'All Types' || resolveItemType(item.Item_Type) === selectedType;
         const matchesStatus = selectedStatus === 'All Status' || item.Status?.toLowerCase() === selectedStatus.toLowerCase();
-        return matchesSearch && matchesType && matchesStatus;
+        const itemRoomId = item.Room_ID ?? item.Room?.Room_ID ?? (item as any).Computers?.[0]?.Room_ID;
+        const matchesRoom = selectedRoomFilter === 'All Rooms' || String(itemRoomId ?? '') === selectedRoomFilter;
+        return matchesSearch && matchesType && matchesStatus && matchesRoom;
     });
 
     return (
@@ -430,6 +422,19 @@ const InventoryMobilePage = () => {
                                 onChange={setSelectedStatus}
                             />
                         </div>
+                        <div>
+                            <label className="mb-1.5 block text-sm font-bold text-gray-900 dark:text-white">Location</label>
+                            <FloatingSelect
+                                id="mobile-inventory-room"
+                                value={selectedRoomFilter}
+                                placeholder="All Rooms"
+                                options={[
+                                    { value: 'All Rooms', label: 'All Rooms' },
+                                    ...rooms.map(room => ({ value: String(room.Room_ID), label: room.Name })),
+                                ]}
+                                onChange={setSelectedRoomFilter}
+                            />
+                        </div>
                         <button
                             className="mt-2 w-full rounded-lg bg-indigo-600 py-3 text-sm font-bold text-white"
                             onClick={() => setIsFilterOpen(false)}
@@ -482,7 +487,6 @@ const InventoryMobilePage = () => {
                 item={modalMode !== 'add' ? selectedItem : null}
                 mode={modalMode}
                 rooms={rooms}
-                itemTypes={itemTypes}
                 canEdit={canEditInventory}
                 onClose={() => { setIsModalOpen(false); setSelectedItem(null); setModalMode('view'); }}
                 onEdit={() => setModalMode('edit')}

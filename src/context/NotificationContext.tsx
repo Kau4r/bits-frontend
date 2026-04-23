@@ -104,7 +104,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             const wsHost = httpBase.replace(/^https?:\/\//, '');
             const wsUrl = `${wsProtocol}://${wsHost}/ws/notifications?token=${token}`;
 
-            console.log('[WebSocket] Connecting to:', wsUrl);
+            console.log('[WebSocket] Connecting to notifications stream');
             const ws = new WebSocket(wsUrl);
 
             ws.onopen = () => {

@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import ReactQRCode from 'react-qr-code';
+import { Download, Printer } from 'lucide-react';
 import type { Room, RoomSession } from '@/types/room';
-import { fetchComputers, createComputer, updateComputer, deleteComputer, importComputersCsv, type Computer, type CreateComputerPayload, type UpdateComputerPayload } from '@/services/computers';
-import { type CsvImportResult } from '@/services/inventory';
+import { fetchComputers, createComputer, updateComputer, deleteComputer, type Computer, type CreateComputerPayload, type UpdateComputerPayload, type ComputerComponentType } from '@/services/computers';
 import { downloadInventoryReportCsv } from '@/services/reports';
 import api from '@/services/api';
 import { useModal } from '@/context/ModalContext';
@@ -32,6 +33,15 @@ interface RoomDetailModalProps {
     sessions?: RoomSession[];
 }
 
+interface InventoryItem {
+    Item_ID: number;
+    Item_Code: string;
+    Item_Type: string;
+    Brand: string | null;
+    Serial_Number: string | null;
+    Status: string;
+}
+
 // Mock Schedule Data with columns
 const timeSlots = [
     '7:30', '8:00', '8:30', '9:00', '9:30', '10:00', '10:30', '11:00', '11:30', '12:00',
@@ -42,9 +52,24 @@ const timeSlots = [
 const SCHEDULE_SLOT_HEIGHT_PX = 44;
 const SCHEDULE_GRID_START_MINS = 7 * 60 + 30;
 
-const ITEM_TYPES = ['KEYBOARD', 'MOUSE', 'MONITOR', 'SYSTEM_UNIT'] as const;
+const ITEM_TYPES: ComputerComponentType[] = ['KEYBOARD', 'MOUSE', 'MONITOR', 'MINI_PC'];
+
+type SelectedComputerItems = Record<ComputerComponentType, InventoryItem | null>;
+
+const createEmptySelectedItems = (): SelectedComputerItems => ({
+    KEYBOARD: null,
+    MOUSE: null,
+    MONITOR: null,
+    MINI_PC: null,
+});
+
+const normalizeItemType = (type?: string | null): string => {
+    const normalized = String(type || '').trim().replace(/[\s-]+/g, '_').toUpperCase();
+    return normalized === 'SYSTEM_UNIT' ? 'MINI_PC' : normalized;
+};
 
 const formatItemType = (type: string) => {
+    if (normalizeItemType(type) === 'MINI_PC') return 'Mini PC';
     return type.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
 };
 
@@ -61,29 +86,16 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
     const [showAddDialog, setShowAddDialog] = useState(false);
     const [newComputerName, setNewComputerName] = useState('');
     const [newComputerIsTeacher, setNewComputerIsTeacher] = useState(false);
-    interface InventoryItem {
-        Item_ID: number;
-        Item_Code: string;
-        Item_Type: string;
-        Brand: string | null;
-        Serial_Number: string | null;
-        Status: string;
-    }
-
-    const [selectedItems, setSelectedItems] = useState<Record<string, InventoryItem | null>>({
-        KEYBOARD: null,
-        MOUSE: null,
-        MONITOR: null,
-        SYSTEM_UNIT: null,
-    });
+    const [selectedItems, setSelectedItems] = useState<SelectedComputerItems>(() => createEmptySelectedItems());
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Edit Computer Dialog State
     const [editingComputer, setEditingComputer] = useState<Computer | null>(null);
+    const [computerModalMode, setComputerModalMode] = useState<'view' | 'edit'>('view');
     const [editName, setEditName] = useState('');
     const [editStatus, setEditStatus] = useState<Computer['Status']>('AVAILABLE');
     const [editIsTeacher, setEditIsTeacher] = useState(false);
-    const [editItems, setEditItems] = useState<{ itemId?: number; itemType: string; brand: string; serialNumber: string }[]>([]);
+    const [editSelectedItems, setEditSelectedItems] = useState<SelectedComputerItems>(() => createEmptySelectedItems());
 
     // Hover state for showing components
     const [hoveredPc, setHoveredPc] = useState<number | null>(null);
@@ -92,9 +104,6 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
     const [assets, setAssets] = useState<RoomAsset[]>([]);
     const [isLoadingAssets, setIsLoadingAssets] = useState(false);
     const numberedComputers = useMemo(() => getNumberedComputers(computers), [computers]);
-    const computerCsvInputRef = useRef<HTMLInputElement | null>(null);
-    const [isImportingCsv, setIsImportingCsv] = useState(false);
-
     // Fetch computers when modal opens
     useEffect(() => {
         if (isOpen && room?.Room_ID) {
@@ -183,12 +192,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
         setError(null);
         setNewComputerName(getNextComputerName(computers));
         setNewComputerIsTeacher(false);
-        setSelectedItems({
-            KEYBOARD: null,
-            MOUSE: null,
-            MONITOR: null,
-            SYSTEM_UNIT: null,
-        });
+        setSelectedItems(createEmptySelectedItems());
         setShowAddDialog(true);
     };
 
@@ -210,11 +214,11 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                 name: newComputerName,
                 roomId: room.Room_ID,
                 isTeacher: newComputerIsTeacher,
-                items: Object.entries(selectedItems)
-                    .filter(([_, item]) => item !== null)
-                    .map(([itemType, item]) => ({
-                        itemType: itemType as 'KEYBOARD' | 'MOUSE' | 'MONITOR' | 'SYSTEM_UNIT',
-                        itemId: item!.Item_ID, // Use existing item ID
+                items: ITEM_TYPES
+                    .filter(itemType => selectedItems[itemType] !== null)
+                    .map(itemType => ({
+                        itemType,
+                        itemId: selectedItems[itemType]!.Item_ID, // Use existing item ID
                     }))
             };
 
@@ -224,12 +228,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
             // Reset form
             setNewComputerName('');
             setNewComputerIsTeacher(false);
-            setSelectedItems({
-                KEYBOARD: null,
-                MOUSE: null,
-                MONITOR: null,
-                SYSTEM_UNIT: null,
-            });
+            setSelectedItems(createEmptySelectedItems());
             setShowAddDialog(false);
         } catch (err) {
             console.error('Failed to create computer:', err);
@@ -242,22 +241,18 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
         }
     };
 
-    const handleEditClick = (pc: Computer) => {
+    const handleComputerClick = (pc: Computer) => {
         setEditingComputer(pc);
+        setComputerModalMode('view');
         setEditName(pc.Name);
         setEditStatus(pc.Status);
         setEditIsTeacher(Boolean(pc.Is_Teacher));
-        // Map existing items or create placeholders for missing types
-        const existingItems = ITEM_TYPES.map(type => {
-            const existing = pc.Item.find(i => i.Item_Type === type);
-            return {
-                itemId: existing?.Item_ID,
-                itemType: type,
-                brand: existing?.Brand || '',
-                serialNumber: existing?.Serial_Number || '',
-            };
+        const existingItems = createEmptySelectedItems();
+        ITEM_TYPES.forEach(type => {
+            const existing = pc.Item.find(i => normalizeItemType(i.Item_Type) === type);
+            existingItems[type] = existing || null;
         });
-        setEditItems(existingItems);
+        setEditSelectedItems(existingItems);
     };
 
     const handleUpdateComputer = async () => {
@@ -266,15 +261,14 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
         setIsSubmitting(true);
         try {
             const payload: UpdateComputerPayload = {
-                name: editName,
                 status: editStatus,
                 isTeacher: editIsTeacher,
-                items: editItems.map(item => ({
-                    itemId: item.itemId,
-                    itemType: item.itemType,
-                    brand: item.brand || undefined,
-                    serialNumber: item.serialNumber || undefined,
-                }))
+                items: ITEM_TYPES
+                    .filter(itemType => editSelectedItems[itemType] !== null)
+                    .map(itemType => ({
+                        itemId: editSelectedItems[itemType]!.Item_ID,
+                        itemType,
+                    }))
             };
 
             await updateComputer(editingComputer.Computer_ID, payload);
@@ -300,61 +294,6 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
             console.error('Failed to delete computer:', err);
             setError('Failed to delete computer');
         }
-    };
-
-    const summarizeImport = (result: CsvImportResult, label: string) => {
-        const { summary } = result;
-        const issueParts = [
-            summary.skipped ? `${summary.skipped} skipped` : '',
-            summary.invalid ? `${summary.invalid} invalid` : '',
-            summary.duplicates ? `${summary.duplicates} duplicate` : '',
-        ].filter(Boolean);
-
-        const issueText = issueParts.length > 0 ? ` (${issueParts.join(', ')})` : '';
-        return `${label}: imported ${summary.imported} of ${summary.totalRows} row(s)${issueText}.`;
-    };
-
-    const getImportErrorMessage = (err: unknown, fallback: string) => {
-        return err instanceof Error && err.message ? err.message : fallback;
-    };
-
-    const isSupportedImportFile = (file: File) => {
-        const lowerName = file.name.toLowerCase();
-        return lowerName.endsWith('.csv') || lowerName.endsWith('.xlsx');
-    };
-
-    const handleComputerCsvImport = async (file?: File) => {
-        if (!file) return;
-        if (!isSupportedImportFile(file)) {
-            await modal.showError('Please choose a .csv or .xlsx file.', 'Invalid File');
-            if (computerCsvInputRef.current) computerCsvInputRef.current.value = '';
-            return;
-        }
-
-        setIsImportingCsv(true);
-        setError(null);
-        try {
-            const result = await importComputersCsv(file, room.Room_ID);
-            const refreshedComputers = await loadComputers();
-            await loadAssets(refreshedComputers);
-            await modal.showSuccess(
-                `${summarizeImport(result, 'Computer import')}\n\nSupported formats: .xlsx room-assets workbook, CSV exported from the workbook, or Computer_Name/System_Unit_Code/Monitor_Code/Keyboard_Code/Mouse_Code CSV.`,
-                'Import Complete'
-            );
-        } catch (err) {
-            const message = getImportErrorMessage(err, 'Failed to import computers CSV');
-            setError(message);
-            await modal.showError(message, 'Import Failed');
-        } finally {
-            setIsImportingCsv(false);
-            if (computerCsvInputRef.current) computerCsvInputRef.current.value = '';
-        }
-    };
-
-    const updateEditItem = (index: number, field: 'brand' | 'serialNumber', value: string) => {
-        setEditItems(prev => prev.map((item, i) =>
-            i === index ? { ...item, [field]: value } : item
-        ));
     };
 
     if (!isOpen) return null;
@@ -386,6 +325,100 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
 
     const handleExportRoomAssets = () => {
         downloadInventoryReportCsv({ roomId: room.Room_ID });
+    };
+
+    const buildComputerLabelCanvas = async (computer: Computer) => {
+        const svgEl = document.getElementById('pcQrCode');
+        if (!svgEl || !(svgEl instanceof SVGSVGElement)) return null;
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return null;
+
+        const scale = 3;
+        const width = 800;
+        const height = 250;
+        canvas.width = width * scale;
+        canvas.height = height * scale;
+        ctx.scale(scale, scale);
+        ctx.fillStyle = '#1f2937';
+        ctx.fillRect(0, 0, width, height);
+
+        const serializer = new XMLSerializer();
+        const svgString = serializer.serializeToString(svgEl);
+        const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(svgBlob);
+        const qrImg = new Image();
+
+        await new Promise((resolve) => {
+            qrImg.onload = () => {
+                const qrSize = 180;
+                const qrX = 40;
+                const qrY = (height - qrSize) / 2;
+                ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+
+                const textX = qrX + qrSize + 50;
+                const centerY = height / 2;
+                ctx.fillStyle = '#9ca3af';
+                ctx.font = '18px Arial';
+                ctx.fillText('PC:', textX, centerY - 40);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 32px monospace';
+                ctx.fillText(computer.Name, textX, centerY - 5);
+                ctx.fillStyle = '#9ca3af';
+                ctx.font = '16px Arial';
+                ctx.fillText('Room:', textX, centerY + 35);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '20px Arial';
+                ctx.fillText(room.Name, textX, centerY + 60);
+                URL.revokeObjectURL(url);
+                resolve(null);
+            };
+            qrImg.src = url;
+        });
+
+        return canvas;
+    };
+
+    const handleDownloadComputerQr = async (computer: Computer) => {
+        const canvas = await buildComputerLabelCanvas(computer);
+        if (!canvas) return;
+        const downloadLink = document.createElement('a');
+        downloadLink.href = canvas.toDataURL('image/png');
+        downloadLink.download = `pc-label-${computer.Name.replace(/\s+/g, '-')}.png`;
+        downloadLink.click();
+    };
+
+    const handlePrintComputerQr = async (computer: Computer) => {
+        const canvas = await buildComputerLabelCanvas(computer);
+        if (!canvas) return;
+        const pngUrl = canvas.toDataURL('image/png');
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) return;
+
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <title>Print PC Label - ${computer.Name}</title>
+                <style>
+                  @page { size: auto; margin: 0.5in; }
+                  * { margin: 0; padding: 0; box-sizing: border-box; }
+                  body { padding: 20px; background: white; }
+                  img { max-width: 600px; height: auto; display: block; }
+                  @media print { body { padding: 0; } img { page-break-inside: avoid; } }
+                </style>
+              </head>
+              <body>
+                <img src="${pngUrl}" alt="PC Label" />
+                <script>
+                  window.onload = () => setTimeout(() => window.print(), 250);
+                  window.onafterprint = () => setTimeout(() => window.close(), 100);
+                </script>
+              </body>
+            </html>
+        `);
+        printWindow.document.close();
     };
 
     return (
@@ -447,27 +480,12 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                 <div>
                                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Computers</h3>
                                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                                        Import a CSV/XLSX file or add a single PC with existing inventory components.
+                                        Add a single PC with existing inventory components.
                                     </p>
                                 </div>
                                 <div className="flex flex-wrap justify-end gap-2">
-                                    <input
-                                        ref={computerCsvInputRef}
-                                        type="file"
-                                        accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                                        className="hidden"
-                                        onChange={(e) => handleComputerCsvImport(e.target.files?.[0])}
-                                    />
-                                    <button
-                                        onClick={() => computerCsvInputRef.current?.click()}
-                                        disabled={isImportingCsv}
-                                        className="px-4 py-2 border border-blue-500/60 text-blue-600 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-500/10 disabled:opacity-60 disabled:cursor-not-allowed rounded-lg text-sm font-medium transition-colors"
-                                    >
-                                        {isImportingCsv ? 'Importing...' : 'Import Computers CSV/XLSX'}
-                                    </button>
                                     <button
                                         onClick={openAddComputerDialog}
-                                        disabled={isImportingCsv}
                                         className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
                                     >
                                         + Add Computer
@@ -505,7 +523,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                                         ? 'border-amber-400 dark:border-amber-500 ring-1 ring-amber-300/40 dark:ring-amber-500/30 hover:border-amber-500'
                                                         : 'border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500'
                                                 }`}
-                                                onClick={() => handleEditClick(pc)}
+                                                onClick={() => handleComputerClick(pc)}
                                                 onMouseEnter={() => setHoveredPc(pc.Computer_ID)}
                                                 onMouseLeave={() => setHoveredPc(null)}
                                             >
@@ -727,6 +745,27 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
 
                                             const safeDurationSlots = Math.min(durationSlots, timeSlots.length - rowStart);
                                             const isSchedule = session.type === 'schedule';
+                                            const isStudentUsage = session.type === 'booking' && session.purpose === 'Student Usage';
+                                            const sessionClasses = isSchedule
+                                                ? {
+                                                    card: 'bg-blue-500/20 border-blue-500/50',
+                                                    badge: 'bg-blue-500 text-white',
+                                                    text: 'text-blue-600 dark:text-blue-200',
+                                                    label: 'Class',
+                                                }
+                                                : isStudentUsage
+                                                    ? {
+                                                        card: 'bg-purple-500/10 border-purple-500/30',
+                                                        badge: 'bg-purple-500 text-white',
+                                                        text: 'text-purple-700 dark:text-purple-200',
+                                                        label: 'Student Usage',
+                                                    }
+                                                    : {
+                                                        card: 'bg-green-500/10 border-green-500/30',
+                                                        badge: 'bg-green-500 text-green-100',
+                                                        text: 'text-green-600 dark:text-green-200',
+                                                        label: 'Booking',
+                                                    };
 
                                             return (
                                                 <div
@@ -736,26 +775,23 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                                         gridRow: `${rowStart + 1} / span ${safeDurationSlots}`,
                                                     }}
                                                 >
-                                                    <div className={`h-full p-2 rounded-md border overflow-hidden ${
-                                                        isSchedule
-                                                            ? 'bg-blue-500/20 border-blue-500/50'
-                                                            : 'bg-green-500/10 border-green-500/30'
-                                                    }`}>
+                                                    <div className={`h-full p-2 rounded-md border overflow-hidden ${sessionClasses.card}`}>
                                                         <div className="flex justify-between items-start mb-1 gap-2">
                                                             <span className="text-[10px] text-gray-600 dark:text-gray-300 truncate">
                                                                 {start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – {end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                             </span>
-                                                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full truncate shrink-0 ${
-                                                                isSchedule ? 'bg-blue-500 text-white' : 'bg-green-500 text-green-100'
-                                                            }`}>
-                                                                {isSchedule ? 'Class' : 'Booking'}
+                                                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full truncate shrink-0 ${sessionClasses.badge}`}>
+                                                                {sessionClasses.label}
                                                             </span>
                                                         </div>
-                                                        <p className={`text-sm font-medium truncate ${
-                                                            isSchedule ? 'text-blue-600 dark:text-blue-200' : 'text-green-600 dark:text-green-200'
-                                                        }`}>
+                                                        <p className={`text-sm font-medium truncate ${sessionClasses.text}`}>
                                                             {session.purpose}
                                                         </p>
+                                                        {isStudentUsage && session.bookedByName && (
+                                                            <p className="mt-1 truncate text-[11px] text-purple-700/80 dark:text-purple-200/80">
+                                                                {session.bookedByName}
+                                                            </p>
+                                                        )}
                                                     </div>
                                                 </div>
                                             );
@@ -793,9 +829,8 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                             <input
                                 type="text"
                                 value={newComputerName}
-                                onChange={(e) => setNewComputerName(e.target.value)}
-                                placeholder="e.g., PC 1"
-                                className="w-full px-4 py-2 bg-white dark:bg-[#1e2939] border border-gray-300 dark:border-[#334155] rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                readOnly
+                                className="w-full cursor-not-allowed rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-gray-900 dark:border-[#334155] dark:bg-[#1e2939] dark:text-white"
                             />
                             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                 Defaults to the next available PC number for this room.
@@ -861,7 +896,9 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Edit Computer</h3>
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                                {computerModalMode === 'edit' ? 'Edit Computer' : 'Computer Details'}
+                            </h3>
                             <button
                                 onClick={() => setEditingComputer(null)}
                                 className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
@@ -872,15 +909,50 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                             </button>
                         </div>
 
+                        <div className="mb-5 flex flex-col gap-4 rounded-lg bg-gray-50 p-4 dark:bg-gray-800 sm:flex-row sm:items-center">
+                            <div className="flex shrink-0 justify-center rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700">
+                                <ReactQRCode
+                                    id="pcQrCode"
+                                    value={editingComputer.Name}
+                                    size={118}
+                                    level="H"
+                                    bgColor="#fff"
+                                    fgColor="#111827"
+                                />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">PC QR Label</p>
+                                <p className="mt-1 truncate font-mono text-lg font-bold text-gray-900 dark:text-white">{editingComputer.Name}</p>
+                                <p className="text-sm text-gray-600 dark:text-gray-300">{room.Name}</p>
+                            </div>
+                            <div className="flex shrink-0 gap-2 sm:flex-col">
+                                <button
+                                    type="button"
+                                    onClick={() => handleDownloadComputerQr(editingComputer)}
+                                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700"
+                                >
+                                    <Download className="h-4 w-4" />
+                                    Download
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => handlePrintComputerQr(editingComputer)}
+                                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                                >
+                                    <Printer className="h-4 w-4" />
+                                    Print
+                                </button>
+                            </div>
+                        </div>
+
                         {/* Computer Name */}
                         <div className="mb-4">
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Computer Name *</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Computer Name</label>
                             <input
                                 type="text"
                                 value={editName}
-                                onChange={(e) => setEditName(e.target.value)}
-                                placeholder="e.g., PC 1"
-                                className="w-full px-4 py-2.5 bg-white dark:bg-[#1e2939] border border-gray-300 dark:border-[#334155] rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                readOnly
+                                className="w-full cursor-not-allowed rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-gray-900 dark:border-[#334155] dark:bg-[#1e2939] dark:text-white"
                             />
                         </div>
 
@@ -898,6 +970,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                     { value: 'DECOMMISSIONED', label: 'Decommissioned' },
                                 ]}
                                 onChange={(value) => setEditStatus(value as Computer['Status'])}
+                                disabled={computerModalMode !== 'edit'}
                             />
                         </div>
 
@@ -908,6 +981,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                     type="checkbox"
                                     checked={editIsTeacher}
                                     onChange={(e) => setEditIsTeacher(e.target.checked)}
+                                    disabled={computerModalMode !== 'edit'}
                                     className="mt-0.5 h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500 dark:border-[#334155] dark:bg-[#1e2939]"
                                 />
                                 <span>
@@ -920,29 +994,33 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                         {/* Components */}
                         <div className="space-y-4">
                             <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Components</p>
-                            {editItems.map((item, index) => (
-                                <div key={item.itemType} className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
-                                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
-                                        {formatItemType(item.itemType)}
-                                    </p>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <input
-                                            type="text"
-                                            value={item.brand}
-                                            onChange={(e) => updateEditItem(index, 'brand', e.target.value)}
-                                            placeholder="Brand"
-                                            className="px-3 py-2 bg-white dark:bg-[#1e2939] border border-gray-300 dark:border-[#334155] rounded-lg text-gray-900 dark:text-white text-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        />
-                                        <input
-                                            type="text"
-                                            value={item.serialNumber}
-                                            onChange={(e) => updateEditItem(index, 'serialNumber', e.target.value)}
-                                            placeholder="Serial Number"
-                                            className="px-3 py-2 bg-white dark:bg-[#1e2939] border border-gray-300 dark:border-[#334155] rounded-lg text-gray-900 dark:text-white text-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        />
-                                    </div>
+                            {computerModalMode === 'edit' ? (
+                                ITEM_TYPES.map((itemType) => (
+                                    <InventoryItemCombobox
+                                        key={itemType}
+                                        itemType={itemType}
+                                        label={formatItemType(itemType)}
+                                        value={editSelectedItems[itemType]}
+                                        onChange={(item) => setEditSelectedItems(prev => ({ ...prev, [itemType]: item }))}
+                                        placeholder={`Select ${formatItemType(itemType).toLowerCase()} from inventory...`}
+                                    />
+                                ))
+                            ) : (
+                                <div className="space-y-2">
+                                    {ITEM_TYPES.map((itemType) => {
+                                        const item = editSelectedItems[itemType];
+                                        return (
+                                            <div key={itemType} className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/50">
+                                                <div className="flex items-center justify-between gap-3">
+                                                    <span className="text-sm font-semibold text-gray-900 dark:text-white">{formatItemType(itemType)}</span>
+                                                    <span className="font-mono text-xs text-gray-500 dark:text-gray-400">{item?.Item_Code || '-'}</span>
+                                                </div>
+                                                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{item?.Brand || 'No item selected'}</p>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-                            ))}
+                            )}
                         </div>
 
                         {/* Actions */}
@@ -953,13 +1031,23 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                             >
                                 Cancel
                             </button>
-                            <button
-                                onClick={handleUpdateComputer}
-                                disabled={isSubmitting || !editName.trim()}
-                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
-                            >
-                                {isSubmitting ? 'Saving...' : 'Save Changes'}
-                            </button>
+                            {computerModalMode === 'edit' ? (
+                                <button
+                                    onClick={handleUpdateComputer}
+                                    disabled={isSubmitting || !editName.trim()}
+                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                                >
+                                    {isSubmitting ? 'Saving...' : 'Save Changes'}
+                                </button>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => setComputerModalMode('edit')}
+                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                                >
+                                    Edit
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>

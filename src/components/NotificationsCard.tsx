@@ -96,7 +96,13 @@ export default function NotificationsCard() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollDown, setCanScrollDown] = useState(false);
 
-  const unreadNotifications = notifications.filter(n => !n.read);
+  const activeNotifications = notifications.filter(n => !n.archived);
+  const unreadNotifications = activeNotifications.filter(n => !n.read);
+  const recentReadNotifications = activeNotifications
+    .filter(n => n.read)
+    .sort((a, b) => new Date(b.readAt || b.timestamp).getTime() - new Date(a.readAt || a.timestamp).getTime())
+    .slice(0, 5);
+  const visibleNotifications = unreadNotifications.length > 0 ? unreadNotifications : recentReadNotifications;
 
   // Check scroll position to show/hide indicator
   useEffect(() => {
@@ -118,7 +124,7 @@ export default function NotificationsCard() {
       el.removeEventListener('scroll', checkScroll);
       observer.disconnect();
     };
-  }, [unreadNotifications.length]);
+  }, [visibleNotifications.length]);
 
   if (loading && notifications.length === 0) {
     return (
@@ -145,7 +151,7 @@ export default function NotificationsCard() {
       title="Notifications"
       className="h-full"
       headerRight={
-        unreadNotifications.length > 0 ? (
+        activeNotifications.length > 0 ? (
           <Link
             to="/notification"
             className="text-sm font-medium text-green-600 hover:text-green-500 dark:text-green-400 dark:hover:text-green-300"
@@ -155,27 +161,35 @@ export default function NotificationsCard() {
         ) : undefined
       }
     >
-      {unreadNotifications.length === 0 ? (
+      {visibleNotifications.length === 0 ? (
         <div className="flex flex-1 items-center justify-center">
           <div className="text-center py-8">
             <Bell className="h-10 w-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
-            <p className="text-sm text-gray-500 dark:text-gray-400">No unread notifications</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">No new notifications</p>
           </div>
         </div>
       ) : (
         <div className="relative flex flex-1 flex-col overflow-hidden">
+          {unreadNotifications.length === 0 && recentReadNotifications.length > 0 && (
+            <div className="mb-2 px-1">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                No new notifications
+              </p>
+              <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Recent read notifications</p>
+            </div>
+          )}
           <div ref={scrollRef} className="-mr-2 overflow-y-auto pr-2">
             <div className="space-y-2 pr-1">
-              {unreadNotifications.map(({ id, title, message, timestamp, time, user }) => {
+              {visibleNotifications.map(({ id, title, message, timestamp, time, user, read }) => {
                 const style = getNotificationStyle(title);
                 const displayUser = user ? `${user.First_Name} ${user.Last_Name}` : null;
 
                 return (
                   <div
                     key={id}
-                    onClick={() => markAsRead(id)}
-                    className="cursor-pointer group flex items-start gap-3 p-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
-                    title="Click to mark as read"
+                    onClick={() => !read && markAsRead(id)}
+                    className="cursor-pointer group flex items-start gap-3 rounded-lg p-2.5 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/30"
+                    title={read ? title : 'Click to mark as read'}
                   >
                     <div className={`mt-0.5 flex-shrink-0 rounded-lg p-1.5 ${style.bg} ${style.color}`}>
                       {style.icon}

@@ -79,9 +79,9 @@ export const getPublicRooms = async (): Promise<PublicRoom[]> => {
 
 export interface PublicTicketPayload {
     reporterIdentifier: string;
-    roomId: number;
+    roomId: number | null;
     issueType: 'HARDWARE' | 'SOFTWARE' | 'NETWORK' | 'OTHER';
-    equipment: 'MONITOR' | 'KEYBOARD' | 'MOUSE' | 'SYSTEM_UNIT' | 'HEADSET' | 'OTHER';
+    equipment?: 'MONITOR' | 'KEYBOARD' | 'MOUSE' | 'MINI_PC' | 'HEADSET' | 'OTHER';
     description: string;
     pcNumber?: string;
 }

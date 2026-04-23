@@ -1,7 +1,7 @@
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { ChangeEvent, FC, FormEvent, MouseEvent } from 'react';
 import type { FormStatus, FormType, FormRecord, FormDepartment } from '@/types/formtypes';
-import { formDepartmentLabels, formTypeLabels, getDepartmentsForType } from '@/types/formtypes';
+import { formTypeLabels } from '@/types/formtypes';
 import { FloatingSelect } from '@/ui/FloatingSelect';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 
@@ -26,8 +26,7 @@ export const AddFormDialog: FC<{
   const fileInputRef = useRef<HTMLInputElement>(null);
   useFocusTrap(dialogRef, open);
 
-  // Get departments for the selected form type
-  const departments = useMemo(() => getDepartmentsForType(type), [type]);
+  const formNumberPrefix = type === 'WRF' ? 'WRF' : 'RIS';
 
   // Reset form when dialog is closed
   useEffect(() => {
@@ -73,18 +72,31 @@ export const AddFormDialog: FC<{
       return;
     }
 
+    if (!formNumber.trim()) {
+      setSubmitError('Please enter a form number before tracking the form.');
+      return;
+    }
+
+    if (!requesterName.trim()) {
+      setSubmitError('Please enter the requester name before tracking the form.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
+      const formNumberValue = formNumber.trim();
+      const formNumberWithoutPrefix = formNumberValue.replace(/^(RIS|WRF)[-\s]*/i, '');
+
       await onCreate({
-        formNumber: formNumber.trim(),
+        formNumber: formNumberWithoutPrefix ? `${formNumberPrefix}-${formNumberWithoutPrefix}` : '',
         title: title.trim(),
         type,
         status,
         department,
         files,
         isArchived: false,
-        requesterName: requesterName || undefined,
+        requesterName: requesterName.trim(),
         remarks: remarks || undefined,
       });
       onClose();
@@ -144,22 +156,46 @@ export const AddFormDialog: FC<{
 
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden" noValidate>
           <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Title <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => {
-                  setTitle(e.target.value);
-                  setSubmitError(null);
-                }}
-                disabled={isSubmitting}
-                placeholder="Enter form title"
-                className="w-full rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white p-2 text-sm"
-                required
-              />
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Title <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => {
+                    setTitle(e.target.value);
+                    setSubmitError(null);
+                  }}
+                  disabled={isSubmitting}
+                  placeholder="Enter form title"
+                  className="w-full rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white p-2 text-sm"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Form Number <span className="text-red-500">*</span>
+                </label>
+                <div className="flex overflow-hidden rounded-md border border-gray-300 bg-white dark:border-[#334155] dark:bg-[#1e2939]">
+                  <span className="inline-flex shrink-0 items-center border-r border-gray-300 bg-gray-50 px-3 text-sm font-medium text-gray-700 dark:border-[#334155] dark:bg-gray-800 dark:text-gray-300">
+                    {formNumberPrefix}
+                  </span>
+                  <input
+                    type="text"
+                    value={formNumber}
+                    onChange={(e) => {
+                      setFormNumber(e.target.value);
+                      setSubmitError(null);
+                    }}
+                    disabled={isSubmitting}
+                    placeholder="Enter form number"
+                    className="min-w-0 flex-1 bg-transparent p-2 text-sm text-gray-900 outline-none dark:text-white"
+                    required
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -183,23 +219,6 @@ export const AddFormDialog: FC<{
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Department
-                </label>
-                <FloatingSelect
-                  id="add-form-department"
-                  value={department}
-                  onChange={(value) => setDepartment(value as FormDepartment)}
-                  disabled={isSubmitting}
-                  placeholder="Select department"
-                  options={departments.map((dept) => ({
-                    value: dept,
-                    label: formDepartmentLabels[dept],
-                  }))}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Status
                 </label>
                 <FloatingSelect
@@ -217,33 +236,25 @@ export const AddFormDialog: FC<{
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Form Number
-                </label>
-                <input
-                  type="text"
-                  value={formNumber}
-                  onChange={(e) => setFormNumber(e.target.value)}
-                  disabled={isSubmitting}
-                  placeholder="Enter form number"
-                  className="w-full rounded-md border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white p-2 text-sm"
-                />
-              </div>
+          
             </div>
 
           {/* Requester Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Requester Name
+              Requester Name <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={requesterName}
-              onChange={(e) => setRequesterName(e.target.value)}
+              onChange={(e) => {
+                setRequesterName(e.target.value);
+                setSubmitError(null);
+              }}
               disabled={isSubmitting}
               placeholder="Name of the person requesting"
               className="w-full rounded-md border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white p-2 text-sm"
+              required
             />
           </div>
 

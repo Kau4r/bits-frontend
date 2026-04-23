@@ -31,6 +31,35 @@ export default function NotificationCard({
     }
   };
 
+  const getTypeBadgeClass = (type: string) => {
+    switch (type) {
+      case 'Issue Report':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-200';
+      case 'Asset Request':
+        return 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200';
+      case 'Form Update':
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-200';
+      case 'System':
+      default:
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200';
+    }
+  };
+
+  const stateBadge = notification.isArchived
+    ? {
+        label: 'Archived',
+        className: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200',
+      }
+    : notification.isRead
+      ? {
+          label: 'Read',
+          className: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200',
+        }
+      : {
+          label: 'New',
+          className: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-200',
+        };
+
   return (
     <div
       className={`group relative p-4 rounded-xl border ${notification.isRead
@@ -42,12 +71,22 @@ export default function NotificationCard({
         <div className="pt-0.5">{getNotificationIcon(notification.type)}</div>
 
         <div className="flex-1">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-gray-800 dark:text-white">
-              {notification.title}
-            </h3>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="truncate text-sm font-semibold text-gray-800 dark:text-white">
+                {notification.title}
+              </h3>
+              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${getTypeBadgeClass(notification.type)}`}>
+                  {notification.type}
+                </span>
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${stateBadge.className}`}>
+                  {stateBadge.label}
+                </span>
+              </div>
+            </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2">
               <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
                 <Clock className="h-3 w-3 mr-1" />
                 {notification.time}

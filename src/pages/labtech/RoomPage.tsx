@@ -28,6 +28,15 @@ const roomTypeLabels: Record<RoomTypeEnum, string> = {
     CONFERENCE: 'Conference Room',
     LECTURE: 'Lecture Room',
     LAB: 'Lab',
+    OTHER: 'Other',
+};
+
+const roomStatusLabels: Record<RoomStatus, 'Available' | 'In Use' | 'Maintenance' | 'Reserved' | 'Closed'> = {
+    AVAILABLE: 'Available',
+    IN_USE: 'In Use',
+    MAINTENANCE: 'Maintenance',
+    RESERVED: 'Reserved',
+    CLOSED: 'Closed',
 };
 
 export default function Room() {
@@ -453,6 +462,12 @@ export default function Room() {
                 await modal.showSuccess('Booking updated successfully.', 'Success');
             } else {
                 // CREATE LOGIC - use roomId directly
+                const targetRoom = labRooms.find(room => room.Room_ID === roomId);
+                if (!targetRoom) {
+                    await modal.showError('Student room usage can only be scheduled for LAB rooms.', 'Invalid Room');
+                    return;
+                }
+
                 const response = await setRoomStudentAvailability(roomId, {
                     startTime: requestedStart,
                     endTime: requestedEnd,
@@ -485,6 +500,12 @@ export default function Room() {
         slots: { startTime: string; endTime: string }[]
     ) => {
         try {
+            const targetRoom = labRooms.find(room => room.Room_ID === roomId);
+            if (!targetRoom) {
+                await modal.showError('Student room usage can only be scheduled for LAB rooms.', 'Invalid Room');
+                return;
+            }
+
             await api.post('/bookings/weekly', {
                 roomId,
                 purpose: 'Student Usage',
@@ -548,6 +569,35 @@ export default function Room() {
         return matchesSearch && matchesStatus && matchesType;
     });
 
+    const shouldShowRoomScheduleInfo = (room: RoomType) =>
+        room.Room_Type === 'LAB' || room.Room_Type === 'LECTURE';
+
+    const getNextScheduleDisplay = (room: RoomType) => {
+        if (!shouldShowRoomScheduleInfo(room) || !room.Schedule?.length) return undefined;
+
+        const now = dayjs(serverCurrentTime);
+        const todayDay = now.day();
+        const candidates = room.Schedule
+            .filter(schedule => {
+                const scheduleDays = schedule.Days?.split(',').map(day => parseInt(day.trim(), 10)) || [];
+                return scheduleDays.includes(todayDay);
+            })
+            .map(schedule => {
+                const start = dayjs(schedule.Start_Time);
+                const end = dayjs(schedule.End_Time);
+                const startToday = now.startOf('day').hour(start.hour()).minute(start.minute()).second(0).millisecond(0);
+                const endToday = now.startOf('day').hour(end.hour()).minute(end.minute()).second(0).millisecond(0);
+                return { start: startToday, end: endToday };
+            })
+            .filter(schedule => schedule.end.isAfter(now))
+            .sort((a, b) => a.start.valueOf() - b.start.valueOf());
+
+        const next = candidates[0];
+        if (!next) return undefined;
+
+        return `${next.start.format('h:mm A')} - ${next.end.format('h:mm A')}`;
+    };
+
     return (
         <div className="h-full w-full bg-white p-6 sm:px-8 lg:px-10 dark:bg-gray-900">
             {/* Header */}
@@ -607,6 +657,7 @@ export default function Room() {
                                 { value: 'CONFERENCE', label: 'Conference Room' },
                                 { value: 'CONSULTATION', label: 'Consultation Room' },
                                 { value: 'LAB', label: 'Lab' },
+                                { value: 'OTHER', label: 'Other' },
                             ]}
                             onChange={(type) => setTypeFilter(type as TypeFilterType)}
                         />
@@ -661,9 +712,10 @@ export default function Room() {
                                     key={room.Room_ID}
                                     code={room.Name}
                                     type={roomTypeLabels[room.Room_Type]}
-                                    status={room.Status === 'AVAILABLE' ? 'Available' : 'In Use'}
-                                    nextSchedule="12:00 - 1:30"
-                                    currentUser={room.Status !== 'AVAILABLE' ? 'In Use' : undefined}
+                                    status={roomStatusLabels[room.Status]}
+                                    nextSchedule={getNextScheduleDisplay(room)}
+                                    currentUser={room.Status === 'IN_USE' ? 'In Use' : undefined}
+                                    showScheduleInfo={shouldShowRoomScheduleInfo(room)}
                                     onViewDetails={() => setSelectedViewRoom(room)}
                                 />
                             ))}

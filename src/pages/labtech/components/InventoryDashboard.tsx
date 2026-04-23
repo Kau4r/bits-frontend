@@ -9,7 +9,6 @@ import {
   CheckCircle2,
   Layers3,
   MapPinned,
-  PackageSearch,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -20,6 +19,15 @@ interface InventoryDashboardProps {
 }
 
 const chartColors = ['#2563eb', '#16a34a', '#f59e0b', '#dc2626', '#7c3aed', '#0891b2', '#4b5563', '#0f766e']
+
+const statusChartColors: Record<InventoryStatus, string> = {
+  AVAILABLE: '#16a34a',
+  BORROWED: '#2563eb',
+  DEFECTIVE: '#f59e0b',
+  LOST: '#dc2626',
+  REPLACED: '#7c3aed',
+  DISPOSED: '#64748b',
+}
 
 const formatPercent = (value: number, total: number) => {
   if (!total) return '0%'
@@ -70,12 +78,14 @@ const DistributionCard = ({
   data,
   labels,
   emptyText,
+  colors,
 }: {
   title: string
   eyebrow: string
   data: Record<string, number>
   labels?: string[]
   emptyText: string
+  colors?: Record<string, string>
 }) => {
   const rawEntries = labels?.length
     ? labels.map(label => [label, data[label] || 0] as [string, number])
@@ -84,13 +94,16 @@ const DistributionCard = ({
   const filledEntries = rawEntries.filter(([, value]) => value > 0)
   const legendEntries = labels?.length ? rawEntries : filledEntries
 
+  const colorFor = (label: string, index: number) =>
+    colors?.[label] ?? chartColors[index % chartColors.length]
+
   let cursor = 0
   const gradient = filledEntries.length
-    ? filledEntries.map(([, value], index) => {
+    ? filledEntries.map(([label, value], index) => {
       const start = cursor
       const end = cursor + (value / total) * 100
       cursor = end
-      return `${chartColors[index % chartColors.length]} ${start}% ${end}%`
+      return `${colorFor(label, index)} ${start}% ${end}%`
     }).join(', ')
     : '#e5e7eb 0% 100%'
 
@@ -119,7 +132,7 @@ const DistributionCard = ({
             <div key={label} className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-900/70">
               <div className="flex items-center justify-between gap-3">
                 <span className="flex min-w-0 items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
-                  <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: chartColors[index % chartColors.length] }} />
+                  <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: colorFor(label, index) }} />
                   <span className="truncate">{formatItemType(label) || label}</span>
                 </span>
                 <span className="text-sm font-black text-gray-900 dark:text-white">{value}</span>
@@ -127,7 +140,7 @@ const DistributionCard = ({
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
                 <div
                   className="h-full rounded-full"
-                  style={{ width: formatPercent(value, total), backgroundColor: chartColors[index % chartColors.length] }}
+                  style={{ width: formatPercent(value, total), backgroundColor: colorFor(label, index) }}
                 />
               </div>
             </div>
@@ -172,31 +185,9 @@ const InventoryDashboard = ({
   const attentionCount = (statusCounts.DEFECTIVE || 0) + (statusCounts.LOST || 0) + (statusCounts.DISPOSED || 0)
   const withLocationCount = inventory.filter(item => Boolean(normalizeLocation(item))).length
   const uniqueTypeCount = Object.keys(itemTypeCounts).length
-  const activeLabel = activeStatusFilter !== 'All Status'
-    ? `${formatItemType(activeStatusFilter) || activeStatusFilter} filter active`
-    : 'All statuses included'
 
   return (
     <div className="space-y-4 pb-1">
-      <section className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-        <div className="relative p-4 sm:p-5">
-          <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-indigo-500/10 blur-3xl" />
-          <div className="relative flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-indigo-600 dark:text-indigo-300">Inventory Information</p>
-              <h2 className="mt-2 text-2xl font-black text-gray-900 dark:text-white">Asset health, movement, and coverage</h2>
-              <p className="mt-2 max-w-3xl text-sm text-gray-500 dark:text-gray-400">
-                A cleaner summary of what is available, what needs attention, and where items are assigned.
-              </p>
-            </div>
-            <div className="inline-flex w-fit items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
-              <PackageSearch className="h-4 w-4 text-indigo-500" />
-              {activeLabel}
-            </div>
-          </div>
-        </div>
-      </section>
-
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="Total Assets" value={totalItems} hint={`${uniqueTypeCount} item type${uniqueTypeCount === 1 ? '' : 's'} tracked`} icon={Layers3} tone="blue" />
         <MetricCard label="Available" value={availableCount} hint={`${formatPercent(availableCount, totalItems)} ready for use`} icon={CheckCircle2} tone="green" />
@@ -224,6 +215,7 @@ const InventoryDashboard = ({
           eyebrow="Condition"
           data={statusCounts}
           labels={inventoryStatuses}
+          colors={statusChartColors}
           emptyText="No status data found yet."
         />
       </div>

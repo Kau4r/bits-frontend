@@ -69,7 +69,7 @@ const Layout = () => {
   return (
     <div className="flex h-screen overflow-hidden bg-white dark:bg-gray-900">
       <Toaster
-        position="top-right"
+        position="bottom-right"
         reverseOrder={false}
         toastOptions={{
           style: {

@@ -88,13 +88,27 @@ export default function StudentRoomView() {
 
     // Convert backend room data to frontend format for LectureCard
     const convertToLectureRoom = (room: RoomType) => {
+        const today = new Date().getDay();
+        const scheduleBlocks = (room.Schedule || [])
+            .filter(schedule => schedule.Days.split(',').map(day => Number(day.trim())).includes(today))
+            .map(schedule => {
+                const start = new Date(schedule.Start_Time);
+                const end = new Date(schedule.End_Time);
+                return {
+                    id: schedule.Schedule_ID,
+                    title: schedule.Title || schedule.Schedule_Type || 'Scheduled class',
+                    time: `${start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} - ${end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`,
+                };
+            });
+
         return {
             id: room.Room_ID,
             name: room.Name,
             type: 'Lecture' as const,
             capacity: room.Capacity,
             isAvailable: room.Status === 'AVAILABLE',
-            schedule: 'View Schedule',
+            schedule: scheduleBlocks.length > 0 ? `${scheduleBlocks.length} event${scheduleBlocks.length === 1 ? '' : 's'} today` : 'No schedule today',
+            scheduleBlocks,
             nextAvailable: room.Status === 'AVAILABLE' ? 'Available Now' : 'In Use'
         }
     }

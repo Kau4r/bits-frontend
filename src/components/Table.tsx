@@ -142,20 +142,31 @@ const Table = ({ headers, children, sortConfig, onSort, columnWidths, density = 
               const isActive = typeof header !== 'string' && sortConfig?.key === header.key && sortConfig?.direction
               const align = typeof header !== 'string' && header.align ? header.align : (idx === 0 ? 'left' : 'center')
               const justifyClass = align === 'left' ? 'justify-start' : align === 'right' ? 'justify-end' : 'justify-center'
+              const sortIconClass = align === 'center' ? 'absolute left-full ml-1' : ''
+              const baseClass = `group relative flex items-center ${headerPadding} ${justifyClass} ${isActive ? 'text-indigo-600 dark:text-indigo-400' : ''}`
+
+              // Non-sortable headers render as a plain <div> so interactive
+              // content (checkboxes, action buttons) inside the label can receive
+              // clicks without fighting a wrapping <button>.
+              if (!isSortable) {
+                return (
+                  <div key={idx} className={`${baseClass} cursor-default`}>
+                    {label}
+                  </div>
+                )
+              }
 
               return (
                 <button
                   key={idx}
                   type="button"
-                  disabled={!isSortable}
-                  className={`group flex items-center ${headerPadding} ${justifyClass} ${isSortable
-                    ? 'cursor-pointer select-none transition-colors hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200'
-                    : 'cursor-default'
-                    } ${isActive ? 'text-indigo-600 dark:text-indigo-400' : ''}`}
+                  className={`${baseClass} cursor-pointer select-none transition-colors hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200`}
                   onClick={() => handleHeaderClick(header)}
                 >
-                  <span>{label}</span>
-                  {renderSortIcon(header)}
+                  <span className="relative inline-flex items-center">
+                    {label}
+                    <span className={sortIconClass}>{renderSortIcon(header)}</span>
+                  </span>
                 </button>
               )
             })}

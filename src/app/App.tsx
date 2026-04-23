@@ -34,6 +34,7 @@ import Borrowing from '@/pages/labtech/BorrowingPage';
 import Reports from '@/pages/labtech/ReportsPage';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import StudentPublicLanding from '@/pages/public/StudentPublicLanding';
+import StudentDesktopPlaceholder from '@/pages/public/StudentDesktopPlaceholder';
 
 // Public landing gate: mobile visitors see the student landing page,
 // desktop visitors are redirected to the existing /login UX.
@@ -93,6 +94,7 @@ function AppContent() {
     return (
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/student" element={<StudentDesktopPlaceholder />} />
         <Route path="/" element={<PublicLandingGate />} />
         <Route path="*" element={<LoginRedirect />} />
       </Routes>

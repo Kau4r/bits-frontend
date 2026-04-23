@@ -1,18 +1,18 @@
-export type RoomType = 'CONSULTATION' | 'CONFERENCE' | 'LECTURE' | 'LAB';
+export type RoomType = 'CONSULTATION' | 'CONFERENCE' | 'LECTURE' | 'LAB' | 'OTHER';
 export type LabType = 'WINDOWS' | 'MAC';
 export type LabCategory = LabType | 'UNASSIGNED';
-export type RoomStatus = 'AVAILABLE' | 'IN_USE' | 'MAINTENANCE' | 'OCCUPIED' | 'RESERVED';
+export type RoomStatus = 'AVAILABLE' | 'IN_USE' | 'MAINTENANCE' | 'RESERVED' | 'CLOSED';
 
 export const statusColors: Record<RoomStatus, string> = {
     AVAILABLE: 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100',
     IN_USE: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100',
     MAINTENANCE: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100',
-    OCCUPIED: 'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100',
     RESERVED: 'bg-purple-100 text-purple-800 dark:bg-purple-800 dark:text-purple-100',
+    CLOSED: 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-100',
 };
 
-export const roomStatuses: RoomStatus[] = ['AVAILABLE', 'IN_USE', 'MAINTENANCE', 'OCCUPIED', 'RESERVED'];
-export const roomTypes: RoomType[] = ['CONSULTATION', 'CONFERENCE', 'LECTURE', 'LAB'];
+export const roomStatuses: RoomStatus[] = ['AVAILABLE', 'IN_USE', 'MAINTENANCE', 'RESERVED', 'CLOSED'];
+export const roomTypes: RoomType[] = ['CONSULTATION', 'CONFERENCE', 'LECTURE', 'LAB', 'OTHER'];
 
 export interface RoomSchedule {
     Schedule_ID: number;

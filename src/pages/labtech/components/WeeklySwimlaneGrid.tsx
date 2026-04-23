@@ -356,7 +356,7 @@ interface LabSectionProps {
 
 const LabSection = ({
     labType,
-    title,
+    title: _title,
     rooms,
     weekSessions,
     weekDays,
@@ -401,17 +401,9 @@ const LabSection = ({
     return (
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                    <span className="grid h-9 w-9 place-items-center rounded-lg bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
-                        {labType === 'WINDOWS' ? <Monitor className="h-5 w-5" /> : <Apple className="h-5 w-5" />}
-                    </span>
-                    <div>
-                        <h3 className="text-base font-semibold text-gray-900 dark:text-white">{title}</h3>
-                        <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                            {rooms.length} {rooms.length === 1 ? 'room' : 'rooms'} shown
-                        </p>
-                    </div>
-                </div>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                    {rooms.length} {rooms.length === 1 ? 'room' : 'rooms'} shown
+                </p>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-300">
                     <span className="h-2 w-2 rounded-full bg-green-500" />
                     {availableNow} room{availableNow === 1 ? '' : 's'} available now

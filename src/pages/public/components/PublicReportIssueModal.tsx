@@ -24,7 +24,7 @@ const EQUIPMENT_OPTIONS: { value: PublicTicketPayload['equipment']; label: strin
     { value: 'MONITOR', label: 'Monitor' },
     { value: 'KEYBOARD', label: 'Keyboard' },
     { value: 'MOUSE', label: 'Mouse' },
-    { value: 'SYSTEM_UNIT', label: 'System Unit' },
+    { value: 'MINI_PC', label: 'Mini PC' },
     { value: 'HEADSET', label: 'Headset' },
     { value: 'OTHER', label: 'Other' },
 ];
@@ -34,15 +34,18 @@ export default function PublicReportIssueModal({ isOpen, onClose }: PublicReport
     const [isLoadingRooms, setIsLoadingRooms] = useState(false);
 
     const [reporterIdentifier, setReporterIdentifier] = useState('');
-    const [roomId, setRoomId] = useState<number | ''>('');
+    const [roomId, setRoomId] = useState<number | '' | 'none'>('');
     const [issueType, setIssueType] = useState<PublicTicketPayload['issueType']>('HARDWARE');
-    const [equipment, setEquipment] = useState<PublicTicketPayload['equipment']>('MONITOR');
+    const [equipment, setEquipment] = useState<NonNullable<PublicTicketPayload['equipment']>>('MONITOR');
     const [description, setDescription] = useState('');
     const [pcNumber, setPcNumber] = useState('');
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
+
+    const showPcNumber = issueType === 'HARDWARE' || issueType === 'SOFTWARE';
+    const showEquipment = issueType === 'HARDWARE';
 
     // Load rooms when modal opens.
     useEffect(() => {
@@ -98,7 +101,7 @@ export default function PublicReportIssueModal({ isOpen, onClose }: PublicReport
             return;
         }
         if (roomId === '') {
-            setError('Please select a room.');
+            setError("Please select a room, or choose 'Not tied to a specific room'.");
             return;
         }
         if (!description.trim()) {
@@ -114,11 +117,11 @@ export default function PublicReportIssueModal({ isOpen, onClose }: PublicReport
         try {
             const payload: PublicTicketPayload = {
                 reporterIdentifier: reporterIdentifier.trim(),
-                roomId: roomId as number,
+                roomId: roomId === 'none' ? null : (roomId as number),
                 issueType,
-                equipment,
                 description: description.trim(),
-                ...(pcNumber.trim() ? { pcNumber: pcNumber.trim() } : {}),
+                ...(showEquipment ? { equipment } : {}),
+                ...(showPcNumber && pcNumber.trim() ? { pcNumber: pcNumber.trim() } : {}),
             };
             await createPublicTicket(payload);
             setSuccess(true);
@@ -181,7 +184,7 @@ export default function PublicReportIssueModal({ isOpen, onClose }: PublicReport
                                 value={reporterIdentifier}
                                 onChange={(e) => setReporterIdentifier(e.target.value)}
                                 maxLength={100}
-                                placeholder="e.g. Juan dela Cruz or 2021-12345"
+                                placeholder="e.g. 22102606"
                                 className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                 disabled={isSubmitting}
                                 required
@@ -201,12 +204,18 @@ export default function PublicReportIssueModal({ isOpen, onClose }: PublicReport
                             ) : (
                                 <select
                                     value={roomId}
-                                    onChange={(e) => setRoomId(e.target.value === '' ? '' : Number(e.target.value))}
+                                    onChange={(e) => {
+                                        const v = e.target.value;
+                                        if (v === '') setRoomId('');
+                                        else if (v === 'none') setRoomId('none');
+                                        else setRoomId(Number(v));
+                                    }}
                                     className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                     disabled={isSubmitting}
                                     required
                                 >
                                     <option value="">Select a room</option>
+                                    <option value="none">Not tied to a specific room</option>
                                     {rooms.map((r) => (
                                         <option key={r.Room_ID} value={r.Room_ID}>
                                             {r.Name}
@@ -214,22 +223,6 @@ export default function PublicReportIssueModal({ isOpen, onClose }: PublicReport
                                     ))}
                                 </select>
                             )}
-                        </div>
-
-                        {/* PC Number (optional) */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                PC Number <span className="text-gray-400 font-normal">(optional)</span>
-                            </label>
-                            <input
-                                type="text"
-                                value={pcNumber}
-                                onChange={(e) => setPcNumber(e.target.value)}
-                                maxLength={50}
-                                placeholder="e.g. PC-12"
-                                className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                                disabled={isSubmitting}
-                            />
                         </div>
 
                         {/* Issue type */}
@@ -249,22 +242,42 @@ export default function PublicReportIssueModal({ isOpen, onClose }: PublicReport
                             </select>
                         </div>
 
-                        {/* Equipment */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                Equipment <span className="text-red-500">*</span>
-                            </label>
-                            <select
-                                value={equipment}
-                                onChange={(e) => setEquipment(e.target.value as PublicTicketPayload['equipment'])}
-                                className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                                disabled={isSubmitting}
-                            >
-                                {EQUIPMENT_OPTIONS.map((o) => (
-                                    <option key={o.value} value={o.value}>{o.label}</option>
-                                ))}
-                            </select>
-                        </div>
+                        {/* PC Number (optional; only when issue type could be PC-related) */}
+                        {showPcNumber && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    PC Number <span className="text-gray-400 font-normal">(optional)</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={pcNumber}
+                                    onChange={(e) => setPcNumber(e.target.value)}
+                                    maxLength={50}
+                                    placeholder="e.g. PC-12"
+                                    className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                    disabled={isSubmitting}
+                                />
+                            </div>
+                        )}
+
+                        {/* Equipment (hardware issues only) */}
+                        {showEquipment && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    Equipment <span className="text-red-500">*</span>
+                                </label>
+                                <select
+                                    value={equipment}
+                                    onChange={(e) => setEquipment(e.target.value as NonNullable<PublicTicketPayload['equipment']>)}
+                                    className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                    disabled={isSubmitting}
+                                >
+                                    {EQUIPMENT_OPTIONS.map((o) => (
+                                        <option key={o.value} value={o.value}>{o.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
 
                         {/* Description */}
                         <div>

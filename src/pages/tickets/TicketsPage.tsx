@@ -179,6 +179,8 @@ export default function Tickets() {
             { label: 'Location', key: 'location' },
             { label: 'Category', key: 'category' },
             { label: 'Status', key: 'status' },
+            { label: 'Assignee', key: 'assignee' },
+            { label: 'Date', key: 'date' },
         ];
 
         if (showArchived) {
@@ -189,8 +191,8 @@ export default function Tickets() {
     }, [showArchived]);
 
     const ticketColumnWidths = showArchived
-        ? '1.4fr 2.2fr 1.4fr 1fr 1.2fr 1.4fr 1fr'
-        : '1.5fr 2.3fr 1.4fr 1fr 1.2fr 1fr';
+        ? 'repeat(7, 1fr) 1.2fr 0.8fr'
+        : 'repeat(7, 1fr) 0.8fr';
 
     if (loading) {
         return (
@@ -340,9 +342,6 @@ export default function Tickets() {
                                     <p className="font-semibold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
                                         {ticket.Reported_By.First_Name} {ticket.Reported_By.Last_Name}
                                     </p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                                        {ticket.Reported_By.User_Role.replace('_', ' ')} • {new Date(ticket.Created_At).toLocaleDateString()}
-                                    </p>
                                 </div>
                                 <div className="min-w-0 pr-3">
                                     <p className="truncate text-sm font-semibold text-gray-900 dark:text-white">
@@ -365,9 +364,14 @@ export default function Tickets() {
                                         <span className={`h-1.5 w-1.5 rounded-full mr-1.5 ${ticket.Status === 'PENDING' ? 'bg-yellow-500' : ticket.Status === 'IN_PROGRESS' ? 'bg-blue-500' : 'bg-green-500'}`} />
                                         {ticket.Status.replace('_', ' ')}
                                     </span>
-                                    {ticket.Technician?.User_ID && (
-                                        <p className="text-[10px] text-gray-500 mt-1 dark:text-gray-400">Assignee: {ticket.Technician.First_Name}</p>
-                                    )}
+                                </div>
+                                <div className="text-sm text-gray-600 dark:text-gray-300">
+                                    {ticket.Technician?.User_ID
+                                        ? `${ticket.Technician.First_Name} ${ticket.Technician.Last_Name}`
+                                        : 'Unassigned'}
+                                </div>
+                                <div className="text-sm text-gray-600 dark:text-gray-300">
+                                    {formatTicketDateTime(ticket.Created_At)}
                                 </div>
                                 {showArchived && (
                                     <div className="text-sm text-gray-600 dark:text-gray-300">

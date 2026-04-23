@@ -129,6 +129,13 @@ export const archiveForm = async (id: number): Promise<Form> => {
     return data;
 };
 
+// Restore archived form
+export const unarchiveForm = async (id: number): Promise<Form> => {
+    const { data } = await api.patch<Form>(`/forms/${id}/unarchive`);
+    toast.success('Form unarchived');
+    return data;
+};
+
 // Transfer form to department
 export const transferForm = async (
     id: number,
@@ -145,6 +152,12 @@ export const transferForm = async (
 export const addFormAttachment = async (id: number, input: FormAttachmentInput): Promise<Form> => {
     const { data } = await api.post<Form>(`/forms/${id}/attachments`, input);
     toast.success('Attachment uploaded');
+    return data;
+};
+
+export const deleteFormAttachment = async (formId: number, attachmentId: number): Promise<Form> => {
+    const { data } = await api.delete<Form>(`/forms/${formId}/attachments/${attachmentId}`);
+    toast.success('Attachment removed');
     return data;
 };
 

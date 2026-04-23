@@ -190,29 +190,14 @@ export const getMissingRisCompletionDocumentTypes = (
 };
 
 /**
- * Which workflow steps require an attachment to be uploaded before the form
- * can move forward. By design:
- * - REQUESTOR always requires the initial attachment (creation flow).
- * - DEPARTMENT_HEAD and DEAN_OFFICE do NOT require an attachment.
- * - TNS, PPFO, PURCHASING require an attachment (any type) before transferring.
- * Applies to all three form types (WRF, RIS_E, RIS_NE).
+ * Only the final completion step requires an updated attachment.
+ * Earlier workflow steps can approve/transfer without forcing a file upload.
  */
 export const stepRequiresAttachment = (
   _formType: FormType,
   department: FormDepartment,
 ): boolean => {
-  switch (department) {
-    case 'REQUESTOR':
-    case 'TNS':
-    case 'PPFO':
-    case 'PURCHASING':
-      return true;
-    case 'DEPARTMENT_HEAD':
-    case 'DEAN_OFFICE':
-    case 'COMPLETED':
-    default:
-      return false;
-  }
+  return department === 'COMPLETED';
 };
 
 export const canCompleteRisForm = (

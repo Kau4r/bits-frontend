@@ -18,7 +18,7 @@ import {
 import toast from 'react-hot-toast';
 import { FloatingSelect } from '@/ui/FloatingSelect';
 import { getRooms, getRoomAuditStatus } from '@/services/room';
-import { getInventory, checkInventoryItem } from '@/services/inventory';
+import { getInventory, checkInventoryItem, uncheckInventoryItem } from '@/services/inventory';
 import { getActiveSemester } from '@/services/semesters';
 import type { Room } from '@/types/room';
 import type { Item } from '@/types/inventory';
@@ -131,6 +131,29 @@ export default function InventoryAuditPage() {
         if (!opts.silent) toast.success(`Checked: ${item.Item_Code || 'item'}`);
       } catch (err: any) {
         const msg = err?.response?.data?.error || err?.message || 'Failed to mark item';
+        toast.error(msg);
+      } finally {
+        setBusyItemId(null);
+      }
+    },
+    [isItemCheckedForSemester, selectedRoomId],
+  );
+
+  const markItemUnchecked = useCallback(
+    async (item: Item) => {
+      if (!item.Item_ID) return;
+      if (!isItemCheckedForSemester(item)) return;
+      setBusyItemId(item.Item_ID);
+      try {
+        const updated = await uncheckInventoryItem(item.Item_ID);
+        setItems(prev => prev.map(i => (i.Item_ID === item.Item_ID ? { ...i, ...updated } : i)));
+        if (selectedRoomId !== '') {
+          const status = await getRoomAuditStatus(Number(selectedRoomId));
+          setAuditStatus(status);
+        }
+        toast.success(`Unchecked: ${item.Item_Code || 'item'}`);
+      } catch (err: any) {
+        const msg = err?.response?.data?.error || err?.message || 'Failed to uncheck item';
         toast.error(msg);
       } finally {
         setBusyItemId(null);
@@ -451,11 +474,32 @@ export default function InventoryAuditPage() {
                 return (
                   <div
                     key={item.Item_ID}
+                    role="button"
+                    tabIndex={busy ? -1 : 0}
+                    onClick={() => {
+                      if (busy) return;
+                      if (checked) {
+                        void markItemUnchecked(item);
+                      } else {
+                        void markItemChecked(item);
+                      }
+                    }}
+                    onKeyDown={(event) => {
+                      if (busy) return;
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        if (checked) {
+                          void markItemUnchecked(item);
+                        } else {
+                          void markItemChecked(item);
+                        }
+                      }
+                    }}
                     className={`flex items-center justify-between rounded-lg border px-3 py-3 shadow-sm transition-colors ${
                       checked
                         ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-800/60 dark:bg-emerald-900/20'
                         : 'border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900'
-                    }`}
+                    } ${busy ? 'cursor-wait opacity-80' : 'cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/40 dark:hover:border-indigo-700 dark:hover:bg-indigo-950/20'}`}
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       {checked ? (
@@ -483,15 +527,10 @@ export default function InventoryAuditPage() {
                         )}
                       </div>
                     </div>
-                    {!checked && (
-                      <button
-                        type="button"
-                        onClick={() => markItemChecked(item)}
-                        disabled={busy}
-                        className="ml-3 flex-shrink-0 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-500 disabled:opacity-50"
-                      >
-                        {busy ? '...' : 'Mark Present'}
-                      </button>
+                    {busy && (
+                      <span className="ml-3 flex-shrink-0 text-xs font-bold text-indigo-600 dark:text-indigo-300">
+                        ...
+                      </span>
                     )}
                   </div>
                 );

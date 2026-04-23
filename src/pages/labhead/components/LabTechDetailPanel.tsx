@@ -38,6 +38,12 @@ export default function LabTechDetailPanel({ labTech, onTicketReassigned }: Prop
   const [isLoadingReports, setIsLoadingReports] = useState(false);
   const [reviewingId, setReviewingId] = useState<number | null>(null);
   const [viewingReport, setViewingReport] = useState<WeeklyReport | null>(null);
+  const [activeReportCategory, setActiveReportCategory] = useState<string>('all');
+
+  // Reset the category tab whenever the viewed report changes so we always land on "All".
+  useEffect(() => {
+    setActiveReportCategory('all');
+  }, [viewingReport]);
 
   // Fetch tickets when labTech changes
   useEffect(() => {
@@ -391,7 +397,7 @@ export default function LabTechDetailPanel({ labTech, onTicketReassigned }: Prop
               })}
             </div>
 
-            {/* Tasks Table */}
+            {/* Tasks Table (category tabs) */}
             {(() => {
               const allTasks: { task: any; status: string }[] = [];
               (['completed', 'inProgress', 'pending'] as const).forEach(s => {
@@ -400,60 +406,112 @@ export default function LabTechDetailPanel({ labTech, onTicketReassigned }: Prop
                 sectionTasks.forEach((t: any) => allTasks.push({ task: t, status: statusLabels[s] }));
               });
 
-              return allTasks.length > 0 ? (
-                <div className="overflow-hidden border border-gray-200 dark:border-gray-700 rounded-lg mb-6">
-                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                    <thead className="bg-gray-50 dark:bg-gray-800">
-                      <tr>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Category</th>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Task</th>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Description</th>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                      {allTasks.map(({ task: t, status }, i) => {
-                        const statusColor = status === 'Completed'
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-                          : status === 'In Progress'
-                            ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
-                            : 'bg-gray-100 text-gray-800 dark:bg-gray-700/30 dark:text-gray-300';
-                        return (
-                          <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300">
-                                {t.category}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
-                              <div className="flex items-center gap-2">
-                                {t.title}
-                                {t.ticketId && (
-                                  <span className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
-                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z" />
-                                    </svg>
-                                    #{t.ticketId}
+              if (allTasks.length === 0) {
+                return <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-6">No tasks in this report.</p>;
+              }
+
+              const categoryCounts = allTasks.reduce<Record<string, number>>((acc, { task }) => {
+                const key = task.category || 'Uncategorized';
+                acc[key] = (acc[key] || 0) + 1;
+                return acc;
+              }, {});
+              const categories = Object.keys(categoryCounts).sort((a, b) => a.localeCompare(b));
+              const currentCategory = activeReportCategory === 'all' || categoryCounts[activeReportCategory] ? activeReportCategory : 'all';
+              const filteredTasks = currentCategory === 'all'
+                ? allTasks
+                : allTasks.filter(({ task }) => (task.category || 'Uncategorized') === currentCategory);
+
+              return (
+                <div className="mb-6">
+                  {/* Category tabs */}
+                  <div className="flex flex-wrap gap-1 border-b border-gray-200 dark:border-gray-700 mb-3" role="tablist">
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={currentCategory === 'all'}
+                      onClick={() => setActiveReportCategory('all')}
+                      className={`px-3 py-2 text-xs font-semibold transition-colors border-b-2 -mb-px ${
+                        currentCategory === 'all'
+                          ? 'border-indigo-500 text-indigo-600 dark:text-indigo-300'
+                          : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                      }`}
+                    >
+                      All ({allTasks.length})
+                    </button>
+                    {categories.map(cat => (
+                      <button
+                        key={cat}
+                        type="button"
+                        role="tab"
+                        aria-selected={currentCategory === cat}
+                        onClick={() => setActiveReportCategory(cat)}
+                        className={`px-3 py-2 text-xs font-semibold transition-colors border-b-2 -mb-px ${
+                          currentCategory === cat
+                            ? 'border-indigo-500 text-indigo-600 dark:text-indigo-300'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                        }`}
+                      >
+                        {cat} ({categoryCounts[cat]})
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="overflow-hidden border border-gray-200 dark:border-gray-700 rounded-lg">
+                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                      <thead className="bg-gray-50 dark:bg-gray-800">
+                        <tr>
+                          {currentCategory === 'all' && (
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Category</th>
+                          )}
+                          <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Task</th>
+                          <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Description</th>
+                          <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                        {filteredTasks.map(({ task: t, status }, i) => {
+                          const statusColor = status === 'Completed'
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                            : status === 'In Progress'
+                              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
+                              : 'bg-gray-100 text-gray-800 dark:bg-gray-700/30 dark:text-gray-300';
+                          return (
+                            <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                              {currentCategory === 'all' && (
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300">
+                                    {t.category || 'Uncategorized'}
                                   </span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-                              {t.description || '—'}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor}`}>
-                                {status}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                                </td>
+                              )}
+                              <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
+                                <div className="flex items-center gap-2">
+                                  {t.title}
+                                  {t.ticketId && (
+                                    <span className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z" />
+                                      </svg>
+                                      #{t.ticketId}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+                                {t.description || '—'}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor}`}>
+                                  {status}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              ) : (
-                <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-6">No tasks in this report.</p>
               );
             })()}
 

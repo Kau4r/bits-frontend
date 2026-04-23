@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import type { FormEvent } from 'react';
 import dayjs from 'dayjs';
-import { AlignLeft, Check, Clock3, MapPin, Trash2, UserRound, X } from 'lucide-react';
+import { AlignLeft, Check, Clock3, MapPin, Repeat, Trash2, UserRound, X } from 'lucide-react';
 import type { Room } from '@/types/room';
 import { useModal } from '@/context/ModalContext';
 import { FloatingSelect } from '@/ui/FloatingSelect';
@@ -99,6 +99,7 @@ const statusTheme: Record<string, { dot: string; pill: string; label: string }> 
 };
 
 const getStatusTheme = (status?: string) => statusTheme[String(status || 'PENDING').toUpperCase()] || statusTheme.PENDING;
+type RepeatMode = 'NONE' | 'WEEKLY';
 
 const FieldIcon = ({ children }: { children: React.ReactNode }) => (
     <div className="mt-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-300">
@@ -134,7 +135,7 @@ export default function BookingPopover({
     const [date, setDate] = useState(dayjs(startTime).format('YYYY-MM-DD'));
     const [startTimeValue, setStartTimeValue] = useState(dayjs(startTime).format('HH:mm'));
     const [endTimeValue, setEndTimeValue] = useState(dayjs(endTime).format('HH:mm'));
-    const [repeat, setRepeat] = useState(false);
+    const [repeatMode, setRepeatMode] = useState<RepeatMode>('NONE');
 
     const popoverRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -150,7 +151,7 @@ export default function BookingPopover({
             setDate(viewingBooking.date);
             setStartTimeValue(viewingBooking.startTime);
             setEndTimeValue(viewingBooking.endTime);
-            setRepeat(false);
+            setRepeatMode('NONE');
             return;
         }
 
@@ -160,7 +161,7 @@ export default function BookingPopover({
         setStartTimeValue(dayjs(startTime).format('HH:mm'));
         setEndTimeValue(dayjs(endTime).format('HH:mm'));
         if (selectedRoomId) setRoomId(selectedRoomId);
-        setRepeat(false);
+        setRepeatMode('NONE');
     }, [isOpen, startTime, endTime, selectedRoomId, viewingBooking]);
 
     useEffect(() => {
@@ -199,6 +200,11 @@ export default function BookingPopover({
     const currentStatus = getStatusTheme(viewingBooking?.status);
     const timeOptions = TIME_OPTIONS.map(t => ({ value: t, label: formatTimeDisplay(t) }));
     const roomOptions = rooms.map(room => ({ value: room.Room_ID, label: room.Name }));
+    const repeatLabel = `Every week on ${dayjs(date).format('dddd')}`;
+    const repeatOptions = [
+        { value: 'NONE', label: 'Does not repeat' },
+        { value: 'WEEKLY', label: repeatLabel },
+    ];
 
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
@@ -221,12 +227,12 @@ export default function BookingPopover({
                 date,
                 startTime: startTimeValue,
                 endTime: endTimeValue,
-                repeat,
+                repeat: repeatMode === 'WEEKLY',
             });
         }
         setTitle('');
         setDescription('');
-        setRepeat(false);
+        setRepeatMode('NONE');
     };
 
     const handleRemove = async () => {
@@ -429,15 +435,18 @@ export default function BookingPopover({
                                 </div>
 
                                 {isCreateMode && (
-                                    <label className="ml-12 inline-flex cursor-pointer items-center gap-3 rounded-xl px-1 py-2 text-sm font-medium text-slate-700 dark:text-slate-300">
-                                        <input
-                                            type="checkbox"
-                                            checked={repeat}
-                                            onChange={(e) => setRepeat(e.target.checked)}
-                                            className="h-4 w-4 rounded border-slate-300 bg-white text-indigo-600 focus:ring-indigo-500 dark:border-[#334155] dark:bg-[#1e2939] dark:text-cyan-400 dark:focus:ring-cyan-300"
-                                        />
-                                        Repeat event
-                                    </label>
+                                    <div className="flex gap-4">
+                                        <FieldIcon><Repeat className="h-4 w-4" /></FieldIcon>
+                                        <div className="flex-1">
+                                            <FloatingSelect
+                                                id="booking-repeat"
+                                                value={repeatMode}
+                                                placeholder="Does not repeat"
+                                                options={repeatOptions}
+                                                onChange={(value) => setRepeatMode(value as RepeatMode)}
+                                            />
+                                        </div>
+                                    </div>
                                 )}
                             </div>
                         </div>

@@ -36,7 +36,7 @@ export interface NewTicketInput {
     Report_Problem: string;
     Location?: string;
     Item_ID?: number;
-    Room_ID?: number;
+    Room_ID?: number | null;
     Status?: TicketStatus;
     Priority?: TicketPriority | null;
     Category?: TicketCategory | null;

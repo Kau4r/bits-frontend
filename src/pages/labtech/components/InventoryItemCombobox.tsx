@@ -11,7 +11,7 @@ interface InventoryItem {
 }
 
 interface InventoryItemComboboxProps {
-    itemType: 'KEYBOARD' | 'MOUSE' | 'MONITOR' | 'SYSTEM_UNIT';
+    itemType: 'KEYBOARD' | 'MOUSE' | 'MONITOR' | 'MINI_PC';
     value: InventoryItem | null;
     onChange: (item: InventoryItem | null) => void;
     placeholder?: string;

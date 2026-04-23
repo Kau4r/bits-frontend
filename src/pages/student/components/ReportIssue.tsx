@@ -5,10 +5,13 @@ import { FloatingSelect } from '@/ui/FloatingSelect';
 interface ReportIssueModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (description: string, issueType: string, equipment: string, pcNumber: string) => Promise<void>;
+  onSubmit: (description: string, issueType: string, equipment: string, pcNumber: string, noRoom?: boolean) => Promise<void>;
   room: string;
   pcNumber: string;
 }
+
+const showPcNumberFor = (issueType: string) => issueType === 'hardware' || issueType === 'software';
+const showEquipmentFor = (issueType: string) => issueType === 'hardware';
 
 export default function ReportIssueModal({
   isOpen,
@@ -22,18 +25,30 @@ export default function ReportIssueModal({
   const [equipment, setEquipment] = useState('monitor');
   const isPlaceholderPc = !pcNumber || /^(unknown|n\/?a|none|-+)$/i.test(pcNumber.trim());
   const [editablePcNumber, setEditablePcNumber] = useState(isPlaceholderPc ? '' : pcNumber);
+  const [noRoom, setNoRoom] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const needsEquipment = showEquipmentFor(issueType);
+  const needsPcNumber = showPcNumberFor(issueType);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!description || !equipment) return;
+    if (!description) return;
+    if (needsEquipment && !equipment) return;
 
     setIsSubmitting(true);
     try {
-      await onSubmit(description.trim(), issueType, equipment, editablePcNumber.trim());
+      await onSubmit(
+        description.trim(),
+        issueType,
+        needsEquipment ? equipment : '',
+        needsPcNumber ? editablePcNumber.trim() : '',
+        noRoom,
+      );
       setDescription('');
       setEquipment('monitor');
       setEditablePcNumber(isPlaceholderPc ? '' : pcNumber);
+      setNoRoom(false);
       onClose();
     } finally {
       setIsSubmitting(false);
@@ -61,27 +76,30 @@ export default function ReportIssueModal({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Room
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Room
+              </label>
+              <label className="inline-flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={noRoom}
+                  onChange={(e) => setNoRoom(e.target.checked)}
+                  disabled={isSubmitting}
+                  className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700"
+                />
+                Not tied to a specific room
+              </label>
+            </div>
             <input
               type="text"
-              value={room}
+              value={noRoom ? 'No room selected' : room}
               readOnly
-              className="w-full px-3 py-2 border border-gray-300 dark:border-[#334155] rounded-md shadow-sm bg-gray-100 dark:bg-[#1e2939] dark:text-gray-300 cursor-not-allowed"
-            />
-          </div>
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              PC Number
-            </label>
-            <input
-              type="text"
-              value={editablePcNumber}
-              onChange={(e) => setEditablePcNumber(e.target.value)}
-              placeholder="Enter PC number"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-[#334155] rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-[#1e2939] dark:text-white"
-              disabled={isSubmitting}
+              className={`w-full px-3 py-2 border border-gray-300 dark:border-[#334155] rounded-md shadow-sm dark:text-gray-300 cursor-not-allowed ${
+                noRoom
+                  ? 'bg-gray-200 italic text-gray-500 dark:bg-[#0f172a] dark:text-gray-500'
+                  : 'bg-gray-100 dark:bg-[#1e2939]'
+              }`}
             />
           </div>
           <div className="mb-4">
@@ -101,25 +119,42 @@ export default function ReportIssueModal({
               onChange={setIssueType}
             />
           </div>
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Select Equipment
-            </label>
-            <FloatingSelect
-              id="equipment"
-              value={equipment}
-              placeholder="Select equipment"
-              options={[
-                { value: 'monitor', label: 'Monitor' },
-                { value: 'keyboard', label: 'Keyboard' },
-                { value: 'mouse', label: 'Mouse' },
-                { value: 'system-unit', label: 'System Unit' },
-                { value: 'headset', label: 'Headset' },
-              ]}
-              onChange={setEquipment}
-              disabled={isSubmitting}
-            />
-          </div>
+          {needsPcNumber && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                PC Number
+              </label>
+              <input
+                type="text"
+                value={editablePcNumber}
+                onChange={(e) => setEditablePcNumber(e.target.value)}
+                placeholder="Enter PC number"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-[#334155] rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-[#1e2939] dark:text-white"
+                disabled={isSubmitting}
+              />
+            </div>
+          )}
+          {needsEquipment && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Select Equipment
+              </label>
+              <FloatingSelect
+                id="equipment"
+                value={equipment}
+                placeholder="Select equipment"
+                options={[
+                  { value: 'monitor', label: 'Monitor' },
+                  { value: 'keyboard', label: 'Keyboard' },
+                  { value: 'mouse', label: 'Mouse' },
+                  { value: 'mini-pc', label: 'Mini PC' },
+                  { value: 'headset', label: 'Headset' },
+                ]}
+                onChange={setEquipment}
+                disabled={isSubmitting}
+              />
+            </div>
+          )}
 
           <div>
             <label htmlFor="description" className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">
@@ -151,7 +186,7 @@ export default function ReportIssueModal({
             <button
               type="submit"
               className="flex items-center justify-center w-full rounded-lg border border-transparent bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isSubmitting || !description || !equipment}
+              disabled={isSubmitting || !description || (needsEquipment && !equipment)}
             >
               {isSubmitting ? 'Submitting...' : 'Submit'}
             </button>

@@ -66,12 +66,6 @@ const getMondayOfWeek = (date: Date): Date => {
     return d;
 };
 
-// Convert HH:MM string to total minutes (e.g. "07:30" -> 450)
-const timeToMinutes = (time: string) => {
-    const [h, m] = time.split(':').map(Number);
-    return h * 60 + m;
-};
-
 // Pad 2-digit helper
 const pad2 = (n: number) => n.toString().padStart(2, '0');
 
@@ -84,30 +78,36 @@ const buildLocalDateTime = (day: Date, hhmm: string): Date => {
 export default function QueueModal({
     isOpen,
     onClose,
-    onQueue,
+    onQueue: _onQueue,
     onQueueWeekly,
     onRemove,
     availableRooms,
-    categorySessions = [],
+    categorySessions: _categorySessions = [],
     weekSessions,
     weekStart,
     editingSessionId,
-    initialStartTime,
-    initialEndTime,
-    initialMode = 'weekly',
+    initialStartTime: _initialStartTime,
+    initialEndTime: _initialEndTime,
+    // initialMode deprecated — mode is always 'weekly'.
+    initialMode: _initialMode = 'weekly',
     selectedQueueItem,
-    fullyBookedSlots = [],
+    fullyBookedSlots: _fullyBookedSlots = [],
     readOnly = false,
 }: QueueModalProps) {
 
-    const [mode, setMode] = useState<QueueMode>(initialMode);
-    const [startTime, setStartTime] = useState('')
-    const [endTime, setEndTime] = useState('')
+    // Mode is locked to 'weekly' — the single-session UI was removed. Leftover
+    // `mode === 'single'` branches below are dead and never render; the widened type
+    // avoids TS "no overlap" errors without forcing a full JSX deletion pass.
+    // eslint-disable-next-line prefer-const
+    let mode: QueueMode = 'weekly';
+    void mode;
     const [selectedRoom, setSelectedRoom] = useState<number | null>(null)
     const [error, setError] = useState('')
-    const [startDropdownOpen, setStartDropdownOpen] = useState(false)
-    const [endDropdownOpen, setEndDropdownOpen] = useState(false)
     const [submitting, setSubmitting] = useState(false)
+    const labAvailableRooms = useMemo(
+        () => availableRooms.filter(room => room.Room_Type === 'LAB'),
+        [availableRooms]
+    )
 
     // Weekly-mode state: set of "dayIndex-timeSlotIndex" keys (0..6 day, 0..N slot).
     const [selectedCells, setSelectedCells] = useState<Set<string>>(new Set())
@@ -117,24 +117,15 @@ export default function QueueModal({
 
     useEffect(() => {
         if (selectedQueueItem) {
-            const startDate = new Date(selectedQueueItem.startTime);
-            const endDate = new Date(selectedQueueItem.endTime);
-            setStartTime(`${pad2(startDate.getHours())}:${pad2(startDate.getMinutes())}`);
-            setEndTime(`${pad2(endDate.getHours())}:${pad2(endDate.getMinutes())}`);
             setSelectedRoom(selectedQueueItem.roomId);
+        } else if (labAvailableRooms.length > 0) {
+            setSelectedRoom(labAvailableRooms[0].Room_ID);
         } else {
-            setStartTime(initialStartTime || '07:00');
-            setEndTime(initialEndTime || '09:00');
-            if (availableRooms.length > 0) {
-                setSelectedRoom(availableRooms[0].Room_ID);
-            } else {
-                setSelectedRoom(null);
-            }
+            setSelectedRoom(null);
         }
         setError('');
         setSelectedCells(new Set());
-        setMode(initialMode);
-    }, [selectedQueueItem, isOpen, availableRooms, initialStartTime, initialEndTime, initialMode]);
+    }, [selectedQueueItem, isOpen, labAvailableRooms]);
 
     // End dragging on any mouseup globally
     useEffect(() => {
@@ -148,32 +139,16 @@ export default function QueueModal({
 
     const isEditing = !!selectedQueueItem;
 
-    // Build week days (Mon..Sun) starting from `weekStart` prop, falling back to the current week's Monday.
+    // Build week days (Mon..Sat) starting from `weekStart` prop, falling back to the current week's Monday.
     const weekDays = useMemo(() => {
         const monday = weekStart ? getMondayOfWeek(weekStart) : getMondayOfWeek(new Date());
-        return Array.from({ length: 7 }, (_, i) => {
+        return Array.from({ length: 6 }, (_, i) => {
             const d = new Date(monday);
             d.setDate(monday.getDate() + i);
             return d;
         });
     }, [weekStart]);
 
-    // Check if a specific room is blocked for the selected single-mode time range
-    const getRoomBlocker = (roomId: number): RoomSession | null => {
-        if (!categorySessions || !startTime || !endTime) return null;
-        const startMinutes = timeToMinutes(startTime);
-        const endMinutes = timeToMinutes(endTime);
-
-        return categorySessions
-            .filter(s => s.roomId === roomId && s.id !== editingSessionId)
-            .find(s => {
-                const sStart = new Date(s.startTime);
-                const sEnd = new Date(s.endTime);
-                const sStartMin = sStart.getHours() * 60 + sStart.getMinutes();
-                const sEndMin = sEnd.getHours() * 60 + sEnd.getMinutes();
-                return startMinutes < sEndMin && endMinutes > sStartMin;
-            }) || null;
-    };
 
     // In weekly mode, a room is "blocked" if ANY selected cell overlaps a session for that room.
     const getWeeklyRoomBlocker = useCallback((roomId: number): RoomSession | null => {
@@ -201,25 +176,6 @@ export default function QueueModal({
         return null;
     }, [weekSessions, selectedCells, weekDays, editingSessionId]);
 
-    // Check if a time slot is fully booked across all rooms (single-mode)
-    const isTimeOccupied = (time: string, isEndTime: boolean = false) => {
-        if (!fullyBookedSlots) return false;
-        const timeMinutes = timeToMinutes(time);
-
-        return fullyBookedSlots.some(slot => {
-            if (isEndTime) {
-                return timeMinutes > slot.startMinutes && timeMinutes <= slot.endMinutes;
-            }
-            return timeMinutes >= slot.startMinutes && timeMinutes < slot.endMinutes;
-        });
-    };
-
-    const getEndTimeOptions = () => {
-        if (!startTime) return timeSlots;
-        const startIndex = timeSlots.indexOf(startTime);
-        return timeSlots.slice(startIndex + 1);
-    };
-
     // Find blocker (if any) for a specific weekly cell. Returns null if empty/selectable.
     const getCellBlocker = useCallback((dayIdx: number, slotIdx: number, roomId?: number): RoomSession | null => {
         const sessions = weekSessions || [];
@@ -243,9 +199,9 @@ export default function QueueModal({
             }) || null;
         }
 
-        if (availableRooms.length === 0) return null;
+        if (labAvailableRooms.length === 0) return null;
         const blockersForCell: RoomSession[] = [];
-        for (const room of availableRooms) {
+        for (const room of labAvailableRooms) {
             const b = sessions.find(s => {
                 if (s.roomId !== room.Room_ID) return false;
                 if (s.id === editingSessionId) return false;
@@ -261,7 +217,7 @@ export default function QueueModal({
             b.type === 'schedule' ? 0 : (b.purpose === 'Student Usage' ? 2 : 1);
         blockersForCell.sort((a, b) => priority(a) - priority(b));
         return blockersForCell[0] || null;
-    }, [weekSessions, weekDays, availableRooms, editingSessionId]);
+    }, [weekSessions, weekDays, labAvailableRooms, editingSessionId]);
 
     const toggleCell = (dayIdx: number, slotIdx: number, forceMode?: 'add' | 'remove') => {
         const key = `${dayIdx}-${slotIdx}`;
@@ -348,29 +304,12 @@ export default function QueueModal({
             setError('Please select a room');
             return;
         }
-
-        if (mode === 'single') {
-            if (!startTime || !endTime) {
-                setError('Please select both start and end times');
-                return;
-            }
-            if (startTime >= endTime) {
-                setError('End time must be after start time');
-                return;
-            }
-            try {
-                setSubmitting(true);
-                await onQueue(startTime, endTime, selectedRoom);
-            } catch (err: unknown) {
-                const msg = err instanceof Error ? err.message : 'Failed to set room availability';
-                setError(msg);
-            } finally {
-                setSubmitting(false);
-            }
+        if (!labAvailableRooms.some(room => room.Room_ID === selectedRoom)) {
+            setError('Student room usage can only be scheduled for LAB rooms.');
             return;
         }
 
-        // Weekly mode
+        // Weekly mode (only supported mode)
         if (selectedCells.size === 0) {
             setError('Please select at least one time slot');
             return;
@@ -393,9 +332,9 @@ export default function QueueModal({
 
     if (!isOpen) return null;
 
-    const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-    const modalWidth = mode === 'weekly' ? 'max-w-4xl' : 'max-w-lg';
+    const modalWidth = 'max-w-4xl';
 
     return (
         <div
@@ -422,36 +361,8 @@ export default function QueueModal({
                     </button>
                 </div>
                 <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">
-                    {mode === 'weekly'
-                        ? 'Select time cells across the week to queue a room for student usage.'
-                        : 'Select a Room to add in the Queue'}
+                    Select time cells across the week to queue a room for student usage.
                 </p>
-
-                {/* Mode Tabs — hidden while editing an existing session */}
-                {!isEditing && (
-                    <div className="flex rounded-lg border border-gray-300 dark:border-gray-600 p-1 bg-gray-50 dark:bg-gray-800 mb-5">
-                        <button
-                            type="button"
-                            onClick={() => setMode('single')}
-                            className={`flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${mode === 'single'
-                                ? 'bg-indigo-600 text-white'
-                                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                        >
-                            Single Session
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setMode('weekly')}
-                            className={`flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${mode === 'weekly'
-                                ? 'bg-indigo-600 text-white'
-                                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                        >
-                            Weekly Schedule
-                        </button>
-                    </div>
-                )}
 
                 {error && (
                     <div className="mb-4 p-3 bg-red-50 dark:bg-red-500/20 text-red-600 dark:text-red-400 rounded-lg text-sm border border-red-200 dark:border-red-500/50">
@@ -459,109 +370,47 @@ export default function QueueModal({
                     </div>
                 )}
 
-                {mode === 'single' && (
-                    <>
-                        {/* Time Selection Row */}
-                        <div className="grid grid-cols-2 gap-4 mb-6">
-                            {/* Start Time Dropdown */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    Start Time
-                                </label>
-                                <div className="relative">
+                {/* Available Rooms Grid — shown above the weekly picker */}
+                <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Available Rooms (for all selected cells)
+                    </label>
+                    <div className="grid grid-cols-4 gap-3">
+                        {labAvailableRooms.length === 0 ? (
+                            <p className="col-span-4 text-center text-gray-500 dark:text-gray-400 py-4 text-sm">
+                                No LAB rooms available for this category
+                            </p>
+                        ) : (
+                            labAvailableRooms.map((room) => {
+                                const blocker = getWeeklyRoomBlocker(room.Room_ID);
+                                const booked = !!blocker;
+                                const blockedLabel = blocker?.type === 'schedule'
+                                    ? 'Class'
+                                    : blocker?.purpose === 'Student Usage'
+                                        ? 'Queued'
+                                        : 'Booked';
+                                return (
                                     <button
+                                        key={room.Room_ID}
                                         type="button"
-                                        onClick={() => {
-                                            if (readOnly) return;
-                                            setStartDropdownOpen(!startDropdownOpen);
-                                            setEndDropdownOpen(false);
-                                        }}
-                                        disabled={readOnly}
-                                        className={`w-full px-4 py-2 bg-white dark:bg-[#1e2939] border border-gray-300 dark:border-[#334155] rounded-md text-left text-gray-900 dark:text-white flex justify-between items-center text-sm ${readOnly ? 'opacity-60 cursor-not-allowed' : 'hover:border-gray-400 dark:hover:border-[#475569]'}`}
+                                        onClick={() => !booked && !isEditing && setSelectedRoom(room.Room_ID)}
+                                        disabled={isEditing || booked}
+                                        className={`px-2 py-2.5 rounded-md border text-sm font-medium transition-colors truncate ${booked
+                                            ? 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed dark:border-gray-700 dark:bg-gray-800 dark:text-gray-600'
+                                            : selectedRoom === room.Room_ID
+                                                ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-600/20 dark:text-indigo-300'
+                                                : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-700'
+                                            } ${isEditing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                        title={booked ? `${room.Name} - ${blockedLabel}` : room.Name}
                                     >
-                                        {startTime ? formatTimeDisplay(startTime) : 'Select time'}
-                                        {!readOnly && <span className="text-gray-400">▼</span>}
+                                        {room.Name}
+                                        {booked && <span className="block text-xs text-gray-400">{blockedLabel}</span>}
                                     </button>
-                                    {startDropdownOpen && (
-                                        <div className="absolute z-10 mt-1 w-full bg-white dark:bg-[#1e2939] border border-gray-300 dark:border-[#334155] rounded-md shadow-lg max-h-48 overflow-y-auto">
-                                            {timeSlots.map((time) => {
-                                                const occupied = isTimeOccupied(time);
-                                                return (
-                                                    <button
-                                                        key={time}
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setStartTime(time);
-                                                            setStartDropdownOpen(false);
-                                                            if (endTime && time >= endTime) {
-                                                                setEndTime('');
-                                                            }
-                                                        }}
-                                                        className={`w-full px-4 py-2 text-left text-sm ${occupied
-                                                            ? 'bg-red-50 text-red-600 dark:bg-red-500/30 dark:text-red-300'
-                                                            : time === startTime
-                                                                ? 'bg-blue-50 text-blue-600 dark:bg-blue-600 dark:text-white'
-                                                                : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/10'
-                                                            }`}
-                                                    >
-                                                        {formatTimeDisplay(time)}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* End Time Dropdown */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    End Time
-                                </label>
-                                <div className="relative">
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            if (readOnly) return;
-                                            setEndDropdownOpen(!endDropdownOpen);
-                                            setStartDropdownOpen(false);
-                                        }}
-                                        disabled={readOnly}
-                                        className={`w-full px-4 py-2 bg-white dark:bg-[#1e2939] border border-gray-300 dark:border-[#334155] rounded-md text-left text-gray-900 dark:text-white flex justify-between items-center text-sm ${readOnly ? 'opacity-60 cursor-not-allowed' : 'hover:border-gray-400 dark:hover:border-[#475569]'}`}
-                                    >
-                                        {endTime ? formatTimeDisplay(endTime) : 'Select time'}
-                                        {!readOnly && <span className="text-gray-400">▼</span>}
-                                    </button>
-                                    {endDropdownOpen && (
-                                        <div className="absolute z-10 mt-1 w-full bg-white dark:bg-[#1e2939] border border-gray-300 dark:border-[#334155] rounded-md shadow-lg max-h-48 overflow-y-auto">
-                                            {getEndTimeOptions().map((time) => {
-                                                const occupied = isTimeOccupied(time, true);
-                                                return (
-                                                    <button
-                                                        key={time}
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setEndTime(time);
-                                                            setEndDropdownOpen(false);
-                                                        }}
-                                                        className={`w-full px-4 py-2 text-left text-sm ${occupied
-                                                            ? 'bg-red-50 text-red-600 dark:bg-red-500/30 dark:text-red-300'
-                                                            : time === endTime
-                                                                ? 'bg-blue-50 text-blue-600 dark:bg-blue-600 dark:text-white'
-                                                                : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/10'
-                                                            }`}
-                                                    >
-                                                        {formatTimeDisplay(time)}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </>
-                )}
+                                );
+                            })
+                        )}
+                    </div>
+                </div>
 
                 {mode === 'weekly' && (
                     <div className="mb-6">
@@ -590,7 +439,7 @@ export default function QueueModal({
                         </div>
 
                         <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-auto select-none" onMouseLeave={() => { isDraggingRef.current = false; dragDayRef.current = null; }}>
-                            <div className="grid" style={{ gridTemplateColumns: '70px repeat(7, minmax(72px, 1fr))' }}>
+                            <div className="grid" style={{ gridTemplateColumns: '70px repeat(6, minmax(72px, 1fr))' }}>
                                 {/* Header: corner + day columns */}
                                 <div className="sticky top-0 z-10 bg-gray-50 dark:bg-gray-800 border-b border-r border-gray-200 dark:border-gray-700 p-2 text-xs font-medium text-gray-500 dark:text-gray-400">
                                     Time
@@ -648,7 +497,7 @@ export default function QueueModal({
                                                         // If click came without drag (mouseup with no enter), ensure toggle still happens.
                                                         e.preventDefault();
                                                     }}
-                                                    className={`h-7 border-b border-gray-200 dark:border-gray-700 ${dIdx < 6 ? 'border-r' : ''} ${cellClass} transition-colors`}
+                                                    className={`h-7 border-b border-gray-200 dark:border-gray-700 ${dIdx < 5 ? 'border-r' : ''} ${cellClass} transition-colors`}
                                                 />
                                             );
                                         })}
@@ -661,129 +510,6 @@ export default function QueueModal({
                         </p>
                     </div>
                 )}
-
-                {/* Available Rooms Grid */}
-                <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        {mode === 'weekly' ? 'Available Rooms (for all selected cells)' : 'Available Rooms for Current Time'}
-                    </label>
-                    <div className="grid grid-cols-4 gap-3">
-                        {availableRooms.length === 0 ? (
-                            <p className="col-span-4 text-center text-gray-500 dark:text-gray-400 py-4 text-sm">
-                                No rooms available for this category
-                            </p>
-                        ) : (
-                            availableRooms.map((room) => {
-                                const blocker = mode === 'weekly'
-                                    ? getWeeklyRoomBlocker(room.Room_ID)
-                                    : getRoomBlocker(room.Room_ID);
-                                const booked = !!blocker;
-                                const blockedLabel = blocker?.type === 'schedule'
-                                    ? 'Class'
-                                    : blocker?.purpose === 'Student Usage'
-                                        ? 'Queued'
-                                        : 'Booked';
-                                return (
-                                    <button
-                                        key={room.Room_ID}
-                                        type="button"
-                                        onClick={() => !booked && !isEditing && setSelectedRoom(room.Room_ID)}
-                                        disabled={isEditing || booked}
-                                        className={`px-2 py-2.5 rounded-md border text-sm font-medium transition-colors truncate ${booked
-                                            ? 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed dark:border-gray-700 dark:bg-gray-800 dark:text-gray-600'
-                                            : selectedRoom === room.Room_ID
-                                                ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-600/20 dark:text-indigo-300'
-                                                : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-700'
-                                            } ${isEditing ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                        title={booked ? `${room.Name} - ${blockedLabel}` : room.Name}
-                                    >
-                                        {room.Name}
-                                        {booked && <span className="block text-xs text-gray-400">{blockedLabel}</span>}
-                                    </button>
-                                );
-                            })
-                        )}
-                    </div>
-                </div>
-
-                {/* Single-session: show today's schedule for the selected room */}
-                {mode === 'single' && selectedRoom !== null && (() => {
-                    const room = availableRooms.find(r => r.Room_ID === selectedRoom);
-                    if (!room) return null;
-                    // Determine the target day from initialStartTime (or current startTime).
-                    const refIso = initialStartTime || startTime;
-                    const targetDay = refIso && refIso.includes('T')
-                        ? new Date(refIso)
-                        : new Date();
-                    const dayStart = new Date(targetDay);
-                    dayStart.setHours(0, 0, 0, 0);
-                    const dayEnd = new Date(dayStart);
-                    dayEnd.setDate(dayEnd.getDate() + 1);
-                    const todaysSessions = (weekSessions || [])
-                        .filter(s => s.roomId === selectedRoom)
-                        .filter(s => {
-                            const sStart = new Date(s.startTime).getTime();
-                            const sEnd = new Date(s.endTime).getTime();
-                            return sStart < dayEnd.getTime() && sEnd > dayStart.getTime();
-                        })
-                        .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
-
-                    const formatTime = (iso: string) => {
-                        const d = new Date(iso);
-                        const h = d.getHours();
-                        const m = d.getMinutes();
-                        const period = h >= 12 ? 'PM' : 'AM';
-                        const h12 = h % 12 || 12;
-                        return `${h12}:${m.toString().padStart(2, '0')} ${period}`;
-                    };
-                    const dateLabel = dayStart.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-
-                    return (
-                        <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/60">
-                            <div className="mb-2 flex items-center justify-between">
-                                <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                                    {room.Name} · {dateLabel}
-                                </span>
-                                <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
-                                    {todaysSessions.length} {todaysSessions.length === 1 ? 'entry' : 'entries'}
-                                </span>
-                            </div>
-                            {todaysSessions.length === 0 ? (
-                                <p className="text-xs italic text-gray-500 dark:text-gray-400">
-                                    Nothing scheduled for this room today.
-                                </p>
-                            ) : (
-                                <ul className="space-y-1.5">
-                                    {todaysSessions.map((s, i) => {
-                                        const kindLabel = s.type === 'schedule'
-                                            ? 'Class'
-                                            : s.purpose === 'Student Usage'
-                                                ? 'Queued'
-                                                : 'Booked';
-                                        const kindClass = s.type === 'schedule'
-                                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-                                            : s.purpose === 'Student Usage'
-                                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                                                : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
-                                        return (
-                                            <li key={i} className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
-                                                <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${kindClass}`}>
-                                                    {kindLabel}
-                                                </span>
-                                                <span className="font-mono tabular-nums text-gray-600 dark:text-gray-400">
-                                                    {formatTime(s.startTime)} – {formatTime(s.endTime)}
-                                                </span>
-                                                <span className="truncate">
-                                                    {s.purpose || (s.type === 'schedule' ? 'Scheduled class' : 'Booked')}
-                                                </span>
-                                            </li>
-                                        );
-                                    })}
-                                </ul>
-                            )}
-                        </div>
-                    );
-                })()}
 
                 {/* Action Buttons */}
                 <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">

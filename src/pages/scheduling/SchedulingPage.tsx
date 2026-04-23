@@ -31,13 +31,11 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
   const modal = useModal();
   const currentUserId = user?.User_ID ?? 0;
   const userRole = user?.User_Role.toUpperCase() ?? 'FACULTY';
+  const canManageAllBookings = userRole === 'ADMIN' || userRole === 'LAB_HEAD';
   const allowedRoomTypeSet = useMemo(
     () => allowedRoomTypes ? new Set(allowedRoomTypes) : null,
     [allowedRoomTypes]
   );
-  const noRoomsMessage = allowedRoomTypes?.length
-    ? 'No rooms matching the allowed room types are available for booking.'
-    : 'No rooms are available for booking.';
   type CalendarViewType = 'dayGridMonth' | 'timeGridWeek' | 'timeGridDay' | 'listWeek';
 
   const calendarRef = useRef<FullCalendar | null>(null);
@@ -182,15 +180,12 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
     const loadInitialData = async () => {
       try {
         const allRooms = await getRooms();
-        const roomsData = allowedRoomTypeSet
-          ? allRooms.filter(room => allowedRoomTypeSet.has(room.Room_Type))
-          : allRooms;
-        if (roomsData.length > 0) {
-          setSelectedRooms(roomsData.map(r => r.Room_ID)); // Select ALL rooms by default
+        if (allRooms.length > 0) {
+          setSelectedRooms(allRooms.map(r => r.Room_ID)); // Select ALL rooms by default
         } else {
           setSelectedRooms([]);
         }
-        setRooms(roomsData);
+        setRooms(allRooms);
         await loadBookings();
 
         // Load borrowing requests for faculty users
@@ -202,7 +197,7 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
       }
     };
     loadInitialData();
-  }, [userRole, currentUserId, loadBookings, allowedRoomTypeSet]);
+  }, [userRole, currentUserId, loadBookings]);
 
   const updateCurrentDate = () => {
     const api: CalendarApi | undefined = calendarRef.current?.getApi();
@@ -240,7 +235,7 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
   const handleDateSelect = (selectInfo: DateSelectArg) => {
     calendarRef.current?.getApi()?.unselect();
 
-    if (rooms.length === 0) {
+    if (bookableRooms.length === 0) {
       setWarningModal({
         isOpen: true,
         title: 'No Rooms Available',
@@ -250,9 +245,9 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
       return;
     }
 
-    // Check all selected rooms for overlap
-    for (const roomId of selectedRooms) {
-      const overlap = checkOverlap(selectInfo.start, selectInfo.end, roomId);
+    // Only pre-check conflicts when a single room is focused.
+    if (selectedRooms.length === 1) {
+      const overlap = checkOverlap(selectInfo.start, selectInfo.end, selectedRooms[0]);
       if (overlap) {
         setWarningModal({
           isOpen: true,
@@ -299,7 +294,7 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
   };
 
   const handleCreateClick = () => {
-    if (rooms.length === 0) {
+    if (bookableRooms.length === 0) {
       setWarningModal({
         isOpen: true,
         title: 'No Rooms Available',
@@ -386,11 +381,11 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
     const { event, revert, oldEvent } = dropInfo;
 
     // Only allow owner or admin to reschedule
-    if (event.extendedProps.createdById !== currentUserId && userRole !== 'ADMIN') {
+    if (event.extendedProps.createdById !== currentUserId && !canManageAllBookings) {
       setWarningModal({
         isOpen: true,
         title: 'Permission Denied',
-        message: 'You can only reschedule your own bookings.',
+        message: 'You can only reschedule your own bookings unless you are a Lab Head or Admin.',
         type: 'error',
       });
       revert();
@@ -492,7 +487,7 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
 
     // Determine if user can edit this booking
     const isOwner = event.extendedProps.createdById === currentUserId;
-    const canEdit = isOwner || userRole === 'ADMIN';
+    const canEdit = isOwner || canManageAllBookings;
 
     setViewingBooking({
       id: event.id,
@@ -582,6 +577,15 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
     CANCELLED: '#6b7280'
   };
 
+  const bookableRooms = useMemo(
+    () => allowedRoomTypeSet ? rooms.filter(room => allowedRoomTypeSet.has(room.Room_Type)) : rooms,
+    [rooms, allowedRoomTypeSet]
+  );
+
+  const noRoomsMessage = allowedRoomTypes?.length
+    ? 'No rooms matching the allowed room types are available for booking.'
+    : 'No rooms are available for booking.';
+
   return (
     <div className="box-border h-full bg-[#f4f7fa] p-4 dark:bg-[#101828]">
       <div className="flex h-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-[#334155] dark:bg-[#1e2939]">
@@ -624,7 +628,7 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
               createdById: booking.extendedProps.createdById,
               status: booking.extendedProps.status || 'PENDING',
             });
-            setCanEditBooking(booking.extendedProps.createdById === currentUserId || userRole === 'ADMIN');
+            setCanEditBooking(booking.extendedProps.createdById === currentUserId || canManageAllBookings);
 
             // Center the popover
             setPopoverPosition({
@@ -815,8 +819,8 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
         }}
         startTime={popoverTimes.start}
         endTime={popoverTimes.end}
-        rooms={rooms}
-        selectedRoomId={selectedRooms[0]}
+        rooms={bookableRooms}
+        selectedRoomId={bookableRooms.find(room => selectedRooms.includes(room.Room_ID))?.Room_ID ?? bookableRooms[0]?.Room_ID}
         isSubmitting={isSubmitting}
         viewingBooking={viewingBooking}
         canEdit={canEditBooking}
@@ -826,8 +830,8 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
       <ReportIssueModal
         isOpen={showReportIssueModal}
         onClose={() => setShowReportIssueModal(false)}
-        onSubmit={async (description: string, issueType: string, equipment: string) => {
-          console.log('Submitting issue:', { description, issueType, equipment });
+        onSubmit={async (description, issueType, equipment, pcNumber, noRoom) => {
+          console.log('Submitting issue:', { description, issueType, equipment, pcNumber, noRoom });
         }}
         room={rooms.find(r => r.Room_ID === selectedRooms[0])?.Name || ''}
         pcNumber="N/A"

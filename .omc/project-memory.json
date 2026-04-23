@@ -228,15 +228,15 @@
   },
   "hotPaths": [
     {
-      "path": "src\\pages\\labtech\\RoomPage.tsx",
-      "accessCount": 43,
-      "lastAccessed": 1776918767888,
+      "path": "src\\pages\\labtech\\InventoryPage.tsx",
+      "accessCount": 52,
+      "lastAccessed": 1776972756236,
       "type": "file"
     },
     {
-      "path": "src\\pages\\labtech\\InventoryPage.tsx",
-      "accessCount": 36,
-      "lastAccessed": 1776872016211,
+      "path": "src\\pages\\labtech\\RoomPage.tsx",
+      "accessCount": 45,
+      "lastAccessed": 1776978378946,
       "type": "file"
     },
     {
@@ -252,21 +252,27 @@
       "type": "file"
     },
     {
+      "path": "src",
+      "accessCount": 21,
+      "lastAccessed": 1776976995712,
+      "type": "directory"
+    },
+    {
+      "path": "src\\components\\Table.tsx",
+      "accessCount": 19,
+      "lastAccessed": 1776972730937,
+      "type": "file"
+    },
+    {
       "path": "src\\pages\\labtech\\components\\ItemModal.tsx",
       "accessCount": 18,
       "lastAccessed": 1776918725532,
       "type": "file"
     },
     {
-      "path": "src",
-      "accessCount": 17,
-      "lastAccessed": 1776912091366,
-      "type": "directory"
-    },
-    {
-      "path": "src\\components\\Table.tsx",
-      "accessCount": 16,
-      "lastAccessed": 1776866945067,
+      "path": "src\\layout\\Navbar.tsx",
+      "accessCount": 18,
+      "lastAccessed": 1776972145486,
       "type": "file"
     },
     {
@@ -309,12 +315,6 @@
       "path": "src\\types\\formtypes.ts",
       "accessCount": 8,
       "lastAccessed": 1776854442204,
-      "type": "file"
-    },
-    {
-      "path": "src\\layout\\Navbar.tsx",
-      "accessCount": 8,
-      "lastAccessed": 1776867717740,
       "type": "file"
     },
     {
@@ -373,8 +373,8 @@
     },
     {
       "path": "change-requests.txt",
-      "accessCount": 3,
-      "lastAccessed": 1776851665729,
+      "accessCount": 4,
+      "lastAccessed": 1776970625062,
       "type": "file"
     },
     {
@@ -432,6 +432,12 @@
       "type": "directory"
     },
     {
+      "path": "src\\pages\\labtech",
+      "accessCount": 2,
+      "lastAccessed": 1776977004405,
+      "type": "directory"
+    },
+    {
       "path": "src\\types\\borrowing.ts",
       "accessCount": 1,
       "lastAccessed": 1776850222228,
@@ -465,12 +471,6 @@
       "path": "src\\app",
       "accessCount": 1,
       "lastAccessed": 1776853485353,
-      "type": "directory"
-    },
-    {
-      "path": "src\\pages\\labtech",
-      "accessCount": 1,
-      "lastAccessed": 1776854294883,
       "type": "directory"
     },
     {

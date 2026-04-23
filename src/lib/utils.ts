@@ -11,7 +11,9 @@ export function cn(...inputs: ClassValue[]) {
  */
 export const formatItemType = (raw?: string | null): string => {
   if (!raw) return '';
-  return raw
+  const resolved = resolveItemType(raw);
+  if (resolved === 'MINI_PC') return 'Mini PC';
+  return resolved
     .toString()
     .toLowerCase()
     .split(/[\s_-]+/)
@@ -28,5 +30,7 @@ export const resolveItemType = (raw?: string | null): string => {
   if (!raw) return 'OTHER';
   const trimmed = raw.toString().trim();
   if (!trimmed || trimmed === '-' || trimmed.toUpperCase() === 'GENERAL') return 'OTHER';
-  return trimmed;
+  const normalized = trimmed.toUpperCase().replace(/[\s-]+/g, '_');
+  if (normalized === 'SYSTEM_UNIT') return 'MINI_PC';
+  return normalized;
 };

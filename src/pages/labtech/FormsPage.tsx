@@ -2,34 +2,27 @@ import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import Table from '@/components/Table';
 import Search from '@/components/Search';
 import { AddFormDialog } from '@/pages/labtech/components/AddFormDialog';
-import { RowPreview } from '@/pages/labtech/components/RowPreview';
 import { InlineTimeline } from '@/pages/labtech/components/InlineTimeline';
 import { StatusSelect } from '@/pages/labtech/components/StatusSelect';
 import { DeptSelect } from '@/pages/labtech/components/DeptSelect';
 import type { FormRecord, FormStatus, FormType, FormDepartment, FormAttachmentRecord, FormDocumentType, FormHistoryAction } from '@/types/formtypes';
 import {
-  canCompleteRisForm,
-  formDocumentTypeLabels,
   formStatusColors,
   formStatusLabels,
+  formDocumentTypeLabels,
   formTypeLabels,
   formDepartmentLabels,
-  getMissingRisCompletionDocumentTypes,
   getTimelineStepsForType,
   getTransferDepartmentOptions,
   hasCurrentStepAttachment,
-  hasVisitedFormDepartment,
-  isRisFormType,
   normalizeFormDepartment,
   getDepartmentsForType,
-  risCompletionDocumentTypes,
-  stepRequiresAttachment
 } from '@/types/formtypes';
-import { getForms, createForm, updateForm as updateFormAPI, transferForm, uploadFile, addFormAttachment, resolveFormFileUrl, setFormReceived, archiveForm } from '@/services/forms';
+import { getForms, createForm, updateForm as updateFormAPI, transferForm, uploadFile, addFormAttachment, deleteFormAttachment, resolveFormFileUrl, archiveForm, unarchiveForm, deleteForm } from '@/services/forms';
 import { useAuth } from '@/context/AuthContext';
 import { useModal } from '@/context/ModalContext';
 import { useNotifications } from '@/context/NotificationContext';
-import { Check, X, Plus, Archive, Inbox, RefreshCw, Lock, CornerUpLeft, AlertTriangle } from 'lucide-react';
+import { Check, X, Plus, Archive, Inbox, RefreshCw, Lock, CornerUpLeft, Info, Eye, Download, Pencil, Trash2, FileText, Image as ImageIcon, File } from 'lucide-react';
 import type { Form } from '@/types/formtypes';
 import { FloatingSelect } from '@/ui/FloatingSelect';
 import ReturnForRevisionModal from '@/pages/labtech/components/ReturnForRevisionModal';
@@ -62,7 +55,8 @@ export default function Forms() {
   const [loading, setLoading] = useState(true);
 
   const tableHeaders = [
-    { label: 'Title', key: 'title' },
+    { label: <span className="pl-4">Title</span>, key: 'title' },
+    { label: 'Form Number', key: 'formNumber' },
     { label: 'Department', key: 'department' },
     { label: 'Status', key: 'status' },
     { label: 'Attached Files', key: 'attachments' },
@@ -83,19 +77,49 @@ export default function Forms() {
     });
   };
 
+  const getFormTypeDisplay = (type: FormType | string) => type === 'WRF' ? 'WRF' : 'RIS';
+
+  const getFormNumberChipClass = (type: FormType | string) =>
+    type === 'WRF'
+      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
+      : 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300';
+
+  const getAttachmentCountLabel = (form: FormRecord) => {
+    const count = form.attachments?.length || 0;
+    return `${count} ${count === 1 ? 'file' : 'files'}`;
+  };
+
+  const getDisplayStatusLabel = (form: FormRecord) =>
+    form.department === 'COMPLETED'
+      ? 'Completed'
+      : formStatusLabels[form.status as FormStatus] || form.status;
+
+  const getDisplayStatusClass = (form: FormRecord) =>
+    form.department === 'COMPLETED'
+      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+      : statusChip[form.status as FormStatus] || statusChip.ARCHIVED;
+
+  const getLastHistoryEntry = (form: FormRecord) =>
+    [...(form.history || [])].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())[0];
+
   // Local state for buffered edits: formId -> partial updates
   const [editedForms, setEditedForms] = useState<Record<string, Partial<FormRecord>>>({});
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
   const [uploadingAttachmentIds, setUploadingAttachmentIds] = useState<Set<string>>(new Set());
-  const [markingReceivedIds, setMarkingReceivedIds] = useState<Set<string>>(new Set());
-  const [attachmentDocumentTypes, setAttachmentDocumentTypes] = useState<Record<string, FormDocumentType>>({});
   const [archivingIds, setArchivingIds] = useState<Set<string>>(new Set());
+  const [unarchivingIds, setUnarchivingIds] = useState<Set<string>>(new Set());
+  const [deletingAttachmentIds, setDeletingAttachmentIds] = useState<Set<string>>(new Set());
+  const [deletingFormIds, setDeletingFormIds] = useState<Set<string>>(new Set());
+  const [editingCompletedIds, setEditingCompletedIds] = useState<Set<string>>(new Set());
   const [returnModalFormId, setReturnModalFormId] = useState<string | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   // Terminal check for local FormRecord (no FormRecord `Department`/`Status` casing — project `Is_*` equivalents)
   const isRecordTerminal = useCallback((form: FormRecord): boolean =>
     form.department === 'COMPLETED' || form.status === 'CANCELLED' || form.status === 'ARCHIVED', []);
+  const isCompletedRecord = (form: FormRecord): boolean => form.department === 'COMPLETED';
+  const canEditWorkflow = (form: FormRecord): boolean =>
+    !isRecordTerminal(form) || (isCompletedRecord(form) && editingCompletedIds.has(form.id));
 
   // True if the form has visited at least one workflow step earlier than its current step.
   const hasPriorVisitedStep = useCallback((form: FormRecord): boolean => {
@@ -223,14 +247,68 @@ export default function Forms() {
 
 
   const filtered = useMemo(() => {
-    const q = searchTerm.toLowerCase();
+    const q = searchTerm.trim().toLowerCase();
+    const searchableTextForForm = (form: FormRecord) => {
+      const typeAliases = [
+        form.type,
+        formTypeLabels[form.type],
+        form.type.startsWith('RIS') ? 'RIS' : '',
+        form.type === 'WRF' ? 'WRF' : '',
+      ];
+      const statusAliases = [
+        form.status,
+        formStatusLabels[form.status],
+        form.department === 'COMPLETED' ? 'Completed' : '',
+      ];
+      const departmentAliases = [
+        form.department,
+        formDepartmentLabels[form.department as FormDepartment],
+      ];
+      const attachmentText = (form.attachments || []).flatMap(attachment => [
+        attachment.fileName,
+        attachment.fileType,
+        attachment.documentType,
+        attachment.documentType ? formDocumentTypeLabels[attachment.documentType] : '',
+        attachment.department,
+        attachment.department ? formDepartmentLabels[attachment.department] : '',
+        attachment.uploadedByName,
+        attachment.notes,
+        attachment.uploadedAt,
+      ]);
+      const historyText = (form.history || []).flatMap(entry => [
+        entry.dept,
+        formDepartmentLabels[entry.dept as FormDepartment],
+        entry.performedByName,
+        entry.reason,
+        entry.action,
+        entry.at,
+      ]);
+
+      return [
+        form.title,
+        form.formNumber,
+        form.requesterName,
+        form.remarks,
+        form.createdAt,
+        form.attachmentName,
+        form.attachmentType,
+        `${form.attachments?.length || 0} files`,
+        form.isArchived ? 'archived' : 'active',
+        form.isReceived ? 'received' : '',
+        form.receivedByName,
+        form.receivedAt,
+        ...typeAliases,
+        ...statusAliases,
+        ...departmentAliases,
+        ...attachmentText,
+        ...historyText,
+      ].filter(Boolean).join(' ').toLowerCase();
+    };
+
     return forms
       .filter(f => (showArchived ? f.isArchived : !f.isArchived))
       .filter(f => {
-        const attachmentSearch = (f.attachments || []).map(attachment => attachment.fileName).join(' ');
-        const matchesSearch = `${f.title || ''} ${f.formNumber} ${f.type} ${f.status} ${f.department} ${f.attachmentName || ''} ${attachmentSearch}`
-          .toLowerCase()
-          .includes(q);
+        const matchesSearch = q === '' || searchableTextForForm(f).includes(q);
         const matchesFormType = formTypeFilter === 'All' || f.type === formTypeFilter;
         const matchesStatus = statusFilter === 'All' || f.status === statusFilter;
         return matchesSearch && matchesFormType && matchesStatus;
@@ -300,48 +378,9 @@ export default function Forms() {
     }
   };
 
-  const isRisAtOrAfterPurchasing = (form: FormRecord) =>
-    isRisFormType(form.type) && hasVisitedFormDepartment(
-      form.type,
-      form.department,
-      form.history?.map(h => h.dept) || [],
-      'PURCHASING'
-    );
-
-  const getAttachmentTypeOptions = (form: FormRecord): FormDocumentType[] =>
-    isRisAtOrAfterPurchasing(form)
-      ? [...risCompletionDocumentTypes, 'PROOF', 'OTHER']
-      : ['PROOF', 'OTHER'];
-
-  const getSelectedAttachmentDocumentType = (form: FormRecord): FormDocumentType => {
-    const availableTypes = getAttachmentTypeOptions(form);
-    const selectedType = attachmentDocumentTypes[form.id];
-    return selectedType && availableTypes.includes(selectedType) ? selectedType : availableTypes[0];
-  };
-
-  const getCompletionBlockMessage = (form: FormRecord) => {
-    const missing = getMissingRisCompletionDocumentTypes(form.attachments || []);
-    const missingLabels = missing.map(type => formDocumentTypeLabels[type]);
-    const parts = [];
-
-    if (missingLabels.length > 0) {
-      parts.push(`upload ${missingLabels.join(', ')}`);
-    }
-
-    if (!form.isReceived) {
-      parts.push('mark the form as received');
-    }
-
-    return parts.length > 0
-      ? `Before completing this RIS form, ${parts.join(' and ')}.`
-      : '';
-  };
-
   const formHasCurrentStepAttachment = (form: FormRecord): boolean => {
     const currentDept = normalizeFormDepartment(form.department);
     if (!currentDept) return true;
-    // Skip gating at steps that don't require an attachment (e.g. DEPARTMENT_HEAD, DEAN_OFFICE)
-    if (!stepRequiresAttachment(form.type, currentDept)) return true;
     return hasCurrentStepAttachment(
       currentDept,
       form.history,
@@ -391,20 +430,29 @@ export default function Forms() {
     }
   };
 
-  const handleToggleReceived = async (form: FormRecord, isReceived: boolean) => {
-    setMarkingReceivedIds(prev => new Set(prev).add(form.id));
+  const handleRemoveAttachment = async (form: FormRecord, attachmentId: string) => {
+    const numericAttachmentId = Number(attachmentId);
+    if (!Number.isFinite(numericAttachmentId)) {
+      await modal.showError('This attachment cannot be removed because it does not have a valid server ID.', 'Remove File Failed');
+      return;
+    }
+
+    const confirmed = await modal.showConfirm('Remove this attachment from the form?', 'Remove Attachment');
+    if (!confirmed) return;
+
+    setDeletingAttachmentIds(prev => new Set(prev).add(attachmentId));
 
     try {
-      const updatedForm = await setFormReceived(parseInt(form.id), isReceived);
+      const updatedForm = await deleteFormAttachment(Number(form.id), numericAttachmentId);
       const updatedRecord = mapFormToRecord(updatedForm);
       setForms(prev => prev.map(current => current.id === form.id ? updatedRecord : current));
     } catch (error) {
-      console.error('Failed to update received indicator:', error);
-      await modal.showError(error instanceof Error ? error.message : 'Failed to update received indicator.', 'Received Update Failed');
+      console.error('Failed to remove form attachment:', error);
+      await modal.showError(error instanceof Error ? error.message : 'Failed to remove the attachment.', 'Remove File Failed');
     } finally {
-      setMarkingReceivedIds(prev => {
+      setDeletingAttachmentIds(prev => {
         const next = new Set(prev);
-        next.delete(form.id);
+        next.delete(attachmentId);
         return next;
       });
     }
@@ -426,6 +474,53 @@ export default function Forms() {
       await modal.showError(error instanceof Error ? error.message : 'Failed to archive this form.', 'Archive Failed');
     } finally {
       setArchivingIds(prev => {
+        const next = new Set(prev);
+        next.delete(form.id);
+        return next;
+      });
+    }
+  };
+
+  const handleUnarchiveForm = async (form: FormRecord) => {
+    setUnarchivingIds(prev => new Set(prev).add(form.id));
+    try {
+      const restored = await unarchiveForm(parseInt(form.id));
+      const updatedRecord = mapFormToRecord(restored);
+      setForms(prev => prev.map(current => current.id === form.id ? updatedRecord : current));
+    } catch (error) {
+      console.error('Failed to unarchive form:', error);
+      await modal.showError(error instanceof Error ? error.message : 'Failed to unarchive this form.', 'Unarchive Failed');
+    } finally {
+      setUnarchivingIds(prev => {
+        const next = new Set(prev);
+        next.delete(form.id);
+        return next;
+      });
+    }
+  };
+
+  const handleDeleteForm = async (form: FormRecord) => {
+    const confirmed = await modal.showConfirm(
+      `Delete form ${form.formNumber}? This cannot be undone.`,
+      'Delete Form'
+    );
+    if (!confirmed) return;
+
+    setDeletingFormIds(prev => new Set(prev).add(form.id));
+    try {
+      await deleteForm(parseInt(form.id));
+      setForms(prev => prev.filter(current => current.id !== form.id));
+      setEditedForms(prev => {
+        const next = { ...prev };
+        delete next[form.id];
+        return next;
+      });
+      if (expandedRow === form.id) setExpandedRow(null);
+    } catch (error) {
+      console.error('Failed to delete form:', error);
+      await modal.showError(error instanceof Error ? error.message : 'Failed to delete this form.', 'Delete Failed');
+    } finally {
+      setDeletingFormIds(prev => {
         const next = new Set(prev);
         next.delete(form.id);
         return next;
@@ -559,16 +654,11 @@ export default function Forms() {
       const currentForm = forms.find(f => f.id === id);
       if (!currentForm) return;
 
-      if (edits.status === 'APPROVED' && !formHasCurrentStepAttachment(currentForm)) {
+      if (edits.department === 'COMPLETED' && !formHasCurrentStepAttachment(currentForm)) {
         await modal.showError(
-          `Upload the updated form for ${getCurrentStepLabel(currentForm)} before approval.`,
+          `Upload the completed form for ${getCurrentStepLabel(currentForm)} before marking this form Completed.`,
           'Upload Required'
         );
-        return;
-      }
-
-      if (edits.department === 'COMPLETED' && isRisFormType(currentForm.type) && !canCompleteRisForm(currentForm)) {
-        await modal.showError(getCompletionBlockMessage(currentForm), 'RIS Completion Blocked');
         return;
       }
 
@@ -610,6 +700,11 @@ export default function Forms() {
         delete next[id];
         return next;
       });
+      setEditingCompletedIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
 
     } catch (error) {
       console.error('Failed to save form:', error);
@@ -627,6 +722,11 @@ export default function Forms() {
     setEditedForms(prev => {
       const next = { ...prev };
       delete next[id];
+      return next;
+    });
+    setEditingCompletedIds(prev => {
+      const next = new Set(prev);
+      next.delete(id);
       return next;
     });
   };
@@ -747,7 +847,7 @@ export default function Forms() {
             ))}
           </div>
         ) : (
-          <Table headers={tableHeaders} columnWidths="3.4fr 2fr 1.5fr 1.8fr 1.6fr 1fr">
+          <Table headers={tableHeaders} columnWidths="1.5fr 2fr 1.5fr 1.5fr 1.5fr 2fr 0.75fr">
             {filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center flex-1 w-full min-h-full" data-full-row>
                 <div className="p-4 bg-gray-100 dark:bg-gray-800/50 rounded-full mb-4">
@@ -777,49 +877,38 @@ export default function Forms() {
                 )}
               </div>
             ) : (
-              filtered.flatMap(f => [
-                <button
-                  key={`${f.id}-row`}
-                  type="button"
-                  onClick={() => setExpandedRow(expandedRow === f.id ? null : f.id)}
-                  className="group w-full cursor-pointer items-center text-left transition-all duration-150 hover:bg-indigo-50/50 focus:bg-indigo-50 focus:outline-none dark:hover:bg-indigo-900/10 dark:focus:bg-indigo-900/20"
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
+              filtered.flatMap(f => {
+                const attachmentCountLabel = getAttachmentCountLabel(f);
+
+                return [
+                  <button
+                    key={`${f.id}-row`}
+                    type="button"
+                    onClick={() => setExpandedRow(expandedRow === f.id ? null : f.id)}
+                    className="group w-full cursor-pointer items-center text-left transition-all duration-150 hover:bg-indigo-50/50 focus:bg-indigo-50 focus:outline-none dark:hover:bg-indigo-900/10 dark:focus:bg-indigo-900/20"
+                  >
+                    <div className="min-w-0 pl-4">
+                      <span className="block max-w-[220px] truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
                         {f.title || f.formNumber}
                       </span>
-                      <span className="shrink-0 rounded-full bg-gray-100 dark:bg-gray-700 px-2 py-0.5 text-[11px] font-mono font-medium text-gray-600 dark:text-gray-300">
-                        {f.formNumber}
-                      </span>
                     </div>
-                    {f.attachmentName && (
-                      <span className="block max-w-[260px] truncate text-xs text-gray-500 dark:text-gray-400">
-                        {f.attachmentName}
-                      </span>
-                    )}
-                  </div>
+
+                  <span className={`rounded-full px-2 py-1 text-xs font-mono font-semibold ${getFormNumberChipClass(f.type)}`}>
+                    {f.formNumber || getFormTypeDisplay(f.type)}
+                  </span>
 
                   <span className="text-sm text-gray-700 dark:text-gray-300">{formDepartmentLabels[f.department as FormDepartment] || f.department}</span>
 
                   <div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusChip[f.status as FormStatus] || statusChip.ARCHIVED}`}>
-                      {formStatusLabels[f.status as FormStatus] || f.status}
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDisplayStatusClass(f)}`}>
+                      {getDisplayStatusLabel(f)}
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-3 min-w-0 w-full">
-                    <RowPreview url={f.attachmentUrl} name={f.attachmentName} type={f.attachmentType} />
-                    <div className="min-w-0">
-                      <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-[200px]">
-                        {(f.attachments?.length || 0)} {(f.attachments?.length || 0) === 1 ? 'file' : 'files'}
-                      </span>
-                      {f.attachmentName && (
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {f.attachmentName}
-                        </span>
-                      )}
-                    </div>
+                  <div className="flex min-w-0 flex-col">
+                    <span className="truncate text-sm font-bold text-gray-900 dark:text-gray-100">
+                      {attachmentCountLabel}
+                    </span>
                   </div>
 
                   <span className="text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
@@ -841,39 +930,46 @@ export default function Forms() {
                   </div>
                 </button>,
                 expandedRow === f.id && (
-                  <div key={`${f.id}-exp`} data-full-row className="p-6 bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div key={`${f.id}-exp`} data-full-row className="p-4 bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+                    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(240px,0.24fr)_minmax(0,1fr)]">
                       <div>
-                        <div className="bg-white dark:bg-gray-900 p-6 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm h-full">
-                          <h4 className="mb-6 text-sm font-medium text-gray-900 dark:text-gray-300 flex items-center gap-2">
-                            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="flex h-full flex-col bg-white dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                          <h4 className="mb-4 text-base font-semibold text-gray-900 dark:text-gray-200 flex items-center gap-2">
+                            <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             Processing Timeline
                           </h4>
-                          <div className="p-2">
+                          <div className="p-1">
                             <InlineTimeline
                               steps={getTimelineStepsForType(f.type)}
                               current={formDepartmentLabels[f.department as FormDepartment] || f.department}
                               completedSteps={f.history?.map(h => h.dept) || []}
                               history={f.history || []}
+                              compact
                             />
                           </div>
                         </div>
                       </div>
 
-                      <div className="space-y-5">
+                      <div className="space-y-4">
                         {/* Terminal-state lock banner */}
                         {isRecordTerminal(f) && (
                           <div className="flex items-center gap-3 rounded-lg border border-gray-300 bg-gray-100 dark:bg-gray-800/70 dark:border-gray-700 px-4 py-3 text-sm text-gray-700 dark:text-gray-200">
                             <Lock className="h-4 w-4 flex-shrink-0 text-gray-500 dark:text-gray-400" />
                             <span>
-                              This form is {f.status === 'CANCELLED' ? 'Cancelled' : f.status === 'ARCHIVED' ? 'Archived' : 'Completed'} and is locked from further changes.
+                              {isCompletedRecord(f) && editingCompletedIds.has(f.id)
+                                ? 'Completed form editing is enabled. Save or lock it when finished.'
+                                : f.status === 'CANCELLED'
+                                  ? 'This form is Cancelled and is locked from further changes.'
+                                  : f.status === 'ARCHIVED'
+                                    ? 'This form is Archived and is locked from further changes.'
+                                    : 'This form is already marked Completed. Use Edit to make changes.'}
                             </span>
                           </div>
                         )}
 
-                        {/* Row actions: Return for Revision (archive moved to timeline header) */}
+                        {/* Row actions: Return for Revision */}
                         {!isRecordTerminal(f) && hasPriorVisitedStep(f) && (
                           <div className="flex flex-wrap items-center gap-2">
                             <button
@@ -888,8 +984,8 @@ export default function Forms() {
                         )}
 
                         {/* Save Actions Logic */}
-                        {!isRecordTerminal(f) && editedForms[f.id] && (
-                          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-800 rounded-lg p-4 flex items-center justify-between animate-fadeIn">
+                        {canEditWorkflow(f) && editedForms[f.id] && (
+                          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-800 rounded-lg px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between animate-fadeIn">
                             <div className="text-sm text-blue-900 dark:text-blue-200 font-medium">
                               You have unsaved changes ({Object.keys(editedForms[f.id]!).length})
                             </div>
@@ -921,8 +1017,43 @@ export default function Forms() {
                           </div>
                         )}
 
-                        {!isRecordTerminal(f) && (
-                          <div className="bg-white dark:bg-gray-900 p-5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                        <div className="grid items-stretch gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.9fr)]">
+                          <div className="grid items-stretch gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.85fr)]">
+                          <div className="h-full">
+                            {(() => {
+                              const lastEntry = getLastHistoryEntry(f);
+                              const lastUpdatedBy = lastEntry?.performedByName || f.receivedByName || 'System';
+                              const lastUpdatedAt = lastEntry?.at || f.receivedAt || f.createdAt;
+
+                              return (
+                                <div className="bg-white dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm h-full">
+                                  <h4 className="mb-4 text-sm font-medium text-gray-900 dark:text-gray-300 flex items-center gap-2">
+                                    <Info className="h-4 w-4 text-blue-500" />
+                                    Form Details
+                                  </h4>
+                                  <div className="grid gap-3">
+                                    <div className="rounded-lg bg-gray-50 p-2.5 dark:bg-gray-800/60">
+                                      <p className="text-[11px] font-semibold uppercase text-gray-500 dark:text-gray-400">Last Update</p>
+                                      <p className="mt-1 text-sm font-medium text-gray-900 dark:text-gray-100">{formatCreatedAt(lastUpdatedAt)}</p>
+                                    </div>
+                                    <div className="rounded-lg bg-gray-50 p-2.5 dark:bg-gray-800/60">
+                                      <p className="text-[11px] font-semibold uppercase text-gray-500 dark:text-gray-400">Updated By</p>
+                                      <p className="mt-1 text-sm font-medium text-gray-900 dark:text-gray-100">{lastUpdatedBy}</p>
+                                    </div>
+                                    <div className="rounded-lg bg-gray-50 p-2.5 dark:bg-gray-800/60">
+                                      <p className="text-[11px] font-semibold uppercase text-gray-500 dark:text-gray-400">Requestor</p>
+                                      <p className="mt-1 text-sm font-medium text-gray-900 dark:text-gray-100">{f.requesterName || 'Not specified'}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+
+                          <div className="flex h-full min-h-0 flex-col gap-4">
+                        {(!isRecordTerminal(f) || isCompletedRecord(f)) && (
+                          <div className="grid h-full flex-1 auto-rows-fr gap-4">
+                          <div className="bg-white dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm h-full">
                             <h4 className="text-sm font-medium text-gray-900 dark:text-gray-300 mb-4 flex items-center gap-2">
                               <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -930,233 +1061,66 @@ export default function Forms() {
                               Update Status
                             </h4>
                             <div className="w-full">
+                              <StatusSelect
+                                value={editedForms[f.id]?.status ?? f.status}
+                                onChange={(s: FormStatus) => handleLocalChange(f.id, 'status', s)}
+                                className="w-full"
+                                disabled={!canEditWorkflow(f)}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="bg-white dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm h-full">
+                            <h4 className="text-sm font-medium text-gray-900 dark:text-gray-300 mb-2 flex items-center gap-2">
+                              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                              </svg>
+                              Transfer Department
+                            </h4>
+                            <div className="w-full">
                               {(() => {
-                                const stepHasAttachment = formHasCurrentStepAttachment(f);
+                                const isApproved = (editedForms[f.id]?.status ?? f.status) === 'APPROVED';
+                                const deptSelectDisabled = !canEditWorkflow(f) || !isApproved;
+
                                 return (
                                   <>
-                                    <StatusSelect
-                                      value={editedForms[f.id]?.status ?? f.status}
-                                      onChange={(s: FormStatus) => handleLocalChange(f.id, 'status', s)}
-                                      disabledStatuses={!stepHasAttachment ? ['APPROVED'] : []}
+                                    <DeptSelect
+                                      value={editedForms[f.id]?.department ?? f.department}
+                                      onChange={(d: FormDepartment) => handleLocalChange(f.id, 'department', d)}
+                                      formType={f.type}
+                                      disabled={deptSelectDisabled}
+                                      options={getTransferDepartmentOptions(
+                                        f.type,
+                                        f.department,
+                                        f.history?.map(h => h.dept) || []
+                                      ).map(option => ({
+                                        ...option,
+                                        disabled: option.disabled
+                                          || (option.value === 'COMPLETED' && !formHasCurrentStepAttachment(f))
+                                      }))}
                                       className="w-full"
                                     />
-                                    {!stepHasAttachment && (
-                                      <p className="mt-2 text-xs text-amber-600 dark:text-amber-300">
-                                        Upload the updated form for {getCurrentStepLabel(f)} before approval.
-                                      </p>
-                                    )}
                                   </>
                                 );
                               })()}
                             </div>
                           </div>
-                        )}
-
-                        {!isRecordTerminal(f) && isRisAtOrAfterPurchasing(f) && (() => {
-                          const missingDocumentTypes = getMissingRisCompletionDocumentTypes(f.attachments || []);
-                          const documentsComplete = missingDocumentTypes.length === 0;
-                          const isMarkingReceived = markingReceivedIds.has(f.id);
-
-                          return (
-                            <div className="bg-white dark:bg-gray-900 p-5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
-                              <h4 className="text-sm font-medium text-gray-900 dark:text-gray-300 mb-4 flex items-center gap-2">
-                                <Check className="h-4 w-4 text-emerald-500" />
-                                RIS Completion Checklist
-                              </h4>
-                              <div className="grid gap-3 sm:grid-cols-2">
-                                {risCompletionDocumentTypes.map(documentType => {
-                                  const isUploaded = !missingDocumentTypes.includes(documentType);
-                                  return (
-                                    <div
-                                      key={documentType}
-                                      className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${isUploaded
-                                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300'
-                                        : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300'
-                                        }`}
-                                    >
-                                      <span>{formDocumentTypeLabels[documentType]}</span>
-                                      {isUploaded ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
-                                    </div>
-                                  );
-                                })}
-                                <div
-                                  className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${f.isReceived
-                                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300'
-                                    : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300'
-                                    }`}
-                                >
-                                  <span>
-                                    Received
-                                    {f.receivedByName ? ` by ${f.receivedByName}` : ''}
-                                  </span>
-                                  {f.isReceived ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
-                                </div>
-                              </div>
-                              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
-                                  {documentsComplete
-                                    ? 'All required RIS files are uploaded. Mark received before transferring to Completed.'
-                                    : 'Upload all required RIS files before marking the form received.'}
-                                </p>
-                                <button
-                                  type="button"
-                                  disabled={isMarkingReceived || (!documentsComplete && !f.isReceived)}
-                                  onClick={() => void handleToggleReceived(f, !f.isReceived)}
-                                  className={`inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${f.isReceived
-                                    ? 'bg-slate-600 hover:bg-slate-700'
-                                    : 'bg-emerald-600 hover:bg-emerald-700'
-                                    }`}
-                                >
-                                  {isMarkingReceived ? 'Saving...' : f.isReceived ? 'Unmark Received' : 'Mark Received'}
-                                </button>
-                              </div>
-                              {!canCompleteRisForm(f) && (
-                                <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
-                                  {getCompletionBlockMessage(f)}
-                                </p>
-                              )}
-                            </div>
-                          );
-                        })()}
-
-                        {!isRecordTerminal(f) && (
-                        <div className="bg-white dark:bg-gray-900 p-5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
-                          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-300 mb-4 flex items-center gap-2">
-                            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                            </svg>
-                            Transfer Department
-                          </h4>
-                          <div className="w-full">
-                            {(() => {
-                              const stepHasAttachment = formHasCurrentStepAttachment(f);
-                              const deptLabel = getCurrentStepLabel(f);
-                              const isApproved = (editedForms[f.id]?.status ?? f.status) === 'APPROVED';
-                              const deptSelectDisabled = !isApproved || !stepHasAttachment;
-
-                              return (
-                                <>
-                                  {!stepHasAttachment && (
-                                    <div className="mb-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-300">
-                                      <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                                      <span>
-                                        Upload the updated form for <span className="font-semibold">{deptLabel}</span> before transferring to the next step.
-                                      </span>
-                                    </div>
-                                  )}
-                                  <DeptSelect
-                                    value={editedForms[f.id]?.department ?? f.department}
-                                    onChange={(d: FormDepartment) => handleLocalChange(f.id, 'department', d)}
-                                    formType={f.type}
-                                    disabled={deptSelectDisabled}
-                                    options={getTransferDepartmentOptions(
-                                      f.type,
-                                      f.department,
-                                      f.history?.map(h => h.dept) || []
-                                    ).map(option => ({
-                                      ...option,
-                                      disabled: option.disabled || (isRisFormType(f.type) && option.value === 'COMPLETED' && !canCompleteRisForm(f)),
-                                    }))}
-                                    className="w-full"
-                                  />
-                                  {!isApproved && (
-                                    <p className="mt-2 text-xs text-amber-600 dark:text-amber-300">
-                                      Set status to Approved to unlock department transfer.
-                                    </p>
-                                  )}
-                                </>
-                              );
-                            })()}
-                            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                              Locked departments appear here but can only be selected after the previous step has been visited. RIS completion also requires all procurement files and received confirmation.
-                            </p>
                           </div>
-                        </div>
                         )}
 
-                        {/* Remarks / Notes */}
-                        <div className="bg-white dark:bg-gray-900 p-5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
-                          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-300 mb-4 flex items-center gap-2">
-                            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-                            </svg>
-                            Remarks / Notes
-                          </h4>
-                          <textarea
-                            value={editedForms[f.id]?.remarks ?? f.remarks ?? ''}
-                            onChange={(e) => handleLocalChange(f.id, 'remarks', e.target.value)}
-                            placeholder="Add remarks or notes..."
-                            rows={3}
-                            className="block w-full pl-3 pr-3 py-2.5 text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-[#1e2939] border border-gray-300 dark:border-[#334155] rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 hover:border-gray-400 dark:hover:border-[#475569] resize-none"
-                          />
-                          {f.requesterName && (
-                            <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                              <span className="font-medium">Requester:</span> {f.requesterName}
-                            </p>
-                          )}
-                        </div>
+                          </div>
+                          </div>
 
-                        <div className="bg-white dark:bg-gray-900 p-5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
-                          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-300 mb-4 flex items-center gap-2">
-                            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-7a2 2 0 012-2h2m3-4H9a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-1m-1 4l-3 3m0 0l-3-3m3 3V3" />
-                            </svg>
-                            Attachments
-                          </h4>
-                          <div className="space-y-3">
-                            <div className="space-y-2">
-                              {(f.attachments || []).length > 0 ? (
-                                (f.attachments || []).map((attachment) => {
-                                  const attachmentForm = {
-                                    ...f,
-                                    attachmentName: attachment.fileName,
-                                    attachmentUrl: attachment.fileUrl,
-                                    attachmentType: attachment.fileType,
-                                  };
-
-                                  return (
-                                    <div key={attachment.id} className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/60 sm:flex-row sm:items-center sm:justify-between">
-                                      <div className="min-w-0">
-                                        <div className="flex flex-wrap items-center gap-2">
-                                          <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">{attachment.fileName}</p>
-                                          {attachment.documentType && (
-                                            <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-semibold text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
-                                              {formDocumentTypeLabels[attachment.documentType] || attachment.documentType}
-                                            </span>
-                                          )}
-                                        </div>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                                          {formDepartmentLabels[attachment.department] || attachment.department}
-                                          {attachment.uploadedByName ? ` by ${attachment.uploadedByName}` : ''}
-                                          {' '}on {new Date(attachment.uploadedAt).toLocaleString()}
-                                        </p>
-                                        {attachment.notes && (
-                                          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{attachment.notes}</p>
-                                        )}
-                                      </div>
-                                      <div className="flex flex-wrap gap-2">
-                                        <button
-                                          type="button"
-                                          onClick={() => void handlePreviewFile(attachmentForm)}
-                                          className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                                        >
-                                          Preview
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => void handleDownloadFile(attachmentForm)}
-                                          className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 transition-colors"
-                                        >
-                                          Download
-                                        </button>
-                                      </div>
-                                    </div>
-                                  );
-                                })
-                              ) : (
-                                <span className="text-sm text-gray-500 dark:text-gray-400">No files attached</span>
-                              )}
-                            </div>
+                        <div className="flex h-full max-h-72 min-h-0 flex-col overflow-hidden bg-white dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                          <div className="mb-4 flex items-center gap-3">
+                            <h4 className="text-sm font-medium text-gray-900 dark:text-gray-300 flex items-center gap-2">
+                              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-7a2 2 0 012-2h2m3-4H9a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-1m-1 4l-3 3m0 0l-3-3m3 3V3" />
+                              </svg>
+                              Attachments
+                            </h4>
+                          </div>
+                          <div className="flex min-h-0 flex-1 flex-col gap-3">
                             <input
                               ref={(node) => {
                                 fileInputRefs.current[f.id] = node;
@@ -1168,63 +1132,165 @@ export default function Forms() {
                               onChange={(event) => {
                                 const selectedFiles = Array.from(event.target.files || []);
                                 event.target.value = '';
-                                if (selectedFiles.length > 0) void handleAddAttachments(f, selectedFiles, getSelectedAttachmentDocumentType(f));
+                                if (selectedFiles.length > 0) void handleAddAttachments(f, selectedFiles, 'PROOF');
                               }}
                             />
-                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                              <FloatingSelect
-                                id={`attachment-document-type-${f.id}`}
-                                value={getSelectedAttachmentDocumentType(f)}
-                                placeholder="Document type"
-                                options={getAttachmentTypeOptions(f).map(documentType => ({
-                                  value: documentType,
-                                  label: formDocumentTypeLabels[documentType],
-                                }))}
-                                onChange={(value) => setAttachmentDocumentTypes(prev => ({
-                                  ...prev,
-                                  [f.id]: value as FormDocumentType,
-                                }))}
-                                className="min-w-[190px]"
-                                buttonClassName="rounded-md px-3 py-2 text-sm"
-                              />
+                            <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
                               <button
                                 type="button"
                                 disabled={uploadingAttachmentIds.has(f.id)}
                                 onClick={() => fileInputRefs.current[f.id]?.click()}
-                                className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 border border-transparent rounded-md shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors disabled:opacity-50"
+                                className="flex min-h-20 flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-emerald-500 bg-emerald-50 p-3 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-500/70 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/15"
                               >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 4v12m0-12l-4 4m4-4l4 4" />
-                                </svg>
-                                {uploadingAttachmentIds.has(f.id) ? 'Uploading...' : 'Add File'}
+                                <span className="flex h-8 w-8 items-center justify-center rounded-md border border-dashed border-current">
+                                  <Plus className="h-4 w-4" />
+                                </span>
+                                <span>{uploadingAttachmentIds.has(f.id) ? 'Uploading...' : 'Attach file'}</span>
                               </button>
+                              {(f.attachments || []).length > 0 ? (
+                                (f.attachments || []).map((attachment) => {
+                                  const attachmentForm = {
+                                    ...f,
+                                    attachmentName: attachment.fileName,
+                                    attachmentUrl: attachment.fileUrl,
+                                    attachmentType: attachment.fileType,
+                                  };
+
+                                  return (
+                                    <div key={attachment.id} className="group relative flex h-20 overflow-hidden rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
+                                      <button
+                                        type="button"
+                                        disabled={deletingAttachmentIds.has(attachment.id)}
+                                        onClick={() => void handleRemoveAttachment(f, attachment.id)}
+                                        className="absolute right-2 top-2 z-10 rounded-md border border-gray-200 bg-white p-1 text-gray-500 shadow-sm transition hover:bg-red-50 hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-red-500/10 dark:hover:text-red-300"
+                                        title="Remove attachment"
+                                        aria-label="Remove attachment"
+                                      >
+                                        <X className="h-4 w-4" />
+                                      </button>
+                                      <div className="absolute inset-0 flex items-center gap-2 p-3 pr-10 transition-opacity group-hover:opacity-0 group-focus-within:opacity-0">
+                                        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${
+                                            attachment.fileType === 'pdf'
+                                              ? 'bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-300'
+                                              : attachment.fileType === 'image'
+                                                ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300'
+                                                : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'
+                                          }`}>
+                                            {attachment.fileType === 'pdf' ? (
+                                              <FileText className="h-4 w-4" />
+                                            ) : attachment.fileType === 'image' ? (
+                                              <ImageIcon className="h-4 w-4" />
+                                            ) : (
+                                              <File className="h-4 w-4" />
+                                            )}
+                                        </span>
+                                        <p className="min-w-0 overflow-hidden break-words text-sm font-medium leading-5 text-gray-900 dark:text-gray-100">{attachment.fileName}</p>
+                                      </div>
+                                      <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                                        <button
+                                          type="button"
+                                          onClick={() => void handlePreviewFile(attachmentForm)}
+                                          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-700"
+                                          title="Preview"
+                                          aria-label="Preview attachment"
+                                        >
+                                          <Eye className="h-4 w-4" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => void handleDownloadFile(attachmentForm)}
+                                          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent bg-blue-600 text-white shadow-sm transition-colors hover:bg-blue-700"
+                                          title="Download"
+                                          aria-label="Download attachment"
+                                        >
+                                          <Download className="h-4 w-4" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })
+                              ) : (
+                                <span className="flex min-h-20 items-center rounded-lg border border-dashed border-gray-200 px-4 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">No files attached</span>
+                              )}
                             </div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                              New files are attached to the form's current department and do not replace existing files.
-                            </p>
+                          </div>
+                        </div>
+                        </div>
+
+                        {/* Remarks / Notes */}
+                        <div className="grid items-stretch gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(170px,0.24fr)]">
+                          <div className="bg-white dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                            <h4 className="text-sm font-medium text-gray-900 dark:text-gray-300 mb-4 flex items-center gap-2">
+                              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                              </svg>
+                              Remarks / Notes
+                            </h4>
+                            <textarea
+                              value={editedForms[f.id]?.remarks ?? f.remarks ?? ''}
+                              onChange={(e) => handleLocalChange(f.id, 'remarks', e.target.value)}
+                              placeholder="Add remarks or notes..."
+                              rows={3}
+                              className="block w-full pl-3 pr-3 py-2.5 text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-[#1e2939] border border-gray-300 dark:border-[#334155] rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 hover:border-gray-400 dark:hover:border-[#475569] resize-none"
+                            />
+                          </div>
+                          <div className="flex flex-col justify-end gap-2 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                            {isCompletedRecord(f) && !f.isArchived && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (editingCompletedIds.has(f.id)) {
+                                    handleCancel(f.id);
+                                    return;
+                                  }
+                                  setEditingCompletedIds(prev => new Set(prev).add(f.id));
+                                }}
+                                className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-indigo-300 bg-white px-3 py-1.5 text-sm font-medium text-indigo-700 transition-colors hover:bg-indigo-50 dark:border-indigo-500/40 dark:bg-gray-900 dark:text-indigo-300 dark:hover:bg-indigo-500/10"
+                              >
+                                <Pencil className="h-4 w-4" />
+                                {editingCompletedIds.has(f.id) ? 'Lock' : 'Edit'}
+                              </button>
+                            )}
+                            {!f.isArchived && (
+                              <button
+                                type="button"
+                                disabled={!isRecordTerminal(f) || archivingIds.has(f.id)}
+                                onClick={() => void handleArchiveForm(f)}
+                                title={isRecordTerminal(f) ? 'Archive this form' : 'Form must be Completed or Cancelled before archiving'}
+                                className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
+                              >
+                                <Archive className="h-4 w-4" />
+                                {archivingIds.has(f.id) ? 'Archiving...' : 'Archive'}
+                              </button>
+                            )}
+                            {f.isArchived && (
+                              <button
+                                type="button"
+                                disabled={unarchivingIds.has(f.id)}
+                                onClick={() => void handleUnarchiveForm(f)}
+                                className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
+                              >
+                                <CornerUpLeft className="h-4 w-4" />
+                                {unarchivingIds.has(f.id) ? 'Unarchiving...' : 'Unarchive'}
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              disabled={deletingFormIds.has(f.id)}
+                              onClick={() => void handleDeleteForm(f)}
+                              className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-red-300 bg-white px-3 py-1.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-500/40 dark:bg-gray-900 dark:text-red-300 dark:hover:bg-red-500/10"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              {deletingFormIds.has(f.id) ? 'Deleting...' : 'Delete'}
+                            </button>
                           </div>
                         </div>
                       </div>
                     </div>
-
-                    {/* Bottom-right: Archive button */}
-                    {!f.isArchived && (
-                      <div className="mt-6 flex justify-end">
-                        <button
-                          type="button"
-                          disabled={!isRecordTerminal(f) || archivingIds.has(f.id)}
-                          onClick={() => void handleArchiveForm(f)}
-                          title={isRecordTerminal(f) ? 'Archive this form' : 'Form must be Completed or Cancelled before archiving'}
-                          className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <Archive className="h-4 w-4" />
-                          {archivingIds.has(f.id) ? 'Archiving...' : 'Archive'}
-                        </button>
-                      </div>
-                    )}
                   </div>
                 )
-              ]).flat().filter(Boolean)
+              ];
+              }).flat().filter(Boolean)
             )}
           </Table>
         )}

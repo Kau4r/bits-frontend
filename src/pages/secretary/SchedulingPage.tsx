@@ -2,6 +2,9 @@ import Scheduling from '@/pages/scheduling/SchedulingPage';
 import { LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import type { RoomType } from '@/types/room';
+
+const SECRETARY_ALLOWED_ROOM_TYPES: RoomType[] = ['CONSULTATION', 'CONFERENCE'];
 
 const SecretaryScheduling = () => {
   const navigate = useNavigate();
@@ -38,7 +41,7 @@ const SecretaryScheduling = () => {
       </nav>
 
       <div className="flex-1 overflow-hidden">
-        <Scheduling />
+        <Scheduling allowedRoomTypes={SECRETARY_ALLOWED_ROOM_TYPES} />
       </div>
     </div>
   );

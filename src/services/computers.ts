@@ -33,8 +33,10 @@ export interface Computer {
     Updated_At: string;
 }
 
+export type ComputerComponentType = 'KEYBOARD' | 'MOUSE' | 'MONITOR' | 'MINI_PC';
+
 export interface CreateComputerItem {
-    itemType: 'KEYBOARD' | 'MOUSE' | 'MONITOR' | 'SYSTEM_UNIT';
+    itemType: ComputerComponentType;
     itemId?: number; // Existing item ID to link
     brand?: string; // For creating new items (deprecated - use itemId instead)
     serialNumber?: string; // For creating new items (deprecated - use itemId instead)

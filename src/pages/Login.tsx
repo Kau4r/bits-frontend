@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
@@ -87,7 +87,7 @@ export default function Login() {
           </div>
 
           {/* Form */}
-          <form className="mt-6 space-y-4 w-full" onSubmit={handleSubmit}>
+          <form className="mt-6 space-y-10 w-full" onSubmit={handleSubmit}>
             <div className="space-y-4">
               <div>
                 <label
@@ -123,19 +123,9 @@ export default function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-[#334155] rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-[#1e2939] dark:text-white"
-                  placeholder="********"
+                  placeholder="●●●●●●●●"
                 />
               </div>
-            </div>
-
-            {/* Forgot password */}
-            <div className="flex items-center justify-end">
-              <a
-                href="#"
-                className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
-              >
-                Forgot your password?
-              </a>
             </div>
 
             {/* Submit button */}
@@ -160,9 +150,19 @@ export default function Login() {
           {/* Error message */}
           {error && (
             <div className="bg-red-50 dark:bg-red-500/20 border-l-4 border-red-500 p-4 mt-4">
-              <div className="flex items-center">
+              <div className="flex items-start">
                 <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
-                <p className="ml-3 text-sm text-red-700 dark:text-red-200">{error}</p>
+                <div className="ml-3 space-y-2">
+                  <p className="text-sm text-red-700 dark:text-red-200">{error}</p>
+                  {error.includes('student accounts') && (
+                    <Link
+                      to="/student"
+                      className="inline-flex text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
+                    >
+                      Open student access
+                    </Link>
+                  )}
+                </div>
               </div>
             </div>
           )}

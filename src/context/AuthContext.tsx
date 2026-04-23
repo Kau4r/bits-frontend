@@ -71,6 +71,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const { token: authToken, user: authUser } = res.data;
 
       const normalizedUser = normalizeUser(authUser);
+      const normalizedRole = normalizeUserRole(normalizedUser.User_Role);
+
+      if (normalizedRole === 'STUDENT') {
+        return {
+          success: false,
+          error: 'This page is not available for student accounts. Please use the student access flow instead.',
+        };
+      }
 
       localStorage.setItem('userId', normalizedUser.User_ID.toString());
       localStorage.setItem('token', authToken);

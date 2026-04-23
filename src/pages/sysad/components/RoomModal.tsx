@@ -25,6 +25,8 @@ const getDefaultCapacity = (roomType: string): number => {
       return 40;
     case 'LAB':
       return 30;
+    case 'OTHER':
+      return 0;
     default:
       return 30;
   }
@@ -49,6 +51,7 @@ export default function RoomModal({
   })
 
   const readOnly = mode === 'view'
+  const capacityMin = room.Room_Type === 'OTHER' ? 0 : 1;
 
   useEffect(() => {
     if (initialData) {
@@ -166,6 +169,7 @@ export default function RoomModal({
                     { value: 'CONFERENCE', label: 'Conference' },
                     { value: 'LECTURE', label: 'Lecture' },
                     { value: 'LAB', label: 'Lab' },
+                    { value: 'OTHER', label: 'Other' },
                   ]}
                   onChange={(value) => {
                     const roomType = value as Room['Room_Type'];
@@ -211,8 +215,8 @@ export default function RoomModal({
                     { value: 'AVAILABLE', label: 'Available' },
                     { value: 'IN_USE', label: 'In Use' },
                     { value: 'MAINTENANCE', label: 'Maintenance' },
-                    { value: 'OCCUPIED', label: 'Occupied' },
                     { value: 'RESERVED', label: 'Reserved' },
+                    { value: 'CLOSED', label: 'Closed' },
                   ]}
                   onChange={(value) => setRoom((prev) => ({ ...prev, Status: value as Room['Status'] }))}
                 />
@@ -229,7 +233,7 @@ export default function RoomModal({
                   onChange={handleChange}
                   required
                   readOnly={readOnly}
-                  min={1}
+                  min={capacityMin}
                   className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60"
                 />
                 <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">

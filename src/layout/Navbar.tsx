@@ -1,11 +1,19 @@
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useNotifications } from '@/context/NotificationContext';
 import { useTheme } from '@/hooks/useTheme';
 
-const roleRoutes = {
+type NavChild = { label: string; path: string };
+type NavItem = { label: string; path: string; children?: NavChild[] };
+
+const INVENTORY_CHILDREN: NavChild[] = [
+  { label: 'Information', path: '/inventory?view=information' },
+  { label: 'Inventory List', path: '/inventory?view=list' },
+];
+
+const roleRoutes: Record<string, readonly NavItem[]> = {
   ADMIN: [
     { label: 'Users', path: '/' },
     { label: 'Rooms', path: '/room' },
@@ -17,7 +25,7 @@ const roleRoutes = {
     { label: 'Notifications', path: '/notification' },
     { label: 'Tickets', path: '/tickets' },
     { label: 'Rooms', path: '/labtech/room' },
-    { label: 'Inventory', path: '/inventory' },
+    { label: 'Inventory', path: '/inventory', children: INVENTORY_CHILDREN },
     { label: 'Borrowing', path: '/labtech/borrowing' },
     { label: 'Forms', path: '/forms' },
     { label: 'Reports', path: '/reports' },
@@ -28,14 +36,33 @@ const roleRoutes = {
     { label: 'Tickets', path: '/tickets' },
     { label: 'Scheduling', path: '/labhead-scheduling' },
     { label: 'Rooms', path: '/labtech/room' },
-    { label: 'Inventory', path: '/inventory' },
+    { label: 'Inventory', path: '/inventory', children: INVENTORY_CHILDREN },
     { label: 'Borrowing', path: '/labtech/borrowing' },
     { label: 'Forms', path: '/forms' },
     { label: 'Lab Tech View', path: '/labtechview' },
   ],
-} as const;
+};
 
 type Role = keyof typeof roleRoutes;
+
+const splitPath = (target: string): { pathname: string; search: string } => {
+  const [pathname, search = ''] = target.split('?');
+  return { pathname, search };
+};
+
+// A child is active when its pathname matches AND every query param it
+// specifies is present in the current location with the same value.
+const isChildActive = (childPath: string, location: { pathname: string; search: string }) => {
+  const target = splitPath(childPath);
+  if (location.pathname !== target.pathname) return false;
+  if (!target.search) return true;
+  const wanted = new URLSearchParams(target.search);
+  const current = new URLSearchParams(location.search);
+  for (const [key, value] of wanted) {
+    if (current.get(key) !== value) return false;
+  }
+  return true;
+};
 
 const navIcons: Record<string, ReactNode> = {
   Dashboard: (
@@ -141,8 +168,29 @@ const Navbar = ({ collapsed, setCollapsed, isMobile }: { collapsed: boolean; set
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [profileOpen]);
 
+  const location = useLocation();
+  const navItems = userRole && roleRoutes[userRole as Role] ? roleRoutes[userRole as Role] : [];
+
+  // Auto-expand a dropdown when the user is already on one of its child routes.
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    setExpanded(prev => {
+      const next = { ...prev };
+      for (const item of navItems) {
+        if (!item.children) continue;
+        const shouldOpen = item.children.some(child => isChildActive(child.path, location));
+        if (shouldOpen) next[item.path] = true;
+      }
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, location.search, userRole]);
+
   if (!userRole || !roleRoutes[userRole as Role]) return null;
-  const navItems = roleRoutes[userRole as Role];
+
+  const toggleExpanded = (path: string) => {
+    setExpanded(prev => ({ ...prev, [path]: !prev[path] }));
+  };
 
   const handleLogout = () => {
     logout();
@@ -188,56 +236,120 @@ const Navbar = ({ collapsed, setCollapsed, isMobile }: { collapsed: boolean; set
 
         <div className="flex-1 overflow-y-auto px-3 py-5">
           <ul className="space-y-2">
-            {navItems.map((item) => (
-              <li key={item.path}>
-                <NavLink
-                  to={item.path}
-                  onClick={() => isMobile && setMobileOpen(false)}
-                  className={({ isActive }) =>
-                    `group flex items-center gap-3 rounded-md px-4 py-2 text-sm font-medium transition-colors duration-300 
-                    ${collapsed && !isMobile ? "justify-center" : ""} 
-                    ${isActive ? "bg-indigo-500 text-white shadow-sm" : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"}`
-                  }
-                  end
-                >
-                  {({ isActive }) => (
-                    <>
+            {navItems.map((item) => {
+              const hasChildren = !!item.children && item.children.length > 0;
+              const showAsDropdown = hasChildren && (!collapsed || isMobile);
+
+              if (showAsDropdown) {
+                const isOpen = !!expanded[item.path];
+                const anyChildActive = item.children!.some(child => isChildActive(child.path, location));
+                const activeStyle = anyChildActive
+                  ? 'bg-indigo-500 text-white shadow-sm'
+                  : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700';
+
+                return (
+                  <li key={item.path}>
+                    <button
+                      type="button"
+                      onClick={() => toggleExpanded(item.path)}
+                      aria-expanded={isOpen}
+                      className={`group flex w-full items-center gap-3 rounded-md px-4 py-2 text-sm font-medium transition-colors duration-300 ${activeStyle}`}
+                    >
                       <span
-                        className={`relative ${isActive ? "text-white" : "text-indigo-600 group-hover:text-indigo-700 dark:text-indigo-400"} ${collapsed && !isMobile ? "mx-auto" : ""}`}
+                        className={`relative ${anyChildActive ? 'text-white' : 'text-indigo-600 group-hover:text-indigo-700 dark:text-indigo-400'}`}
                         aria-hidden="true"
                       >
                         {navIcons[item.label] || <span className="w-6 h-6" />}
-                        {/* Notification badge */}
-                        {item.label === 'Notifications' && unreadCount > 0 && !notifBadgeDismissed && (
-                          <button
-                            type="button"
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setNotifBadgeDismissed(true); }}
-                            aria-label="Dismiss notifications badge"
-                            title="Click to hide"
-                            className="absolute -bottom-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white hover:bg-red-600 cursor-pointer"
-                          >
-                            {unreadCount > 99 ? '99+' : unreadCount}
-                          </button>
-                        )}
-                        {/* Pending Tickets badge */}
-                        {item.label === 'Tickets' && pendingTicketCount > 0 && !ticketBadgeDismissed && (
-                          <button
-                            type="button"
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTicketBadgeDismissed(true); }}
-                            aria-label="Dismiss tickets badge"
-                            title="Click to hide"
-                            className="absolute -bottom-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white hover:bg-red-600 cursor-pointer"
-                          >
-                            {pendingTicketCount > 99 ? '99+' : pendingTicketCount}
-                          </button>
-                        )}
                       </span>
-                      <span className={collapsed && !isMobile ? "sr-only" : ""}>{item.label}</span>
-                    </>
-                  )}
-                </NavLink>
-              </li>
-            ))}
+                      <span className="flex-1 text-left">{item.label}</span>
+                      <svg
+                        className={`h-4 w-4 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    {isOpen && (
+                      <ul className="mt-1 space-y-1 pl-10">
+                        {item.children!.map(child => {
+                          const active = isChildActive(child.path, location);
+                          return (
+                            <li key={child.path}>
+                              <Link
+                                to={child.path}
+                                onClick={() => isMobile && setMobileOpen(false)}
+                                className={`block rounded-md px-3 py-1.5 text-sm transition-colors ${
+                                  active
+                                    ? 'bg-indigo-100 font-semibold text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-200'
+                                    : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+                                }`}
+                              >
+                                {child.label}
+                              </Link>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </li>
+                );
+              }
+
+              return (
+                <li key={item.path}>
+                  <NavLink
+                    to={item.path}
+                    onClick={() => isMobile && setMobileOpen(false)}
+                    className={({ isActive }) =>
+                      `group flex items-center gap-3 rounded-md px-4 py-2 text-sm font-medium transition-colors duration-300
+                    ${collapsed && !isMobile ? "justify-center" : ""}
+                    ${isActive ? "bg-indigo-500 text-white shadow-sm" : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"}`
+                    }
+                    end
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <span
+                          className={`relative ${isActive ? "text-white" : "text-indigo-600 group-hover:text-indigo-700 dark:text-indigo-400"} ${collapsed && !isMobile ? "mx-auto" : ""}`}
+                          aria-hidden="true"
+                        >
+                          {navIcons[item.label] || <span className="w-6 h-6" />}
+                          {/* Notification badge */}
+                          {item.label === 'Notifications' && unreadCount > 0 && !notifBadgeDismissed && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setNotifBadgeDismissed(true); }}
+                              aria-label="Dismiss notifications badge"
+                              title="Click to hide"
+                              className="absolute -bottom-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white hover:bg-red-600 cursor-pointer"
+                            >
+                              {unreadCount > 99 ? '99+' : unreadCount}
+                            </button>
+                          )}
+                          {/* Pending Tickets badge */}
+                          {item.label === 'Tickets' && pendingTicketCount > 0 && !ticketBadgeDismissed && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTicketBadgeDismissed(true); }}
+                              aria-label="Dismiss tickets badge"
+                              title="Click to hide"
+                              className="absolute -bottom-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white hover:bg-red-600 cursor-pointer"
+                            >
+                              {pendingTicketCount > 99 ? '99+' : pendingTicketCount}
+                            </button>
+                          )}
+                        </span>
+                        <span className={collapsed && !isMobile ? "sr-only" : ""}>{item.label}</span>
+                      </>
+                    )}
+                  </NavLink>
+                </li>
+              );
+            })}
           </ul>
         </div>
 

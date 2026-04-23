@@ -7,6 +7,7 @@ import type { Item, ItemType } from "@/types/inventory";
 import type { Room } from "@/types/room";
 import { useModal } from "@/context/ModalContext";
 import { buildInventoryItemQrUrl } from "@/utils/inventoryQr";
+import { formatItemType } from "@/lib/utils";
 import { FloatingSelect } from "@/ui/FloatingSelect";
 import { FloatingCombobox } from "@/ui/FloatingCombobox";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
@@ -14,10 +15,17 @@ import { useFocusTrap } from "@/hooks/useFocusTrap";
 // Valid item types from Prisma schema
 const ITEM_TYPES: ItemType[] = [
   "HDMI", "VGA", "ADAPTER", "PROJECTOR", "EXTENSION",
-  "MOUSE", "KEYBOARD", "MONITOR", "SYSTEM_UNIT", "OTHER"
+  "MOUSE", "KEYBOARD", "MONITOR", "MINI_PC", "OTHER"
 ];
 
-const CUSTOM_ITEM_TYPE_VALUE = "__CUSTOM_ITEM_TYPE__";
+const normalizeItemTypeOption = (value?: string | null) => {
+  const trimmed = String(value || "").trim();
+  if (!trimmed || trimmed === "-" || trimmed === "--" || trimmed === "- -" || trimmed.toUpperCase() === "GENERAL") {
+    return "OTHER";
+  }
+  const normalized = trimmed.toUpperCase().replace(/[\s-]+/g, "_");
+  return normalized === "SYSTEM_UNIT" ? "MINI_PC" : normalized;
+};
 
 const STATUS_OPTIONS = ["AVAILABLE", "BORROWED", "DEFECTIVE", "LOST", "REPLACED", "DISPOSED"] as const;
 
@@ -78,12 +86,11 @@ export default function ItemModal({
   const [quantity, setQuantity] = useState(1);
   const [serials, setSerials] = useState<string[]>([""]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isCustomItemType, setIsCustomItemType] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // Form data state
   const [formData, setFormData] = useState<FormData>({
-    itemType: "GENERAL",
+    itemType: "" as ItemType,
     brand: "",
     location: "",
     roomId: rooms?.[0]?.Room_ID ?? 0,
@@ -94,10 +101,10 @@ export default function ItemModal({
 
   // Extract unique brands from existing items for suggestions
   const existingBrands = [...new Set(items.map(i => i.Brand).filter(Boolean))];
-  const existingTypes = [...new Set(items.map(i => i.Item_Type).filter(Boolean))];
+  const existingTypes = [...new Set(items.map(i => normalizeItemTypeOption(i.Item_Type)).filter(Boolean))];
   const itemTypeOptions = [
     ...new Set(
-      [...ITEM_TYPES, ...existingTypes, item?.Item_Type]
+      [...ITEM_TYPES, ...existingTypes, normalizeItemTypeOption(item?.Item_Type)]
         .filter((type): type is string => Boolean(type))
     )
   ];
@@ -108,7 +115,7 @@ export default function ItemModal({
 
     if (initMode === "add") {
       setFormData({
-        itemType: ITEM_TYPES[0] ?? "HDMI",
+        itemType: "" as ItemType,
         brand: "",
         location: "",
         roomId: rooms?.[0]?.Room_ID ?? 0,
@@ -118,13 +125,12 @@ export default function ItemModal({
       });
       setQuantity(1);
       setSerials([""]);
-      setIsCustomItemType(false);
       setFieldErrors({});
     } else if ((initMode === "edit" || initMode === "view") && item) {
       setFormData({
-        itemType: item.Item_Type || (ITEM_TYPES[0] ?? "HDMI"),
+        itemType: normalizeItemTypeOption(item.Item_Type),
         brand: item.Brand || "",
-        location: item.Location || "",
+        location: "",
         roomId: item.Room_ID ?? rooms?.[0]?.Room_ID ?? 0,
         status: item.Status || "AVAILABLE",
         serialNumber: item.Serial_Number || "",
@@ -132,7 +138,6 @@ export default function ItemModal({
       });
       setQuantity(1);
       setSerials([item.Serial_Number || ""]);
-      setIsCustomItemType(false);
       setFieldErrors({});
     }
 
@@ -159,6 +164,13 @@ export default function ItemModal({
     const nextFieldErrors: Record<string, string> = {};
     if (!formData.itemType) nextFieldErrors.itemType = "Item type is required.";
     if (!formData.brand.trim()) nextFieldErrors.brand = "Brand is required.";
+    if (!formData.roomId) nextFieldErrors.room = "Room is required.";
+    if (!formData.status) nextFieldErrors.status = "Status is required.";
+    if (mode === "add" && quantity > 1) {
+      if (serials.some(sn => !sn.trim())) nextFieldErrors.serialNumber = "Every serial number is required.";
+    } else if (!formData.serialNumber.trim()) {
+      nextFieldErrors.serialNumber = "Serial number is required.";
+    }
 
     if (Object.keys(nextFieldErrors).length > 0) {
       setFieldErrors(nextFieldErrors);
@@ -168,13 +180,14 @@ export default function ItemModal({
     setIsSubmitting(true);
 
     try {
+      const normalizedItemType = normalizeItemTypeOption(formData.itemType);
+      const normalizedBrand = formData.brand.trim().toUpperCase();
       if (mode === "edit" && item?.Item_ID) {
         // Update existing item
         const updateData: Partial<Item> = {
-          Item_Type: formData.itemType,
-          Brand: formData.brand,
-          Location: formData.location || null,
-          Serial_Number: formData.serialNumber,
+          Item_Type: normalizedItemType,
+          Brand: normalizedBrand,
+          Serial_Number: formData.serialNumber.trim(),
           Status: formData.status,
           Room_ID: formData.roomId,
           Updated_At: new Date().toISOString(),
@@ -187,9 +200,8 @@ export default function ItemModal({
         if (quantity > 1) {
           // Bulk add with multiple serial numbers
           itemsToAdd = serials.map((sn) => ({
-            Item_Type: formData.itemType,
-            Brand: formData.brand,
-            Location: formData.location || null,
+            Item_Type: normalizedItemType,
+            Brand: normalizedBrand,
             Serial_Number: sn.trim(),
             Status: formData.status,
             Room_ID: formData.roomId,
@@ -199,9 +211,8 @@ export default function ItemModal({
         } else {
           // Single item
           itemsToAdd = [{
-            Item_Type: formData.itemType,
-            Brand: formData.brand,
-            Location: formData.location || null,
+            Item_Type: normalizedItemType,
+            Brand: normalizedBrand,
             Serial_Number: formData.serialNumber.trim(),
             Status: formData.status,
             Room_ID: formData.roomId,
@@ -565,44 +576,23 @@ export default function ItemModal({
                 {readOnly ? (
                   <div className={readOnlyFieldClass}>{formData.itemType || "—"}</div>
                 ) : (
-                  <FloatingSelect
+                  <FloatingCombobox
                     id="item-modal-type"
-                    value={isCustomItemType ? CUSTOM_ITEM_TYPE_VALUE : formData.itemType}
+                    value={formatItemType(formData.itemType) || ""}
                     onChange={(value) => {
-                      if (value === CUSTOM_ITEM_TYPE_VALUE) {
-                        setIsCustomItemType(true);
-                        setFormData({ ...formData, itemType: "" });
-                        setFieldErrors(prev => ({ ...prev, itemType: '' }));
-                        return;
-                      }
-
-                      setIsCustomItemType(false);
-                      setFormData({ ...formData, itemType: value as ItemType });
-                      setFieldErrors(prev => ({ ...prev, itemType: '' }));
-                    }}
-                    placeholder="Select item type"
-                    options={[
-                      ...itemTypeOptions.map((type) => ({ value: type, label: type })),
-                      { value: CUSTOM_ITEM_TYPE_VALUE, label: '--' },
-                    ]}
-                  />
-                )}
-                {isCustomItemType && !readOnly && (
-                  <input
-                    type="text"
-                    value={formData.itemType}
-                    onChange={(e) => {
-                      setFormData({ ...formData, itemType: e.target.value });
+                      setFormData({ ...formData, itemType: normalizeItemTypeOption(value) });
                       setFieldErrors(prev => ({ ...prev, itemType: '' }));
                     }}
                     required
-                    className="mt-2 w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter new item type..."
+                    placeholder="Select item type"
+                    options={[
+                      ...itemTypeOptions.map((type) => ({ value: type, label: formatItemType(type) || type })),
+                    ]}
                   />
                 )}
                 {!readOnly && (
                   <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    Choose -- to add a new item type.
+                    Choose OTHER when the item does not match a listed type.
                   </p>
                 )}
                 {fieldErrors.itemType && (
@@ -635,10 +625,10 @@ export default function ItemModal({
                 )}
               </div>
 
-              {/* Room */}
+              {/* Location */}
               <div className="flex flex-col">
                 <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Room
+                  Location *
                 </label>
                 {readOnly ? (
                   <div className={readOnlyFieldClass}>{selectedRoomName}</div>
@@ -648,15 +638,21 @@ export default function ItemModal({
                     value={formData.roomId}
                     placeholder="Select room"
                     options={rooms.map((r) => ({ value: r.Room_ID, label: r.Name }))}
-                    onChange={(value) => setFormData({ ...formData, roomId: Number(value) })}
+                    onChange={(value) => {
+                      setFormData({ ...formData, roomId: Number(value) });
+                      setFieldErrors(prev => ({ ...prev, room: '' }));
+                    }}
                   />
+                )}
+                {fieldErrors.room && (
+                  <p className="mt-1 text-xs font-medium text-red-600 dark:text-red-400">{fieldErrors.room}</p>
                 )}
               </div>
 
               {/* Status */}
               <div className="flex flex-col">
                 <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Status
+                  Status *
                 </label>
                 {readOnly ? (
                   <div className={readOnlyFieldClass}>{statusDisplay}</div>
@@ -669,8 +665,14 @@ export default function ItemModal({
                       value: status,
                       label: status.charAt(0) + status.slice(1).toLowerCase(),
                     }))}
-                    onChange={(value) => setFormData({ ...formData, status: value as Item["Status"] })}
+                    onChange={(value) => {
+                      setFormData({ ...formData, status: value as Item["Status"] });
+                      setFieldErrors(prev => ({ ...prev, status: '' }));
+                    }}
                   />
+                )}
+                {fieldErrors.status && (
+                  <p className="mt-1 text-xs font-medium text-red-600 dark:text-red-400">{fieldErrors.status}</p>
                 )}
               </div>
 
@@ -678,11 +680,12 @@ export default function ItemModal({
               {mode === "add" && (
                 <div className="flex flex-col">
                   <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Quantity
+                    Quantity *
                   </label>
                   <input
                     type="number"
                     min={1}
+                    required
                     value={quantity}
                     onChange={(e) => handleQuantityChange(parseInt(e.target.value))}
                     className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -693,7 +696,7 @@ export default function ItemModal({
               {/* Serial Number(s) */}
               <div className={`flex flex-col ${mode === "add" ? "" : "sm:col-span-2"}`}>
                 <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {mode === "add" && quantity > 1 ? "Serial Numbers" : "Serial Number"}
+                  {mode === "add" && quantity > 1 ? "Serial Numbers *" : "Serial Number *"}
                 </label>
                 {mode === "add" && quantity > 1 ? (
                   <div className="space-y-2 max-h-40 overflow-y-auto">
@@ -706,7 +709,9 @@ export default function ItemModal({
                           const updated = [...serials];
                           updated[idx] = e.target.value;
                           setSerials(updated);
+                          setFieldErrors(prev => ({ ...prev, serialNumber: '' }));
                         }}
+                        required
                         className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         placeholder={`Serial #${idx + 1}`}
                       />
@@ -716,11 +721,18 @@ export default function ItemModal({
                   <input
                     type="text"
                     value={formData.serialNumber}
-                    onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, serialNumber: e.target.value });
+                      setFieldErrors(prev => ({ ...prev, serialNumber: '' }));
+                    }}
                     disabled={readOnly}
+                    required
                     className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60"
                     placeholder="Enter serial number..."
                   />
+                )}
+                {fieldErrors.serialNumber && (
+                  <p className="mt-1 text-xs font-medium text-red-600 dark:text-red-400">{fieldErrors.serialNumber}</p>
                 )}
               </div>
             </div>
@@ -741,9 +753,9 @@ export default function ItemModal({
                 onClick={() => {
                   if (item) {
                     setFormData({
-                      itemType: item.Item_Type || (ITEM_TYPES[0] ?? "HDMI"),
+                      itemType: normalizeItemTypeOption(item.Item_Type),
                       brand: item.Brand || "",
-                      location: item.Location || "",
+                      location: "",
                       roomId: item.Room_ID ?? rooms?.[0]?.Room_ID ?? 0,
                       status: item.Status || "AVAILABLE",
                       serialNumber: item.Serial_Number || "",

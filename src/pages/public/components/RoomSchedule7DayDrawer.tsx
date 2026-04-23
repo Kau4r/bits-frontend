@@ -14,10 +14,17 @@ interface RoomSchedule7DayDrawerProps {
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const formatHourLabel = (hour: number) => {
-    const period = hour >= 12 ? 'PM' : 'AM';
-    const hour12 = hour % 12 || 12;
-    return `${hour12}:00 ${period}`;
+// Fixed timeline window. Rooms rarely operate outside 7 AM – 9 PM, and a fixed range
+// keeps the hourly grid consistent across all 7 days.
+const DAY_START_HOUR = 7;
+const DAY_END_HOUR = 21;
+const HOUR_HEIGHT = 44; // px per hour
+const TIMELINE_HEIGHT = (DAY_END_HOUR - DAY_START_HOUR) * HOUR_HEIGHT;
+
+const formatTimeRange = (startIso: string, endIso: string) => {
+    const start = new Date(startIso);
+    const end = new Date(endIso);
+    return `${start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} - ${end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
 };
 
 const formatDateLabel = (dateStr: string, dayOfWeek: number) => {
@@ -47,6 +54,57 @@ const slotChip = (slot: PublicScheduleSlot) => {
         label: `Booked: ${booking?.title || 'Reserved'}`,
         className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
     };
+};
+
+const buildScheduleBlocks = (slots: PublicScheduleSlot[]) => {
+    const blocks: Array<{
+        key: string;
+        startIso: string;
+        endIso: string;
+        chip: ReturnType<typeof slotChip>;
+    }> = [];
+
+    slots.forEach(slot => {
+        const chip = slotChip(slot);
+        const last = blocks[blocks.length - 1];
+        if (last && last.chip.label === chip.label && last.chip.className === chip.className && last.endIso === slot.startIso) {
+            last.endIso = slot.endIso;
+            return;
+        }
+
+        blocks.push({
+            key: slot.startIso,
+            startIso: slot.startIso,
+            endIso: slot.endIso,
+            chip,
+        });
+    });
+
+    return blocks;
+};
+
+// Convert a Date to fractional hours since local midnight. Used to place blocks on the timeline.
+const hoursSinceMidnight = (iso: string) => {
+    const d = new Date(iso);
+    return d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600;
+};
+
+// Returns { top, height } in px for a block, clamped to the visible window.
+// Returns null when the block falls entirely outside the window.
+const positionBlock = (startIso: string, endIso: string) => {
+    const startH = Math.max(hoursSinceMidnight(startIso), DAY_START_HOUR);
+    const endH = Math.min(hoursSinceMidnight(endIso), DAY_END_HOUR);
+    if (endH <= startH) return null;
+    const top = (startH - DAY_START_HOUR) * HOUR_HEIGHT;
+    const height = (endH - startH) * HOUR_HEIGHT;
+    return { top, height };
+};
+
+const HOUR_MARKS = Array.from({ length: DAY_END_HOUR - DAY_START_HOUR + 1 }, (_, i) => DAY_START_HOUR + i);
+const formatHourLabel = (h: number) => {
+    const hour12 = ((h + 11) % 12) + 1;
+    const period = h < 12 || h === 24 ? 'AM' : 'PM';
+    return `${hour12} ${period}`;
 };
 
 export default function RoomSchedule7DayDrawer({ roomId, roomName, onClose }: RoomSchedule7DayDrawerProps) {
@@ -100,7 +158,7 @@ export default function RoomSchedule7DayDrawer({ roomId, roomName, onClose }: Ro
                         <h2 className="text-base font-semibold text-gray-900 dark:text-white truncate">
                             {roomName || schedule?.room?.Name || 'Room schedule'}
                         </h2>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">Next 7 days</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Today</p>
                     </div>
                     <button
                         type="button"
@@ -126,7 +184,7 @@ export default function RoomSchedule7DayDrawer({ roomId, roomName, onClose }: Ro
                 </div>
 
                 {/* Body */}
-                <div className="flex-1 overflow-y-auto px-4 py-3">
+                <div className="flex-1 overflow-y-auto px-4">
                     {isLoading && (
                         <div className="flex items-center justify-center py-10">
                             <Loader2 className="w-5 h-5 animate-spin text-indigo-600" />
@@ -138,38 +196,105 @@ export default function RoomSchedule7DayDrawer({ roomId, roomName, onClose }: Ro
                         <div className="py-6 text-center text-sm text-red-600 dark:text-red-300">{error}</div>
                     )}
 
-                    {!isLoading && !error && schedule && (
-                        <div className="space-y-5">
-                            {schedule.days.map(day => (
-                                <div key={day.date}>
-                                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2 sticky top-0 bg-white dark:bg-slate-900 py-1">
-                                        {formatDateLabel(day.date, day.dayOfWeek)}
-                                    </h3>
-                                    <ul className="divide-y divide-gray-100 dark:divide-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 overflow-hidden">
-                                        {day.slots.map(slot => {
-                                            const chip = slotChip(slot);
-                                            return (
-                                                <li
-                                                    key={slot.startIso}
-                                                    className="flex items-center justify-between gap-3 px-3 py-2 bg-white dark:bg-slate-800"
-                                                >
-                                                    <span className="text-sm text-gray-700 dark:text-gray-200 tabular-nums w-20 shrink-0">
-                                                        {formatHourLabel(slot.hour)}
-                                                    </span>
-                                                    <span
-                                                        className={`ml-auto text-xs font-medium px-2 py-1 rounded-md truncate max-w-[60%] ${chip.className}`}
-                                                        title={chip.label}
-                                                    >
-                                                        {chip.label}
-                                                    </span>
-                                                </li>
-                                            );
-                                        })}
-                                    </ul>
+                    {!isLoading && !error && schedule && (() => {
+                        // Show only today's schedule. The backend still sends 7 days, but
+                        // for the student mobile view we restrict to the current local date.
+                        const now = new Date();
+                        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                        const todaysDays = schedule.days.filter(d => d.date === todayStr);
+                        if (todaysDays.length === 0) {
+                            return (
+                                <div className="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+                                    No schedule for today.
                                 </div>
-                            ))}
+                            );
+                        }
+                        return (
+                        <div className="space-y-5 pt-3 pb-3">
+                            {todaysDays.map(day => {
+                                // Filter out "Available" chips — timeline shows only occupied blocks.
+                                // Empty space on the grid == available.
+                                const occupiedBlocks = buildScheduleBlocks(day.slots).filter(b => b.chip.label !== 'Available');
+                                return (
+                                    <div key={day.date}>
+                                        <h3 className="sticky top-0 z-10 -mx-4 px-4 py-2 mb-2 text-sm font-semibold text-gray-900 dark:text-white bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-gray-100 dark:border-slate-800">
+                                            {formatDateLabel(day.date, day.dayOfWeek)}
+                                        </h3>
+                                        <div
+                                            className="relative grid grid-cols-[52px_minmax(0,1fr)] gap-2"
+                                            style={{ height: `${TIMELINE_HEIGHT}px` }}
+                                        >
+                                            {/* Hour labels (left rail) */}
+                                            <div className="relative">
+                                                {HOUR_MARKS.map((h, idx) => (
+                                                    <span
+                                                        key={h}
+                                                        className="absolute right-0 -translate-y-1/2 pr-1 text-[11px] font-semibold tabular-nums text-gray-400 dark:text-gray-500"
+                                                        style={{ top: `${idx * HOUR_HEIGHT}px` }}
+                                                    >
+                                                        {formatHourLabel(h)}
+                                                    </span>
+                                                ))}
+                                            </div>
+
+                                            {/* Timeline grid + positioned event blocks */}
+                                            <div className="relative rounded-lg border border-gray-200 dark:border-slate-700 bg-gray-50/70 dark:bg-slate-800/60 overflow-hidden">
+                                                {/* Hour gridlines */}
+                                                {HOUR_MARKS.slice(1, -1).map((h, idx) => (
+                                                    <div
+                                                        key={h}
+                                                        className="absolute inset-x-0 border-t border-dashed border-gray-200 dark:border-slate-700"
+                                                        style={{ top: `${(idx + 1) * HOUR_HEIGHT}px` }}
+                                                    />
+                                                ))}
+
+                                                {/* Half-hour markers (lighter) */}
+                                                {HOUR_MARKS.slice(0, -1).map((h, idx) => (
+                                                    <div
+                                                        key={`half-${h}`}
+                                                        className="absolute inset-x-0 border-t border-dotted border-gray-100 dark:border-slate-700/50"
+                                                        style={{ top: `${idx * HOUR_HEIGHT + HOUR_HEIGHT / 2}px` }}
+                                                    />
+                                                ))}
+
+                                                {/* Event blocks */}
+                                                {occupiedBlocks.map(block => {
+                                                    const pos = positionBlock(block.startIso, block.endIso);
+                                                    if (!pos) return null;
+                                                    const compact = pos.height < 38;
+                                                    return (
+                                                        <div
+                                                            key={block.key}
+                                                            className={`absolute left-1 right-1 rounded-md border px-2 py-1 shadow-sm overflow-hidden ${block.chip.className}`}
+                                                            style={{ top: `${pos.top}px`, height: `${Math.max(pos.height - 2, 14)}px` }}
+                                                            title={`${block.chip.label} • ${formatTimeRange(block.startIso, block.endIso)}`}
+                                                        >
+                                                            <span className={`block truncate font-bold ${compact ? 'text-[10px]' : 'text-xs'}`}>
+                                                                {block.chip.label}
+                                                            </span>
+                                                            {!compact && (
+                                                                <span className="mt-0.5 block truncate text-[10px] font-medium tabular-nums opacity-80">
+                                                                    {formatTimeRange(block.startIso, block.endIso)}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+
+                                                {/* Empty-day hint */}
+                                                {occupiedBlocks.length === 0 && (
+                                                    <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-400 dark:text-gray-500">
+                                                        Available all day
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
-                    )}
+                        );
+                    })()}
                 </div>
             </div>
         </div>

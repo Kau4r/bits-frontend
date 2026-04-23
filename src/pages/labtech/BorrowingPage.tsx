@@ -314,8 +314,18 @@ export default function Borrowing() {
                 <div className="flex flex-wrap items-center gap-3">
                     <div className="flex rounded-lg border border-gray-300 bg-white shadow-sm dark:border-gray-600 dark:bg-gray-800">
                         <button
+                            onClick={() => setActiveTab('all')}
+                            className={`inline-flex items-center gap-2 rounded-l-lg px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'all'
+                                ? 'bg-indigo-600 text-white'
+                                : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+                                }`}
+                        >
+                            <List className="h-4 w-4" />
+                            All Records
+                        </button>
+                        <button
                             onClick={() => setActiveTab('pending')}
-                            className={`inline-flex items-center gap-2 rounded-l-lg px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'pending'
+                            className={`inline-flex items-center gap-2  px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'pending'
                                 ? 'bg-indigo-600 text-white'
                                 : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
                                 }`}
@@ -325,7 +335,7 @@ export default function Borrowing() {
                         </button>
                         <button
                             onClick={() => setActiveTab('active')}
-                            className={`inline-flex items-center gap-2 border-x border-gray-300 px-4 py-2 text-sm font-medium transition-colors dark:border-gray-600 ${activeTab === 'active'
+                            className={`inline-flex items-center gap-2 rounded-r-lg border-x border-gray-300 px-4 py-2 text-sm font-medium transition-colors dark:border-gray-600 ${activeTab === 'active'
                                 ? 'bg-indigo-600 text-white'
                                 : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
                                 }`}
@@ -333,16 +343,7 @@ export default function Borrowing() {
                             <CheckCircle className="h-4 w-4" />
                             Active
                         </button>
-                        <button
-                            onClick={() => setActiveTab('all')}
-                            className={`inline-flex items-center gap-2 rounded-r-lg px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'all'
-                                ? 'bg-indigo-600 text-white'
-                                : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
-                                }`}
-                        >
-                            <List className="h-4 w-4" />
-                            All Records
-                        </button>
+                        
                     </div>
                     <div className="min-w-[280px] flex-1">
                         <Search

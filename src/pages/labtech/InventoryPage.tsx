@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { type Item, type InventoryStatus } from '@/types/inventory'
-import { Plus, Filter, Package, Pencil, Tag, X, Upload, List, BarChart3 } from 'lucide-react'
+import { Plus, Filter, Package, Pencil, Tag, X, Upload } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { LoadingSkeleton } from '@/ui/LoadingSkeleton'
 import { EmptyState } from '@/ui/EmptyState'
@@ -19,6 +20,9 @@ import { formatItemType, resolveItemType } from '@/lib/utils'
 
 type InventoryView = 'list' | 'information'
 
+const resolveView = (param: string | null): InventoryView =>
+  param === 'list' ? 'list' : 'information'
+
 const statusBorder: Record<InventoryStatus, string> = {
   AVAILABLE: 'border-l-green-500',
   BORROWED: 'border-l-blue-500',
@@ -34,6 +38,7 @@ const InventoryPage = () => {
   const [inventory, setInventory] = useState<Item[]>([])
   const [selectedType, setSelectedType] = useState('All Types')
   const [selectedStatus, setSelectedStatus] = useState('All Status')
+  const [selectedRoomFilter, setSelectedRoomFilter] = useState('All Rooms')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalMode, setModalMode] = useState<'view' | 'edit' | 'add'>('view')
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
@@ -44,8 +49,11 @@ const InventoryPage = () => {
   const [statusPopoverItemId, setStatusPopoverItemId] = useState<number | null>(null)
   const [bulkStatusOpen, setBulkStatusOpen] = useState(false)
   const [bulkRoomOpen, setBulkRoomOpen] = useState(false)
+  const [bulkBrandOpen, setBulkBrandOpen] = useState(false)
+  const [bulkBrandValue, setBulkBrandValue] = useState('')
   const [bulkBusy, setBulkBusy] = useState(false)
-  const [activeView, setActiveView] = useState<InventoryView>('list')
+  const [searchParams] = useSearchParams()
+  const activeView: InventoryView = resolveView(searchParams.get('view'))
   const [isImportingCsv, setIsImportingCsv] = useState(false)
   const inventoryCsvInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -61,7 +69,7 @@ const InventoryPage = () => {
   // Reset selection when filters change
   useEffect(() => {
     setSelectedIds(new Set())
-  }, [searchTerm, selectedType, selectedStatus])
+  }, [searchTerm, selectedType, selectedStatus, selectedRoomFilter])
 
   useEffect(() => {
     const loadRoomsAndUsers = async () => {
@@ -107,6 +115,15 @@ const InventoryPage = () => {
     })
   }
 
+  const existingBrands = useMemo(() => {
+    const brands = new Set<string>()
+    for (const item of inventory) {
+      const trimmed = (item.Brand ?? '').trim()
+      if (trimmed) brands.add(trimmed)
+    }
+    return Array.from(brands).sort((a, b) => a.localeCompare(b))
+  }, [inventory])
+
   // const archiveStatuses: Item['Status'][] = ['AVAILABLE', 'BORROWED'];
   const filteredAndSortedInventory = useMemo(() => {
     let result = inventory.filter(item => {
@@ -117,8 +134,10 @@ const InventoryPage = () => {
 
       const matchesStatus =
         selectedStatus === 'All Status' || item.Status?.toLowerCase() === selectedStatus.toLowerCase();
+      const itemRoomId = item.Room_ID ?? item.Room?.Room_ID ?? (item as any).Computers?.[0]?.Room_ID;
+      const matchesRoom = selectedRoomFilter === 'All Rooms' || String(itemRoomId ?? '') === selectedRoomFilter;
 
-      return matchesSearch && matchesType && matchesStatus;
+      return matchesSearch && matchesType && matchesStatus && matchesRoom;
     });
 
     if (sortConfig.direction) {
@@ -160,7 +179,7 @@ const InventoryPage = () => {
     }
 
     return result
-  }, [inventory, searchTerm, selectedType, selectedStatus, sortConfig])
+  }, [inventory, searchTerm, selectedType, selectedStatus, selectedRoomFilter, sortConfig])
 
   // Pagination removed — show all filtered results
   const paginatedInventory = filteredAndSortedInventory
@@ -173,6 +192,15 @@ const InventoryPage = () => {
   const handleSaveItem = async (
     payload: Partial<Item> | Partial<Item>[] | { id: number; data: Partial<Item> }
   ) => {
+    const sanitizeItemPayload = (item: Partial<Item>): Partial<Item> => ({
+      Item_Type: item.Item_Type,
+      Brand: item.Brand,
+      Serial_Number: item.Serial_Number ?? "",
+      Status: item.Status,
+      Room_ID: item.Room_ID,
+      IsBorrowable: item.IsBorrowable,
+    })
+
     try {
       let savedItems: Item[] = [];
 
@@ -184,7 +212,6 @@ const InventoryPage = () => {
           Brand: p.Brand!,
           Serial_Number: p.Serial_Number ?? "",
           Status: p.Status ?? "AVAILABLE",
-          Location: p.Location ?? "",
           Room_ID: p.Room_ID ?? rooms?.[0]?.Room_ID ?? 0,
           Updated_At: p.Updated_At ?? new Date().toISOString(),
           IsBorrowable: p.IsBorrowable ?? false,
@@ -203,7 +230,6 @@ const InventoryPage = () => {
           Brand: payload.Brand!,
           Serial_Number: payload.Serial_Number ?? "",
           Status: payload.Status ?? "AVAILABLE",
-          Location: payload.Location ?? "",
           Room_ID: payload.Room_ID ?? rooms?.[0]?.Room_ID ?? 0,
           Updated_At: payload.Updated_At ?? new Date().toISOString(),
           IsBorrowable: payload.IsBorrowable ?? false,
@@ -221,10 +247,10 @@ const InventoryPage = () => {
 
         if ('id' in payload && 'data' in payload) {
           itemId = payload.id;
-          updateData = payload.data;
+          updateData = sanitizeItemPayload(payload.data);
         } else if ('Item_ID' in payload && payload.Item_ID != null) {
           itemId = payload.Item_ID;
-          updateData = payload as Partial<Item>;
+          updateData = sanitizeItemPayload(payload as Partial<Item>);
         } else {
           console.error("Cannot update: missing Item_ID", payload);
           return;
@@ -308,42 +334,33 @@ const InventoryPage = () => {
   };
 
   // Column layout: [checkbox] [asset code] [brand] [type] [status] [location] [updated] [actions]
-  const columnWidths = '48px 1.3fr 1fr 1fr 1fr 1fr 1fr 110px'
-
-  const visibleIds = useMemo(
-    () => paginatedInventory.map(i => i.Item_ID!).filter((id): id is number => id != null),
-    [paginatedInventory],
-  )
-
-  const allVisibleSelected =
-    visibleIds.length > 0 && visibleIds.every(id => selectedIds.has(id))
-  const someVisibleSelected =
-    visibleIds.some(id => selectedIds.has(id)) && !allVisibleSelected
-
-  const headerCheckboxRef = useRef<HTMLInputElement | null>(null)
-  useEffect(() => {
-    if (headerCheckboxRef.current) {
-      headerCheckboxRef.current.indeterminate = someVisibleSelected
-    }
-  }, [someVisibleSelected])
-
-  const toggleSelectAllVisible = () => {
-    setSelectedIds(prev => {
-      const next = new Set(prev)
-      if (allVisibleSelected) {
-        visibleIds.forEach(id => next.delete(id))
-      } else {
-        visibleIds.forEach(id => next.add(id))
-      }
-      return next
-    })
-  }
+  const columnWidths = '56px 1.3fr 1fr 1fr 1fr 1fr 1fr 110px'
 
   const toggleSelectOne = (id: number) => {
     setSelectedIds(prev => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
+      return next
+    })
+  }
+
+  const visibleItemIds = filteredAndSortedInventory
+    .map(i => i.Item_ID)
+    .filter((id): id is number => id != null)
+  const allVisibleSelected =
+    visibleItemIds.length > 0 && visibleItemIds.every(id => selectedIds.has(id))
+  const someVisibleSelected =
+    !allVisibleSelected && visibleItemIds.some(id => selectedIds.has(id))
+
+  const toggleSelectAllVisible = () => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (allVisibleSelected) {
+        visibleItemIds.forEach(id => next.delete(id))
+      } else {
+        visibleItemIds.forEach(id => next.add(id))
+      }
       return next
     })
   }
@@ -411,6 +428,8 @@ const InventoryPage = () => {
       setBulkBusy(false)
       setBulkStatusOpen(false)
       setBulkRoomOpen(false)
+      setBulkBrandOpen(false)
+      setBulkBrandValue('')
     }
   }
 
@@ -441,8 +460,8 @@ const InventoryPage = () => {
 
   const handleImportInventoryCsv = async (file?: File) => {
     if (!file) return
-    if (!file.name.toLowerCase().endsWith('.csv')) {
-      toast.error('Please choose a .csv file.')
+    if (!/\.xlsx$/i.test(file.name)) {
+      toast.error('Please choose an Excel file (.xlsx).')
       if (inventoryCsvInputRef.current) inventoryCsvInputRef.current.value = ''
       return
     }
@@ -453,7 +472,7 @@ const InventoryPage = () => {
       await loadInventory()
       toast.success(summarizeImport(result), { duration: 6000 })
     } catch (err) {
-      toast.error(err instanceof Error && err.message ? err.message : 'Failed to import inventory CSV')
+      toast.error(err instanceof Error && err.message ? err.message : 'Failed to import inventory Excel file')
     } finally {
       setIsImportingCsv(false)
       if (inventoryCsvInputRef.current) inventoryCsvInputRef.current.value = ''
@@ -469,40 +488,10 @@ const InventoryPage = () => {
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Track and manage laboratory equipment and assets</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex rounded-lg border border-gray-300 bg-white p-0.5 shadow-sm dark:border-gray-600 dark:bg-gray-800">
-            <button
-              type="button"
-              onClick={() => setActiveView('list')}
-              aria-pressed={activeView === 'list'}
-              className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
-                activeView === 'list'
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
-              }`}
-            >
-              <List className="h-4 w-4" />
-              Inventory List
-            </button>
-            {showDashboard && (
-              <button
-                type="button"
-                onClick={() => setActiveView('information')}
-                aria-pressed={activeView === 'information'}
-                className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
-                  activeView === 'information'
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
-                }`}
-              >
-                <BarChart3 className="h-4 w-4" />
-                Information
-              </button>
-            )}
-          </div>
           <input
             ref={inventoryCsvInputRef}
             type="file"
-            accept=".csv,text/csv"
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             className="hidden"
             onChange={(e) => handleImportInventoryCsv(e.target.files?.[0])}
           />
@@ -512,7 +501,7 @@ const InventoryPage = () => {
             disabled={isImportingCsv}
           >
             <Upload className="h-5 w-5" />
-            {isImportingCsv ? 'Importing...' : 'Import CSV'}
+            {isImportingCsv ? 'Importing...' : 'Import Excel'}
           </button>
           <button
             className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-500 hover:shadow-md focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none active:bg-indigo-700"
@@ -585,6 +574,20 @@ const InventoryPage = () => {
           />
         </div>
 
+        {/* Room Filter */}
+        <div className="min-w-48">
+          <FloatingSelect
+            id="inventory-room-filter"
+            value={selectedRoomFilter}
+            placeholder="All Rooms"
+            options={[
+              { value: 'All Rooms', label: 'All Rooms' },
+              ...rooms.map(room => ({ value: String(room.Room_ID), label: room.Name })),
+            ]}
+            onChange={setSelectedRoomFilter}
+          />
+        </div>
+
       </div>
 
       {/* Bulk Action Bar */}
@@ -601,7 +604,7 @@ const InventoryPage = () => {
             <button
               type="button"
               disabled={bulkBusy}
-              onClick={() => { setBulkStatusOpen(v => !v); setBulkRoomOpen(false); }}
+              onClick={() => { setBulkStatusOpen(v => !v); setBulkRoomOpen(false); setBulkBrandOpen(false); }}
               className="inline-flex items-center gap-1.5 rounded-md border border-indigo-300 bg-white px-3 py-1.5 text-xs font-medium text-indigo-700 shadow-sm hover:bg-indigo-50 disabled:opacity-50 dark:border-indigo-700 dark:bg-gray-800 dark:text-indigo-300 dark:hover:bg-gray-700"
             >
               <Tag className="h-3.5 w-3.5" />
@@ -628,7 +631,7 @@ const InventoryPage = () => {
             <button
               type="button"
               disabled={bulkBusy || rooms.length === 0}
-              onClick={() => { setBulkRoomOpen(v => !v); setBulkStatusOpen(false); }}
+              onClick={() => { setBulkRoomOpen(v => !v); setBulkStatusOpen(false); setBulkBrandOpen(false); }}
               className="inline-flex items-center gap-1.5 rounded-md border border-indigo-300 bg-white px-3 py-1.5 text-xs font-medium text-indigo-700 shadow-sm hover:bg-indigo-50 disabled:opacity-50 dark:border-indigo-700 dark:bg-gray-800 dark:text-indigo-300 dark:hover:bg-gray-700"
             >
               Move to Room
@@ -645,6 +648,63 @@ const InventoryPage = () => {
                     {room.Name}
                   </button>
                 ))}
+              </div>
+            )}
+          </div>
+
+          {/* Change Brand */}
+          <div className="relative">
+            <button
+              type="button"
+              disabled={bulkBusy}
+              onClick={() => { setBulkBrandOpen(v => !v); setBulkStatusOpen(false); setBulkRoomOpen(false); }}
+              className="inline-flex items-center gap-1.5 rounded-md border border-indigo-300 bg-white px-3 py-1.5 text-xs font-medium text-indigo-700 shadow-sm hover:bg-indigo-50 disabled:opacity-50 dark:border-indigo-700 dark:bg-gray-800 dark:text-indigo-300 dark:hover:bg-gray-700"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Change Brand
+            </button>
+            {bulkBrandOpen && (
+              <div className="absolute left-0 top-full z-20 mt-1 min-w-[240px] overflow-hidden rounded-md border border-gray-200 bg-white p-2 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                <input
+                  type="text"
+                  autoFocus
+                  list="existing-brand-options"
+                  value={bulkBrandValue}
+                  onChange={(e) => setBulkBrandValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && bulkBrandValue.trim() && !bulkBusy) {
+                      runBulkUpdate({ Brand: bulkBrandValue.trim() }, `Brand → ${bulkBrandValue.trim()}`)
+                    } else if (e.key === 'Escape') {
+                      setBulkBrandOpen(false)
+                      setBulkBrandValue('')
+                    }
+                  }}
+                  placeholder="Brand name (type or pick existing)"
+                  className="mb-2 w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs text-gray-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200"
+                />
+                <datalist id="existing-brand-options">
+                  {existingBrands.map(b => (
+                    <option key={b} value={b} />
+                  ))}
+                </datalist>
+                <div className="flex justify-end gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => { setBulkBrandOpen(false); setBulkBrandValue('') }}
+                    disabled={bulkBusy}
+                    className="rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 disabled:opacity-50 dark:text-gray-400 dark:hover:bg-gray-700"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => runBulkUpdate({ Brand: bulkBrandValue.trim() }, `Brand → ${bulkBrandValue.trim()}`)}
+                    disabled={bulkBusy || !bulkBrandValue.trim()}
+                    className="rounded-md bg-indigo-600 px-3 py-1 text-xs font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+                  >
+                    Apply
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -669,19 +729,22 @@ const InventoryPage = () => {
             headers={[
             {
               label: (
-                <input
-                  ref={headerCheckboxRef}
-                  type="checkbox"
-                  aria-label="Select all on this page"
-                  checked={allVisibleSelected}
-                  onChange={toggleSelectAllVisible}
-                  onClick={(e) => e.stopPropagation()}
-                  className="h-4 w-4 cursor-pointer rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
-                />
+                <div className="flex items-center justify-center">
+                  <input
+                    type="checkbox"
+                    aria-label="Select all visible items"
+                    checked={allVisibleSelected}
+                    ref={el => { if (el) el.indeterminate = someVisibleSelected }}
+                    onChange={toggleSelectAllVisible}
+                    onClick={(e) => e.stopPropagation()}
+                    disabled={visibleItemIds.length === 0}
+                    className="h-4 w-4 cursor-pointer rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-600 dark:bg-gray-700"
+                  />
+                </div>
               ),
               align: 'center' as const,
             },
-            { label: 'Asset Code', key: 'item_code' },
+            { label: 'Asset Code', key: 'item_code', align: 'center' as const },
             { label: 'Brand', key: 'brand' },
             { label: 'Item Type', key: 'type' },
             { label: 'Status', key: 'status' },
@@ -711,7 +774,7 @@ const InventoryPage = () => {
                   No items match your filters
                 </h3>
                 <button
-                  onClick={() => { setSearchTerm(''); setSelectedType('All Types'); setSelectedStatus('All Status'); }}
+                  onClick={() => { setSearchTerm(''); setSelectedType('All Types'); setSelectedStatus('All Status'); setSelectedRoomFilter('All Rooms'); }}
                   className="mt-4 inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
                 >
                   Clear Filters
@@ -739,7 +802,7 @@ const InventoryPage = () => {
                       openRow()
                     }
                   }}
-                  className={`group relative grid w-full cursor-pointer items-center border-b border-l-4 ${border} border-gray-200 px-4 py-3 text-left transition-all duration-150 hover:bg-indigo-50/50 focus:bg-indigo-50 focus:outline-none dark:border-gray-700/50 dark:hover:bg-indigo-900/10 dark:focus:bg-indigo-900/20 ${isSelected ? 'bg-indigo-50/60 dark:bg-indigo-900/20' : ''}`}
+                  className={`group relative grid w-full cursor-pointer items-center border-b border-l-4 ${border} border-gray-200 py-3 text-left transition-all duration-150 hover:bg-indigo-50/50 focus:bg-indigo-50 focus:outline-none dark:border-gray-700/50 dark:hover:bg-indigo-900/10 dark:focus:bg-indigo-900/20 [&>*]:px-4 ${isSelected ? 'bg-indigo-50/60 dark:bg-indigo-900/20' : ''}`}
                   style={{ display: 'grid', gridTemplateColumns: columnWidths }}
                 >
                   {/* Checkbox */}
@@ -755,7 +818,7 @@ const InventoryPage = () => {
                   </div>
 
                   {/* Asset Code */}
-                  <div className="min-w-0">
+                  <div className="min-w-0 text-center">
                     <div className="truncate text-sm font-semibold text-gray-900 group-hover:text-indigo-600 dark:text-white dark:group-hover:text-indigo-400">
                       {item.Item_Code ?? '—'}
                     </div>

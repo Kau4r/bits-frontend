@@ -98,6 +98,12 @@ export const checkInventoryItem = async (itemId: number): Promise<Item> => {
     return data;
 };
 
+// Clear the current audit check from an inventory item
+export const uncheckInventoryItem = async (itemId: number): Promise<Item> => {
+    const { data } = await api.delete<Item>(`/inventory/${itemId}/check`);
+    return data;
+};
+
 export const importInventoryCsv = async (file: File, roomId?: number): Promise<CsvImportResult> => {
     const formData = new FormData();
     formData.append("file", file);

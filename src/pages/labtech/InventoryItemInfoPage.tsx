@@ -54,11 +54,11 @@ type ItemFormData = {
 };
 
 const toFormData = (item: Item, rooms: Room[]): ItemFormData => ({
-  Item_Type: item.Item_Type || "GENERAL",
+  Item_Type: item.Item_Type || "OTHER",
   Brand: item.Brand || "",
   Serial_Number: item.Serial_Number || "",
   Status: item.Status || "AVAILABLE",
-  Location: item.Location || "",
+  Location: "",
   Room_ID: item.Room_ID || rooms[0]?.Room_ID || 0,
   IsBorrowable: Boolean(item.IsBorrowable),
 });
@@ -177,7 +177,6 @@ export default function InventoryItemInfoPage() {
         Brand: formData.Brand.trim(),
         Serial_Number: formData.Serial_Number.trim(),
         Status: formData.Status,
-        Location: formData.Location.trim() || null,
         Room_ID: formData.Room_ID || undefined,
         IsBorrowable: formData.IsBorrowable,
       });
@@ -297,21 +296,13 @@ export default function InventoryItemInfoPage() {
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-bold text-slate-700 dark:text-slate-200">Room</label>
+                <label className="mb-1.5 block text-sm font-bold text-slate-700 dark:text-slate-200">Location</label>
                 <FloatingSelect
                   id="qr-item-room"
                   value={formData.Room_ID}
-                  placeholder="Select room"
+                  placeholder="Select location"
                   options={rooms.map(room => ({ value: room.Room_ID, label: room.Name }))}
                   onChange={value => setFormData(prev => prev ? { ...prev, Room_ID: Number(value) } : prev)}
-                />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-sm font-bold text-slate-700 dark:text-slate-200">Location</label>
-                <input
-                  value={formData.Location}
-                  onChange={event => setFormData(prev => prev ? { ...prev, Location: event.target.value } : prev)}
-                  className={fieldClass}
                 />
               </div>
             </div>

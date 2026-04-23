@@ -510,7 +510,7 @@ const FacultyScheduling = () => {
       <ReportIssueModal
         isOpen={showReportIssueModal}
         onClose={() => setShowReportIssueModal(false)}
-        onSubmit={async (description, issueType, equipment, pcNumber) => {
+        onSubmit={async (description, issueType, equipment, pcNumber, noRoom) => {
           if (!user?.User_ID) return;
 
           const categoryMap: Record<string, 'HARDWARE' | 'SOFTWARE' | 'FACILITY' | 'OTHER'> = {
@@ -520,15 +520,23 @@ const FacultyScheduling = () => {
             other: 'OTHER',
           };
 
+          const targetRoomName = noRoom ? '' : currentRoom;
+
           await createTicket({
             Reported_By_ID: user.User_ID,
             Report_Problem: description,
-            Location: buildTicketLocation({ equipment, pcLabel: pcNumber, roomName: currentRoom }),
+            Location: buildTicketLocation({ equipment, pcLabel: pcNumber, roomName: targetRoomName }),
+            Room_ID: noRoom ? null : undefined,
             Category: categoryMap[issueType] ?? 'OTHER',
             Status: 'PENDING',
           });
 
-          modal.showSuccess(`Ticket submitted for ${currentRoom}. A Lab Tech will be notified.`, 'Issue Reported');
+          modal.showSuccess(
+            noRoom
+              ? 'Ticket submitted. A Lab Tech will be notified.'
+              : `Ticket submitted for ${currentRoom}. A Lab Tech will be notified.`,
+            'Issue Reported'
+          );
         }}
         room={currentRoom}
         pcNumber="N/A"

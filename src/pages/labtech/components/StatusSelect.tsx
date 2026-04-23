@@ -9,6 +9,7 @@ interface StatusSelectProps {
   onChange: (status: FormStatus) => void;
   className?: string;
   disabledStatuses?: FormStatus[];
+  disabled?: boolean;
 }
 
 const statuses: FormStatus[] = ['PENDING', 'IN_REVIEW', 'APPROVED', 'CANCELLED'];
@@ -18,6 +19,7 @@ export const StatusSelect: React.FC<StatusSelectProps> = ({
   onChange,
   className = '',
   disabledStatuses = [],
+  disabled = false,
 }) => {
   return (
     <FloatingSelect
@@ -31,6 +33,7 @@ export const StatusSelect: React.FC<StatusSelectProps> = ({
       }))}
       onChange={onChange}
       className={className}
+      disabled={disabled}
     />
   );
 };

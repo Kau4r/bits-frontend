@@ -17,6 +17,7 @@ interface TimelineProps {
   current: string;
   completedSteps?: string[];  // Departments that have been visited/completed
   history?: TimelineHistoryEntry[];  // Full history for per-step timestamps
+  compact?: boolean;
 }
 
 const formatTimestamp = (iso: string): string => {
@@ -31,8 +32,15 @@ const formatTimestamp = (iso: string): string => {
   });
 };
 
-export const InlineTimeline: React.FC<TimelineProps> = ({ steps, current, completedSteps = [], history = [] }) => {
+export const InlineTimeline: React.FC<TimelineProps> = ({ steps, current, completedSteps = [], history = [], compact = false }) => {
   const normalizeStep = (value: string) => value.trim().toUpperCase().replace(/\s+/g, '_');
+  const lineLeftClass = compact ? 'left-4' : 'left-4';
+  const itemGapClass = compact ? 'space-y-5' : 'space-y-6';
+  const circleClassBase = compact
+    ? 'h-8 w-8 text-sm'
+    : 'h-8 w-8';
+  const checkClass = compact ? 'h-4 w-4' : 'w-4 h-4';
+  const labelClass = compact ? 'text-base' : 'text-sm';
 
   // Build a map of stepKey -> latest history entry (full entry, so action/performer/reason are available)
   const stepEntries = new Map<string, TimelineHistoryEntry>();
@@ -56,18 +64,17 @@ export const InlineTimeline: React.FC<TimelineProps> = ({ steps, current, comple
   };
 
   return (
-    <div className="relative">
-      <div className="absolute left-4 top-0 h-full w-0.5 bg-gray-200 dark:bg-gray-700" />
-
-      <div className="space-y-6">
+    <div className="relative isolate overflow-hidden">
+      <div className={itemGapClass}>
         {steps.map((step, index) => {
           const { isCompleted, isCurrent, entry } = getStepStatus(step);
+          const isTerminalCurrent = isCurrent && normalizeStep(step) === 'COMPLETED';
 
           // Determine colors
           let circleClass = 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300';
           let textClass = 'text-gray-600 dark:text-gray-400';
 
-          if (isCompleted && !isCurrent) {
+          if ((isCompleted && !isCurrent) || isTerminalCurrent) {
             // Completed department - GREEN
             circleClass = 'bg-green-600 text-white';
             textClass = 'text-green-600 dark:text-green-400';
@@ -96,40 +103,43 @@ export const InlineTimeline: React.FC<TimelineProps> = ({ steps, current, comple
 
           return (
             <div key={step} className="relative flex items-start">
-              <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center z-10 transition-all duration-300 ${circleClass}`}>
-                {isCompleted && !isCurrent ? (
-                  <Check className="w-4 h-4" />
+              {index < steps.length - 1 && (
+                <div className={`absolute ${lineLeftClass} top-8 bottom-[-1.25rem] w-0.5 bg-gray-200 dark:bg-gray-700`} />
+              )}
+              <div className={`relative z-[1] flex-shrink-0 rounded-full flex items-center justify-center transition-all duration-300 ${circleClassBase} ${circleClass}`}>
+                {(isCompleted && !isCurrent) || isTerminalCurrent ? (
+                  <Check className={checkClass} />
                 ) : (
                   index + 1
                 )}
               </div>
 
-              <div className="ml-4">
-                <div className={`text-sm font-medium transition-colors duration-300 ${textClass}`}>
+              <div className={compact ? 'ml-4' : 'ml-4'}>
+                <div className={`${labelClass} font-medium transition-colors duration-300 ${textClass}`}>
                   {step}
                 </div>
-                {isCurrent && (
-                  <div className="mt-1 text-xs text-blue-500 dark:text-blue-400">
+                {isCurrent && !isTerminalCurrent && (
+                  <div className={`${compact ? 'text-sm' : 'text-xs'} mt-1 text-blue-500 dark:text-blue-400`}>
                     Current Step
                   </div>
                 )}
-                {isCompleted && !isCurrent && (
-                  <div className="mt-1 text-xs text-green-500 dark:text-green-400">
+                {((isCompleted && !isCurrent) || isTerminalCurrent) && (
+                  <div className={`${compact ? 'text-sm' : 'text-xs'} mt-1 text-green-500 dark:text-green-400`}>
                     Completed
                   </div>
                 )}
                 {formattedTime && (
-                  <div className="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400" title={entry?.at}>
+                  <div className={`${compact ? 'text-xs' : 'text-[11px]'} mt-0.5 text-gray-500 dark:text-gray-400`} title={entry?.at}>
                     {formattedTime}
                   </div>
                 )}
                 {accountabilityLine && (
-                  <div className="mt-0.5 text-[11px] text-gray-600 dark:text-gray-300">
+                  <div className={`${compact ? 'text-xs' : 'text-[11px]'} mt-0.5 text-gray-600 dark:text-gray-300`}>
                     {accountabilityLine}
                   </div>
                 )}
                 {showReason && (
-                  <div className="mt-0.5 text-[11px] italic text-gray-500 dark:text-gray-400">
+                  <div className={`${compact ? 'text-xs' : 'text-[11px]'} mt-0.5 italic text-gray-500 dark:text-gray-400`}>
                     Reason: {entry!.reason}
                   </div>
                 )}

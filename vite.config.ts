@@ -17,6 +17,12 @@ export default defineConfig({
         secure: false,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
+      '/ws': {
+        target: 'ws://localhost:3000',
+        changeOrigin: true,
+        secure: false,
+        ws: true,
+      },
     },
   },
   test: {

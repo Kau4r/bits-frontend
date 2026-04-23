@@ -60,7 +60,8 @@ export const COMPUTER_STATUS_VARIANT: Record<string, BadgeProps["variant"]> = {
 /** Room statuses */
 export const ROOM_STATUS_VARIANT: Record<string, BadgeProps["variant"]> = {
   AVAILABLE: "success",
-  OCCUPIED: "info",
+  IN_USE: "info",
+  RESERVED: "warning",
   MAINTENANCE: "orange",
   CLOSED: "default",
 } as const
