@@ -7,6 +7,7 @@ import type { Item, ItemType } from "@/types/inventory";
 import type { Room } from "@/types/room";
 import { useModal } from "@/context/ModalContext";
 import { buildInventoryItemQrUrl } from "@/utils/inventoryQr";
+import { resolveItemType } from "@/lib/utils";
 import { FloatingSelect } from "@/ui/FloatingSelect";
 import { FloatingCombobox } from "@/ui/FloatingCombobox";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
@@ -14,7 +15,7 @@ import { useFocusTrap } from "@/hooks/useFocusTrap";
 // Valid item types from Prisma schema
 const ITEM_TYPES: ItemType[] = [
   "HDMI", "VGA", "ADAPTER", "PROJECTOR", "EXTENSION",
-  "MOUSE", "KEYBOARD", "MONITOR", "SYSTEM_UNIT", "GENERAL", "OTHER"
+  "MOUSE", "KEYBOARD", "MONITOR", "SYSTEM_UNIT", "OTHER"
 ];
 
 const CUSTOM_ITEM_TYPE_VALUE = "__CUSTOM_ITEM_TYPE__";
@@ -108,7 +109,7 @@ export default function ItemModal({
 
     if (initMode === "add") {
       setFormData({
-        itemType: "GENERAL",
+        itemType: ITEM_TYPES[0] ?? "HDMI",
         brand: "",
         location: "",
         roomId: rooms?.[0]?.Room_ID ?? 0,
@@ -122,7 +123,7 @@ export default function ItemModal({
       setFieldErrors({});
     } else if ((initMode === "edit" || initMode === "view") && item) {
       setFormData({
-        itemType: item.Item_Type || "GENERAL",
+        itemType: item.Item_Type || (ITEM_TYPES[0] ?? "HDMI"),
         brand: item.Brand || "",
         location: item.Location || "",
         roomId: item.Room_ID ?? rooms?.[0]?.Room_ID ?? 0,
@@ -654,29 +655,6 @@ export default function ItemModal({
                 )}
               </div>
 
-              {/* Location */}
-              <div className="flex flex-col">
-                <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Location
-                </label>
-                {readOnly ? (
-                  <div className={readOnlyFieldClass}>{locationDisplay}</div>
-                ) : (
-                  <input
-                    type="text"
-                    value={formData.location}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Storage shelf, office, or exact area..."
-                  />
-                )}
-                {!readOnly && (
-                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    Leave blank to use the room as the location.
-                  </p>
-                )}
-              </div>
-
               {/* Status */}
               <div className="flex flex-col">
                 <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -765,7 +743,7 @@ export default function ItemModal({
                 onClick={() => {
                   if (item) {
                     setFormData({
-                      itemType: item.Item_Type || "GENERAL",
+                      itemType: item.Item_Type || (ITEM_TYPES[0] ?? "HDMI"),
                       brand: item.Brand || "",
                       location: item.Location || "",
                       roomId: item.Room_ID ?? rooms?.[0]?.Room_ID ?? 0,

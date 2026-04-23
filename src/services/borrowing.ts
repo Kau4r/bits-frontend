@@ -32,6 +32,19 @@ export const createBorrowing = async (dto: CreateBorrowingDTO): Promise<any> => 
     return data;
 };
 
+// Lab Tech walk-in: create a BORROWED record directly
+export interface WalkinBorrowingInput {
+    borrowerIdentifier: string; // Username, email, or numeric User_ID
+    itemId: number;
+    returnDate: string; // ISO datetime
+    purpose?: string;
+}
+export const createWalkinBorrowing = async (input: WalkinBorrowingInput): Promise<any> => {
+    const { data } = await api.post(`${API_BASE}/walkin`, input);
+    toast.success("Walk-in borrowing recorded");
+    return data;
+};
+
 // Approve a borrowing request (Lab Tech/Lab Head only)
 export const approveBorrowing = async (id: number, assignedItemId?: number): Promise<Borrowing> => {
     const { data } = await api.patch<{ borrowing: Borrowing }>(`${API_BASE}/${id}/approve`, { assignedItemId });

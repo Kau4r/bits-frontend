@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node *)",
+      "Bash(npm view *)",
+      "Bash(bash \"C:/Users/Administrator/.claude/plugins/cache/omc/oh-my-claudecode/4.8.2/scripts/setup-progress.sh\" resume)",
+      "Bash(bash *)",
+      "Bash(npm install *)",
+      "Bash(command -v omc)",
+      "Bash(omc --version)",
+      "Read(//c/Users/Administrator/.claude/**)",
+      "Bash(claude mcp *)",
+      "Bash(npx tsc *)",
+      "Bash(npx prisma *)"
+    ]
+  }
+}

@@ -176,14 +176,20 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                         return [newNotification, ...prev];
                     });
 
-                    // Trigger Toast
+                    // Trigger Toast — adapt colors to the current theme
+                    const isDark = typeof document !== 'undefined'
+                        && document.documentElement.classList.contains('dark');
                     toast(newNotification.message || 'New notification', {
                         icon: '🔔',
                         duration: 5000,
                         style: {
                             borderRadius: '10px',
-                            background: '#333',
-                            color: '#fff',
+                            background: isDark ? '#1f2937' : '#ffffff',
+                            color: isDark ? '#f9fafb' : '#111827',
+                            border: isDark ? '1px solid #374151' : '1px solid #e5e7eb',
+                            boxShadow: isDark
+                                ? '0 10px 15px -3px rgba(0,0,0,0.4), 0 4px 6px -4px rgba(0,0,0,0.4)'
+                                : '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1)',
                         },
                     });
                 } catch (err) {

@@ -3,8 +3,10 @@ import { useBorrowingEvents } from '@/hooks/useBorrowingEvents';
 import RequestCard, { type BorrowingRequest } from '@/components/RequestCard';
 import ApprovalModal from '@/pages/labtech/components/ApprovalModal';
 import RejectionModal from '@/pages/labtech/components/RejectionModal';
+import WalkinBorrowingModal from '@/pages/labtech/components/WalkinBorrowingModal';
+import type { WalkinBorrowingSubmit } from '@/pages/labtech/components/WalkinBorrowingModal';
 import { useModal } from '@/context/ModalContext';
-import { getBorrowings, approveBorrowing, rejectBorrowing, returnBorrowing } from '@/services/borrowing';
+import { getBorrowings, approveBorrowing, rejectBorrowing, returnBorrowing, createWalkinBorrowing } from '@/services/borrowing';
 import { getInventory } from '@/services/inventory';
 import type { Item } from '@/types/inventory';
 import Search from '@/components/Search';
@@ -14,7 +16,8 @@ import {
     List,
     RefreshCw,
     AlertTriangle,
-    Clock
+    Clock,
+    Plus
 } from 'lucide-react';
 import { FloatingSelect } from '@/ui/FloatingSelect';
 
@@ -25,7 +28,7 @@ type SortOption = 'newest' | 'oldest' | 'due_soonest';
 export default function Borrowing() {
     const modal = useModal();
     const [searchTerm, setSearchTerm] = useState('');
-    const [activeTab, setActiveTab] = useState<TabType>('pending');
+    const [activeTab, setActiveTab] = useState<TabType>('all');
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
     const [sortBy, setSortBy] = useState<SortOption>('newest');
     const [requests, setRequests] = useState<BorrowingRequest[]>([]);
@@ -42,6 +45,8 @@ export default function Borrowing() {
         isOpen: boolean;
         request: BorrowingRequest | null;
     }>({ isOpen: false, request: null });
+
+    const [walkinOpen, setWalkinOpen] = useState(false);
 
     // Load requests
     useEffect(() => {
@@ -125,10 +130,13 @@ export default function Borrowing() {
             filtered = filtered.filter(r => r.status === 'PENDING');
         } else if (activeTab === 'active') {
             filtered = filtered.filter(r => ['APPROVED', 'BORROWED', 'OVERDUE'].includes(r.status));
-        }
-
-        if (activeTab === 'all' && statusFilter !== 'all') {
-            filtered = filtered.filter(r => r.status === statusFilter);
+        } else if (activeTab === 'all') {
+            // Default view: hide REJECTED and RETURNED unless the user explicitly filters for them
+            if (statusFilter === 'all') {
+                filtered = filtered.filter(r => !['REJECTED', 'RETURNED'].includes(r.status));
+            } else {
+                filtered = filtered.filter(r => r.status === statusFilter);
+            }
         }
 
         filtered = [...filtered].sort((a, b) => {
@@ -190,6 +198,17 @@ export default function Borrowing() {
         }
     };
 
+    const handleWalkinSubmit = async (payload: WalkinBorrowingSubmit) => {
+        try {
+            await createWalkinBorrowing(payload);
+            setWalkinOpen(false);
+            await loadRequests();
+        } catch (error) {
+            // Re-throw so the modal can display the backend error inline
+            throw error;
+        }
+    };
+
     const handleMarkReturned = async (id: number) => {
         setIsLoading(true);
         try {
@@ -234,13 +253,22 @@ export default function Borrowing() {
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Borrowing Requests</h1>
                     <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Manage equipment loans, approvals, and return status</p>
                 </div>
-                <button
-                    onClick={loadRequests}
-                    className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-                >
-                    <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                    Refresh
-                </button>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={loadRequests}
+                        className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                    >
+                        <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                        Refresh
+                    </button>
+                    <button
+                        onClick={() => setWalkinOpen(true)}
+                        className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-500 hover:shadow-md focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none active:bg-indigo-700"
+                    >
+                        <Plus className="h-4 w-4" />
+                        New Borrowing
+                    </button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -436,6 +464,13 @@ export default function Borrowing() {
                     borrower: rejectionModal.request.borrower,
                 } : null}
                 isLoading={isLoading}
+            />
+
+            <WalkinBorrowingModal
+                isOpen={walkinOpen}
+                onClose={() => setWalkinOpen(false)}
+                onSubmit={handleWalkinSubmit}
+                availableItems={inventoryItems}
             />
         </div>
     );

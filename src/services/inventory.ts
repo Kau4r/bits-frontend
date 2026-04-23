@@ -92,6 +92,12 @@ export const updateInventoryItem = async (id: number, item: Partial<Item | Compu
     return data;
 };
 
+// Mark an inventory item as audited/present for the current semester
+export const checkInventoryItem = async (itemId: number): Promise<Item> => {
+    const { data } = await api.post<Item>(`/inventory/${itemId}/check`);
+    return data;
+};
+
 export const importInventoryCsv = async (file: File, roomId?: number): Promise<CsvImportResult> => {
     const formData = new FormData();
     formData.append("file", file);

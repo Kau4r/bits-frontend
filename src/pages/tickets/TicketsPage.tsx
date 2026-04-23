@@ -180,7 +180,7 @@ export default function Tickets() {
     const tableHeaders = useMemo(() => {
         const headers: Array<{ label: string; key?: string; align?: 'left' | 'center' | 'right' }> = [
             { label: 'Reported By', key: 'reported_by' },
-            { label: 'Title / Description', key: 'description' },
+            { label: 'Title', key: 'title' },
             { label: 'Location', key: 'location' },
             { label: 'Category', key: 'category' },
             { label: 'Status', key: 'status' },
@@ -327,10 +327,17 @@ export default function Tickets() {
                         </div>
                     ) : (
                         filteredTickets.map(ticket => (
-                            <button
+                            <div
                                 key={ticket.Ticket_ID}
-                                type="button"
+                                role="button"
+                                tabIndex={0}
                                 onClick={() => handleViewTicket(ticket)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        handleViewTicket(ticket);
+                                    }
+                                }}
                                 className="group grid w-full cursor-pointer items-center px-6 py-4 text-left transition-all duration-150 hover:bg-indigo-50/50 focus:bg-indigo-50 focus:outline-none dark:hover:bg-indigo-900/10 dark:focus:bg-indigo-900/20"
                                 style={{ gridTemplateColumns: ticketColumnWidths }}
                             >
@@ -345,9 +352,6 @@ export default function Tickets() {
                                 <div className="min-w-0 pr-3">
                                     <p className="truncate text-sm font-semibold text-gray-900 dark:text-white">
                                         {getTicketTitle(ticket)}
-                                    </p>
-                                    <p className="mt-1 line-clamp-2 text-xs text-gray-500 dark:text-gray-400">
-                                        {getTicketDescription(ticket)}
                                     </p>
                                 </div>
                                 <div className="text-sm text-gray-600 dark:text-gray-300">{formatTicketLocationDisplay(ticket.Location, ticket.Room?.Name || '-')}</div>
@@ -399,7 +403,7 @@ export default function Tickets() {
                                         </button>
                                     ) : null}
                                 </div>
-                            </button>
+                            </div>
                         ))
                     )}
                 </Table>

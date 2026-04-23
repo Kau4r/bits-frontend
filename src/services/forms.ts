@@ -55,6 +55,7 @@ export const resolveFormFileUrl = (url?: string | null, options: ResolveFormFile
 export interface FormCreateInput {
     creatorId: number;
     formType: FormType;
+    formNumber?: string;
     title?: string;
     content?: string;
     fileName?: string;

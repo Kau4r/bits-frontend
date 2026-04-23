@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useAuth } from '@/context/AuthContext';
+import { useNotifications } from '@/context/NotificationContext';
 
 type BorrowingEventType = 'BORROW_REQUESTED' | 'BORROW_APPROVED' | 'BORROW_REJECTED' | 'BORROW_RETURNED';
 
@@ -17,69 +17,45 @@ interface BorrowingEventData {
 type BorrowingEventCallback = (event: BorrowingEventData) => void;
 
 /**
- * Hook to subscribe to real-time borrowing events via SSE.
- * When a borrowing event is received, the provided callback is invoked.
- * Use this to trigger data refresh in borrowing components.
- * 
- * @param onBorrowingEvent - Callback function to handle borrowing events
+ * Subscribe to real-time borrowing events. Events are delivered via the
+ * shared NotificationContext WebSocket (see /ws/notifications). When a
+ * notification with category === 'BORROWING_UPDATE' arrives, the callback
+ * fires.
+ *
+ * The previous implementation opened a separate SSE EventSource to
+ * /api/notifications/stream, which does not exist on the backend.
  */
 export const useBorrowingEvents = (onBorrowingEvent: BorrowingEventCallback) => {
-    const { token } = useAuth();
-    const eventSourceRef = useRef<EventSource | null>(null);
+    const { notifications } = useNotifications();
     const callbackRef = useRef<BorrowingEventCallback>(onBorrowingEvent);
+    const lastHandledIdRef = useRef<string | number | null>(null);
 
-    // Keep callback ref up to date
     useEffect(() => {
         callbackRef.current = onBorrowingEvent;
     }, [onBorrowingEvent]);
 
     useEffect(() => {
-        if (!token) {
-            return;
-        }
+        if (notifications.length === 0) return;
 
-        // Close existing connection if any
-        if (eventSourceRef.current) {
-            eventSourceRef.current.close();
-        }
+        const latest = notifications[0];
+        if (!latest || latest.id === lastHandledIdRef.current) return;
 
-        const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-        const streamUrl = `${backendUrl}/api/notifications/stream?token=${token}`;
-
-        console.log('[useBorrowingEvents] Connecting to SSE stream...');
-        const eventSource = new EventSource(streamUrl);
-        eventSourceRef.current = eventSource;
-
-        eventSource.onopen = () => {
-            console.log('[useBorrowingEvents] SSE Connection established');
+        const details = (latest.details ?? {}) as Partial<BorrowingEventData> & {
+            category?: string;
+            eventType?: BorrowingEventType;
         };
 
-        eventSource.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
+        if (details.category !== 'BORROWING_UPDATE') return;
 
-                // Only process borrowing update events
-                if (data.category === 'BORROWING_UPDATE') {
-                    console.log('[useBorrowingEvents] Received borrowing event:', data.type);
-                    callbackRef.current(data);
-                }
-            } catch (err) {
-                // Ignore parsing errors for non-JSON heartbeats
-            }
-        };
+        lastHandledIdRef.current = latest.id;
 
-        eventSource.onerror = (err) => {
-            console.error('[useBorrowingEvents] SSE Error:', err);
-        };
-
-        return () => {
-            console.log('[useBorrowingEvents] Closing SSE connection');
-            if (eventSourceRef.current) {
-                eventSourceRef.current.close();
-                eventSourceRef.current = null;
-            }
-        };
-    }, [token]);
+        callbackRef.current({
+            type: (details.eventType ?? details.type ?? 'BORROW_REQUESTED') as BorrowingEventType,
+            category: 'BORROWING_UPDATE',
+            timestamp: latest.timestamp,
+            borrowing: details.borrowing ?? { id: 0, status: '' },
+        });
+    }, [notifications]);
 };
 
 export default useBorrowingEvents;

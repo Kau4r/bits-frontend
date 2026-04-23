@@ -7,10 +7,14 @@ import { useModal } from '@/context/ModalContext'
 import QueueModal from '@/pages/labtech/components/QueueModal'
 import RoomDetailModal from '@/pages/labtech/components/RoomDetailModal'
 import RoomCard from '@/pages/labtech/components/RoomCard'
-import TimeSlotGrid from '@/pages/labtech/components/TimeSlotGrid'
+import SummaryStrip from '@/pages/labtech/components/SummaryStrip'
+import ActiveQueueDashboard, { type OverflowPreset } from '@/pages/labtech/components/ActiveQueueDashboard'
+import WeeklySwimlaneGrid from '@/pages/labtech/components/WeeklySwimlaneGrid'
+import { getActiveQueues } from '@/services/room'
+import type { ActiveQueueItem } from '@/services/room'
 import { useAuth } from '@/context/AuthContext'
 import Search from '@/components/Search'
-import { CalendarDays, Building2, Apple, Monitor, HelpCircle } from 'lucide-react'
+import { CalendarDays, Building2 } from 'lucide-react'
 import { FloatingSelect } from '@/ui/FloatingSelect'
 
 
@@ -38,22 +42,27 @@ export default function Room() {
     const [isLoading, setIsLoading] = useState(true);
 
     const [sessions, setSessions] = useState<RoomSession[]>([]);
+    const [weekSessions, setWeekSessions] = useState<RoomSession[]>([]);
     const [queueModalOpen, setQueueModalOpen] = useState(false);
+    const [queueInitialMode, setQueueInitialMode] = useState<'single' | 'weekly'>('weekly');
     const [, setSelectedRoom] = useState<RoomType | null>(null);
     const [selectedSession, setSelectedSession] = useState<RoomSession | null>(null);
     const [selectedViewRoom, setSelectedViewRoom] = useState<RoomType | null>(null);
 
+    // Overflow preset state — when set, QueueModal opens in single-session mode
+    // restricted to the given eligible rooms for a full lab's remaining window.
+    const [overflowPreset, setOverflowPreset] = useState<OverflowPreset | null>(null);
 
     const [selectedCategory, setSelectedCategory] = useState<LabCategory | null>(null);
     const [selectedSlotStart, setSelectedSlotStart] = useState('');
     const [selectedSlotEnd, setSelectedSlotEnd] = useState('');
     const [slotDetailSessions, setSlotDetailSessions] = useState<RoomSession[] | null>(null);
-    const [scheduleDate, setScheduleDate] = useState<'today' | 'tomorrow'>('today');
     const [refreshTrigger, setRefreshTrigger] = useState(0);
     const [serverTimeOffsetMs, setServerTimeOffsetMs] = useState(0);
     const [serverCurrentTime, setServerCurrentTime] = useState(() => new Date());
+    const [activeQueues, setActiveQueues] = useState<ActiveQueueItem[]>([]);
 
-    useEffect(() => {
+    useEffect(() => { 
         let cancelled = false;
 
         const syncServerTime = async () => {
@@ -155,9 +164,7 @@ export default function Room() {
             if (labRooms.length === 0) return;
 
             try {
-                const today = scheduleDate === 'tomorrow'
-                    ? dayjs(serverCurrentTime).add(1, 'day').startOf('day')
-                    : dayjs(serverCurrentTime).startOf('day');
+                const today = dayjs(serverCurrentTime).startOf('day');
                 const todayDayOfWeek = today.day(); // 0 = Sunday, 1 = Monday, etc.
 
                 const allSessions: RoomSession[] = [];
@@ -257,7 +264,151 @@ export default function Room() {
         };
 
         loadSchedulesAndBookings();
-    }, [labRooms.length, scheduleDate, refreshTrigger, serverDayKey]); // Re-run when rooms, date, refresh, or server day changes
+    }, [labRooms.length, refreshTrigger, serverDayKey]); // Re-run when rooms, refresh, or server day changes
+
+    // Compute the Monday (local) of the current server week.
+    const weekStartDate = dayjs(serverCurrentTime).startOf('day').day() === 0
+        ? dayjs(serverCurrentTime).startOf('day').subtract(6, 'day')
+        : dayjs(serverCurrentTime).startOf('day').subtract(dayjs(serverCurrentTime).day() - 1, 'day');
+    const weekEndDate = weekStartDate.add(7, 'day');
+    const weekRangeKey = `${weekStartDate.format('YYYY-MM-DD')}_${weekEndDate.format('YYYY-MM-DD')}`;
+
+    // Fetch a 7-day window of sessions for weekly mode.
+    useEffect(() => {
+        const loadWeekSessions = async () => {
+            if (labRooms.length === 0) {
+                setWeekSessions([]);
+                return;
+            }
+            try {
+                const weekDays = Array.from({ length: 7 }, (_, i) => weekStartDate.add(i, 'day'));
+                const all: RoomSession[] = [];
+
+                // 1. Expand class schedules across the week's days
+                for (const room of labRooms) {
+                    if (!room.Schedule) continue;
+                    for (const schedule of room.Schedule) {
+                        const scheduleDays = schedule.Days?.split(',').map(d => parseInt(d.trim())) || [];
+                        const sStart = dayjs(schedule.Start_Time);
+                        const sEnd = dayjs(schedule.End_Time);
+                        for (const day of weekDays) {
+                            if (scheduleDays.includes(day.day())) {
+                                all.push({
+                                    roomId: room.Room_ID,
+                                    roomName: room.Name,
+                                    startTime: day.hour(sStart.hour()).minute(sStart.minute()).toISOString(),
+                                    endTime: day.hour(sEnd.hour()).minute(sEnd.minute()).toISOString(),
+                                    status: 'approved',
+                                    purpose: (schedule as { Title?: string }).Title || 'Scheduled',
+                                    type: 'schedule',
+                                    id: schedule.Schedule_ID
+                                });
+                            }
+                        }
+                    }
+                }
+
+                // 2. Fetch all APPROVED bookings in the week window for LAB rooms
+                const response = await api.get('/bookings', {
+                    params: {
+                        status: 'APPROVED',
+                        from: weekStartDate.toISOString(),
+                        to: weekEndDate.toISOString()
+                    }
+                });
+                const payload = response.data as {
+                    data?: Array<{
+                        Booked_Room_ID: number;
+                        Room_ID: number;
+                        Start_Time: string;
+                        End_Time: string;
+                        Status: string;
+                        Purpose?: string;
+                        Room?: { Name: string };
+                        User_ID?: number;
+                        Created_By?: number;
+                        User?: { First_Name: string; Last_Name: string };
+                    }>;
+                } | Array<{
+                    Booked_Room_ID: number;
+                    Room_ID: number;
+                    Start_Time: string;
+                    End_Time: string;
+                    Status: string;
+                    Purpose?: string;
+                    Room?: { Name: string };
+                    User_ID?: number;
+                    Created_By?: number;
+                    User?: { First_Name: string; Last_Name: string };
+                }>;
+                const bookings = Array.isArray(payload)
+                    ? payload
+                    : Array.isArray(payload?.data)
+                        ? payload.data
+                        : [];
+
+                const labRoomIds = new Set(labRooms.map(r => r.Room_ID));
+                for (const b of bookings) {
+                    if (!labRoomIds.has(b.Room_ID)) continue;
+                    all.push({
+                        roomId: b.Room_ID,
+                        roomName: b.Room?.Name || '',
+                        startTime: b.Start_Time,
+                        endTime: b.End_Time,
+                        status: 'approved',
+                        purpose: b.Purpose || 'Booked',
+                        id: b.Booked_Room_ID,
+                        type: 'booking',
+                        userId: b.User_ID || b.Created_By,
+                        bookedByName: b.User
+                            ? `${b.User.First_Name} ${b.User.Last_Name}`.trim()
+                            : 'Unknown',
+                    });
+                }
+
+                setWeekSessions(all);
+            } catch (error) {
+                console.error('Failed to load week sessions:', error);
+            }
+        };
+        loadWeekSessions();
+    }, [labRooms.length, weekRangeKey, refreshTrigger]);
+
+    // Poll active queues for the SummaryStrip counters.
+    useEffect(() => {
+        let cancelled = false;
+        const load = async () => {
+            try {
+                const data = await getActiveQueues();
+                if (!cancelled) setActiveQueues(data);
+            } catch (err) {
+                console.error('Failed to load active queues:', err);
+            }
+        };
+        load();
+        const interval = window.setInterval(load, 30000);
+        return () => {
+            cancelled = true;
+            window.clearInterval(interval);
+        };
+    }, [refreshTrigger]);
+
+    const handleOpenOverflow = (preset: OverflowPreset) => {
+        setOverflowPreset(preset);
+        setSelectedSession(null);
+        setSelectedRoom(null);
+        setSelectedCategory(preset.labType);
+        setQueueInitialMode('single');
+
+        // Derive HH:MM strings from the preset ISO timestamps so QueueModal can
+        // pre-fill its single-session time dropdowns.
+        const start = new Date(preset.startTimeIso);
+        const end = new Date(preset.endTimeIso);
+        const toHHMM = (d: Date) => `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+        setSelectedSlotStart(toHHMM(start));
+        setSelectedSlotEnd(toHHMM(end));
+        setQueueModalOpen(true);
+    };
 
     // Compute fully booked slots for the selected category's time picker
     const computeFullyBookedSlots = (): { startMinutes: number; endMinutes: number }[] => {
@@ -287,19 +438,9 @@ export default function Room() {
         return slots;
     };
 
-    const handleAddTimeSlot = (category: LabCategory, startTime: string, endTime: string) => {
-        setSelectedCategory(category);
-        setSelectedSlotStart(startTime);
-        setSelectedSlotEnd(endTime);
-        setSelectedRoom(null);
-        setSelectedSession(null);
-        setQueueModalOpen(true);
-    };
-
     const handleQueueRoom = async (startTime: string, endTime: string, roomId: number) => {
-        const targetDate = scheduleDate === 'tomorrow'
-            ? dayjs(serverCurrentTime).add(1, 'day').startOf('day')
-            : dayjs(serverCurrentTime).startOf('day');
+        // Single-session edit / overflow flows always use the current server day.
+        const targetDate = dayjs(serverCurrentTime).startOf('day');
         const requestedStart = targetDate.hour(Number(startTime.split(':')[0])).minute(Number(startTime.split(':')[1])).toISOString();
         const requestedEnd = targetDate.hour(Number(endTime.split(':')[0])).minute(Number(endTime.split(':')[1])).toISOString();
 
@@ -350,6 +491,39 @@ export default function Room() {
             console.error('Error setting room availability:', error);
             const errorMessage = error.response?.data?.details || error.response?.data?.error || 'Failed to action room availability';
             await modal.showError(errorMessage, 'Error');
+        }
+    };
+
+    const handleQueueWeekly = async (
+        roomId: number,
+        slots: { startTime: string; endTime: string }[]
+    ) => {
+        try {
+            await api.post('/bookings/weekly', {
+                roomId,
+                purpose: 'Student Usage',
+                slots
+            });
+
+            setQueueModalOpen(false);
+            setSelectedCategory(null);
+            setSelectedSlotStart('');
+            setSelectedSlotEnd('');
+            setSelectedSession(null);
+            setSelectedRoom(null);
+            setQueueInitialMode('weekly');
+            setRefreshTrigger(prev => prev + 1);
+            await modal.showSuccess(`Queued ${slots.length} session(s) for the week.`, 'Success');
+        } catch (error: unknown) {
+            console.error('Error queuing weekly:', error);
+            const err = error as { response?: { data?: { details?: string; error?: string; conflictingSlots?: unknown[] } } };
+            const data = err.response?.data;
+            let errorMessage = data?.details || data?.error || 'Failed to queue weekly availability';
+            if (Array.isArray(data?.conflictingSlots) && data.conflictingSlots.length > 0) {
+                errorMessage += ` (${data.conflictingSlots.length} conflicting slot${data.conflictingSlots.length === 1 ? '' : 's'})`;
+            }
+            await modal.showError(errorMessage, 'Error');
+            throw error;
         }
     };
 
@@ -514,97 +688,96 @@ export default function Room() {
                         </div>
                     )
                 ) : (
-                    /* Room Availability Queue */
+                    /* Room Availability Queue — vertical layout:
+                       [Summary strip] → [Active Queue Dashboard] → [Weekly Swimlane Grid] */
                     <div className="space-y-6">
-                        {/* Today / Tomorrow Toggle */}
-                        <div className="flex items-center gap-3">
-                            <div className="flex rounded-lg border border-gray-300 bg-white shadow-sm dark:border-gray-600 dark:bg-gray-800">
-                                <button
-                                    onClick={() => setScheduleDate('today')}
-                                    className={`inline-flex items-center gap-2 rounded-l-lg px-4 py-2 text-sm font-medium transition-colors ${scheduleDate === 'today'
-                                        ? 'bg-indigo-600 text-white'
-                                        : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
-                                    }`}
-                                >
-                                    Today
-                                </button>
-                                <button
-                                    onClick={() => setScheduleDate('tomorrow')}
-                                    className={`inline-flex items-center gap-2 rounded-r-lg px-4 py-2 text-sm font-medium transition-colors ${scheduleDate === 'tomorrow'
-                                        ? 'bg-indigo-600 text-white'
-                                        : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
-                                    }`}
-                                >
-                                    Tomorrow
-                                </button>
-                            </div>
+                        <div className="flex items-center justify-between gap-3">
                             <span className="text-sm text-gray-500 dark:text-gray-400">
-                                {scheduleDate === 'today'
-                                    ? dayjs(serverCurrentTime).format('dddd, MMMM D')
-                                    : dayjs(serverCurrentTime).add(1, 'day').format('dddd, MMMM D')
-                                }
+                                {dayjs(serverCurrentTime).format('dddd, MMMM D')}
                             </span>
                         </div>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                            All rooms queued here are reserved for student use during the selected time window.
+                            Rooms queued here are reserved for student use during the selected time window.
                         </p>
+
                         {isLoading ? (
                             <div className="space-y-4">
                                 {[...Array(3)].map((_, i) => (
-                                    <div key={i} className="h-64 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-800" />
+                                    <div key={i} className="h-40 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-800" />
                                 ))}
                             </div>
                         ) : labRooms.length > 0 ? (
                             <>
-                                {([
-                                    { key: 'WINDOWS' as LabCategory, label: 'Windows Laboratories', rooms: windowsLabs, icon: Monitor },
-                                    { key: 'MAC' as LabCategory, label: 'Mac Laboratories', rooms: macLabs, icon: Apple },
-                                    { key: 'UNASSIGNED' as LabCategory, label: 'Unassigned Laboratories', rooms: unassignedLabs, icon: HelpCircle },
-                                ] as const)
-                                    .filter(cat => cat.rooms.length > 0)
-                                    .map(({ key, label, rooms: categoryRooms, icon: Icon }) => {
-                                        const categorySessions = getSessionsByCategory(categoryRooms);
-                                        const availableNow = getAvailableNowCount(categoryRooms, categorySessions);
+                                <SummaryStrip
+                                    activeQueues={activeQueues}
+                                    rooms={labRooms}
+                                    weekSessions={weekSessions}
+                                    currentTime={serverCurrentTime}
+                                />
 
-                                        return (
-                                            <div key={key} className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                                                <div className="flex items-center justify-between mb-6">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 text-lg">
-                                                            <Icon className="h-5 w-5" />
-                                                        </div>
-                                                        <div>
-                                                            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                                                                {label}
-                                                            </h2>
-                                                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                                                                {categoryRooms.length} room{categoryRooms.length !== 1 ? 's' : ''} shown
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                    <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                                        <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                                                        {availableNow} room(s) available now
-                                                    </span>
-                                                </div>
+                                <div>
+                                    <h2 className="mb-2 text-base font-semibold text-gray-900 dark:text-white">Active Queues</h2>
+                                    <ActiveQueueDashboard
+                                        allRooms={labRooms}
+                                        weekSessions={weekSessions}
+                                        onOpenOverflow={handleOpenOverflow}
+                                        refreshSignal={refreshTrigger}
+                                    />
+                                </div>
 
-                                                {key === 'UNASSIGNED' && (
-                                                    <div className="mb-4 rounded-lg bg-yellow-50 border border-yellow-200 p-3 text-sm text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-700 dark:text-yellow-300">
-                                                        These rooms need a Lab Type assigned via Room Management.
-                                                    </div>
-                                                )}
-
-                                                <TimeSlotGrid
-                                                    sessions={categorySessions}
-                                                    categoryRooms={categoryRooms}
-                                                    onAddRoom={(start: string, end: string) => handleAddTimeSlot(key, start, end)}
-                                                    onSlotDetail={handleSlotDetail}
-                                                    isTomorrow={scheduleDate === 'tomorrow'}
-                                                    currentTime={serverCurrentTime}
-                                                />
-                                            </div>
-                                        );
-                                    })}
+                                <div>
+                                    <h2 className="mb-2 text-base font-semibold text-gray-900 dark:text-white">Weekly Schedule</h2>
+                                    <WeeklySwimlaneGrid
+                                        rooms={labRooms}
+                                        weekSessions={weekSessions}
+                                        weekStart={weekStartDate.toDate()}
+                                        currentTime={serverCurrentTime}
+                                        onSlotClick={(labType, startISO, endISO) => {
+                                            const cat = labType as LabCategory;
+                                            setSelectedCategory(cat);
+                                            setSelectedSession(null);
+                                            setSelectedRoom(null);
+                                            setSelectedSlotStart(startISO);
+                                            setSelectedSlotEnd(endISO);
+                                            setQueueInitialMode('single');
+                                            setQueueModalOpen(true);
+                                        }}
+                                        onAddRoom={(labType, day) => {
+                                            const cat = labType as LabCategory;
+                                            const start = new Date(day);
+                                            start.setHours(9, 0, 0, 0);
+                                            const end = new Date(day);
+                                            end.setHours(10, 0, 0, 0);
+                                            setSelectedCategory(cat);
+                                            setSelectedSession(null);
+                                            setSelectedRoom(null);
+                                            setSelectedSlotStart(start.toISOString());
+                                            setSelectedSlotEnd(end.toISOString());
+                                            setQueueInitialMode('single');
+                                            setQueueModalOpen(true);
+                                        }}
+                                        onBlockerClick={(blocker, room) => {
+                                            const startLabel = dayjs(blocker.startTime).format('ddd MMM D · h:mm A');
+                                            const endLabel = dayjs(blocker.endTime).format('h:mm A');
+                                            const roomName = room?.Name || `Room ${blocker.roomId}`;
+                                            let kind = 'Booking';
+                                            let detail = blocker.purpose || 'Booked';
+                                            if (blocker.type === 'schedule') {
+                                                kind = 'Class schedule';
+                                                detail = blocker.purpose || 'Scheduled class';
+                                            } else if (blocker.purpose === 'Student Usage') {
+                                                kind = 'Queued for student usage';
+                                                detail = blocker.bookedByName
+                                                    ? `Queued by ${blocker.bookedByName}`
+                                                    : 'Queued by a lab technician';
+                                            }
+                                            void modal.showAlert(
+                                                `${roomName} · ${startLabel} – ${endLabel}\n\n${kind}: ${detail}`,
+                                                'Slot details',
+                                            );
+                                        }}
+                                    />
+                                </div>
                             </>
                         ) : (
                             <div className="flex flex-col items-center justify-center py-12">
@@ -624,14 +797,26 @@ export default function Room() {
                     setSelectedSession(null);
                     setSelectedRoom(null);
                     setSelectedCategory(null);
+                    setQueueInitialMode('weekly');
+                    setOverflowPreset(null);
                 }}
                 onQueue={handleQueueRoom}
+                onQueueWeekly={handleQueueWeekly}
                 onRemove={selectedSession ? () => handleRemoveSession(selectedSession!) : () => { }}
-                availableRooms={getRoomsForCategory(selectedCategory)}
+                availableRooms={overflowPreset
+                    ? overflowPreset.eligibleRooms
+                    : getRoomsForCategory(selectedCategory)}
                 categorySessions={getSessionsForCategory(selectedCategory)}
+                weekSessions={weekSessions.filter(s => {
+                    // Filter to the selected category's rooms to keep blocker logic focused.
+                    const catRoomIds = new Set(getRoomsForCategory(selectedCategory).map(r => r.Room_ID));
+                    return catRoomIds.has(s.roomId);
+                })}
+                weekStart={weekStartDate.toDate()}
                 editingSessionId={selectedSession?.id}
                 initialStartTime={selectedSlotStart}
                 initialEndTime={selectedSlotEnd}
+                initialMode={queueInitialMode}
                 selectedQueueItem={selectedSession ? {
                     roomId: selectedSession.roomId,
                     roomName: selectedSession.roomName,
@@ -703,6 +888,9 @@ export default function Room() {
                                                             const cat: LabCategory = room.Lab_Type || 'UNASSIGNED';
                                                             setSelectedCategory(cat);
                                                         }
+                                                        // Editing a single existing session uses single-session mode
+                                                        // (the weekly grid view doesn't fit editing one slot).
+                                                        setQueueInitialMode('single');
                                                         setQueueModalOpen(true);
                                                     }}
                                                     className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400"

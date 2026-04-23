@@ -3,6 +3,7 @@ import Navbar from "@/layout/Navbar";
 import { Link, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useNotifications } from "@/context/NotificationContext";
+import { useTheme } from "@/hooks/useTheme";
 import { Toaster } from 'react-hot-toast';
 import { Bell, DoorOpen } from "lucide-react";
 
@@ -13,6 +14,11 @@ const Layout = () => {
   const [isMobile, setIsMobile] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const [badgeDismissed, setBadgeDismissed] = useState(false);
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+
+  useEffect(() => { setBadgeDismissed(false); }, [unreadCount]);
   const profileRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -61,8 +67,30 @@ const Layout = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-white dark:bg-gray-900">
-      <Toaster position="top-right" reverseOrder={false} />
+    <div className="flex h-screen overflow-hidden bg-white dark:bg-gray-900">
+      <Toaster
+        position="top-right"
+        reverseOrder={false}
+        toastOptions={{
+          style: {
+            background: isDark ? '#1f2937' : '#ffffff',
+            color: isDark ? '#f9fafb' : '#111827',
+            border: isDark ? '1px solid #374151' : '1px solid #e5e7eb',
+          },
+          success: {
+            iconTheme: {
+              primary: '#10b981',
+              secondary: isDark ? '#1f2937' : '#ffffff',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#ef4444',
+              secondary: isDark ? '#1f2937' : '#ffffff',
+            },
+          },
+        }}
+      />
       {!hideSidebar && <Navbar collapsed={collapsed} setCollapsed={setCollapsed} isMobile={isMobile} />}
 
       <div className="flex-1 flex flex-col">
@@ -109,8 +137,22 @@ const Layout = () => {
                   aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
                 >
                   <Bell className="h-6 w-6 text-gray-700 dark:text-gray-300" />
-                  {unreadCount > 0 && (
-                    <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[11px] font-bold leading-none text-white ring-2 ring-white dark:ring-gray-800">
+                  {unreadCount > 0 && !badgeDismissed && (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => { e.stopPropagation(); setBadgeDismissed(true); }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setBadgeDismissed(true);
+                        }
+                      }}
+                      title="Click to hide"
+                      aria-label="Dismiss notifications badge"
+                      className="absolute -right-1 -bottom-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[11px] font-bold leading-none text-white ring-2 ring-white dark:ring-gray-800 cursor-pointer hover:bg-red-700"
+                    >
                       {unreadCount > 99 ? "99+" : unreadCount}
                     </span>
                   )}
@@ -173,8 +215,8 @@ const Layout = () => {
           </header>
         )}
 
-        <main className={`flex-1 mt-0 lg:mt-0 min-h-screen overflow-y-auto transition-all duration-300 
-          ${hideSidebar ? "ml-0" : collapsed && !isMobile ? "ml-20" : !collapsed && !isMobile ? "ml-56" : "ml-0"} 
+        <main className={`flex-1 mt-0 lg:mt-0 overflow-y-auto transition-all duration-300
+          ${hideSidebar ? "ml-0" : collapsed && !isMobile ? "ml-20" : !collapsed && !isMobile ? "ml-56" : "ml-0"}
           ${isMobile ? "pt-16" : ""} bg-white dark:bg-gray-900`}>
           <Outlet />
         </main>

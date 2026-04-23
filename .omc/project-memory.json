@@ -1,0 +1,532 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1776848855134,
+  "projectRoot": "C:\\Users\\Administrator\\Documents\\Coding\\bits-frontend",
+  "techStack": {
+    "languages": [
+      {
+        "name": "JavaScript/TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "package.json"
+        ]
+      },
+      {
+        "name": "TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "tsconfig.json"
+        ]
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "react",
+        "version": "19.1.0",
+        "category": "frontend"
+      },
+      {
+        "name": "react-dom",
+        "version": "19.1.0",
+        "category": "frontend"
+      },
+      {
+        "name": "vite",
+        "version": "6.3.5",
+        "category": "build"
+      },
+      {
+        "name": "vitest",
+        "version": "4.1.0",
+        "category": "testing"
+      }
+    ],
+    "packageManager": "npm",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": "npm run build",
+    "testCommand": "npm test",
+    "lintCommand": "npm run lint",
+    "devCommand": "npm run dev",
+    "scripts": {
+      "dev": "vite",
+      "build": "tsc -b && vite build",
+      "lint": "eslint .",
+      "preview": "vite preview",
+      "deploy": "npm run build",
+      "test": "vitest run",
+      "test:watch": "vitest",
+      "test:coverage": "vitest run --coverage"
+    }
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": "type-based"
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "docs",
+      "public",
+      "src",
+      "tests"
+    ],
+    "gitBranches": {
+      "defaultBranch": "main",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "dist": {
+      "path": "dist",
+      "purpose": "Distribution/build output",
+      "fileCount": 3,
+      "lastAccessed": 1776848855075,
+      "keyFiles": [
+        "bit.png",
+        "index.html",
+        "vite.svg"
+      ]
+    },
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 1,
+      "lastAccessed": 1776848855076,
+      "keyFiles": [
+        "SYSTEM_MANUAL.md"
+      ]
+    },
+    "public": {
+      "path": "public",
+      "purpose": "Public files",
+      "fileCount": 2,
+      "lastAccessed": 1776848855094,
+      "keyFiles": [
+        "bit.png",
+        "vite.svg"
+      ]
+    },
+    "src": {
+      "path": "src",
+      "purpose": "Source code",
+      "fileCount": 1,
+      "lastAccessed": 1776848855097,
+      "keyFiles": [
+        "vite-env.d.ts"
+      ]
+    },
+    "tests": {
+      "path": "tests",
+      "purpose": "Test files",
+      "fileCount": 1,
+      "lastAccessed": 1776848855098,
+      "keyFiles": [
+        "setup.ts"
+      ]
+    },
+    "dist\\assets": {
+      "path": "dist\\assets",
+      "purpose": "Static assets",
+      "fileCount": 3,
+      "lastAccessed": 1776848855101,
+      "keyFiles": [
+        "index-Bbkoj-_q.js",
+        "index-D4R1b5dq.css",
+        "preline-gjeWu2VI.js"
+      ]
+    },
+    "src\\app": {
+      "path": "src\\app",
+      "purpose": "Application code",
+      "fileCount": 2,
+      "lastAccessed": 1776848855103,
+      "keyFiles": [
+        "App.tsx",
+        "main.tsx"
+      ]
+    },
+    "src\\assets": {
+      "path": "src\\assets",
+      "purpose": "Static assets",
+      "fileCount": 1,
+      "lastAccessed": 1776848855106,
+      "keyFiles": [
+        "react.svg"
+      ]
+    },
+    "src\\components": {
+      "path": "src\\components",
+      "purpose": "UI components",
+      "fileCount": 15,
+      "lastAccessed": 1776848855108,
+      "keyFiles": [
+        "BookingCard.tsx",
+        "BookingPopover.tsx",
+        "CalendarSidebar.tsx"
+      ]
+    },
+    "src\\lib": {
+      "path": "src\\lib",
+      "purpose": "Library code",
+      "fileCount": 4,
+      "lastAccessed": 1776848855109,
+      "keyFiles": [
+        "constants.ts",
+        "networkUtils.ts",
+        "ticketLocation.ts"
+      ]
+    },
+    "src\\pages": {
+      "path": "src\\pages",
+      "purpose": "Page components",
+      "fileCount": 2,
+      "lastAccessed": 1776848855113,
+      "keyFiles": [
+        "Login.tsx",
+        "UnauthorizedPage.tsx"
+      ]
+    },
+    "src\\services": {
+      "path": "src\\services",
+      "purpose": "Business logic services",
+      "fileCount": 16,
+      "lastAccessed": 1776848855115,
+      "keyFiles": [
+        "api.ts",
+        "booking.ts",
+        "borrowing.ts"
+      ]
+    },
+    "tests\\components": {
+      "path": "tests\\components",
+      "purpose": "UI components",
+      "fileCount": 6,
+      "lastAccessed": 1776848855119,
+      "keyFiles": [
+        "Badge.test.tsx",
+        "Button.test.tsx",
+        "Card.test.tsx"
+      ]
+    },
+    "tests\\pages": {
+      "path": "tests\\pages",
+      "purpose": "Page components",
+      "fileCount": 1,
+      "lastAccessed": 1776848855119,
+      "keyFiles": [
+        "Login.test.tsx"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "src\\pages\\labtech\\RoomPage.tsx",
+      "accessCount": 38,
+      "lastAccessed": 1776917968575,
+      "type": "file"
+    },
+    {
+      "path": "src\\pages\\labtech\\InventoryPage.tsx",
+      "accessCount": 36,
+      "lastAccessed": 1776872016211,
+      "type": "file"
+    },
+    {
+      "path": "src\\pages\\labtech\\FormsPage.tsx",
+      "accessCount": 26,
+      "lastAccessed": 1776901915757,
+      "type": "file"
+    },
+    {
+      "path": "src\\pages\\labtech\\components\\WeeklyReportDialog.tsx",
+      "accessCount": 24,
+      "lastAccessed": 1776908225998,
+      "type": "file"
+    },
+    {
+      "path": "src",
+      "accessCount": 17,
+      "lastAccessed": 1776912091366,
+      "type": "directory"
+    },
+    {
+      "path": "src\\components\\Table.tsx",
+      "accessCount": 16,
+      "lastAccessed": 1776866945067,
+      "type": "file"
+    },
+    {
+      "path": "src\\pages\\labtech\\InventoryMobile.tsx",
+      "accessCount": 16,
+      "lastAccessed": 1776867793386,
+      "type": "directory"
+    },
+    {
+      "path": "src\\pages\\labtech\\BorrowingPage.tsx",
+      "accessCount": 15,
+      "lastAccessed": 1776858260844,
+      "type": "file"
+    },
+    {
+      "path": "src\\pages\\labtech\\components\\ItemModal.tsx",
+      "accessCount": 13,
+      "lastAccessed": 1776856153045,
+      "type": "file"
+    },
+    {
+      "path": "src\\layout\\Layout.tsx",
+      "accessCount": 12,
+      "lastAccessed": 1776864024142,
+      "type": "file"
+    },
+    {
+      "path": "src\\pages\\labtech\\components\\AddFormDialog.tsx",
+      "accessCount": 9,
+      "lastAccessed": 1776854404019,
+      "type": "file"
+    },
+    {
+      "path": "src\\pages\\labtech\\ReportsPage.tsx",
+      "accessCount": 9,
+      "lastAccessed": 1776907669795,
+      "type": "file"
+    },
+    {
+      "path": "src\\types\\formtypes.ts",
+      "accessCount": 8,
+      "lastAccessed": 1776854442204,
+      "type": "file"
+    },
+    {
+      "path": "src\\layout\\Navbar.tsx",
+      "accessCount": 8,
+      "lastAccessed": 1776867717740,
+      "type": "file"
+    },
+    {
+      "path": "src\\services\\room.ts",
+      "accessCount": 7,
+      "lastAccessed": 1776911731646,
+      "type": "file"
+    },
+    {
+      "path": "src\\pages\\tickets\\TicketsPage.tsx",
+      "accessCount": 6,
+      "lastAccessed": 1776867378777,
+      "type": "file"
+    },
+    {
+      "path": "src\\services\\inventory.ts",
+      "accessCount": 5,
+      "lastAccessed": 1776869397376,
+      "type": "file"
+    },
+    {
+      "path": "src\\services\\forms.ts",
+      "accessCount": 4,
+      "lastAccessed": 1776854280343,
+      "type": "directory"
+    },
+    {
+      "path": "src\\context\\NotificationContext.tsx",
+      "accessCount": 4,
+      "lastAccessed": 1776859688179,
+      "type": "directory"
+    },
+    {
+      "path": "src\\pages\\labtech\\InventoryAuditPage.tsx",
+      "accessCount": 4,
+      "lastAccessed": 1776871985773,
+      "type": "file"
+    },
+    {
+      "path": "src\\app\\App.tsx",
+      "accessCount": 4,
+      "lastAccessed": 1776900895529,
+      "type": "file"
+    },
+    {
+      "path": "",
+      "accessCount": 4,
+      "lastAccessed": 1776903683748,
+      "type": "directory"
+    },
+    {
+      "path": "src\\services\\reports.ts",
+      "accessCount": 4,
+      "lastAccessed": 1776907595104,
+      "type": "directory"
+    },
+    {
+      "path": "src\\types\\room.ts",
+      "accessCount": 4,
+      "lastAccessed": 1776911529011,
+      "type": "file"
+    },
+    {
+      "path": "change-requests.txt",
+      "accessCount": 3,
+      "lastAccessed": 1776851665729,
+      "type": "file"
+    },
+    {
+      "path": "src\\lib\\utils.ts",
+      "accessCount": 3,
+      "lastAccessed": 1776854182444,
+      "type": "file"
+    },
+    {
+      "path": "src\\context\\HeartbeatContext.tsx",
+      "accessCount": 3,
+      "lastAccessed": 1776856489735,
+      "type": "file"
+    },
+    {
+      "path": "src\\types\\inventory.ts",
+      "accessCount": 3,
+      "lastAccessed": 1776861493515,
+      "type": "file"
+    },
+    {
+      "path": "CLAUDE.md",
+      "accessCount": 3,
+      "lastAccessed": 1776911511294,
+      "type": "file"
+    },
+    {
+      "path": "src\\hooks\\useBorrowingEvents.ts",
+      "accessCount": 2,
+      "lastAccessed": 1776856551004,
+      "type": "file"
+    },
+    {
+      "path": "src\\ui\\FloatingSelect.tsx",
+      "accessCount": 2,
+      "lastAccessed": 1776856591183,
+      "type": "file"
+    },
+    {
+      "path": "src\\services\\borrowing.ts",
+      "accessCount": 2,
+      "lastAccessed": 1776858163693,
+      "type": "file"
+    },
+    {
+      "path": "src\\pages\\labtech\\components\\WalkinBorrowingModal.tsx",
+      "accessCount": 2,
+      "lastAccessed": 1776858599089,
+      "type": "file"
+    },
+    {
+      "path": "src\\services",
+      "accessCount": 2,
+      "lastAccessed": 1776906319664,
+      "type": "directory"
+    },
+    {
+      "path": "src\\types\\borrowing.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776850222228,
+      "type": "file"
+    },
+    {
+      "path": "src\\lib\\constants.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776850222255,
+      "type": "file"
+    },
+    {
+      "path": "src\\pages\\labtech\\components\\DeptSelect.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1776850230978,
+      "type": "file"
+    },
+    {
+      "path": "src\\pages\\monitoring\\MonitoringDashboard.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1776850239586,
+      "type": "file"
+    },
+    {
+      "path": "src\\pages\\student\\components\\ComputerSelector.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1776850239861,
+      "type": "file"
+    },
+    {
+      "path": "src\\app",
+      "accessCount": 1,
+      "lastAccessed": 1776853485353,
+      "type": "directory"
+    },
+    {
+      "path": "src\\pages\\labtech",
+      "accessCount": 1,
+      "lastAccessed": 1776854294883,
+      "type": "directory"
+    },
+    {
+      "path": "src\\pages\\labtech\\components\\RowPreview.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1776856582502,
+      "type": "file"
+    },
+    {
+      "path": "src\\pages\\labtech\\components\\FileBadge.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1776856589487,
+      "type": "directory"
+    },
+    {
+      "path": "package.json",
+      "accessCount": 1,
+      "lastAccessed": 1776859595479,
+      "type": "file"
+    },
+    {
+      "path": "src\\hooks\\useTheme.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776859628927,
+      "type": "directory"
+    },
+    {
+      "path": "src\\context\\AuthContext.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1776859871545,
+      "type": "file"
+    },
+    {
+      "path": "src\\types\\semester.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776861462158,
+      "type": "file"
+    },
+    {
+      "path": "src\\services\\semesters.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776861465511,
+      "type": "file"
+    },
+    {
+      "path": "src\\utils\\inventoryQr.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776863743670,
+      "type": "file"
+    },
+    {
+      "path": "src\\pages\\labtech\\components\\RoomCard.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1776863831285,
+      "type": "directory"
+    }
+  ],
+  "userDirectives": []
+}

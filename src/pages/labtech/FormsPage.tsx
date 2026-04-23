@@ -12,15 +12,18 @@ import {
   formDocumentTypeLabels,
   formStatusColors,
   formStatusLabels,
+  formTypeLabels,
   formDepartmentLabels,
   getMissingRisCompletionDocumentTypes,
   getTimelineStepsForType,
   getTransferDepartmentOptions,
   hasCurrentStepAttachment,
   hasVisitedFormDepartment,
+  isRisFormType,
   normalizeFormDepartment,
   getDepartmentsForType,
-  risCompletionDocumentTypes
+  risCompletionDocumentTypes,
+  stepRequiresAttachment
 } from '@/types/formtypes';
 import { getForms, createForm, updateForm as updateFormAPI, transferForm, uploadFile, addFormAttachment, resolveFormFileUrl, setFormReceived, archiveForm } from '@/services/forms';
 import { useAuth } from '@/context/AuthContext';
@@ -62,10 +65,23 @@ export default function Forms() {
     { label: 'Title', key: 'title' },
     { label: 'Department', key: 'department' },
     { label: 'Status', key: 'status' },
-    { label: 'Form ID', key: 'formId' },
     { label: 'Attached Files', key: 'attachments' },
+    { label: 'Created At', key: 'createdAt' },
     { label: 'Actions', align: 'right' as const }
   ];
+
+  const formatCreatedAt = (iso?: string) => {
+    if (!iso) return '—';
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return '—';
+    return date.toLocaleString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
 
   // Local state for buffered edits: formId -> partial updates
   const [editedForms, setEditedForms] = useState<Record<string, Partial<FormRecord>>>({});
@@ -133,7 +149,7 @@ export default function Forms() {
 
     return {
       id: form.Form_ID.toString(),
-      formId: form.Form_Code,
+      formNumber: form.Form_Code,
       title: form.Title || form.Form_Code,
       type: form.Form_Type,
       status: form.Status,
@@ -212,7 +228,7 @@ export default function Forms() {
       .filter(f => (showArchived ? f.isArchived : !f.isArchived))
       .filter(f => {
         const attachmentSearch = (f.attachments || []).map(attachment => attachment.fileName).join(' ');
-        const matchesSearch = `${f.title || ''} ${f.formId} ${f.type} ${f.status} ${f.department} ${f.attachmentName || ''} ${attachmentSearch}`
+        const matchesSearch = `${f.title || ''} ${f.formNumber} ${f.type} ${f.status} ${f.department} ${f.attachmentName || ''} ${attachmentSearch}`
           .toLowerCase()
           .includes(q);
         const matchesFormType = formTypeFilter === 'All' || f.type === formTypeFilter;
@@ -226,7 +242,7 @@ export default function Forms() {
   const getFormDownloadUrl = (form: FormRecord) =>
     resolveFormFileUrl(form.attachmentUrl, {
       download: true,
-      fileName: form.attachmentName || form.formId,
+      fileName: form.attachmentName || form.formNumber,
     }) || form.attachmentUrl;
 
   const fetchAttachmentBlob = async (url?: string) => {
@@ -254,7 +270,7 @@ export default function Forms() {
       return;
     }
 
-    previewWindow.document.title = form.attachmentName || `${form.formId} preview`;
+    previewWindow.document.title = form.attachmentName || `${form.formNumber} preview`;
     previewWindow.document.body.innerHTML = '<p style="font-family: sans-serif; padding: 24px;">Loading preview...</p>';
 
     try {
@@ -274,7 +290,7 @@ export default function Forms() {
       const objectUrl = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = objectUrl;
-      link.download = form.attachmentName || `${form.formId}-attachment`;
+      link.download = form.attachmentName || `${form.formNumber}-attachment`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -285,7 +301,7 @@ export default function Forms() {
   };
 
   const isRisAtOrAfterPurchasing = (form: FormRecord) =>
-    form.type === 'RIS' && hasVisitedFormDepartment(
+    isRisFormType(form.type) && hasVisitedFormDepartment(
       form.type,
       form.department,
       form.history?.map(h => h.dept) || [],
@@ -323,14 +339,15 @@ export default function Forms() {
 
   const formHasCurrentStepAttachment = (form: FormRecord): boolean => {
     const currentDept = normalizeFormDepartment(form.department);
-    return currentDept
-      ? hasCurrentStepAttachment(
-          currentDept,
-          form.history,
-          form.attachments || [],
-          form.createdAt,
-        )
-      : true;
+    if (!currentDept) return true;
+    // Skip gating at steps that don't require an attachment (e.g. DEPARTMENT_HEAD, DEAN_OFFICE)
+    if (!stepRequiresAttachment(form.type, currentDept)) return true;
+    return hasCurrentStepAttachment(
+      currentDept,
+      form.history,
+      form.attachments || [],
+      form.createdAt,
+    );
   };
 
   const getCurrentStepLabel = (form: FormRecord): string => {
@@ -434,7 +451,7 @@ export default function Forms() {
     // The modal only reads: Form_ID, Form_Code, Form_Type, Department, Status, History.
     return {
       Form_ID: parseInt(record.id),
-      Form_Code: record.formId,
+      Form_Code: record.formNumber,
       Creator_ID: 0,
       Form_Type: record.type,
       Status: record.status,
@@ -466,14 +483,17 @@ export default function Forms() {
       throw new Error('You must be signed in to create a form.');
     }
 
-    if (!payload.files || payload.files.length === 0) {
+    const earlyStages: FormDepartment[] = ['REQUESTOR', 'DEPARTMENT_HEAD', 'DEAN_OFFICE'];
+    const requiresAttachment = !earlyStages.includes(payload.department as FormDepartment);
+
+    if (requiresAttachment && (!payload.files || payload.files.length === 0)) {
       await modal.showError('Please attach at least one file before creating the form.', 'File Required');
       throw new Error('Please attach at least one file before creating the form.');
     }
 
     try {
       const uploadedFiles = [];
-      for (const file of payload.files) {
+      for (const file of (payload.files || [])) {
         const uploadResult = await uploadFile(file);
         uploadedFiles.push({ file, uploadResult });
       }
@@ -483,11 +503,12 @@ export default function Forms() {
       const createdForm = await createForm({
         creatorId: user.User_ID,
         formType: payload.type,
+        formNumber: payload.formNumber,
         title: payload.title,
         content: payload.department,
-        fileName: primaryUpload.file.name,
-        fileUrl: primaryUpload.uploadResult.url,
-        fileType: primaryUpload.file.type,
+        fileName: primaryUpload?.file.name,
+        fileUrl: primaryUpload?.uploadResult.url,
+        fileType: primaryUpload?.file.type,
         attachments: uploadedFiles.map(({ file, uploadResult }) => ({
           fileName: file.name,
           fileUrl: uploadResult.url,
@@ -546,7 +567,7 @@ export default function Forms() {
         return;
       }
 
-      if (edits.department === 'COMPLETED' && currentForm.type === 'RIS' && !canCompleteRisForm(currentForm)) {
+      if (edits.department === 'COMPLETED' && isRisFormType(currentForm.type) && !canCompleteRisForm(currentForm)) {
         await modal.showError(getCompletionBlockMessage(currentForm), 'RIS Completion Blocked');
         return;
       }
@@ -566,7 +587,7 @@ export default function Forms() {
       if (needsFormUpdate) {
         savedForm = await updateFormAPI(parseInt(id), {
           status: edits.status as any,
-          title: currentForm?.title || currentForm?.formId || '',
+          title: currentForm?.title || currentForm?.formNumber || '',
           remarks: edits.remarks,
         });
       }
@@ -672,7 +693,7 @@ export default function Forms() {
           <Search
             searchTerm={searchTerm}
             onChange={setSearchTerm}
-            placeholder="Search by title, filename, or form code..."
+            placeholder="Search by title, filename, or form number..."
             showLabel={false}
           />
         </div>
@@ -683,10 +704,12 @@ export default function Forms() {
             id="forms-type-filter"
             value={formTypeFilter}
             placeholder="All Types"
-            options={(['All', 'WRF', 'RIS'] as const).map((type) => ({
-              value: type,
-              label: type === 'All' ? 'All Types' : type,
-            }))}
+            options={[
+              { value: 'All', label: 'All Types' },
+              { value: 'WRF', label: 'WRF' },
+              { value: 'RIS_E', label: formTypeLabels.RIS_E },
+              { value: 'RIS_NE', label: formTypeLabels.RIS_NE },
+            ]}
             onChange={(type) => setFormTypeFilter(type as FormType | 'All')}
           />
         </div>
@@ -724,7 +747,7 @@ export default function Forms() {
             ))}
           </div>
         ) : (
-          <Table headers={tableHeaders} columnWidths="3fr 2fr 1.5fr 1.6fr 1.5fr 1fr">
+          <Table headers={tableHeaders} columnWidths="3.4fr 2fr 1.5fr 1.8fr 1.6fr 1fr">
             {filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center flex-1 w-full min-h-full" data-full-row>
                 <div className="p-4 bg-gray-100 dark:bg-gray-800/50 rounded-full mb-4">
@@ -762,9 +785,14 @@ export default function Forms() {
                   className="group w-full cursor-pointer items-center text-left transition-all duration-150 hover:bg-indigo-50/50 focus:bg-indigo-50 focus:outline-none dark:hover:bg-indigo-900/10 dark:focus:bg-indigo-900/20"
                 >
                   <div className="min-w-0">
-                    <span className="block max-w-[260px] truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
-                      {f.title || f.formId}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
+                        {f.title || f.formNumber}
+                      </span>
+                      <span className="shrink-0 rounded-full bg-gray-100 dark:bg-gray-700 px-2 py-0.5 text-[11px] font-mono font-medium text-gray-600 dark:text-gray-300">
+                        {f.formNumber}
+                      </span>
+                    </div>
                     {f.attachmentName && (
                       <span className="block max-w-[260px] truncate text-xs text-gray-500 dark:text-gray-400">
                         {f.attachmentName}
@@ -780,8 +808,6 @@ export default function Forms() {
                     </span>
                   </div>
 
-                  <span className="text-sm text-gray-700 dark:text-gray-300">{f.formId}</span>
-
                   <div className="flex items-center gap-3 min-w-0 w-full">
                     <RowPreview url={f.attachmentUrl} name={f.attachmentName} type={f.attachmentType} />
                     <div className="min-w-0">
@@ -795,6 +821,10 @@ export default function Forms() {
                       )}
                     </div>
                   </div>
+
+                  <span className="text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                    {formatCreatedAt(f.createdAt)}
+                  </span>
 
                   <div className="flex items-center justify-end">
                     <div className="p-1.5 text-gray-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
@@ -812,10 +842,10 @@ export default function Forms() {
                 </button>,
                 expandedRow === f.id && (
                   <div key={`${f.id}-exp`} data-full-row className="p-6 bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                      <div className="lg:col-span-1">
-                        <div className="bg-white dark:bg-gray-900 p-5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm h-full">
-                          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-300 mb-5 flex items-center gap-2">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div>
+                        <div className="bg-white dark:bg-gray-900 p-6 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm h-full">
+                          <h4 className="mb-6 text-sm font-medium text-gray-900 dark:text-gray-300 flex items-center gap-2">
                             <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
@@ -832,7 +862,7 @@ export default function Forms() {
                         </div>
                       </div>
 
-                      <div className="lg:col-span-2 space-y-5">
+                      <div className="space-y-5">
                         {/* Terminal-state lock banner */}
                         {isRecordTerminal(f) && (
                           <div className="flex items-center gap-3 rounded-lg border border-gray-300 bg-gray-100 dark:bg-gray-800/70 dark:border-gray-700 px-4 py-3 text-sm text-gray-700 dark:text-gray-200">
@@ -843,9 +873,9 @@ export default function Forms() {
                           </div>
                         )}
 
-                        {/* Row actions: Return for Revision / Archive */}
-                        <div className="flex flex-wrap items-center gap-2">
-                          {!isRecordTerminal(f) && hasPriorVisitedStep(f) && (
+                        {/* Row actions: Return for Revision (archive moved to timeline header) */}
+                        {!isRecordTerminal(f) && hasPriorVisitedStep(f) && (
+                          <div className="flex flex-wrap items-center gap-2">
                             <button
                               type="button"
                               onClick={() => setReturnModalFormId(f.id)}
@@ -854,20 +884,8 @@ export default function Forms() {
                               <CornerUpLeft className="h-4 w-4" />
                               Return for Revision
                             </button>
-                          )}
-                          {!f.isArchived && (
-                            <button
-                              type="button"
-                              disabled={!isRecordTerminal(f) || archivingIds.has(f.id)}
-                              onClick={() => void handleArchiveForm(f)}
-                              title={isRecordTerminal(f) ? 'Archive this form' : 'Form must be Completed or Cancelled before archiving'}
-                              className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                              <Archive className="h-4 w-4" />
-                              {archivingIds.has(f.id) ? 'Archiving...' : 'Archive'}
-                            </button>
-                          )}
-                        </div>
+                          </div>
+                        )}
 
                         {/* Save Actions Logic */}
                         {!isRecordTerminal(f) && editedForms[f.id] && (
@@ -1037,7 +1055,7 @@ export default function Forms() {
                                       f.history?.map(h => h.dept) || []
                                     ).map(option => ({
                                       ...option,
-                                      disabled: option.disabled || (f.type === 'RIS' && option.value === 'COMPLETED' && !canCompleteRisForm(f)),
+                                      disabled: option.disabled || (isRisFormType(f.type) && option.value === 'COMPLETED' && !canCompleteRisForm(f)),
                                     }))}
                                     className="w-full"
                                   />
@@ -1188,6 +1206,22 @@ export default function Forms() {
                         </div>
                       </div>
                     </div>
+
+                    {/* Bottom-right: Archive button */}
+                    {!f.isArchived && (
+                      <div className="mt-6 flex justify-end">
+                        <button
+                          type="button"
+                          disabled={!isRecordTerminal(f) || archivingIds.has(f.id)}
+                          onClick={() => void handleArchiveForm(f)}
+                          title={isRecordTerminal(f) ? 'Archive this form' : 'Form must be Completed or Cancelled before archiving'}
+                          className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <Archive className="h-4 w-4" />
+                          {archivingIds.has(f.id) ? 'Archiving...' : 'Archive'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )
               ]).flat().filter(Boolean)

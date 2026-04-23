@@ -29,9 +29,19 @@ import LabheadScheduling from '@/pages/labhead/SchedulingPage';
 import type { JSX } from 'react';
 import { normalizeUserRole, ROLES } from '@/types/user';
 import InventoryMobile from '@/pages/labtech/InventoryMobile';
+import InventoryAuditPage from '@/pages/labtech/InventoryAuditPage';
 import Borrowing from '@/pages/labtech/BorrowingPage';
 import Reports from '@/pages/labtech/ReportsPage';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import StudentPublicLanding from '@/pages/public/StudentPublicLanding';
+
+// Public landing gate: mobile visitors see the student landing page,
+// desktop visitors are redirected to the existing /login UX.
+const PublicLandingGate = () => {
+  const isMobile = useIsMobile();
+  if (isMobile) return <StudentPublicLanding />;
+  return <Navigate to="/login" replace />;
+};
 
 // 🔒 Protects routes based on auth + role
 const ProtectedRoute = ({ children, roles }: { children: JSX.Element, roles: string[] }) => {
@@ -46,9 +56,13 @@ const ProtectedRoute = ({ children, roles }: { children: JSX.Element, roles: str
   return children;
 };
 
+// Unauthenticated fallback: send users to `/` so the PublicLandingGate can
+// route mobile visitors to the public landing page and desktop visitors to
+// /login. The original path is preserved in `state.from` so Login can bounce
+// the user back after they sign in.
 const LoginRedirect = () => {
   const location = useLocation();
-  return <Navigate to="/login" replace state={{ from: location }} />;
+  return <Navigate to="/" replace state={{ from: location }} />;
 };
 
 // 🚪 Handles logout redirection
@@ -74,20 +88,12 @@ function AppContent() {
 
   if (loading) return null;
 
+  // 🔹 Public (unauthenticated) routes
   if (!isAuthenticated) {
     return (
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="*" element={<LoginRedirect />} />
-      </Routes>
-    );
-  }
-
-  // 🔹 Public routes (not logged in)
-  if (!isAuthenticated) {
-    return (
-      <Routes>
-        <Route path="/login" element={<Login />} />
+        <Route path="/" element={<PublicLandingGate />} />
         <Route path="*" element={<LoginRedirect />} />
       </Routes>
     );
@@ -119,6 +125,7 @@ function AppContent() {
         {/* LabTech & LabHead routes */}
         <Route path="/labtech-dashboard" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><LabtechDashboard /></ProtectedRoute>} />
         <Route path="/labtech-mobile" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><InventoryMobile /></ProtectedRoute>} />
+        <Route path="/inventory-audit" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><InventoryAuditPage /></ProtectedRoute>} />
         <Route path="/labtech/room" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Room /></ProtectedRoute>} />
         <Route path="/forms" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Forms /></ProtectedRoute>} />
         <Route path="/inventory" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><InventoryPage /></ProtectedRoute>} />

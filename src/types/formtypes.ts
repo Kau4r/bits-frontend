@@ -1,5 +1,9 @@
 // Form types matching backend schema
-export type FormType = 'WRF' | 'RIS';
+export type FormType = 'WRF' | 'RIS_E' | 'RIS_NE';
+
+// Which form types follow the RIS (Requisition and Issue Slip) flow
+export const isRisFormType = (formType: FormType | string): boolean =>
+  formType === 'RIS_E' || formType === 'RIS_NE';
 export type FormStatus = 'PENDING' | 'IN_REVIEW' | 'APPROVED' | 'CANCELLED' | 'ARCHIVED';
 export type FormDepartment =
   | 'REQUESTOR'
@@ -22,7 +26,8 @@ export type FormDocumentType =
 // Display labels for UI
 export const formTypeLabels: Record<FormType, string> = {
   WRF: 'Work Request Form',
-  RIS: 'Requisition and Issue Slip',
+  RIS_E: 'RIS-E (TNS)',
+  RIS_NE: 'RIS-NE (PPFO)',
 };
 
 export const formStatusLabels: Record<FormStatus, string> = {
@@ -61,11 +66,20 @@ export const risCompletionDocumentTypes: FormDocumentType[] = [
 ];
 
 // Departments available per form type
-export const risDepartments: FormDepartment[] = [
+export const risEDepartments: FormDepartment[] = [
   'REQUESTOR',
   'DEPARTMENT_HEAD',
   'DEAN_OFFICE',
   'TNS',
+  'PURCHASING',
+  'COMPLETED',
+];
+
+export const risNeDepartments: FormDepartment[] = [
+  'REQUESTOR',
+  'DEPARTMENT_HEAD',
+  'DEAN_OFFICE',
+  'PPFO',
   'PURCHASING',
   'COMPLETED',
 ];
@@ -78,12 +92,18 @@ export const wrfDepartments: FormDepartment[] = [
 ];
 
 // Timeline steps per form type (display labels for the InlineTimeline)
-export const risTimelineSteps = ['Requestor', 'Department Head', 'Dean Office', 'TNS', 'Purchasing', 'Completed'];
+export const risETimelineSteps = ['Requestor', 'Department Head', 'Dean Office', 'TNS', 'Purchasing', 'Completed'];
+export const risNeTimelineSteps = ['Requestor', 'Department Head', 'Dean Office', 'PPFO', 'Purchasing', 'Completed'];
 export const wrfTimelineSteps = ['Requestor', 'Department Head', 'PPFO', 'Completed'];
 
 // Get departments for a given form type
 export const getDepartmentsForType = (formType: FormType): FormDepartment[] => {
-  return formType === 'RIS' ? risDepartments : wrfDepartments;
+  switch (formType) {
+    case 'RIS_E': return risEDepartments;
+    case 'RIS_NE': return risNeDepartments;
+    case 'WRF':
+    default: return wrfDepartments;
+  }
 };
 
 export const normalizeFormDepartment = (department?: string): FormDepartment | undefined => {
@@ -169,16 +189,47 @@ export const getMissingRisCompletionDocumentTypes = (
   return risCompletionDocumentTypes.filter(documentType => !uploadedTypes.has(documentType));
 };
 
+/**
+ * Which workflow steps require an attachment to be uploaded before the form
+ * can move forward. By design:
+ * - REQUESTOR always requires the initial attachment (creation flow).
+ * - DEPARTMENT_HEAD and DEAN_OFFICE do NOT require an attachment.
+ * - TNS, PPFO, PURCHASING require an attachment (any type) before transferring.
+ * Applies to all three form types (WRF, RIS_E, RIS_NE).
+ */
+export const stepRequiresAttachment = (
+  _formType: FormType,
+  department: FormDepartment,
+): boolean => {
+  switch (department) {
+    case 'REQUESTOR':
+    case 'TNS':
+    case 'PPFO':
+    case 'PURCHASING':
+      return true;
+    case 'DEPARTMENT_HEAD':
+    case 'DEAN_OFFICE':
+    case 'COMPLETED':
+    default:
+      return false;
+  }
+};
+
 export const canCompleteRisForm = (
   form: Pick<FormRecord, 'type' | 'isReceived' | 'attachments'>
 ): boolean => {
-  if (form.type !== 'RIS') return true;
+  if (!isRisFormType(form.type)) return true;
   return form.isReceived === true && getMissingRisCompletionDocumentTypes(form.attachments || []).length === 0;
 };
 
 // Get timeline steps for a given form type
 export const getTimelineStepsForType = (formType: FormType): string[] => {
-  return formType === 'RIS' ? risTimelineSteps : wrfTimelineSteps;
+  switch (formType) {
+    case 'RIS_E': return risETimelineSteps;
+    case 'RIS_NE': return risNeTimelineSteps;
+    case 'WRF':
+    default: return wrfTimelineSteps;
+  }
 };
 
 // Status chip colors
@@ -339,7 +390,7 @@ export interface FormAttachmentRecord {
 // Legacy type for backward compatibility during migration
 export interface FormRecord {
   id: string;
-  formId: string;
+  formNumber: string;
   title?: string;
   type: FormType;
   status: FormStatus;

@@ -1,23 +1,48 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useModal } from '@/context/ModalContext';
 import {
   getReports,
   createReport,
   updateReport,
   submitReport,
+  deleteReport,
   downloadWeeklyReportsCsv,
 } from '@/services/reports';
-import type { WeeklyReport, ReportCreateInput, ReportUpdateInput } from '@/types/report';
-import { reportStatusLabels, reportStatusColors } from '@/types/report';
+import type { WeeklyReport, ReportCreateInput, ReportUpdateInput, ReportTask } from '@/types/report';
+import { reportStatusLabels, reportStatusColors, taskCategoryOptions } from '@/types/report';
 import { WeeklyReportDialog } from '@/pages/labtech/components/WeeklyReportDialog';
+import { Trash2 } from 'lucide-react';
+
+// Category ordering follows the module audit intent (see types/report.ts).
+const CATEGORY_ORDER = taskCategoryOptions as readonly string[];
+type SectionKey = 'completed' | 'inProgress' | 'pending';
+
+// Group a flat list of tasks by category. Unknown categories fall under 'Other'.
+const groupByCategory = (tasks: ReportTask[]): Array<[string, ReportTask[]]> => {
+  const map = new Map<string, ReportTask[]>();
+  tasks.forEach(t => {
+    const cat = t.category || 'Other';
+    const arr = map.get(cat);
+    if (arr) arr.push(t);
+    else map.set(cat, [t]);
+  });
+  return Array.from(map.entries()).sort((a, b) => {
+    const ai = CATEGORY_ORDER.indexOf(a[0]);
+    const bi = CATEGORY_ORDER.indexOf(b[0]);
+    return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+  });
+};
 
 export default function Reports() {
   const { user: _user } = useAuth();
+  const modal = useModal();
   const [reports, setReports] = useState<WeeklyReport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingReport, setEditingReport] = useState<WeeklyReport | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const loadReports = async () => {
     try {
@@ -69,6 +94,24 @@ export default function Reports() {
 
   const formatDate = (s: string) =>
     new Date(s).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+
+  const handleDeleteDraft = async (report: WeeklyReport) => {
+    const ok = await modal.showConfirm(
+      `Delete draft for ${formatDate(report.Week_Start)} - ${formatDate(report.Week_End)}? This cannot be undone.`,
+      'Delete Draft',
+    );
+    if (!ok) return;
+    setDeletingId(report.Report_ID);
+    try {
+      await deleteReport(report.Report_ID);
+      setReports(prev => prev.filter(r => r.Report_ID !== report.Report_ID));
+      if (expandedId === report.Report_ID) setExpandedId(null);
+    } catch (err) {
+      console.error('Failed to delete draft:', err);
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   return (
     <div className="flex h-full w-full flex-col bg-white p-6 sm:px-8 lg:px-10 dark:bg-gray-900">
@@ -143,13 +186,25 @@ export default function Reports() {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {report.Status === 'DRAFT' && (
-                    <span
-                      onClick={e => { e.stopPropagation(); handleOpenEdit(report); }}
-                      role="button"
-                      className="px-3 py-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 border border-indigo-300 dark:border-indigo-700 rounded-md hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
-                    >
-                      Edit
-                    </span>
+                    <>
+                      <span
+                        onClick={e => { e.stopPropagation(); handleOpenEdit(report); }}
+                        role="button"
+                        className="px-3 py-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 border border-indigo-300 dark:border-indigo-700 rounded-md hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+                      >
+                        Edit
+                      </span>
+                      <button
+                        type="button"
+                        disabled={deletingId === report.Report_ID}
+                        onClick={e => { e.stopPropagation(); void handleDeleteDraft(report); }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-red-600 dark:text-red-400 border border-red-300 dark:border-red-800 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
+                        aria-label="Delete draft"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        {deletingId === report.Report_ID ? 'Deleting...' : 'Delete'}
+                      </button>
+                    </>
                   )}
                   <svg
                     className={`w-4 h-4 text-gray-400 transition-transform ${expandedId === report.Report_ID ? 'rotate-180' : ''}`}
@@ -160,57 +215,106 @@ export default function Reports() {
                 </div>
               </button>
 
-              {expandedId === report.Report_ID && (
-                <div className="px-5 pb-5 pt-2 border-t border-gray-100 dark:border-gray-700 space-y-4">
-                  {/* Task summary */}
-                  <div className="grid grid-cols-3 gap-3 text-center">
-                    {(['completed', 'inProgress', 'pending'] as const).map(s => {
-                      const tasks = (report.Tasks as any)[s] ?? [];
-                      const labels = { completed: 'Completed', inProgress: 'In Progress', pending: 'Pending' };
-                      const colors = {
-                        completed: 'text-green-600 dark:text-green-400',
-                        inProgress: 'text-yellow-600 dark:text-yellow-400',
-                        pending: 'text-gray-500 dark:text-gray-400',
-                      };
-                      return (
-                        <div key={s} className="rounded-lg bg-gray-50 dark:bg-gray-700/50 p-3">
-                          <p className={`text-2xl font-bold ${colors[s]}`}>{tasks.length}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{labels[s]}</p>
+              {expandedId === report.Report_ID && (() => {
+                const tasks = (report.Tasks as unknown as { completed?: ReportTask[]; inProgress?: ReportTask[]; pending?: ReportTask[] }) || {};
+                const sections: Array<{
+                  key: SectionKey;
+                  label: string;
+                  list: ReportTask[];
+                  headerClass: string;
+                  countClass: string;
+                }> = [
+                  { key: 'completed', label: 'Completed', list: tasks.completed ?? [], headerClass: 'text-green-700 dark:text-green-400', countClass: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' },
+                  { key: 'inProgress', label: 'In Progress', list: tasks.inProgress ?? [], headerClass: 'text-amber-700 dark:text-amber-400', countClass: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' },
+                  { key: 'pending', label: 'Pending', list: tasks.pending ?? [], headerClass: 'text-gray-700 dark:text-gray-300', countClass: 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200' },
+                ];
+                const totalTasks = sections.reduce((sum, s) => sum + s.list.length, 0);
+
+                return (
+                  <div className="px-5 pb-5 pt-3 border-t border-gray-100 dark:border-gray-700 space-y-5">
+                    {/* Summary strip */}
+                    <div className="grid grid-cols-3 gap-3">
+                      {sections.map(s => (
+                        <div key={s.key} className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/40 p-3 text-center">
+                          <p className={`text-2xl font-bold ${s.headerClass}`}>{s.list.length}</p>
+                          <p className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 mt-0.5">{s.label}</p>
                         </div>
-                      );
-                    })}
-                  </div>
+                      ))}
+                    </div>
 
-                  {report.Notes && (
-                    <p className="text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
-                      {report.Notes}
-                    </p>
-                  )}
-
-                  {/* Task list */}
-                  {(['completed', 'inProgress', 'pending'] as const).map(s => {
-                    const sectionTasks = (report.Tasks as any)[s] ?? [];
-                    if (sectionTasks.length === 0) return null;
-                    const labels = { completed: 'Completed Tasks', inProgress: 'In Progress', pending: 'Pending Tasks' };
-                    return (
-                      <div key={s}>
-                        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">{labels[s]}</h4>
-                        <ul className="space-y-1.5">
-                          {sectionTasks.map((t: any, i: number) => (
-                            <li key={i} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
-                              <span className="mt-0.5 shrink-0 inline-flex items-center justify-center rounded px-1.5 py-0.5 text-xs bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300">
-                                {t.category}
-                              </span>
-                              <span className="font-medium">{t.title}</span>
-                              {t.description && <span className="text-gray-500 dark:text-gray-400">– {t.description}</span>}
-                            </li>
-                          ))}
-                        </ul>
+                    {report.Notes && (
+                      <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/40 p-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Notes</p>
+                        <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{report.Notes}</p>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+                    )}
+
+                    {totalTasks === 0 ? (
+                      <p className="text-sm text-gray-400 dark:text-gray-500 italic text-center py-4">
+                        No activity recorded this week.
+                      </p>
+                    ) : (
+                      sections.map(section => {
+                        if (section.list.length === 0) return null;
+                        const groups = groupByCategory(section.list);
+                        return (
+                          <div key={section.key}>
+                            <div className="flex items-center gap-2 mb-3">
+                              <h4 className={`text-sm font-semibold ${section.headerClass}`}>
+                                {section.label}
+                              </h4>
+                              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${section.countClass}`}>
+                                {section.list.length}
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                              {groups.map(([category, items]) => (
+                                <div
+                                  key={category}
+                                  className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 p-3"
+                                >
+                                  <div className="flex items-center justify-between mb-2">
+                                    <span className="text-xs font-semibold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
+                                      {category}
+                                    </span>
+                                    <span className="inline-flex items-center rounded-full bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700 dark:text-indigo-300">
+                                      {items.length}
+                                    </span>
+                                  </div>
+                                  <ul className="space-y-1.5">
+                                    {items.map((t, i) => (
+                                      <li key={i} className="text-sm">
+                                        <div className="flex items-start gap-1.5">
+                                          <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-gray-400 dark:bg-gray-500" />
+                                          <div className="min-w-0 flex-1">
+                                            <span className="font-medium text-gray-900 dark:text-gray-100 break-words">
+                                              {t.title || <span className="italic text-gray-400">(no title)</span>}
+                                            </span>
+                                            {t.ticketId !== undefined && t.ticketId !== null && (
+                                              <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 dark:text-blue-300">
+                                                #T{t.ticketId}
+                                              </span>
+                                            )}
+                                            {t.description && (
+                                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 break-words">
+                                                {t.description}
+                                              </p>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           ))}
         </div>

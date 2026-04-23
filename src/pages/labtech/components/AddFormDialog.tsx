@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import type { ChangeEvent, FC, FormEvent, MouseEvent } from 'react';
 import type { FormStatus, FormType, FormRecord, FormDepartment } from '@/types/formtypes';
-import { formDepartmentLabels, getDepartmentsForType } from '@/types/formtypes';
+import { formDepartmentLabels, formTypeLabels, getDepartmentsForType } from '@/types/formtypes';
 import { FloatingSelect } from '@/ui/FloatingSelect';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 
@@ -13,6 +13,7 @@ export const AddFormDialog: FC<{
 }> = ({ open, onClose, onCreate, existing = [] }) => {
   const [type, setType] = useState<FormType>('WRF');
   const [title, setTitle] = useState('');
+  const [formNumber, setFormNumber] = useState('');
   const [department, setDepartment] = useState<FormDepartment>('REQUESTOR');
   const [status, setStatus] = useState<FormStatus>('PENDING');
   const [requesterName, setRequesterName] = useState('');
@@ -33,6 +34,7 @@ export const AddFormDialog: FC<{
     if (!open) {
       setType('WRF');
       setTitle('');
+      setFormNumber('');
       setDepartment('REQUESTOR');
       setStatus('PENDING');
       setRequesterName('');
@@ -52,23 +54,16 @@ export const AddFormDialog: FC<{
     setDepartment('REQUESTOR');
   }, [type]);
 
-  const nextId = useMemo(() => {
-    const prefix = type;
-    const max = existing
-      .filter(r => r.type === type)
-      .map(r => Number(r.formId.split('-')[1]))
-      .filter(n => !Number.isNaN(n))
-      .reduce((a, b) => Math.max(a, b), 0);
-    return `${prefix}-${String(max + 1).padStart(3, '0')}`;
-  }, [existing, type]);
-
   const accept = ".pdf,.doc,.docx,image/*";
+
+  const earlyStages: FormDepartment[] = ['REQUESTOR', 'DEPARTMENT_HEAD', 'DEAN_OFFICE'];
+  const attachmentRequired = !earlyStages.includes(department);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
 
-    if (files.length === 0) {
+    if (attachmentRequired && files.length === 0) {
       setFileError('Please attach at least one file before tracking the form.');
       return;
     }
@@ -82,7 +77,7 @@ export const AddFormDialog: FC<{
 
     try {
       await onCreate({
-        formId: nextId,
+        formNumber: formNumber.trim(),
         title: title.trim(),
         type,
         status,
@@ -180,7 +175,8 @@ export const AddFormDialog: FC<{
                   placeholder="Select form type"
                   options={[
                     { value: 'WRF', label: 'WRF' },
-                    { value: 'RIS', label: 'RIS' },
+                    { value: 'RIS_E', label: formTypeLabels.RIS_E },
+                    { value: 'RIS_NE', label: formTypeLabels.RIS_NE },
                   ]}
                 />
               </div>
@@ -223,13 +219,15 @@ export const AddFormDialog: FC<{
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Form ID
+                  Form Number
                 </label>
                 <input
                   type="text"
-                  value={nextId}
-                  readOnly
-                  className="w-full rounded-md border border-gray-300 dark:border-[#334155] bg-gray-100 dark:bg-[#1e2939] text-gray-900 dark:text-white p-2 text-sm cursor-not-allowed"
+                  value={formNumber}
+                  onChange={(e) => setFormNumber(e.target.value)}
+                  disabled={isSubmitting}
+                  placeholder="Enter form number"
+                  className="w-full rounded-md border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white p-2 text-sm"
                 />
               </div>
             </div>
@@ -266,7 +264,8 @@ export const AddFormDialog: FC<{
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Attach File <span className="text-red-500">*</span>
+              Attach File {attachmentRequired && <span className="text-red-500">*</span>}
+              {!attachmentRequired && <span className="ml-1 text-xs text-gray-500 dark:text-gray-400">(optional)</span>}
             </label>
             <div className="flex items-center gap-2">
               <label className="flex-1 flex flex-col items-center justify-center px-4 py-6 bg-white dark:bg-gray-800 text-blue-600 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">

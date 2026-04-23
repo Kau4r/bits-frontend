@@ -62,6 +62,11 @@ export const submitReport = async (id: number): Promise<WeeklyReport> => {
   return data;
 };
 
+export const deleteReport = async (id: number): Promise<void> => {
+  await api.delete(`/reports/${id}`);
+  toast.success('Draft deleted');
+};
+
 export const reviewReport = async (id: number): Promise<WeeklyReport> => {
   const { data } = await api.patch<WeeklyReport>(`/reports/${id}/review`);
   toast.success('Report reviewed');

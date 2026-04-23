@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { FC, FormEvent } from 'react';
-import type { WeeklyReport, ReportCreateInput, ReportUpdateInput, ReportTask, ReportTasks } from '@/types/report';
+import type { WeeklyReport, ReportCreateInput, ReportUpdateInput, ReportTask, ReportTasks, TaskStatus } from '@/types/report';
 import { taskCategoryOptions } from '@/types/report';
 import { getAutoPopulateTickets } from '@/services/reports';
 import { FloatingSelect } from '@/ui/FloatingSelect';
+import { Plus, X, Loader2, RefreshCw } from 'lucide-react';
 
 interface Props {
   open: boolean;
@@ -12,10 +13,14 @@ interface Props {
   existing?: WeeklyReport | null;
 }
 
-const emptyTask = (): ReportTask => ({
+type SectionKey = 'completed' | 'pending' | 'inProgress';
+
+const SECTION_KEYS: readonly SectionKey[] = ['completed', 'inProgress', 'pending'] as const;
+
+const emptyTask = (status: TaskStatus = 'completed'): ReportTask => ({
   title: '',
   description: '',
-  status: 'completed',
+  status,
   category: 'Maintenance',
 });
 
@@ -27,7 +32,97 @@ const getMonday = (d: Date) => {
   return date;
 };
 
-const toDateInput = (d: Date) => d.toISOString().slice(0, 10);
+const toDateInput = (d: Date) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+// Unique merge key for a task. Audit-derived tasks merge by auditLogId; legacy
+// ticket tasks without auditLogId merge by ticketId; everything else is manual.
+const mergeKey = (t: ReportTask): string | null => {
+  if (t.auditLogId !== undefined && t.auditLogId !== null) return `audit:${t.auditLogId}`;
+  if (t.ticketId !== undefined && t.ticketId !== null) return `ticket:${t.ticketId}`;
+  return null;
+};
+
+// Merge freshly-fetched audit-derived tasks into an existing ReportTasks tree.
+// Rules:
+//  - Manual tasks (no merge key) are preserved as-is.
+//  - For tasks with a merge key, remove any existing entry with the same key in
+//    any section, then place the fresh one in the section the backend reported.
+const mergeAuditTasks = (
+  base: ReportTasks,
+  fetched: { completed: ReportTask[]; inProgress: ReportTask[]; pending: ReportTask[] },
+): ReportTasks => {
+  // Collect merge keys for tasks the user has locally edited — we must NOT
+  // overwrite those on re-poll, so the user's annotations survive.
+  const userEditedKeys = new Set<string>();
+  SECTION_KEYS.forEach(s => {
+    base[s].forEach(t => {
+      if (t.userEdited) {
+        const k = mergeKey(t);
+        if (k) userEditedKeys.add(k);
+      }
+    });
+  });
+
+  const incomingKeys = new Set<string>();
+  SECTION_KEYS.forEach(s => {
+    (fetched[s] || []).forEach(t => {
+      const k = mergeKey(t);
+      if (k) incomingKeys.add(k);
+    });
+  });
+
+  // Strip entries whose merge key is in `incomingKeys` UNLESS the user edited
+  // them locally — those are preserved as-is.
+  const stripped: ReportTasks = {
+    completed: base.completed.filter(t => {
+      const k = mergeKey(t);
+      return !k || !incomingKeys.has(k) || userEditedKeys.has(k);
+    }),
+    inProgress: base.inProgress.filter(t => {
+      const k = mergeKey(t);
+      return !k || !incomingKeys.has(k) || userEditedKeys.has(k);
+    }),
+    pending: base.pending.filter(t => {
+      const k = mergeKey(t);
+      return !k || !incomingKeys.has(k) || userEditedKeys.has(k);
+    }),
+  };
+
+  // Append fresh audit-derived tasks with the correct status, skipping any
+  // that collide with a user-edited existing task.
+  SECTION_KEYS.forEach(section => {
+    (fetched[section] || []).forEach(t => {
+      const k = mergeKey(t);
+      if (k && userEditedKeys.has(k)) return;
+      stripped[section].push({ ...t, status: section });
+    });
+  });
+
+  return stripped;
+};
+
+const sectionMeta: Record<SectionKey, { label: string; headingClass: string; emptyLabel: string }> = {
+  completed: {
+    label: 'Completed',
+    headingClass: 'text-green-700 dark:text-green-400',
+    emptyLabel: 'No completed tasks',
+  },
+  inProgress: {
+    label: 'In Progress',
+    headingClass: 'text-amber-700 dark:text-amber-400',
+    emptyLabel: 'No in-progress tasks',
+  },
+  pending: {
+    label: 'Pending',
+    headingClass: 'text-gray-700 dark:text-gray-400',
+    emptyLabel: 'No pending tasks',
+  },
+};
 
 export const WeeklyReportDialog: FC<Props> = ({ open, onClose, onSave, existing }) => {
   const monday = getMonday(new Date());
@@ -43,72 +138,188 @@ export const WeeklyReportDialog: FC<Props> = ({ open, onClose, onSave, existing 
     inProgress: [],
   });
   const [saving, setSaving] = useState(false);
-  const [activeSection, setActiveSection] = useState<'completed' | 'pending' | 'inProgress'>('completed');
   const [isAutoPopulating, setIsAutoPopulating] = useState(false);
+  const [editingKey, setEditingKey] = useState<string | null>(null);
 
+  // Ref used by the polling effect to avoid firing when another call is in
+  // flight (isAutoPopulating is state and updates asynchronously).
+  const inFlightRef = useRef(false);
+
+  // Initialize + auto-populate in ONE effect so the API call is never racing
+  // against the "hydrate state from existing draft" update.
   useEffect(() => {
     if (!open) return;
-    if (existing) {
-      setWeekStart(existing.Week_Start.slice(0, 10));
-      setWeekEnd(existing.Week_End.slice(0, 10));
-      setNotes(existing.Notes ?? '');
-      setTasks(existing.Tasks as ReportTasks);
-    } else {
-      setWeekStart(toDateInput(monday));
-      setWeekEnd(toDateInput(sunday));
-      setNotes('');
-      setTasks({ completed: [], pending: [], inProgress: [] });
-    }
-    setActiveSection('completed');
-    setSaving(false);
-  }, [open, existing]);
 
-  // Auto-populate from tickets when creating a new report
-  useEffect(() => {
-    if (!open || existing) return; // Only for new reports
-    const autoPopulate = async () => {
+    let ws: string;
+    let we: string;
+    let baseTasks: ReportTasks;
+    let baseNotes: string;
+
+    if (existing) {
+      ws = existing.Week_Start.slice(0, 10);
+      we = existing.Week_End.slice(0, 10);
+      baseTasks = existing.Tasks as ReportTasks;
+      baseNotes = existing.Notes ?? '';
+    } else {
+      ws = toDateInput(monday);
+      we = toDateInput(sunday);
+      baseTasks = { completed: [], pending: [], inProgress: [] };
+      baseNotes = '';
+    }
+
+    setWeekStart(ws);
+    setWeekEnd(we);
+    setNotes(baseNotes);
+    setTasks(baseTasks);
+    setSaving(false);
+    setEditingKey(null);
+
+    if (existing && existing.Status !== 'DRAFT') return;
+
+    let cancelled = false;
+    (async () => {
+      inFlightRef.current = true;
       setIsAutoPopulating(true);
       try {
-        const data = await getAutoPopulateTickets(weekStart, weekEnd);
-        if (data.completed.length || data.inProgress.length || data.pending.length) {
-          setTasks({
-            completed: data.completed.map(t => ({ ...t, status: 'completed' as const })),
-            inProgress: data.inProgress.map(t => ({ ...t, status: 'inProgress' as const })),
-            pending: data.pending.map(t => ({ ...t, status: 'pending' as const })),
-          });
-        }
+        const data = await getAutoPopulateTickets(ws, we);
+        if (cancelled) return;
+        setTasks(prev => mergeAuditTasks(prev, data));
       } catch (err) {
         console.error('Failed to auto-populate:', err);
       } finally {
-        setIsAutoPopulating(false);
+        if (!cancelled) setIsAutoPopulating(false);
+        inFlightRef.current = false;
       }
-    };
-    autoPopulate();
+    })();
+
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, existing]);
+
+  // Re-pull when the week range changes after the dialog is already open.
+  useEffect(() => {
+    if (!open) return;
+    if (existing && existing.Status !== 'DRAFT') return;
+
+    const isFromExisting =
+      existing &&
+      weekStart === existing.Week_Start.slice(0, 10) &&
+      weekEnd === existing.Week_End.slice(0, 10);
+    const isFromDefault =
+      !existing &&
+      weekStart === toDateInput(monday) &&
+      weekEnd === toDateInput(sunday);
+    if (isFromExisting || isFromDefault) return;
+
+    let cancelled = false;
+    (async () => {
+      inFlightRef.current = true;
+      setIsAutoPopulating(true);
+      try {
+        const data = await getAutoPopulateTickets(weekStart, weekEnd);
+        if (cancelled) return;
+        setTasks(prev => mergeAuditTasks(prev, data));
+      } catch (err) {
+        console.error('Failed to re-populate for new week:', err);
+      } finally {
+        if (!cancelled) setIsAutoPopulating(false);
+        inFlightRef.current = false;
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weekStart, weekEnd]);
+
+  // Real-time polling: every 60s while dialog is open (drafts/new only).
+  useEffect(() => {
+    if (!open) return;
+    if (existing && existing.Status !== 'DRAFT') return;
+
+    const id = window.setInterval(async () => {
+      if (inFlightRef.current) return;
+      inFlightRef.current = true;
+      try {
+        const data = await getAutoPopulateTickets(weekStart, weekEnd);
+        setTasks(prev => mergeAuditTasks(prev, data));
+      } catch (err) {
+        console.error('Polling auto-populate failed:', err);
+      } finally {
+        inFlightRef.current = false;
+      }
+    }, 20_000);
+
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, existing, weekStart, weekEnd]);
 
   if (!open) return null;
 
-  const addTask = () => {
+  // Identity key for React rendering AND inline-edit tracking. Falls back to a
+  // per-section + index composite when no merge key is available (manual tasks).
+  const taskKey = (section: SectionKey, t: ReportTask, idx: number): string => {
+    const mk = mergeKey(t);
+    return mk ? `${section}:${mk}` : `${section}:manual:${idx}`;
+  };
+
+  const addTaskToCompleted = () => {
     setTasks(prev => ({
       ...prev,
-      [activeSection]: [...prev[activeSection], emptyTask()],
+      completed: [...prev.completed, emptyTask('completed')],
     }));
   };
 
-  const updateTask = (idx: number, field: keyof ReportTask, value: string | number) => {
+  // On-demand refresh so users don't have to wait for the 60s poll to pick up
+  // activity (e.g. a ticket they just resolved in another tab).
+  const refreshAuditTasks = async () => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
+    setIsAutoPopulating(true);
+    try {
+      const data = await getAutoPopulateTickets(weekStart, weekEnd);
+      setTasks(prev => mergeAuditTasks(prev, data));
+    } catch (err) {
+      console.error('Manual refresh failed:', err);
+    } finally {
+      setIsAutoPopulating(false);
+      inFlightRef.current = false;
+    }
+  };
+
+  const updateTask = (
+    section: SectionKey,
+    idx: number,
+    field: keyof ReportTask,
+    value: string | number,
+  ) => {
+    setTasks(prev => ({
+      ...prev,
+      [section]: prev[section].map((t, i) =>
+        // Mark as userEdited so the real-time poll doesn't clobber it.
+        i === idx ? { ...t, [field]: value, userEdited: true } : t,
+      ),
+    }));
+  };
+
+  const removeTask = (section: SectionKey, idx: number) => {
+    setTasks(prev => ({
+      ...prev,
+      [section]: prev[section].filter((_, i) => i !== idx),
+    }));
+  };
+
+  // Move a task between sections (cheap way to let users reclassify without
+  // dragging). Status is updated to match the new section.
+  const moveTask = (fromSection: SectionKey, idx: number, toSection: SectionKey) => {
+    if (fromSection === toSection) return;
     setTasks(prev => {
-      const updated = prev[activeSection].map((t, i) =>
-        i === idx ? { ...t, [field]: value } : t
-      );
-      return { ...prev, [activeSection]: updated };
+      const moving = prev[fromSection][idx];
+      if (!moving) return prev;
+      return {
+        ...prev,
+        [fromSection]: prev[fromSection].filter((_, i) => i !== idx),
+        [toSection]: [...prev[toSection], { ...moving, status: toSection }],
+      };
     });
-  };
-
-  const removeTask = (idx: number) => {
-    setTasks(prev => ({
-      ...prev,
-      [activeSection]: prev[activeSection].filter((_, i) => i !== idx),
-    }));
   };
 
   const buildInput = (): ReportCreateInput => ({
@@ -139,13 +350,168 @@ export const WeeklyReportDialog: FC<Props> = ({ open, onClose, onSave, existing 
     }
   };
 
-  const sectionLabels: Record<'completed' | 'pending' | 'inProgress', string> = {
-    completed: 'Completed',
-    pending: 'Pending',
-    inProgress: 'In Progress',
-  };
+  const totalCount = tasks.completed.length + tasks.inProgress.length + tasks.pending.length;
 
-  const currentTasks = tasks[activeSection];
+  const renderSection = (section: SectionKey) => {
+    const items = tasks[section];
+    const meta = sectionMeta[section];
+
+    // Group tasks within this section by category so auditing is scannable
+    // (all "Tickets" together, all "Borrowing" together, etc.). Preserve each
+    // task's ORIGINAL array index so updateTask/removeTask/moveTask still work.
+    const grouped = new Map<string, Array<{ task: ReportTask; idx: number }>>();
+    items.forEach((task, idx) => {
+      const cat = task.category || 'Other';
+      const arr = grouped.get(cat);
+      if (arr) arr.push({ task, idx });
+      else grouped.set(cat, [{ task, idx }]);
+    });
+    // Sort groups: follow taskCategoryOptions order, unknown categories last.
+    const categoryOrder = taskCategoryOptions as readonly string[];
+    const sortedCategories = Array.from(grouped.keys()).sort((a, b) => {
+      const ai = categoryOrder.indexOf(a);
+      const bi = categoryOrder.indexOf(b);
+      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+    });
+
+    const renderCard = (task: ReportTask, idx: number) => {
+      const key = taskKey(section, task, idx);
+      const isEditing = editingKey === key;
+      return (
+        <div
+          key={key}
+          className="group rounded-md border border-gray-200 bg-gray-50 px-2 py-1.5 dark:border-gray-700 dark:bg-gray-800"
+        >
+                  <div className="flex items-center gap-1.5">
+                    {isEditing ? (
+                      <FloatingSelect
+                        id={`weekly-report-task-category-${key}`}
+                        value={task.category}
+                        placeholder="Category"
+                        options={taskCategoryOptions.map(c => ({ value: c, label: c }))}
+                        onChange={value => updateTask(section, idx, 'category', value)}
+                        className="w-28 shrink-0"
+                        buttonClassName="rounded px-2 py-1 text-xs"
+                      />
+                    ) : (
+                      <span className="shrink-0 rounded-full bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                        {task.category}
+                      </span>
+                    )}
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        placeholder="Task title"
+                        value={task.title}
+                        onChange={e => updateTask(section, idx, 'title', e.target.value)}
+                        required
+                        className="min-w-0 flex-1 rounded border border-gray-300 bg-white p-1 px-2 text-xs text-gray-900 dark:border-[#334155] dark:bg-[#1e2939] dark:text-white"
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setEditingKey(key)}
+                        className="min-w-0 flex-1 truncate text-left text-xs font-medium text-gray-900 dark:text-white"
+                        title={task.title || '(no title) — click to edit'}
+                      >
+                        {task.title || <span className="italic text-gray-400">(no title)</span>}
+                      </button>
+                    )}
+                    {task.ticketId !== undefined && task.ticketId !== null && (
+                      <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                        #T{task.ticketId}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeTask(section, idx)}
+                      className="shrink-0 p-0.5 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                      aria-label="Remove task"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      placeholder="Description (optional)"
+                      value={task.description}
+                      onChange={e => updateTask(section, idx, 'description', e.target.value)}
+                      onBlur={() => setEditingKey(null)}
+                      autoFocus={!task.title}
+                      className="mt-1 w-full rounded border border-gray-200 bg-white px-2 py-0.5 text-[11px] text-gray-700 placeholder:text-gray-400 dark:border-[#334155] dark:bg-[#1e2939] dark:text-gray-300"
+                    />
+                  ) : (
+                    task.description ? (
+                      <p
+                        className="mt-0.5 truncate text-[11px] text-gray-600 dark:text-gray-400"
+                        title={task.description}
+                      >
+                        {task.description}
+                      </p>
+                    ) : null
+                  )}
+                  {isEditing && (
+                    <div className="mt-1 flex items-center gap-1 text-[10px]">
+                      <span className="text-gray-500 dark:text-gray-400">Move to:</span>
+                      {SECTION_KEYS.filter(s => s !== section).map(s => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => {
+                            moveTask(section, idx, s);
+                            setEditingKey(null);
+                          }}
+                          className="rounded bg-gray-200 px-1.5 py-0.5 font-medium text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                        >
+                          {sectionMeta[s].label}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setEditingKey(null)}
+                        className="ml-auto rounded bg-indigo-600 px-1.5 py-0.5 font-medium text-white hover:bg-indigo-700"
+                      >
+                        Done
+                      </button>
+                    </div>
+                  )}
+                </div>
+      );
+    };
+
+    return (
+      <div key={section} className="mb-4">
+        <div className={`mb-2 text-sm font-semibold ${meta.headingClass}`}>
+          {meta.label} ({items.length})
+        </div>
+        {items.length === 0 ? (
+          <div className="rounded-md border border-dashed border-gray-200 bg-gray-50/50 px-3 py-2 text-center text-xs text-gray-400 dark:border-gray-700 dark:bg-gray-800/30 dark:text-gray-500">
+            {meta.emptyLabel}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {sortedCategories.map(cat => {
+              const entries = grouped.get(cat) || [];
+              return (
+                <div key={cat}>
+                  <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    <span>{cat}</span>
+                    <span className="rounded-full bg-gray-200 px-1.5 py-[1px] text-[9px] font-semibold text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                      {entries.length}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                    {entries.map(({ task, idx }) => renderCard(task, idx))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div
@@ -153,7 +519,7 @@ export const WeeklyReportDialog: FC<Props> = ({ open, onClose, onSave, existing 
       onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-6 shadow-xl my-4"
+        className="w-full max-w-3xl rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-6 shadow-xl my-4"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-5">
@@ -166,9 +532,7 @@ export const WeeklyReportDialog: FC<Props> = ({ open, onClose, onSave, existing 
             aria-label="Close"
             type="button"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X className="h-6 w-6" />
           </button>
         </div>
 
@@ -201,108 +565,47 @@ export const WeeklyReportDialog: FC<Props> = ({ open, onClose, onSave, existing 
             </div>
           </div>
 
-          {/* Tasks section */}
+          {/* Tasks header */}
           <div>
-            <div className="flex items-center justify-between mb-2">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Tasks</label>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Tasks ({totalCount})
+                </label>
                 {isAutoPopulating && (
                   <span className="inline-flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400">
-                    <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Loading tickets...
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Syncing activity...
                   </span>
                 )}
               </div>
-              <div className="flex gap-1 text-xs">
-                {(['completed', 'pending', 'inProgress'] as const).map(s => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => setActiveSection(s)}
-                    className={`px-2.5 py-1 rounded-full font-medium transition-colors ${
-                      activeSection === s
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                    }`}
-                  >
-                    {sectionLabels[s]} ({tasks[s].length})
-                  </button>
-                ))}
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={refreshAuditTasks}
+                  disabled={isAutoPopulating}
+                  className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 disabled:opacity-50"
+                  title="Pull the latest activity from the audit log"
+                >
+                  <RefreshCw className={`h-3 w-3 ${isAutoPopulating ? 'animate-spin' : ''}`} />
+                  Refresh
+                </button>
+                <button
+                  type="button"
+                  onClick={addTaskToCompleted}
+                  className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-indigo-700"
+                >
+                  <Plus className="h-3 w-3" />
+                  Add Task
+                </button>
               </div>
             </div>
 
-            <div className="space-y-3 max-h-52 overflow-y-auto pr-1">
-              {currentTasks.length === 0 && (
-                <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">
-                  No {sectionLabels[activeSection].toLowerCase()} tasks. Click + Add Task to add one.
-                </p>
-              )}
-              {currentTasks.map((task, idx) => (
-                <div
-                  key={idx}
-                  className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3 space-y-2"
-                >
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Task title"
-                      value={task.title}
-                      onChange={e => updateTask(idx, 'title', e.target.value)}
-                      required
-                      className="flex-1 rounded-md border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white p-1.5 text-sm"
-                    />
-                    <FloatingSelect
-                      id={`weekly-report-task-category-${idx}`}
-                      value={task.category}
-                      placeholder="Category"
-                      options={taskCategoryOptions.map(c => ({ value: c, label: c }))}
-                      onChange={value => updateTask(idx, 'category', value)}
-                      className="min-w-36"
-                      buttonClassName="rounded-md px-2 py-1.5 text-sm"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeTask(idx)}
-                      className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1"
-                      aria-label="Remove task"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Description (optional)"
-                    value={task.description}
-                    onChange={e => updateTask(idx, 'description', e.target.value)}
-                    className="w-full rounded-md border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white p-1.5 text-sm"
-                  />
-                  {task.ticketId && (
-                    <span className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z" />
-                      </svg>
-                      Ticket #{task.ticketId}
-                    </span>
-                  )}
-                </div>
-              ))}
+            <div className="max-h-[22rem] overflow-y-auto pr-1">
+              {renderSection('completed')}
+              {renderSection('inProgress')}
+              {renderSection('pending')}
             </div>
-
-            <button
-              type="button"
-              onClick={addTask}
-              className="mt-2 flex items-center gap-1.5 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Add Task
-            </button>
           </div>
 
           {/* Notes */}

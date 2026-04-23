@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { type Item, type InventoryStatus } from '@/types/inventory'
-import { Plus, Filter, Package, ChevronLeft, ChevronRight, Pencil, Tag, X, Upload, List, BarChart3 } from 'lucide-react'
+import { Plus, Filter, Package, Pencil, Tag, X, Upload, List, BarChart3 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { LoadingSkeleton } from '@/ui/LoadingSkeleton'
 import { EmptyState } from '@/ui/EmptyState'
@@ -15,7 +15,7 @@ import type { Room } from '@/types/room'
 import { useAuth } from '@/context/AuthContext'
 import InventoryMobilePage from '@/pages/labtech/InventoryMobile'
 import InventoryDashboard from '@/pages/labtech/components/InventoryDashboard'
-import { formatItemType } from '@/lib/utils'
+import { formatItemType, resolveItemType } from '@/lib/utils'
 
 type InventoryView = 'list' | 'information'
 
@@ -40,8 +40,6 @@ const InventoryPage = () => {
   const [rooms, setRooms] = useState<Room[]>([])
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'item_code', direction: 'asc' })
   const [loading, setLoading] = useState(true)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [statusPopoverItemId, setStatusPopoverItemId] = useState<number | null>(null)
   const [bulkStatusOpen, setBulkStatusOpen] = useState(false)
@@ -60,12 +58,7 @@ const InventoryPage = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Reset to page 1 when filters or page size change
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [searchTerm, selectedType, selectedStatus, pageSize])
-
-  // Reset selection when filters change (mirrors pagination reset)
+  // Reset selection when filters change
   useEffect(() => {
     setSelectedIds(new Set())
   }, [searchTerm, selectedType, selectedStatus])
@@ -120,7 +113,7 @@ const InventoryPage = () => {
       const matchesSearch = (item.Brand + item.Item_Code + (item.Item_Type ?? '') + (item.Location ?? '') + (item.Room?.Name ?? ''))
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
-      const matchesType = selectedType === 'All Types' || item.Item_Type === selectedType;
+      const matchesType = selectedType === 'All Types' || resolveItemType(item.Item_Type) === selectedType;
 
       const matchesStatus =
         selectedStatus === 'All Status' || item.Status?.toLowerCase() === selectedStatus.toLowerCase();
@@ -169,19 +162,8 @@ const InventoryPage = () => {
     return result
   }, [inventory, searchTerm, selectedType, selectedStatus, sortConfig])
 
-  const totalPages = Math.max(1, Math.ceil(filteredAndSortedInventory.length / pageSize))
-
-  // Clamp currentPage down if filter results shrank
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages)
-    }
-  }, [totalPages, currentPage])
-
-  const paginatedInventory = useMemo(() => {
-    const start = (currentPage - 1) * pageSize
-    return filteredAndSortedInventory.slice(start, start + pageSize)
-  }, [filteredAndSortedInventory, currentPage, pageSize])
+  // Pagination removed — show all filtered results
+  const paginatedInventory = filteredAndSortedInventory
 
   // If mobile, render the mobile view immediately
   if (isMobile) {
@@ -314,8 +296,14 @@ const InventoryPage = () => {
         setIsModalOpen(false);
       }
 
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error saving inventory item:", err);
+      const body = err?.response?.data || {};
+      const status = err?.response?.status;
+      const detail = body.message || body.error || err?.message;
+      const code = body.code ? ` [${body.code}]` : '';
+      console.error(`Inventory save failed [${status}]${code}: ${detail}`, body);
+      toast.error(`Save failed${status ? ` (${status})` : ''}${code}: ${detail || 'Unknown error'}`);
     }
   };
 
@@ -568,7 +556,7 @@ const InventoryPage = () => {
             placeholder="All Types"
             options={[
               { value: 'All Types', label: 'All Types' },
-              ...[...new Set(inventory.map(item => item.Item_Type).filter(Boolean))].map(type => ({
+              ...[...new Set(inventory.map(item => resolveItemType(item.Item_Type)))].map(type => ({
                 value: type,
                 label: formatItemType(type) || type,
               })),
@@ -597,21 +585,6 @@ const InventoryPage = () => {
           />
         </div>
 
-        {/* Page Size Selector */}
-        <div className="ml-auto min-w-36">
-          <FloatingSelect
-            id="inventory-page-size"
-            value={String(pageSize)}
-            placeholder="25 per page"
-            options={[
-              { value: '10', label: '10 per page' },
-              { value: '25', label: '25 per page' },
-              { value: '50', label: '50 per page' },
-              { value: '100', label: '100 per page' },
-            ]}
-            onChange={(val) => setPageSize(Number(val))}
-          />
-        </div>
       </div>
 
       {/* Bulk Action Bar */}
@@ -689,7 +662,7 @@ const InventoryPage = () => {
       )}
 
       <div className="flex min-h-0 flex-1 flex-col">
-        <div className="min-h-0 flex-1">
+        <div className="flex min-h-0 flex-1 flex-col">
           <Table
             density="compact"
             scrollShadow
@@ -782,8 +755,18 @@ const InventoryPage = () => {
                   </div>
 
                   {/* Asset Code */}
-                  <div className="truncate text-sm font-semibold text-gray-900 group-hover:text-indigo-600 dark:text-white dark:group-hover:text-indigo-400">
-                    {item.Item_Code ?? '—'}
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold text-gray-900 group-hover:text-indigo-600 dark:text-white dark:group-hover:text-indigo-400">
+                      {item.Item_Code ?? '—'}
+                    </div>
+                    {(() => {
+                      const pcName = (item as any).Computers?.[0]?.Name as string | undefined
+                      return pcName ? (
+                        <div className="truncate text-[11px] text-indigo-600 dark:text-indigo-400">
+                          PC: {pcName}
+                        </div>
+                      ) : null
+                    })()}
                   </div>
 
                   {/* Brand */}
@@ -791,10 +774,10 @@ const InventoryPage = () => {
                     {item.Brand ?? '—'}
                   </div>
 
-                  {/* Item Type (title-cased display) */}
+                  {/* Item Type (title-cased display; legacy "-"/"GENERAL" shown as Other) */}
                   <div className="flex justify-center">
                     <span className="inline-flex items-center justify-center gap-1.5 rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-800 dark:bg-blue-900/50 dark:text-blue-200">
-                      {formatItemType(item.Item_Type) || '—'}
+                      {formatItemType(resolveItemType(item.Item_Type))}
                     </span>
                   </div>
 
@@ -820,9 +803,9 @@ const InventoryPage = () => {
                     </span>
                   </div>
 
-                  {/* Location */}
+                  {/* Location (resolved to Room) */}
                   <div className="flex justify-center text-sm text-gray-600 dark:text-gray-400">
-                    {item.Location || item.Room?.Name || ((item as any).Computers?.[0]?.Room?.Name) || '—'}
+                    {item.Room?.Name || ((item as any).Computers?.[0]?.Room?.Name) || '—'}
                   </div>
 
                   {/* Updated */}
@@ -898,71 +881,6 @@ const InventoryPage = () => {
           </Table>
         </div>
 
-        {/* Pagination Bar */}
-        <div className="mt-3 flex shrink-0 items-center justify-between gap-4 text-sm">
-          {/* Showing X–Y of Z */}
-          <span className="text-gray-500 dark:text-gray-400">
-            {filteredAndSortedInventory.length === 0
-              ? 'Showing 0 of 0 items'
-              : `Showing ${(currentPage - 1) * pageSize + 1}–${Math.min(currentPage * pageSize, filteredAndSortedInventory.length)} of ${filteredAndSortedInventory.length} items`}
-          </span>
-
-          {/* Page controls — hidden when no results */}
-          {filteredAndSortedInventory.length > 0 && (
-            <div className="flex items-center gap-1">
-              {/* Prev */}
-              <button
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="inline-flex h-8 min-w-8 items-center justify-center rounded-md border border-gray-300 bg-white px-2 font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-
-              {/* Page numbers */}
-              {(() => {
-                const pages: (number | 'ellipsis-start' | 'ellipsis-end')[] = []
-                if (totalPages <= 7) {
-                  for (let i = 1; i <= totalPages; i++) pages.push(i)
-                } else {
-                  pages.push(1)
-                  if (currentPage > 4) pages.push('ellipsis-start')
-                  const start = Math.max(2, currentPage - 2)
-                  const end = Math.min(totalPages - 1, currentPage + 2)
-                  for (let i = start; i <= end; i++) pages.push(i)
-                  if (currentPage < totalPages - 3) pages.push('ellipsis-end')
-                  pages.push(totalPages)
-                }
-                return pages.map((p, idx) =>
-                  p === 'ellipsis-start' || p === 'ellipsis-end' ? (
-                    <span key={`${p}-${idx}`} className="inline-flex h-8 min-w-8 items-center justify-center text-gray-500">…</span>
-                  ) : (
-                    <button
-                      key={p}
-                      onClick={() => setCurrentPage(p)}
-                      className={`inline-flex h-8 min-w-8 items-center justify-center rounded-md border px-2 font-medium transition-colors ${
-                        p === currentPage
-                          ? 'border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-700'
-                          : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  )
-                )
-              })()}
-
-              {/* Next */}
-              <button
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="inline-flex h-8 min-w-8 items-center justify-center rounded-md border border-gray-300 bg-white px-2 font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-          )}
-        </div>
       </div>
         </>
       )}

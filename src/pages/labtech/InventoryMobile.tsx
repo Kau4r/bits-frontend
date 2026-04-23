@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Edit3, Filter, Plus, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Edit3, Filter, Plus, X, ScanLine } from 'lucide-react';
 import Search from '@/components/Search';
 import { inventoryStatuses, statusColors, type Item } from '@/types/inventory';
 import type { Room } from '@/types/room';
@@ -8,7 +9,7 @@ import { getRooms } from '@/services/room';
 import { FloatingSelect } from '@/ui/FloatingSelect';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
-import { formatItemType } from '@/lib/utils';
+import { formatItemType, resolveItemType } from '@/lib/utils';
 import { isLabStaffRole } from '@/types/user';
 
 type ModalMode = 'view' | 'edit' | 'add';
@@ -46,7 +47,7 @@ interface MobileInventoryModalProps {
 const normalizeItemType = (value: string) => value.trim().toUpperCase().replace(/[\s-]+/g, '_');
 
 const getDefaultFormData = (item: Item | null, rooms: Room[], itemTypes: string[]): InventoryFormData => ({
-    Item_Type: item?.Item_Type || itemTypes[0] || 'GENERAL',
+    Item_Type: item?.Item_Type || itemTypes[0] || 'OTHER',
     Brand: item?.Brand || '',
     Location: item?.Location || '',
     Serial_Number: item?.Serial_Number || '',
@@ -169,7 +170,7 @@ const MobileInventoryModal = ({
                                     value={formData.Item_Type}
                                     onChange={event => setFormData(prev => ({ ...prev, Item_Type: event.target.value }))}
                                     className={fieldClass}
-                                    placeholder="GENERAL, HDMI, PROJECTOR"
+                                    placeholder="HDMI, PROJECTOR, OTHER"
                                 />
                             </div>
                             <div>
@@ -280,7 +281,7 @@ const InventoryMobilePage = () => {
     const [selectedType, setSelectedType] = useState('All Types');
     const [selectedStatus, setSelectedStatus] = useState('All Status');
     const [isFilterOpen, setIsFilterOpen] = useState(false);
-    const itemTypes = [...new Set(['GENERAL', 'HDMI', 'VGA', 'ADAPTER', 'PROJECTOR', 'EXTENSION', 'MOUSE', 'KEYBOARD', 'MONITOR', 'SYSTEM_UNIT', 'OTHER', ...inventory.map(item => item.Item_Type).filter(Boolean)])];
+    const itemTypes = [...new Set(['HDMI', 'VGA', 'ADAPTER', 'PROJECTOR', 'EXTENSION', 'MOUSE', 'KEYBOARD', 'MONITOR', 'SYSTEM_UNIT', 'OTHER', ...inventory.map(item => resolveItemType(item.Item_Type))])];
 
     const loadInventory = async () => {
         try {
@@ -339,7 +340,7 @@ const InventoryMobilePage = () => {
         const matchesSearch = (item.Brand + item.Item_Code + (item.Item_Type ?? '') + (item.Location ?? '') + (item.Room?.Name ?? ''))
             .toLowerCase()
             .includes(searchTerm.toLowerCase());
-        const matchesType = selectedType === 'All Types' || item.Item_Type === selectedType;
+        const matchesType = selectedType === 'All Types' || resolveItemType(item.Item_Type) === selectedType;
         const matchesStatus = selectedStatus === 'All Status' || item.Status?.toLowerCase() === selectedStatus.toLowerCase();
         return matchesSearch && matchesType && matchesStatus;
     });
@@ -351,6 +352,22 @@ const InventoryMobilePage = () => {
                 <h1 className="mt-1 text-xl font-black text-gray-900 dark:text-white">Mobile Inventory</h1>
                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Scan, search, and update laboratory assets.</p>
             </header>
+
+            <Link
+                to="/inventory-audit"
+                className="flex items-center justify-between rounded-lg border border-indigo-200 bg-indigo-50 p-4 shadow-sm transition-colors hover:bg-indigo-100 dark:border-indigo-900/50 dark:bg-indigo-950/40 dark:hover:bg-indigo-950/60"
+            >
+                <div className="flex items-center gap-3">
+                    <div className="rounded-lg bg-indigo-600 p-2 text-white">
+                        <ScanLine className="h-5 w-5" />
+                    </div>
+                    <div>
+                        <p className="text-sm font-black text-indigo-900 dark:text-indigo-200">Start Semestral Audit</p>
+                        <p className="text-xs text-indigo-700 dark:text-indigo-300/80">Scan QR codes to check room inventory</p>
+                    </div>
+                </div>
+                <span className="text-indigo-600 dark:text-indigo-300">→</span>
+            </Link>
 
             <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white p-2 shadow-sm dark:border-gray-700 dark:bg-gray-900">
                 <div className="min-w-0 flex-1">
@@ -389,7 +406,7 @@ const InventoryMobilePage = () => {
                                 placeholder="All Types"
                                 options={[
                                     { value: 'All Types', label: 'All Types' },
-                                    ...[...new Set(inventory.map(i => i.Item_Type).filter(Boolean))].map(type => ({
+                                    ...[...new Set(inventory.map(i => resolveItemType(i.Item_Type)))].map(type => ({
                                         value: type,
                                         label: formatItemType(type),
                                     })),
@@ -442,7 +459,7 @@ const InventoryMobilePage = () => {
                     >
                         <div className="mb-2 flex items-start justify-between gap-3">
                             <span className="font-mono text-sm font-black text-gray-900 dark:text-white">{item.Item_Code}</span>
-                            <span className="rounded-full bg-indigo-50 px-2 py-1 text-xs font-bold text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-200">{formatItemType(item.Item_Type)}</span>
+                            <span className="rounded-full bg-indigo-50 px-2 py-1 text-xs font-bold text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-200">{formatItemType(resolveItemType(item.Item_Type))}</span>
                         </div>
                         <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">{item.Brand || 'No brand'}</div>
                         <div className="mt-3 flex items-center justify-between gap-3">

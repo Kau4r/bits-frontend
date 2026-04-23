@@ -19,3 +19,14 @@ export const formatItemType = (raw?: string | null): string => {
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 };
+
+/**
+ * Resolve legacy item-type sentinels ("-", "GENERAL", empty) to "OTHER"
+ * so the UI presents a single canonical bucket.
+ */
+export const resolveItemType = (raw?: string | null): string => {
+  if (!raw) return 'OTHER';
+  const trimmed = raw.toString().trim();
+  if (!trimmed || trimmed === '-' || trimmed.toUpperCase() === 'GENERAL') return 'OTHER';
+  return trimmed;
+};

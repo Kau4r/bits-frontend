@@ -16,7 +16,14 @@ export interface Item {
   Updated_At?: string;
   Room?: Room;
   User?: User;
-  IsBorrowable: Boolean
+  IsBorrowable: Boolean;
+  Last_Checked_At?: string | null;
+  Last_Checked_By_ID?: number | null;
+  Last_Checked_By?: {
+    User_ID: number;
+    First_Name: string;
+    Last_Name: string;
+  } | null;
 }
 
 export type InventoryStatus = Item["Status"];
