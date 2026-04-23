@@ -7,7 +7,6 @@ import type { Item, ItemType } from "@/types/inventory";
 import type { Room } from "@/types/room";
 import { useModal } from "@/context/ModalContext";
 import { buildInventoryItemQrUrl } from "@/utils/inventoryQr";
-import { resolveItemType } from "@/lib/utils";
 import { FloatingSelect } from "@/ui/FloatingSelect";
 import { FloatingCombobox } from "@/ui/FloatingCombobox";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
@@ -442,7 +441,6 @@ export default function ItemModal({
   const qrItemUrl = showAssetInfo && item?.Item_Code ? buildInventoryItemQrUrl(item.Item_Code) : "";
   const readOnlyFieldClass = "w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-[#334155] bg-gray-50 dark:bg-[#1e2939] text-gray-900 dark:text-white";
   const selectedRoomName = rooms.find(r => r.Room_ID === formData.roomId)?.Name || "—";
-  const locationDisplay = formData.location || selectedRoomName;
   const statusDisplay = formData.status ? formData.status.charAt(0) + formData.status.slice(1).toLowerCase() : "—";
 
   return createPortal(

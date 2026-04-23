@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import type { Room, RoomSession } from '@/types/room';
 import { fetchComputers, createComputer, updateComputer, deleteComputer, importComputersCsv, type Computer, type CreateComputerPayload, type UpdateComputerPayload } from '@/services/computers';
 import { type CsvImportResult } from '@/services/inventory';
-import { downloadInventoryReportCsv, downloadRoomReportCsv } from '@/services/reports';
+import { downloadInventoryReportCsv } from '@/services/reports';
 import api from '@/services/api';
 import { useModal } from '@/context/ModalContext';
 import { useAuth } from '@/context/AuthContext';

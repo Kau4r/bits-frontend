@@ -10,7 +10,7 @@ export const AddFormDialog: FC<{
   onClose: () => void;
   onCreate: (record: Omit<FormRecord, 'id' | 'createdAt'> & { files: File[] }) => Promise<void> | void;
   existing?: FormRecord[];
-}> = ({ open, onClose, onCreate, existing = [] }) => {
+}> = ({ open, onClose, onCreate }) => {
   const [type, setType] = useState<FormType>('WRF');
   const [title, setTitle] = useState('');
   const [formNumber, setFormNumber] = useState('');

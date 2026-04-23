@@ -31,11 +31,6 @@ const getTicketTitle = (ticket: Ticket) => {
     return firstLine?.trim() || 'Untitled ticket';
 };
 
-const getTicketDescription = (ticket: Ticket) => {
-    const description = ticket.Report_Problem.trim();
-    return description || 'No description provided';
-};
-
 const getTicketResolvedAt = (ticket: Ticket) => {
     const resolvedLog = ticket.AuditLogs
         ?.filter(log => log.Action === 'TICKET_RESOLVED')

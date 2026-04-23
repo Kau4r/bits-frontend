@@ -132,20 +132,6 @@ export default function Room() {
         return sessions.filter(s => roomIds.has(s.roomId));
     };
 
-    // Compute available now count for a category
-    const getAvailableNowCount = (categoryRooms: RoomType[], categorySessions: RoomSession[]) => {
-        const now = dayjs(serverCurrentTime);
-        return categoryRooms.filter(room => {
-            if (room.Status !== 'AVAILABLE') return false;
-            const hasActiveBooking = categorySessions.some(s =>
-                s.roomId === room.Room_ID &&
-                dayjs(s.startTime).isBefore(now) &&
-                dayjs(s.endTime).isAfter(now)
-            );
-            return !hasActiveBooking;
-        }).length;
-    };
-
     const getRoomsForCategory = (category: LabCategory | null): RoomType[] => {
         if (!category) return [];
         if (category === 'WINDOWS') return windowsLabs;
@@ -551,10 +537,6 @@ export default function Room() {
             console.error('Failed to remove booking:', error);
             await modal.showError('Failed to remove booking', 'Error');
         }
-    };
-
-    const handleSlotDetail = (_startTime: string, detailSessions: RoomSession[]) => {
-        setSlotDetailSessions(detailSessions);
     };
 
     // Filtering for Rooms tab

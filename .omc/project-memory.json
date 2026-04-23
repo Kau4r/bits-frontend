@@ -229,8 +229,8 @@
   "hotPaths": [
     {
       "path": "src\\pages\\labtech\\RoomPage.tsx",
-      "accessCount": 38,
-      "lastAccessed": 1776917968575,
+      "accessCount": 43,
+      "lastAccessed": 1776918767888,
       "type": "file"
     },
     {
@@ -249,6 +249,12 @@
       "path": "src\\pages\\labtech\\components\\WeeklyReportDialog.tsx",
       "accessCount": 24,
       "lastAccessed": 1776908225998,
+      "type": "file"
+    },
+    {
+      "path": "src\\pages\\labtech\\components\\ItemModal.tsx",
+      "accessCount": 18,
+      "lastAccessed": 1776918725532,
       "type": "file"
     },
     {
@@ -276,12 +282,6 @@
       "type": "file"
     },
     {
-      "path": "src\\pages\\labtech\\components\\ItemModal.tsx",
-      "accessCount": 13,
-      "lastAccessed": 1776856153045,
-      "type": "file"
-    },
-    {
       "path": "src\\layout\\Layout.tsx",
       "accessCount": 12,
       "lastAccessed": 1776864024142,
@@ -289,14 +289,20 @@
     },
     {
       "path": "src\\pages\\labtech\\components\\AddFormDialog.tsx",
-      "accessCount": 9,
-      "lastAccessed": 1776854404019,
+      "accessCount": 11,
+      "lastAccessed": 1776918706237,
       "type": "file"
     },
     {
       "path": "src\\pages\\labtech\\ReportsPage.tsx",
       "accessCount": 9,
       "lastAccessed": 1776907669795,
+      "type": "file"
+    },
+    {
+      "path": "src\\pages\\tickets\\TicketsPage.tsx",
+      "accessCount": 9,
+      "lastAccessed": 1776918780102,
       "type": "file"
     },
     {
@@ -315,12 +321,6 @@
       "path": "src\\services\\room.ts",
       "accessCount": 7,
       "lastAccessed": 1776911731646,
-      "type": "file"
-    },
-    {
-      "path": "src\\pages\\tickets\\TicketsPage.tsx",
-      "accessCount": 6,
-      "lastAccessed": 1776867378777,
       "type": "file"
     },
     {
