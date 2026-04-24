@@ -86,7 +86,7 @@ const CountList = ({
   }[tone];
 
   return (
-    <section className={`flex min-h-0 flex-col rounded-xl border p-4 ${toneClass}`}>
+    <section className={`flex min-h-0 flex-col overflow-hidden rounded-xl border p-4 ${toneClass}`}>
       <div className="mb-3 flex items-center justify-between gap-3">
         <h3 className="text-sm font-black text-slate-950 dark:text-white">{title}</h3>
         <span className="rounded-full bg-white px-2.5 py-1 text-xs font-black text-slate-700 shadow-sm dark:bg-slate-900 dark:text-slate-200">
@@ -95,9 +95,9 @@ const CountList = ({
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto pr-1">
         {entries.length ? entries.map(([key, value]) => (
-          <div key={key} className="flex items-center justify-between gap-3 border-b border-slate-100 py-2 text-sm last:border-b-0 dark:border-slate-700">
-            <span className="truncate text-slate-600 dark:text-slate-300">{formatLabel(key)}</span>
-            <span className="font-black text-slate-950 dark:text-white">{value || 0}</span>
+          <div key={key} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-slate-100 py-2 text-sm last:border-b-0 dark:border-slate-700">
+            <span className="min-w-0 break-words text-slate-600 dark:text-slate-300">{formatLabel(key)}</span>
+            <span className="text-right font-black text-slate-950 dark:text-white">{value || 0}</span>
           </div>
         )) : (
           <p className="text-sm text-slate-500 dark:text-slate-400">No records.</p>
@@ -261,7 +261,7 @@ export default function MaintenancePage() {
       )}
     >
       <div className="relative flex h-full min-h-0 flex-col gap-4 overflow-hidden">
-        <div className="grid min-h-0 flex-1 gap-4 overflow-hidden xl:grid-cols-[minmax(0,1fr)_minmax(260px,300px)]">
+        <div className="grid min-h-0 flex-1 gap-4 overflow-hidden xl:grid-cols-[minmax(0,1fr)_minmax(320px,380px)]">
           <div className="flex min-h-0 flex-col gap-4 overflow-hidden">
             <section className="shrink-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
               <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(240px,280px)]">
@@ -279,7 +279,7 @@ export default function MaintenancePage() {
                     </p>
                   </div>
                 </div>
-                <div className="min-w-0 rounded-xl border border-blue-100 bg-blue-50 p-3 dark:border-blue-500/20 dark:bg-blue-500/10">
+                <div className="min-w-0 rounded-xl border border-blue-100 bg-blue-50 p-4 dark:border-blue-500/20 dark:bg-blue-500/10">
                   <label className="text-xs font-bold uppercase tracking-[0.18em] text-blue-900 dark:text-blue-100">School Year</label>
                   <div className="mt-2 flex min-w-0 flex-col gap-2">
                     <input
@@ -302,7 +302,7 @@ export default function MaintenancePage() {
               </div>
             </section>
 
-            <div className="grid min-h-0 flex-1 gap-4 overflow-hidden xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.9fr)]">
+            <div className="grid min-h-0 flex-1 gap-4 overflow-hidden xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
               <section className="flex min-h-0 flex-col gap-4 overflow-hidden">
             <div className="rounded-2xl border border-blue-200 bg-white p-4 shadow-sm dark:border-blue-500/30 dark:bg-slate-800">
               <div className="flex items-start justify-between gap-3">
@@ -319,7 +319,7 @@ export default function MaintenancePage() {
                 )}
               </div>
               {archivePreview && (
-                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
                   <input
                     value={archiveConfirmation}
                     onChange={(event) => setArchiveConfirmation(event.target.value)}
@@ -330,7 +330,7 @@ export default function MaintenancePage() {
                     type="button"
                     onClick={() => void handleArchiveCleanup()}
                     disabled={!canRunArchive}
-                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <Archive className="h-4 w-4" />
                     {archiveRunning ? 'Archiving...' : 'Archive and Reset'}
@@ -338,7 +338,7 @@ export default function MaintenancePage() {
                   {lastArchive && archiveDownloadHref && (
                     <a
                       href={archiveDownloadHref}
-                      className="inline-flex items-center gap-2 text-sm font-bold text-blue-700 hover:underline dark:text-blue-300 md:col-span-2"
+                      className="inline-flex min-w-0 items-center gap-2 break-all text-sm font-bold text-blue-700 hover:underline dark:text-blue-300 md:col-span-2"
                     >
                       <Download className="h-4 w-4" />
                       Download {lastArchive.archiveName}
@@ -373,7 +373,7 @@ export default function MaintenancePage() {
                     className="mb-2 flex items-center justify-between gap-3 rounded-lg border border-slate-200 p-3 text-sm transition hover:border-blue-300 hover:bg-blue-50 dark:border-slate-700 dark:hover:border-blue-500/40 dark:hover:bg-blue-500/10"
                   >
                     <span className="min-w-0">
-                      <span className="block truncate font-bold text-slate-950 dark:text-white">{file.fileName}</span>
+                      <span className="block break-all font-bold text-slate-950 dark:text-white">{file.fileName}</span>
                       <span className="text-xs text-slate-500 dark:text-slate-400">{formatBytes(file.sizeBytes)} | {formatDate(file.modifiedAt)}</span>
                     </span>
                     <Download className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-300" />
@@ -413,30 +413,34 @@ export default function MaintenancePage() {
           </div>
           </div>
 
-          <section className="grid min-h-0 grid-rows-[auto_1fr] gap-4 overflow-hidden">
-            <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800 shadow-sm dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200">
+          <section className="grid min-h-0 grid-rows-[auto_minmax(180px,1fr)] gap-4 overflow-hidden">
+            <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-red-800 shadow-sm dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200">
               <div className="flex gap-3">
                 <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-black">Emergency reset</h2>
-                  <p className="mt-1 text-xs">
+                  <h2 className="text-base font-black">Emergency reset</h2>
+                  <p className="mt-1 text-sm leading-6">
                     Use this only when an immediate reset is required without creating a school-year archive first.
                   </p>
-                  <div className="mt-3 flex min-w-0 flex-col gap-2">
+                  <div className="mt-4 rounded-xl border border-red-200/80 bg-white/70 p-3 dark:border-red-500/20 dark:bg-slate-900/40">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-red-900 dark:text-red-100">Required text</p>
+                    <p className="mt-1 break-all font-mono text-sm font-bold text-red-700 dark:text-red-300">{requiredText}</p>
+                  </div>
+                  <div className="mt-4 flex min-w-0 flex-col gap-3">
                     <input
                       value={confirmation}
                       onChange={(event) => setConfirmation(event.target.value)}
                       placeholder={requiredText}
-                      className="min-w-0 flex-1 rounded-lg border border-red-200 bg-white px-3 py-2 font-mono text-xs text-slate-950 outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 dark:border-red-500/30 dark:bg-slate-900 dark:text-white"
+                      className="min-w-0 flex-1 rounded-xl border border-red-200 bg-white px-4 py-3 font-mono text-sm text-slate-950 outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 dark:border-red-500/30 dark:bg-slate-900 dark:text-white"
                     />
                     <button
                       type="button"
                       onClick={() => void handleCleanup()}
                       disabled={!canRun}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-red-600 px-3 py-2 text-xs font-black text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-sm font-black text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <Trash2 className="h-4 w-4" />
-                      Reset
+                      {running ? 'Running Cleanup...' : 'Run Cleanup'}
                     </button>
                   </div>
                 </div>
