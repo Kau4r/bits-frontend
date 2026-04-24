@@ -7,6 +7,9 @@ interface SysAdPageShellProps {
   action?: ReactNode;
   children: ReactNode;
   className?: string;
+  headerContentClassName?: string;
+  titleClassName?: string;
+  descriptionClassName?: string;
 }
 
 export function SysAdPageShell({
@@ -16,19 +19,22 @@ export function SysAdPageShell({
   action,
   children,
   className = '',
+  headerContentClassName = '',
+  titleClassName = '',
+  descriptionClassName = '',
 }: SysAdPageShellProps) {
   return (
     <div className={`flex h-full w-full overflow-hidden bg-slate-50 p-4 text-slate-950 dark:bg-gray-900 dark:text-white sm:p-5 lg:p-6 ${className}`}>
       <div className="mx-auto flex h-full w-full max-w-[96rem] flex-col gap-4 overflow-hidden">
         <header className="shrink-0 overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
-          <div className="relative p-5 sm:p-6">
+          <div className={`relative p-5 sm:p-6 ${headerContentClassName}`}>
             <div className="absolute right-0 top-0 h-28 w-28 rounded-bl-full bg-indigo-500/10" />
             <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 {eyebrow}
-                <h1 className="text-3xl font-black tracking-tight">{title}</h1>
+                <h1 className={`text-3xl font-black tracking-tight ${titleClassName}`}>{title}</h1>
                 {description && (
-                  <p className="mt-2 max-w-3xl text-sm text-slate-600 dark:text-slate-300">
+                  <p className={`mt-2 max-w-3xl text-sm text-slate-600 dark:text-slate-300 ${descriptionClassName}`}>
                     {description}
                   </p>
                 )}

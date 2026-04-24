@@ -19,15 +19,15 @@ const formatLabel = (value: string) => value
   .replace(/\b\w/g, char => char.toUpperCase());
 
 const CountGrid = ({ title, counts, tone, description }: { title: string; counts: Record<string, number>; tone: string; description?: string }) => (
-  <section className={`min-h-0 rounded-2xl border p-4 ${tone}`}>
-    <div>
+  <section className={`min-h-0 overflow-hidden rounded-2xl border p-4 ${tone}`}>
+    <div className="min-w-0">
       <h2 className="text-sm font-bold uppercase tracking-[0.18em] opacity-80">{title}</h2>
       {description && <p className="mt-1 text-xs opacity-75">{description}</p>}
     </div>
-    <div className="mt-3 grid gap-2 sm:grid-cols-2 2xl:grid-cols-3">
+    <div className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))] gap-2">
       {Object.entries(counts).map(([key, value]) => (
-        <div key={key} className="rounded-xl border border-white/10 bg-white/60 p-2.5 dark:bg-slate-950/30">
-          <p className="text-xs font-semibold uppercase tracking-wide opacity-70">{formatLabel(key)}</p>
+        <div key={key} className="min-w-0 rounded-xl border border-white/10 bg-white/60 p-2.5 dark:bg-slate-950/30">
+          <p className="break-words text-xs font-semibold uppercase leading-5 tracking-wide opacity-70">{formatLabel(key)}</p>
           <p className="mt-1 text-xl font-black">{value ?? 0}</p>
         </div>
       ))}
@@ -160,6 +160,9 @@ export default function MaintenancePage() {
       eyebrow={<SysAdEyebrow><ShieldCheck className="h-4 w-4" />Admin Maintenance</SysAdEyebrow>}
       title="School Year Archive and Cleanup"
       description="Create a compressed archive for record keeping, then reset school-year activity while preserving setup data such as users, rooms, inventory items, and computers."
+      headerContentClassName="p-4 sm:p-5"
+      titleClassName="text-[2rem] sm:text-[2.35rem]"
+      descriptionClassName="mt-1.5 max-w-4xl"
       action={(
         <button
           type="button"
@@ -172,47 +175,47 @@ export default function MaintenancePage() {
         </button>
       )}
     >
-      <div className="flex h-full min-h-0 flex-col gap-4">
-        <section className="shrink-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-          <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+      <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto pr-1">
+        <section className="shrink-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
             <div className="flex gap-4">
-              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-200">
-                <Archive className="h-6 w-6" />
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-200">
+                <Archive className="h-5 w-5" />
               </div>
               <div>
                 <h2 className="text-lg font-black text-slate-950 dark:text-white">Recommended flow</h2>
                 <p className="mt-1 max-w-3xl text-sm text-slate-600 dark:text-slate-300">
                   Archive the selected school year first, then reset operational records for that same year. The archive keeps long-term records such as tickets, forms, borrowing, reports, schedules, notifications, inventory, rooms, and computers.
                 </p>
-                <div className="mt-4 grid gap-2 text-sm sm:grid-cols-3">
-                  <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-900">
+                <div className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
+                  <div className="rounded-xl bg-slate-50 p-2.5 dark:bg-slate-900">
                     <p className="font-bold text-slate-950 dark:text-white">1. Preview</p>
                     <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Review what will be archived, excluded, deleted, and preserved.</p>
                   </div>
-                  <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-900">
+                  <div className="rounded-xl bg-slate-50 p-2.5 dark:bg-slate-900">
                     <p className="font-bold text-slate-950 dark:text-white">2. Confirm</p>
                     <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Type the exact confirmation phrase before changes are applied.</p>
                   </div>
-                  <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-900">
+                  <div className="rounded-xl bg-slate-50 p-2.5 dark:bg-slate-900">
                     <p className="font-bold text-slate-950 dark:text-white">3. Download</p>
                     <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Keep the generated compressed archive for school-year records.</p>
                   </div>
                 </div>
               </div>
             </div>
-            <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 dark:border-blue-500/20 dark:bg-blue-500/10">
+            <div className="rounded-2xl border border-blue-100 bg-blue-50 p-3.5 dark:border-blue-500/20 dark:bg-blue-500/10">
               <label className="text-xs font-bold uppercase tracking-[0.18em] text-blue-900 dark:text-blue-100">School Year</label>
               <input
                 value={schoolYear}
                 onChange={(event) => setSchoolYear(event.target.value)}
                 placeholder="2025-2026"
-                className="mt-3 w-full rounded-xl border border-blue-200 bg-white px-4 py-3 font-mono text-sm text-slate-950 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 dark:border-blue-700 dark:bg-[#1e2939] dark:text-white"
+                className="mt-2.5 w-full rounded-xl border border-blue-200 bg-white px-4 py-3 font-mono text-sm text-slate-950 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 dark:border-blue-700 dark:bg-[#1e2939] dark:text-white"
               />
               <button
                 type="button"
                 onClick={() => void handleArchivePreview()}
                 disabled={archiveLoading || archiveRunning}
-                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-700 disabled:opacity-50"
+                className="mt-2.5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-700 disabled:opacity-50"
               >
                 <RefreshCw className={`h-4 w-4 ${archiveLoading ? 'animate-spin' : ''}`} />
                 Preview School Year
@@ -296,7 +299,7 @@ export default function MaintenancePage() {
             Loading cleanup preview...
           </div>
         ) : preview ? (
-          <div className="grid min-h-0 flex-1 gap-4 2xl:grid-cols-[1fr_1fr_1fr_1.05fr]">
+          <div className="grid min-h-0 shrink-0 gap-4 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(340px,1.05fr)]">
             <div className="grid min-h-0 gap-4 xl:grid-cols-3 2xl:col-span-3">
               <CountGrid title="Will Delete" counts={preview.willDelete} tone="border-red-200 bg-red-50 text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200" />
               <CountGrid title="Will Reset" counts={preview.willReset} tone="border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200" />
