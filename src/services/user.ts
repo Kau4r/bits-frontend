@@ -39,3 +39,51 @@ export const fetchUserActivity = async (userId: number): Promise<ActivityLog[]> 
     const { data } = await api.get<ActivityLog[]>(`/users/${userId}/history`);
     return data;
 };
+
+// Role change — failsafe API
+export interface RoleChangeBlocker {
+    kind: string;
+    message: string;
+}
+
+export interface RoleChangeImpact {
+    user: { User_ID: number; First_Name: string; Last_Name: string; User_Role: User_Role; Is_Active: boolean };
+    impact: {
+        activeAssignedTickets: Array<{ Ticket_ID: number; Status: string; Priority: string | null; Report_Problem: string; Created_At: string }>;
+        activeBorrowingsAsBorrower: Array<{ Borrow_Item_ID: number; Status: string; Return_Date: string | null; Item: { Item_Code: string; Item_Type: string } | null }>;
+        pendingFormsAsApprover: Array<{ Form_ID: number; Form_Code: string; Status: string; Department: string }>;
+        pendingBookingsAsApprover: Array<{ Booked_Room_ID: number; Status: string; Start_Time: string; Room: { Name: string } | null }>;
+        futureBookingsAsRequester: Array<{ Booked_Room_ID: number; Status: string; Start_Time: string; Room: { Name: string } | null }>;
+        counts: {
+            tickets: number;
+            borrowings: number;
+            formsAsApprover: number;
+            pendingBookingsAsApprover: number;
+            futureBookingsAsRequester: number;
+        };
+        blockers: RoleChangeBlocker[];
+    };
+}
+
+export const getRoleChangeImpact = async (userId: number): Promise<RoleChangeImpact> => {
+    const { data } = await api.get<RoleChangeImpact>(`/users/${userId}/role-change-impact`);
+    return data;
+};
+
+export interface ChangeUserRoleResult {
+    message: string;
+    userId: number;
+    oldRole: User_Role;
+    newRole: User_Role;
+    tokenValidAfter: string;
+    impactSnapshot: RoleChangeImpact['impact']['counts'];
+}
+
+export const changeUserRole = async (
+    userId: number,
+    payload: { newRole: User_Role; reason: string; force?: boolean }
+): Promise<ChangeUserRoleResult> => {
+    const { data } = await api.patch<ChangeUserRoleResult>(`/users/${userId}/role`, payload);
+    toast.success('Role changed. The user will be required to log in again.');
+    return data;
+};

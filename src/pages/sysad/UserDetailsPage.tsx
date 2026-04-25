@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext'
 import { Clock, ArrowUpDown } from 'lucide-react'
 import { FloatingSelect } from '@/ui/FloatingSelect'
 import { SysAdEyebrow, SysAdPageShell } from '@/pages/sysad/components/SysAdPageShell'
+import RoleChangeConfirmModal from '@/pages/sysad/components/RoleChangeConfirmModal'
 
 export default function UserDetails() {
   const { state } = useLocation()
@@ -19,6 +20,7 @@ export default function UserDetails() {
 
   const [role, setRole] = useState<User_Role>(user?.User_Role)
   const [isActive, setIsActive] = useState<boolean>(user?.Is_Active)
+  const [pendingNewRole, setPendingNewRole] = useState<User_Role | null>(null)
   const [loading, setLoading] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
   const [activities, setActivities] = useState<ActivityLog[]>([])
@@ -141,15 +143,12 @@ export default function UserDetails() {
     }
   }
 
-  const handleRoleChange = async (newRole: User_Role) => {
-    const confirmed = await modal.showConfirm(
-      `Are you sure you want to change this user's role to ${formatRole(newRole)}? This will affect their permissions and access levels.`,
-      'Confirm Role Change'
-    )
-    if (confirmed) {
-      setRole(newRole)
-      setHasChanges(true)
-    }
+  // Role change goes through the failsafe modal: it shows in-flight items,
+  // requires a written reason, and bumps Token_Valid_After server-side so the
+  // user is forced to re-authenticate with the new permissions.
+  const handleRoleChange = (newRole: User_Role) => {
+    if (newRole === role) return
+    setPendingNewRole(newRole)
   }
 
   const handleStatusChange = async () => {
@@ -425,6 +424,20 @@ export default function UserDetails() {
         )}
       </div>
       </div>
+
+      {pendingNewRole && (
+        <RoleChangeConfirmModal
+          open={pendingNewRole !== null}
+          userId={user.User_ID}
+          currentRole={role}
+          newRole={pendingNewRole}
+          onClose={() => setPendingNewRole(null)}
+          onSuccess={(applied) => {
+            setRole(applied)
+            setPendingNewRole(null)
+          }}
+        />
+      )}
     </SysAdPageShell>
   )
 }
