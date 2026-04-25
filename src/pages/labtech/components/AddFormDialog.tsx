@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { ChangeEvent, FC, FormEvent, MouseEvent } from 'react';
-import type { FormStatus, FormType, FormRecord, FormDepartment } from '@/types/formtypes';
+import type { FormType, FormRecord, FormDepartment } from '@/types/formtypes';
 import { formTypeLabels } from '@/types/formtypes';
 import { FloatingSelect } from '@/ui/FloatingSelect';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
@@ -15,7 +15,6 @@ export const AddFormDialog: FC<{
   const [title, setTitle] = useState('');
   const [formNumber, setFormNumber] = useState('');
   const [department, setDepartment] = useState<FormDepartment>('REQUESTOR');
-  const [status, setStatus] = useState<FormStatus>('PENDING');
   const [requesterName, setRequesterName] = useState('');
   const [remarks, setRemarks] = useState('');
   const [files, setFiles] = useState<File[]>([]);
@@ -35,7 +34,6 @@ export const AddFormDialog: FC<{
       setTitle('');
       setFormNumber('');
       setDepartment('REQUESTOR');
-      setStatus('PENDING');
       setRequesterName('');
       setRemarks('');
       setFiles([]);
@@ -55,15 +53,13 @@ export const AddFormDialog: FC<{
 
   const accept = ".pdf,.doc,.docx,image/*";
 
-  const earlyStages: FormDepartment[] = ['REQUESTOR', 'DEPARTMENT_HEAD', 'DEAN_OFFICE'];
-  const attachmentRequired = !earlyStages.includes(department);
-
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
 
-    if (attachmentRequired && files.length === 0) {
-      setFileError('Please attach at least one file before tracking the form.');
+    // Attach file is required to ensure WRF / RIS copies are uploaded.
+    if (files.length === 0) {
+      setFileError('Please attach the WRF or RIS copy before tracking the form.');
       return;
     }
 
@@ -92,7 +88,8 @@ export const AddFormDialog: FC<{
         formNumber: formNumberWithoutPrefix ? `${formNumberPrefix}-${formNumberWithoutPrefix}` : '',
         title: title.trim(),
         type,
-        status,
+        // New forms always start as PENDING. Status can be changed only after creation.
+        status: 'PENDING',
         department,
         files,
         isArchived: false,
@@ -210,9 +207,9 @@ export const AddFormDialog: FC<{
                   disabled={isSubmitting}
                   placeholder="Select form type"
                   options={[
-                    { value: 'WRF', label: 'WRF' },
                     { value: 'RIS_E', label: formTypeLabels.RIS_E },
                     { value: 'RIS_NE', label: formTypeLabels.RIS_NE },
+                    { value: 'WRF', label: 'WRF' },
                   ]}
                 />
               </div>
@@ -221,22 +218,18 @@ export const AddFormDialog: FC<{
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Status
                 </label>
-                <FloatingSelect
-                  id="add-form-status"
-                  value={status}
-                  onChange={(value) => setStatus(value as FormStatus)}
-                  disabled={isSubmitting}
-                  placeholder="Select status"
-                  options={[
-                    { value: 'PENDING', label: 'Pending' },
-                    { value: 'IN_REVIEW', label: 'In Review' },
-                    { value: 'APPROVED', label: 'Approved' },
-                    { value: 'CANCELLED', label: 'Cancelled' },
-                  ]}
-                />
+                <div
+                  data-testid="add-form-status-locked"
+                  className="flex items-center justify-between rounded-md border border-gray-300 bg-gray-50 p-2 text-sm text-gray-700 dark:border-[#334155] dark:bg-gray-800 dark:text-gray-300"
+                >
+                  <span className="font-medium">Pending</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    Editable after creation
+                  </span>
+                </div>
               </div>
 
-          
+
             </div>
 
           {/* Requester Name */}
@@ -275,8 +268,8 @@ export const AddFormDialog: FC<{
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Attach File {attachmentRequired && <span className="text-red-500">*</span>}
-              {!attachmentRequired && <span className="ml-1 text-xs text-gray-500 dark:text-gray-400">(optional)</span>}
+              Attach File <span className="text-red-500">*</span>
+              <span className="ml-1 text-xs text-gray-500 dark:text-gray-400">(WRF or RIS copy required)</span>
             </label>
             <div className="flex items-center gap-2">
               <label className="flex-1 flex flex-col items-center justify-center px-4 py-6 bg-white dark:bg-gray-800 text-blue-600 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">

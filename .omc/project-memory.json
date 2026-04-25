@@ -229,21 +229,27 @@
   "hotPaths": [
     {
       "path": "src\\pages\\labtech\\InventoryPage.tsx",
-      "accessCount": 52,
-      "lastAccessed": 1776972756236,
+      "accessCount": 60,
+      "lastAccessed": 1777126853799,
       "type": "file"
     },
     {
       "path": "src\\pages\\labtech\\RoomPage.tsx",
-      "accessCount": 45,
-      "lastAccessed": 1776978378946,
+      "accessCount": 51,
+      "lastAccessed": 1777126424596,
       "type": "file"
     },
     {
       "path": "src\\pages\\labtech\\FormsPage.tsx",
-      "accessCount": 26,
-      "lastAccessed": 1776901915757,
+      "accessCount": 35,
+      "lastAccessed": 1777126184424,
       "type": "file"
+    },
+    {
+      "path": "src",
+      "accessCount": 25,
+      "lastAccessed": 1777129259975,
+      "type": "directory"
     },
     {
       "path": "src\\pages\\labtech\\components\\WeeklyReportDialog.tsx",
@@ -252,15 +258,15 @@
       "type": "file"
     },
     {
-      "path": "src",
-      "accessCount": 21,
-      "lastAccessed": 1776976995712,
-      "type": "directory"
+      "path": "src\\components\\Table.tsx",
+      "accessCount": 20,
+      "lastAccessed": 1777123632184,
+      "type": "file"
     },
     {
-      "path": "src\\components\\Table.tsx",
+      "path": "src\\pages\\labtech\\BorrowingPage.tsx",
       "accessCount": 19,
-      "lastAccessed": 1776972730937,
+      "lastAccessed": 1777126611927,
       "type": "file"
     },
     {
@@ -282,9 +288,15 @@
       "type": "directory"
     },
     {
-      "path": "src\\pages\\labtech\\BorrowingPage.tsx",
+      "path": "src\\pages\\labtech\\components\\AddFormDialog.tsx",
       "accessCount": 15,
-      "lastAccessed": 1776858260844,
+      "lastAccessed": 1777124691394,
+      "type": "file"
+    },
+    {
+      "path": "src\\pages\\tickets\\TicketsPage.tsx",
+      "accessCount": 15,
+      "lastAccessed": 1777126176982,
       "type": "file"
     },
     {
@@ -294,9 +306,9 @@
       "type": "file"
     },
     {
-      "path": "src\\pages\\labtech\\components\\AddFormDialog.tsx",
+      "path": "src\\types\\formtypes.ts",
       "accessCount": 11,
-      "lastAccessed": 1776918706237,
+      "lastAccessed": 1777125577764,
       "type": "file"
     },
     {
@@ -306,15 +318,9 @@
       "type": "file"
     },
     {
-      "path": "src\\pages\\tickets\\TicketsPage.tsx",
-      "accessCount": 9,
-      "lastAccessed": 1776918780102,
-      "type": "file"
-    },
-    {
-      "path": "src\\types\\formtypes.ts",
+      "path": "src\\app\\App.tsx",
       "accessCount": 8,
-      "lastAccessed": 1776854442204,
+      "lastAccessed": 1777129468325,
       "type": "file"
     },
     {
@@ -327,6 +333,12 @@
       "path": "src\\services\\inventory.ts",
       "accessCount": 5,
       "lastAccessed": 1776869397376,
+      "type": "file"
+    },
+    {
+      "path": "src\\lib\\utils.ts",
+      "accessCount": 5,
+      "lastAccessed": 1777126816366,
       "type": "file"
     },
     {
@@ -345,12 +357,6 @@
       "path": "src\\pages\\labtech\\InventoryAuditPage.tsx",
       "accessCount": 4,
       "lastAccessed": 1776871985773,
-      "type": "file"
-    },
-    {
-      "path": "src\\app\\App.tsx",
-      "accessCount": 4,
-      "lastAccessed": 1776900895529,
       "type": "file"
     },
     {
@@ -378,9 +384,15 @@
       "type": "file"
     },
     {
-      "path": "src\\lib\\utils.ts",
-      "accessCount": 3,
-      "lastAccessed": 1776854182444,
+      "path": "src\\pages\\labtech\\components\\WalkinBorrowingModal.tsx",
+      "accessCount": 4,
+      "lastAccessed": 1777126619437,
+      "type": "file"
+    },
+    {
+      "path": "src\\types\\inventory.ts",
+      "accessCount": 4,
+      "lastAccessed": 1777129508306,
       "type": "file"
     },
     {
@@ -390,15 +402,33 @@
       "type": "file"
     },
     {
-      "path": "src\\types\\inventory.ts",
-      "accessCount": 3,
-      "lastAccessed": 1776861493515,
-      "type": "file"
-    },
-    {
       "path": "CLAUDE.md",
       "accessCount": 3,
       "lastAccessed": 1776911511294,
+      "type": "file"
+    },
+    {
+      "path": "src\\lib\\constants.ts",
+      "accessCount": 3,
+      "lastAccessed": 1777124468548,
+      "type": "file"
+    },
+    {
+      "path": "src\\pages\\labtech",
+      "accessCount": 3,
+      "lastAccessed": 1777125675733,
+      "type": "directory"
+    },
+    {
+      "path": "src\\services",
+      "accessCount": 3,
+      "lastAccessed": 1777129502585,
+      "type": "directory"
+    },
+    {
+      "path": "package.json",
+      "accessCount": 3,
+      "lastAccessed": 1777130364527,
       "type": "file"
     },
     {
@@ -420,33 +450,15 @@
       "type": "file"
     },
     {
-      "path": "src\\pages\\labtech\\components\\WalkinBorrowingModal.tsx",
+      "path": "src\\app",
       "accessCount": 2,
-      "lastAccessed": 1776858599089,
-      "type": "file"
-    },
-    {
-      "path": "src\\services",
-      "accessCount": 2,
-      "lastAccessed": 1776906319664,
-      "type": "directory"
-    },
-    {
-      "path": "src\\pages\\labtech",
-      "accessCount": 2,
-      "lastAccessed": 1776977004405,
+      "lastAccessed": 1777129346873,
       "type": "directory"
     },
     {
       "path": "src\\types\\borrowing.ts",
       "accessCount": 1,
       "lastAccessed": 1776850222228,
-      "type": "file"
-    },
-    {
-      "path": "src\\lib\\constants.ts",
-      "accessCount": 1,
-      "lastAccessed": 1776850222255,
       "type": "file"
     },
     {
@@ -468,12 +480,6 @@
       "type": "file"
     },
     {
-      "path": "src\\app",
-      "accessCount": 1,
-      "lastAccessed": 1776853485353,
-      "type": "directory"
-    },
-    {
       "path": "src\\pages\\labtech\\components\\RowPreview.tsx",
       "accessCount": 1,
       "lastAccessed": 1776856582502,
@@ -484,12 +490,6 @@
       "accessCount": 1,
       "lastAccessed": 1776856589487,
       "type": "directory"
-    },
-    {
-      "path": "package.json",
-      "accessCount": 1,
-      "lastAccessed": 1776859595479,
-      "type": "file"
     },
     {
       "path": "src\\hooks\\useTheme.ts",

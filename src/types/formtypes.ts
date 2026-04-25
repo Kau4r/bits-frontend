@@ -33,7 +33,9 @@ export const formTypeLabels: Record<FormType, string> = {
 export const formStatusLabels: Record<FormStatus, string> = {
   PENDING: 'Pending',
   IN_REVIEW: 'In Review',
-  APPROVED: 'Approved',
+  // APPROVED is shown as "Signed" — the form has been signed and forwarded to the
+  // next department. Distinct from Completed, which marks the workflow as done.
+  APPROVED: 'Signed',
   CANCELLED: 'Cancelled',
   ARCHIVED: 'Archived',
 };
@@ -217,11 +219,14 @@ export const getTimelineStepsForType = (formType: FormType): string[] => {
   }
 };
 
-// Status chip colors
+// Status chip colors. Signed (APPROVED) and Completed must look distinct:
+// — Signed = indigo (in-transit, signed at this step)
+// — In Review = blue (under review)
+// — Completed (Department=COMPLETED) = green (workflow finished, applied separately)
 export const formStatusColors: Record<FormStatus, string> = {
   PENDING: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
   IN_REVIEW: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-  APPROVED: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+  APPROVED: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300',
   CANCELLED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
   ARCHIVED: 'bg-gray-200 text-gray-800 dark:bg-gray-700/30 dark:text-gray-300',
 };

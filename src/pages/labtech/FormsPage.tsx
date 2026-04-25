@@ -25,6 +25,7 @@ import { useNotifications } from '@/context/NotificationContext';
 import { Check, X, Plus, Archive, Inbox, RefreshCw, Lock, CornerUpLeft, Info, Eye, Download, Pencil, Trash2, FileText, Image as ImageIcon, File } from 'lucide-react';
 import type { Form } from '@/types/formtypes';
 import { FloatingSelect } from '@/ui/FloatingSelect';
+import { LoadingSkeleton } from '@/ui';
 import ReturnForRevisionModal from '@/pages/labtech/components/ReturnForRevisionModal';
 
 // Use the imported formStatusColors for status chips
@@ -51,7 +52,9 @@ export default function Forms() {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [formTypeFilter, setFormTypeFilter] = useState<FormType | 'All'>('All');
-  const [statusFilter, setStatusFilter] = useState<FormStatus | 'All'>('All');
+  // 'COMPLETED' is exposed as a filter value even though the schema currently
+  // tracks completion via Department === 'COMPLETED' (separate from Status).
+  const [statusFilter, setStatusFilter] = useState<FormStatus | 'COMPLETED' | 'All'>('All');
   const [loading, setLoading] = useState(true);
 
   const tableHeaders = [
@@ -310,7 +313,13 @@ export default function Forms() {
       .filter(f => {
         const matchesSearch = q === '' || searchableTextForForm(f).includes(q);
         const matchesFormType = formTypeFilter === 'All' || f.type === formTypeFilter;
-        const matchesStatus = statusFilter === 'All' || f.status === statusFilter;
+        const isCompleted = f.department === 'COMPLETED';
+        // 'Completed' is presented as its own filter value; everything else
+        // matches against the underlying form Status while excluding completed forms
+        // (so an APPROVED-but-completed form doesn't double-count under "Approved").
+        const matchesStatus =
+          statusFilter === 'All'
+          || (statusFilter === 'COMPLETED' ? isCompleted : !isCompleted && f.status === statusFilter);
         return matchesSearch && matchesFormType && matchesStatus;
       });
   }, [forms, searchTerm, showArchived, formTypeFilter, statusFilter]);
@@ -578,12 +587,10 @@ export default function Forms() {
       throw new Error('You must be signed in to create a form.');
     }
 
-    const earlyStages: FormDepartment[] = ['REQUESTOR', 'DEPARTMENT_HEAD', 'DEAN_OFFICE'];
-    const requiresAttachment = !earlyStages.includes(payload.department as FormDepartment);
-
-    if (requiresAttachment && (!payload.files || payload.files.length === 0)) {
-      await modal.showError('Please attach at least one file before creating the form.', 'File Required');
-      throw new Error('Please attach at least one file before creating the form.');
+    // File is always required to ensure the WRF/RIS copy is uploaded.
+    if (!payload.files || payload.files.length === 0) {
+      await modal.showError('Please attach the WRF or RIS copy before creating the form.', 'File Required');
+      throw new Error('Please attach the WRF or RIS copy before creating the form.');
     }
 
     try {
@@ -806,9 +813,9 @@ export default function Forms() {
             placeholder="All Types"
             options={[
               { value: 'All', label: 'All Types' },
-              { value: 'WRF', label: 'WRF' },
               { value: 'RIS_E', label: formTypeLabels.RIS_E },
               { value: 'RIS_NE', label: formTypeLabels.RIS_NE },
+              { value: 'WRF', label: 'WRF' },
             ]}
             onChange={(type) => setFormTypeFilter(type as FormType | 'All')}
           />
@@ -822,12 +829,13 @@ export default function Forms() {
             placeholder="All Statuses"
             options={[
               { value: 'All', label: 'All Statuses' },
-              ...(['PENDING', 'IN_REVIEW', 'APPROVED', 'CANCELLED'] as FormStatus[]).map((status) => ({
-                value: status,
-                label: formStatusLabels[status],
-              })),
+              { value: 'PENDING', label: formStatusLabels.PENDING },
+              { value: 'IN_REVIEW', label: formStatusLabels.IN_REVIEW },
+              { value: 'APPROVED', label: formStatusLabels.APPROVED },
+              { value: 'COMPLETED', label: 'Completed' },
+              { value: 'CANCELLED', label: formStatusLabels.CANCELLED },
             ]}
-            onChange={(status) => setStatusFilter(status as FormStatus | 'All')}
+            onChange={(status) => setStatusFilter(status as FormStatus | 'COMPLETED' | 'All')}
           />
         </div>
 
@@ -841,11 +849,7 @@ export default function Forms() {
       {/* Table section */}
       <div className="flex-1 min-h-0">
         {loading ? (
-          <div className="space-y-4">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-16 animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800" />
-            ))}
-          </div>
+          <LoadingSkeleton type="table-rows" columns={7} rows={6} />
         ) : (
           <Table headers={tableHeaders} columnWidths="1.5fr 2fr 1.5fr 1.5fr 1.5fr 2fr 0.75fr">
             {filtered.length === 0 ? (

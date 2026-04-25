@@ -5,6 +5,7 @@ import Search from '@/components/Search';
 import { Bell, Inbox, Archive, CheckCircle } from 'lucide-react';
 import type { Notification, NotificationView, NotificationType } from '@/types/notification';
 import { FloatingSelect } from '@/ui/FloatingSelect';
+import { LoadingSkeleton, Skeleton } from '@/ui';
 
 
 const notificationTypes: NotificationType[] = ['System', 'Issue Report', 'Asset Request', 'Form Update'];
@@ -115,17 +116,11 @@ export default function NotificationPage() {
   if (loading) {
     return (
       <div className="h-full w-full bg-white p-6 sm:px-8 lg:px-10 dark:bg-gray-900">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <div className="h-8 w-48 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
-            <div className="mt-1 h-4 w-64 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
-          </div>
+        <div className="mb-6 space-y-2">
+          <Skeleton className="h-7 w-48" />
+          <Skeleton className="h-4 w-72" />
         </div>
-        <div className="space-y-4">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-24 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-800" />
-          ))}
-        </div>
+        <LoadingSkeleton type="card" rows={5} />
       </div>
     );
   }

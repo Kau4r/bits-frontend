@@ -434,6 +434,28 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                         <p className="text-gray-500 dark:text-gray-400">{room.Room_Type}</p>
                     </div>
                     <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => window.open(`/labtech/room/${room.Room_ID}/print-qr?kind=items`, '_blank', 'noopener')}
+                            className="inline-flex items-center gap-2 rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700 shadow-sm transition-colors hover:bg-indigo-100 dark:border-indigo-800/60 dark:bg-indigo-900/20 dark:text-indigo-300"
+                            title="Open a printable QR sheet for this room's items"
+                        >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h6v6H3V3zm12 0h6v6h-6V3zM3 15h6v6H3v-6zm10 2h2v2h-2v-2zm6-2h2v2h-2v-2zm-4 4h6v2h-6v-2zm0-4h2v2h-2v-2z" />
+                            </svg>
+                            Print Items QR
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => window.open(`/labtech/room/${room.Room_ID}/print-qr?kind=pcs`, '_blank', 'noopener')}
+                            className="inline-flex items-center gap-2 rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700 shadow-sm transition-colors hover:bg-indigo-100 dark:border-indigo-800/60 dark:bg-indigo-900/20 dark:text-indigo-300"
+                            title="Open a printable QR sheet for this room's PCs"
+                        >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            Print PCs QR
+                        </button>
                         <RoomExportButton room={room} />
                         <button onClick={onClose} className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 p-2">
                             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">

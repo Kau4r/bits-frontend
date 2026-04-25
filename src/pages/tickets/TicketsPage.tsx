@@ -8,6 +8,8 @@ import type { Ticket } from "@/types/tickets";
 import { useNotifications } from "@/context/NotificationContext";
 import { Plus, Eye, Inbox, Archive } from "lucide-react";
 import { FloatingSelect } from "@/ui/FloatingSelect";
+import { Badge, LoadingSkeleton } from "@/ui";
+import { TICKET_STATUS_VARIANT, VARIANT_DOT_CLASS } from "@/lib/constants";
 
 const isActiveTicket = (ticket: Ticket) => !ticket.Archived && ticket.Status !== 'RESOLVED';
 
@@ -174,9 +176,9 @@ export default function Tickets() {
 
     const tableHeaders = useMemo(() => {
         const headers: Array<{ label: string; key?: string; align?: 'left' | 'center' | 'right' }> = [
-            { label: 'Reported By', key: 'reported_by' },
-            { label: 'Title', key: 'title' },
-            { label: 'Location', key: 'location' },
+            { label: 'Reported By', key: 'reported_by', align: 'left' },
+            { label: 'Description', key: 'title', align: 'left' },
+            { label: 'Location', key: 'location', align: 'left' },
             { label: 'Category', key: 'category' },
             { label: 'Status', key: 'status' },
             { label: 'Assignee', key: 'assignee' },
@@ -197,17 +199,7 @@ export default function Tickets() {
     if (loading) {
         return (
             <div className="h-full w-full bg-white p-6 sm:px-8 lg:px-10 dark:bg-gray-900">
-                <div className="mb-6 flex items-center justify-between">
-                    <div>
-                        <div className="h-8 w-48 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
-                        <div className="mt-1 h-4 w-64 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
-                    </div>
-                </div>
-                <div className="space-y-4">
-                    {[...Array(5)].map((_, i) => (
-                        <div key={i} className="h-16 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-800" />
-                    ))}
-                </div>
+                <LoadingSkeleton type="page" columns={8} rows={6} />
             </div>
         );
     }
@@ -355,15 +347,15 @@ export default function Tickets() {
                                     </span>
                                 </div>
                                 <div>
-                                    <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full ${ticket.Status === 'PENDING'
-                                        ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                                        : ticket.Status === 'IN_PROGRESS'
-                                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                                            : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                        }`}>
-                                        <span className={`h-1.5 w-1.5 rounded-full mr-1.5 ${ticket.Status === 'PENDING' ? 'bg-yellow-500' : ticket.Status === 'IN_PROGRESS' ? 'bg-blue-500' : 'bg-green-500'}`} />
-                                        {ticket.Status.replace('_', ' ')}
-                                    </span>
+                                    {(() => {
+                                        const variant = TICKET_STATUS_VARIANT[ticket.Status] || 'default';
+                                        return (
+                                            <Badge variant={variant}>
+                                                <span className={`h-1.5 w-1.5 rounded-full ${VARIANT_DOT_CLASS[variant]}`} />
+                                                {ticket.Status.replace('_', ' ')}
+                                            </Badge>
+                                        );
+                                    })()}
                                 </div>
                                 <div className="text-sm text-gray-600 dark:text-gray-300">
                                     {ticket.Technician?.User_ID

@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { fetchUsersByRole } from '@/services/user';
 import { fetchTickets } from '@/services/tickets';
 import type { User } from '@/types/user';
 import type { Ticket } from '@/types/tickets';
 import { Search } from 'lucide-react';
+import { LoadingSkeleton } from '@/ui';
 
 export type Tech = {
   dbId: number;
@@ -22,6 +23,8 @@ export type Tech = {
 interface Props {
   selectedTech: Tech | null;
   onSelect: (tech: Tech | null) => void;
+  /** Bump to trigger a silent refresh (e.g. after a ticket reassignment). */
+  refreshSignal?: number;
 }
 
 const getTicketProgress = (userId: number, tickets: Ticket[]) => {
@@ -45,41 +48,62 @@ const mapUserToTech = (user: User, tickets: Ticket[]): Tech => ({
   activities: { completed: [], pending: [], inProgress: [] } // TODO: Fetch real activity data
 });
 
-export default function LabTechList({ selectedTech, onSelect }: Props) {
+export default function LabTechList({ selectedTech, onSelect, refreshSignal }: Props) {
   const [labTechs, setLabTechs] = useState<Tech[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Use a ref so silent refreshes can read the latest selection without
+  // re-running the fetch on every selection change.
+  const selectedTechRef = useRef(selectedTech);
   useEffect(() => {
-    const loadLabTechs = async () => {
-      try {
-        setIsLoading(true);
-        const [users, tickets] = await Promise.all([
-          fetchUsersByRole('LAB_TECH'),
-          fetchTickets()
-        ]);
-        const techs = users
-          .filter(user => user.Is_Active)
-          .map(user => mapUserToTech(user, tickets));
-        setLabTechs(techs);
+    selectedTechRef.current = selectedTech;
+  }, [selectedTech]);
 
-        // Auto-select a visible tech, or clear a now-hidden inactive selection.
-        if (!selectedTech) {
-          onSelect(techs[0] ?? null);
-        } else if (!techs.some(tech => tech.dbId === selectedTech.dbId)) {
-          onSelect(techs[0] ?? null);
-        }
-      } catch (err) {
-        console.error('Failed to fetch lab techs:', err);
-        setError('Failed to load lab technicians');
-      } finally {
-        setIsLoading(false);
+  const loadLabTechs = useCallback(async (silent = false) => {
+    try {
+      if (!silent) setIsLoading(true);
+      const [users, tickets] = await Promise.all([
+        fetchUsersByRole('LAB_TECH'),
+        fetchTickets()
+      ]);
+      const techs = users
+        .filter(user => user.Is_Active)
+        .map(user => mapUserToTech(user, tickets));
+      setLabTechs(techs);
+
+      // Auto-select a visible tech, or clear a now-hidden inactive selection.
+      const current = selectedTechRef.current;
+      if (!current) {
+        onSelect(techs[0] ?? null);
+      } else if (!techs.some(tech => tech.dbId === current.dbId)) {
+        onSelect(techs[0] ?? null);
       }
-    };
+    } catch (err) {
+      console.error('Failed to fetch lab techs:', err);
+      if (!silent) setError('Failed to load lab technicians');
+    } finally {
+      if (!silent) setIsLoading(false);
+    }
+  }, [onSelect]);
 
-    loadLabTechs();
+  // Initial load — runs once on mount.
+  useEffect(() => {
+    loadLabTechs(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Silent refresh whenever the parent bumps the signal (e.g. after a
+  // ticket reassignment). Skip the very first render — that's the initial load.
+  const isFirstRefreshRef = useRef(true);
+  useEffect(() => {
+    if (isFirstRefreshRef.current) {
+      isFirstRefreshRef.current = false;
+      return;
+    }
+    loadLabTechs(true);
+  }, [refreshSignal, loadLabTechs]);
 
   const filteredTechs = useMemo(() => {
     return labTechs.filter(tech =>
@@ -100,11 +124,8 @@ export default function LabTechList({ selectedTech, onSelect }: Props) {
 
   if (isLoading) {
     return (
-      <div className="w-72 space-y-2">
-        <div className="h-10 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse mb-4" />
-        {[...Array(6)].map((_, i) => (
-          <div key={i} className="h-14 animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800" />
-        ))}
+      <div className="w-72 rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <LoadingSkeleton type="sidebar-rows" rows={6} />
       </div>
     );
   }

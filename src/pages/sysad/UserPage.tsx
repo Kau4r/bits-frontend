@@ -7,6 +7,7 @@ import { fetchUsers } from '@/services/user'
 import type { User } from '@/types/user'
 import { ROLES, type User_Role } from "@/types/user"
 import { FloatingSelect } from '@/ui/FloatingSelect'
+import { LoadingSkeleton } from '@/ui'
 import { SysAdEyebrow, SysAdPageShell } from '@/pages/sysad/components/SysAdPageShell'
 
 
@@ -139,20 +140,7 @@ export default function SysAdDash() {
   if (loading) {
     return (
       <div className="h-full w-full bg-white p-6 sm:px-8 lg:px-10 dark:bg-gray-900">
-        <div className="mb-4 flex items-center justify-between gap-4">
-          <div className="h-8 w-48 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
-          <div className="h-10 w-64 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
-          <div className="h-10 w-24 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
-          <div className="h-10 w-32 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
-        </div>
-        <div className="space-y-2">
-          {[...Array(8)].map((_, i) => (
-            <div
-              key={i}
-              className="h-16 animate-pulse rounded bg-gray-200 dark:bg-gray-700"
-            />
-          ))}
-        </div>
+        <LoadingSkeleton type="page" columns={5} rows={8} />
       </div>
     )
   }

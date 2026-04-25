@@ -20,6 +20,7 @@ import {
     Plus
 } from 'lucide-react';
 import { FloatingSelect } from '@/ui/FloatingSelect';
+import { LoadingSkeleton, Skeleton } from '@/ui';
 
 type TabType = 'pending' | 'active' | 'all';
 type StatusFilter = 'all' | 'PENDING' | 'APPROVED' | 'BORROWED' | 'OVERDUE' | 'RETURNED' | 'REJECTED';
@@ -227,21 +228,19 @@ export default function Borrowing() {
         return (
             <div className="h-full w-full bg-white p-6 sm:px-8 lg:px-10 dark:bg-gray-900">
                 <div className="mb-6 flex items-center justify-between">
-                    <div>
-                        <div className="h-8 w-48 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
-                        <div className="mt-1 h-4 w-64 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
+                    <div className="space-y-2">
+                        <Skeleton className="h-7 w-48" />
+                        <Skeleton className="h-4 w-72" />
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <Skeleton className="h-10 w-28" />
+                        <Skeleton className="h-10 w-36" />
                     </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                    {[...Array(4)].map((_, i) => (
-                        <div key={i} className="h-24 animate-pulse rounded-xl bg-gray-200 dark:bg-gray-800" />
-                    ))}
-                </div>
-                <div className="space-y-4">
-                    {[...Array(3)].map((_, i) => (
-                        <div key={i} className="h-48 animate-pulse rounded-xl bg-gray-100 dark:bg-gray-800/50" />
-                    ))}
-                </div>
+                {/* Stat tiles */}
+                <LoadingSkeleton type="dashboard" rows={4} className="mb-6" />
+                {/* Request cards */}
+                <LoadingSkeleton type="request-cards" rows={3} />
             </div>
         );
     }
@@ -448,10 +447,22 @@ export default function Borrowing() {
                     item: approvalModal.request.item,
                     borrower: approvalModal.request.borrower,
                 } : null}
-                availableItems={approvalModal.request ?
-                    inventoryItems.filter(item => item.Item_Type.toLowerCase() === approvalModal.request!.item.Item_Type.toLowerCase() && item.Item_ID)
-                        .map(item => ({ Item_ID: item.Item_ID!, Item_Type: item.Item_Type, Brand: item.Brand, Serial_Number: item.Serial_Number }))
-                    : []}
+                availableItems={approvalModal.request ? (() => {
+                    // Normalize the requested type the same way the inventory
+                    // dropdown does. If the request didn't specify a usable type
+                    // (missing / blank / generic "Unknown"), fall back to showing
+                    // every available item so the lab tech can still approve
+                    // instead of seeing an empty list — the source of the
+                    // "No Item Type" dead-end the user reported.
+                    const requested = approvalModal.request.item.Item_Type?.trim().toUpperCase() ?? '';
+                    const usable = requested && requested !== 'UNKNOWN' && requested !== 'OTHER';
+                    return inventoryItems
+                        .filter(item =>
+                            item.Item_ID
+                            && (!usable || item.Item_Type.trim().toUpperCase() === requested)
+                        )
+                        .map(item => ({ Item_ID: item.Item_ID!, Item_Type: item.Item_Type, Brand: item.Brand, Serial_Number: item.Serial_Number }));
+                })() : []}
                 isLoading={isLoading}
             />
 

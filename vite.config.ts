@@ -29,6 +29,9 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./tests/setup.ts'],
+    // Vitest scans **/*.{test,spec}.ts by default — exclude the Playwright
+    // e2e suite so it doesn't try to run those with the wrong runner.
+    exclude: ['node_modules', 'dist', 'e2e/**', 'playwright-report/**', 'test-results/**'],
     css: true,
     coverage: {
       provider: 'v8',
@@ -40,6 +43,7 @@ export default defineConfig({
     globals: boolean;
     environment: string;
     setupFiles: string[];
+    exclude: string[];
     css: boolean;
     coverage: {
       provider: string;

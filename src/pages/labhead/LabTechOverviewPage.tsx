@@ -1,11 +1,13 @@
 import LabTechList, { type Tech } from '@/pages/labhead/components/LabTechList';
 import LabTechDetailPanel from '@/pages/labhead/components/LabTechDetailPanel';
 import AssignTicketDropdown from '@/pages/labhead/components/AssignTicketDropdown';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { fetchTickets } from '@/services/tickets';
 import type { Ticket } from '@/types/tickets';
 import TicketingModal from '@/pages/tickets/components/TicketingModal';
+import Table from '@/components/Table';
+import { LoadingSkeleton } from '@/ui';
 
 const isActiveTicket = (ticket: Ticket) => !ticket.Archived && ticket.Status !== 'RESOLVED';
 
@@ -15,9 +17,18 @@ export default function LabTechOverview() {
   const [isLoadingUnassigned, setIsLoadingUnassigned] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [viewingTicket, setViewingTicket] = useState<Ticket | null>(null);
   const [isUnassignedCollapsed, setIsUnassignedCollapsed] = useState(false);
   const [detailsPanelPercent, setDetailsPanelPercent] = useState(64);
   const splitContainerRef = useRef<HTMLDivElement>(null);
+
+  const unassignedHeaders = useMemo(() => [
+    { label: 'Priority', align: 'left' as const },
+    { label: 'Description', align: 'left' as const },
+    { label: 'Reported By', align: 'left' as const },
+    { label: 'Date', align: 'left' as const },
+    { label: 'Assign', align: 'right' as const },
+  ], []);
 
   const loadUnassigned = useCallback(async () => {
     try {
@@ -37,6 +48,20 @@ export default function LabTechOverview() {
 
   const handleTicketChange = () => {
     loadUnassigned();
+    setRefreshKey(prev => prev + 1);
+  };
+
+  // After editing a ticket from the modal: keep the row in the unassigned list
+  // only if the updated ticket still belongs there; otherwise remove it.
+  // Bump refreshKey so the lab tech list re-fetches counters.
+  const handleTicketUpdate = (updatedTicket: Ticket) => {
+    setUnassignedTickets(prev => {
+      const stillUnassigned = !updatedTicket.Technician_ID && isActiveTicket(updatedTicket);
+      if (stillUnassigned) {
+        return prev.map(t => t.Ticket_ID === updatedTicket.Ticket_ID ? updatedTicket : t);
+      }
+      return prev.filter(t => t.Ticket_ID !== updatedTicket.Ticket_ID);
+    });
     setRefreshKey(prev => prev + 1);
   };
 
@@ -79,7 +104,7 @@ export default function LabTechOverview() {
       </div>
 
       <div className="flex min-h-0 flex-1 gap-6">
-        <LabTechList selectedTech={selectedTech} onSelect={setSelectedTech} />
+        <LabTechList selectedTech={selectedTech} onSelect={setSelectedTech} refreshSignal={refreshKey} />
 
         <div ref={splitContainerRef} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <div
@@ -161,91 +186,66 @@ export default function LabTechOverview() {
             </div>
 
             {!isUnassignedCollapsed && (
-              isLoadingUnassigned ? (
-                <div className="flex flex-1 items-center justify-center py-8">
-                  <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-indigo-600 dark:border-indigo-400" />
-                </div>
-              ) : unassignedTickets.length === 0 ? (
-                <div className="flex flex-1 flex-col items-center justify-center py-8 text-center text-gray-500 dark:text-gray-400">
-                  <svg className="mx-auto mb-2 h-10 w-10 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <p className="text-sm">All tickets are assigned</p>
-                </div>
-              ) : (
-                <div className="flex min-h-0 flex-1">
-                  <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                    <table className="min-w-full table-fixed divide-y divide-gray-200 dark:divide-gray-700">
-                      <colgroup>
-                        <col className="w-[15%]" />
-                        <col className="w-[32%]" />
-                        <col className="w-[22%]" />
-                        <col className="w-[15%]" />
-                        <col className="w-[16%]" />
-                      </colgroup>
-                      <thead className="bg-gray-50 dark:bg-gray-800">
-                        <tr>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Priority</th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Issue</th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Reported By</th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Date</th>
-                          <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Assign</th>
-                        </tr>
-                      </thead>
-                    </table>
-
-                    <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar">
-                      <table className="min-w-full table-fixed">
-                        <colgroup>
-                          <col className="w-[15%]" />
-                          <col className="w-[32%]" />
-                          <col className="w-[22%]" />
-                          <col className="w-[15%]" />
-                          <col className="w-[16%]" />
-                        </colgroup>
-                        <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-900">
-                          {unassignedTickets.map((ticket) => (
-                            <tr key={ticket.Ticket_ID} className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                              <td className="whitespace-nowrap px-6 py-3">
-                                <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${ticket.Priority === 'HIGH'
-                                  ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-                                  : ticket.Priority === 'MEDIUM'
-                                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
-                                    : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
-                                  }`}
-                                >
-                                  {ticket.Priority || 'N/A'}
-                                </span>
-                              </td>
-                              <td className="px-6 py-3 text-sm font-medium text-gray-900 dark:text-white">
-                                <div className="truncate" title={ticket.Report_Problem}>{ticket.Report_Problem}</div>
-                              </td>
-                              <td className="whitespace-nowrap px-6 py-3 text-sm text-gray-500 dark:text-gray-400">
-                                <div className="truncate">
-                                  {ticket.Reported_By ? `${ticket.Reported_By.First_Name} ${ticket.Reported_By.Last_Name}` : '-'}
-                                </div>
-                              </td>
-                              <td className="whitespace-nowrap px-6 py-3 text-sm text-gray-500 dark:text-gray-400">
-                                {new Date(ticket.Created_At).toLocaleDateString()}
-                              </td>
-                              <td className="whitespace-nowrap px-6 py-3 text-right">
-                                <AssignTicketDropdown
-                                  ticketId={ticket.Ticket_ID}
-                                  currentTechnicianId={null}
-                                  onAssigned={() => {
-                                    setUnassignedTickets(prev => prev.filter(t => t.Ticket_ID !== ticket.Ticket_ID));
-                                    handleTicketChange();
-                                  }}
-                                />
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              )
+              <div className="flex min-h-0 flex-1 p-3">
+                {isLoadingUnassigned ? (
+                  <LoadingSkeleton type="table-rows" columns={5} rows={4} className="flex-1" />
+                ) : (
+                  <Table headers={unassignedHeaders} columnWidths="0.7fr 1.6fr 1fr 0.8fr 0.8fr" density="compact">
+                    {unassignedTickets.length === 0 ? (
+                      <div className="flex flex-1 flex-col items-center justify-center py-8 text-center text-gray-500 dark:text-gray-400" data-full-row>
+                        <svg className="mx-auto mb-2 h-10 w-10 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <p className="text-sm">All tickets are assigned</p>
+                      </div>
+                    ) : (
+                      unassignedTickets.map((ticket) => (
+                        <div
+                          key={ticket.Ticket_ID}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => setViewingTicket(ticket)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              setViewingTicket(ticket);
+                            }
+                          }}
+                          className="cursor-pointer transition-colors hover:bg-gray-50 focus:bg-gray-100 focus:outline-none dark:hover:bg-gray-800/50 dark:focus:bg-gray-800"
+                        >
+                          <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${ticket.Priority === 'HIGH'
+                            ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                            : ticket.Priority === 'MEDIUM'
+                              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
+                              : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+                            }`}>
+                            {ticket.Priority || 'N/A'}
+                          </span>
+                          <div className="min-w-0 truncate text-sm font-medium text-gray-900 dark:text-white" title={ticket.Report_Problem}>
+                            {ticket.Report_Problem}
+                          </div>
+                          <span className="truncate text-sm text-gray-500 dark:text-gray-400">
+                            {ticket.Reported_By ? `${ticket.Reported_By.First_Name} ${ticket.Reported_By.Last_Name}` : '-'}
+                          </span>
+                          <span className="text-sm text-gray-500 dark:text-gray-400">
+                            {new Date(ticket.Created_At).toLocaleDateString()}
+                          </span>
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <AssignTicketDropdown
+                              ticketId={ticket.Ticket_ID}
+                              currentTechnicianId={null}
+                              onAssigned={() => {
+                                setUnassignedTickets(prev => prev.filter(t => t.Ticket_ID !== ticket.Ticket_ID));
+                                handleTicketChange();
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </Table>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -257,6 +257,14 @@ export default function LabTechOverview() {
         ticket={null}
         onUpdate={handleTicketChange}
         isCreating={true}
+      />
+
+      <TicketingModal
+        isOpen={viewingTicket !== null}
+        onClose={() => setViewingTicket(null)}
+        ticket={viewingTicket}
+        onUpdate={handleTicketUpdate}
+        isCreating={false}
       />
     </div>
   );

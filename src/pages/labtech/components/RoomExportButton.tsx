@@ -7,7 +7,8 @@ import { getInventory } from '@/services/inventory';
 import type { Room } from '@/types/room';
 import type { Item } from '@/types/inventory';
 import type { RoomAuditStatus } from '@/types/semester';
-import { formatItemType, resolveItemType } from '@/lib/utils';
+import { formatItemType, resolveItemType, formatBrand } from '@/lib/utils';
+import { useAuth } from '@/context/AuthContext';
 
 interface Props {
   room: Room;
@@ -24,6 +25,7 @@ const formatDateTime = (iso?: string | null) => {
 };
 
 export default function RoomExportButton({ room, className = '' }: Props) {
+  const { user } = useAuth();
   const [status, setStatus] = useState<RoomAuditStatus | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -54,28 +56,52 @@ export default function RoomExportButton({ room, className = '' }: Props) {
         (x): x is Item => 'Item_Type' in x && x.Room_ID === room.Room_ID,
       );
 
-      const rows = roomItems.map(item => ({
-        'Asset Code': item.Item_Code || '',
-        Brand: item.Brand || '',
-        'Item Type': formatItemType(resolveItemType(item.Item_Type)),
-        'Serial Number': item.Serial_Number || '',
-        Status: item.Status,
-        'Last Checked At': formatDateTime(item.Last_Checked_At),
-        'Last Checked By': item.Last_Checked_By
-          ? `${item.Last_Checked_By.First_Name} ${item.Last_Checked_By.Last_Name}`.trim()
-          : '',
-      }));
+      // Header metadata block — modeled on the USC laboratory inventory
+      // workbook so submissions look familiar to the chair / lab head.
+      const today = new Date();
+      const dateStr = today.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+      const preparedBy = user ? `${user.First_Name} ${user.Last_Name}`.trim() : '';
+      const semester = status?.semester?.name || '';
 
-      const sheet = XLSX.utils.json_to_sheet(rows);
-      // Rough column widths so the xlsx isn't a blob of tiny columns
+      const HEADER_COLS = ['Item Code', 'Type', 'Brand', 'Serial Number', 'Status', 'Notes'];
+
+      const aoa: (string | number | null)[][] = [
+        ['USC Laboratory Inventory'],
+        [],
+        ['Department:', 'DCISM', '', '', 'Prepared by:', preparedBy],
+        ['Room No:', room.Name || `Room_${room.Room_ID}`, '', '', 'Date:', dateStr],
+        ['Semester:', semester, '', '', 'Total Items:', String(roomItems.length)],
+        [],
+        HEADER_COLS,
+      ];
+
+      // Flat per-item rows (Option B). One row per Item; clean values with
+      // formatBrand so sentinel brands render as "—" instead of "OLD".
+      roomItems.forEach(item => {
+        aoa.push([
+          item.Item_Code || '',
+          formatItemType(resolveItemType(item.Item_Type)),
+          formatBrand(item.Brand),
+          item.Serial_Number || '',
+          item.Status,
+          item.Last_Checked_At
+            ? `Checked ${formatDateTime(item.Last_Checked_At)}${item.Last_Checked_By ? ` by ${item.Last_Checked_By.First_Name} ${item.Last_Checked_By.Last_Name}`.trim() : ''}`
+            : '',
+        ]);
+      });
+
+      const sheet = XLSX.utils.aoa_to_sheet(aoa);
       sheet['!cols'] = [
-        { wch: 16 }, // Asset Code
+        { wch: 16 }, // Item Code
+        { wch: 14 }, // Type
         { wch: 18 }, // Brand
-        { wch: 14 }, // Item Type
-        { wch: 18 }, // Serial
+        { wch: 22 }, // Serial Number
         { wch: 12 }, // Status
-        { wch: 22 }, // Last Checked At
-        { wch: 22 }, // Last Checked By
+        { wch: 40 }, // Notes
+      ];
+      // Merge the title row across all 6 columns
+      sheet['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: HEADER_COLS.length - 1 } },
       ];
 
       const book = XLSX.utils.book_new();

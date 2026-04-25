@@ -75,6 +75,21 @@ export const REPORT_STATUS_VARIANT: Record<string, BadgeProps["variant"]> = {
 } as const
 
 // ============================================
+// Variant → dot indicator background
+// ============================================
+
+/** Solid dot colors that pair with each Badge variant */
+export const VARIANT_DOT_CLASS: Record<NonNullable<BadgeProps["variant"]>, string> = {
+  default: "bg-gray-500",
+  success: "bg-green-500",
+  warning: "bg-yellow-500",
+  danger: "bg-red-500",
+  info: "bg-blue-500",
+  orange: "bg-orange-500",
+  indigo: "bg-indigo-500",
+} as const
+
+// ============================================
 // Status label helpers
 // ============================================
 

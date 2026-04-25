@@ -18,6 +18,8 @@ export interface DashboardMetrics {
         pendingForms?: number;
         approvedForms?: number;
         inReviewForms?: number;
+        completedForms?: number;
+        cancelledForms?: number;
         submittedReports?: number;
         myAssignedTickets?: number;
         myCompletedTickets?: number;

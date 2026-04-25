@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { type Item, type InventoryStatus } from '@/types/inventory'
-import { Plus, Filter, Package, Pencil, Tag, X, Upload } from 'lucide-react'
+import { Plus, Filter, Package, Pencil, Tag, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { LoadingSkeleton } from '@/ui/LoadingSkeleton'
 import { EmptyState } from '@/ui/EmptyState'
@@ -10,13 +10,13 @@ import Table, { type SortConfig, type SortDirection } from '@/components/Table'
 import ItemModal from '@/pages/labtech/components/ItemModal'
 import Search from '@/components/Search'
 import { getRooms } from "@/services/room";
-import { getInventory, updateInventoryItem, createInventoryBulk, createInventoryItem, importInventoryCsv, type CsvImportResult } from "@/services/inventory"
+import { getInventory, updateInventoryItem, createInventoryBulk, createInventoryItem } from "@/services/inventory"
 import { inventoryStatuses } from "@/types/inventory"
 import type { Room } from '@/types/room'
 import { useAuth } from '@/context/AuthContext'
 import InventoryMobilePage from '@/pages/labtech/InventoryMobile'
 import InventoryDashboard from '@/pages/labtech/components/InventoryDashboard'
-import { formatItemType, resolveItemType } from '@/lib/utils'
+import { formatItemType, resolveItemType, formatBrand } from '@/lib/utils'
 
 type InventoryView = 'list' | 'information'
 
@@ -54,8 +54,6 @@ const InventoryPage = () => {
   const [bulkBusy, setBulkBusy] = useState(false)
   const [searchParams] = useSearchParams()
   const activeView: InventoryView = resolveView(searchParams.get('view'))
-  const [isImportingCsv, setIsImportingCsv] = useState(false)
-  const inventoryCsvInputRef = useRef<HTMLInputElement | null>(null)
 
   // Responsive state
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -446,39 +444,6 @@ const InventoryPage = () => {
     }
   }
 
-  const summarizeImport = (result: CsvImportResult) => {
-    const { summary } = result
-    const issueParts = [
-      summary.skipped ? `${summary.skipped} skipped` : '',
-      summary.invalid ? `${summary.invalid} invalid` : '',
-      summary.duplicates ? `${summary.duplicates} duplicate` : '',
-    ].filter(Boolean)
-
-    const issueText = issueParts.length > 0 ? ` (${issueParts.join(', ')})` : ''
-    return `Inventory import: imported ${summary.imported} of ${summary.totalRows} row(s)${issueText}.`
-  }
-
-  const handleImportInventoryCsv = async (file?: File) => {
-    if (!file) return
-    if (!/\.xlsx$/i.test(file.name)) {
-      toast.error('Please choose an Excel file (.xlsx).')
-      if (inventoryCsvInputRef.current) inventoryCsvInputRef.current.value = ''
-      return
-    }
-
-    setIsImportingCsv(true)
-    try {
-      const result = await importInventoryCsv(file)
-      await loadInventory()
-      toast.success(summarizeImport(result), { duration: 6000 })
-    } catch (err) {
-      toast.error(err instanceof Error && err.message ? err.message : 'Failed to import inventory Excel file')
-    } finally {
-      setIsImportingCsv(false)
-      if (inventoryCsvInputRef.current) inventoryCsvInputRef.current.value = ''
-    }
-  }
-
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-white p-4 sm:px-6 lg:px-8 dark:bg-gray-900">
       {/* Header */}
@@ -488,21 +453,6 @@ const InventoryPage = () => {
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Track and manage laboratory equipment and assets</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <input
-            ref={inventoryCsvInputRef}
-            type="file"
-            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            className="hidden"
-            onChange={(e) => handleImportInventoryCsv(e.target.files?.[0])}
-          />
-          <button
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition-all hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-            onClick={() => inventoryCsvInputRef.current?.click()}
-            disabled={isImportingCsv}
-          >
-            <Upload className="h-5 w-5" />
-            {isImportingCsv ? 'Importing...' : 'Import Excel'}
-          </button>
           <button
             className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-500 hover:shadow-md focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none active:bg-indigo-700"
             onClick={() => {
@@ -834,7 +784,7 @@ const InventoryPage = () => {
 
                   {/* Brand */}
                   <div className="flex justify-center text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {item.Brand ?? '—'}
+                    {formatBrand(item.Brand)}
                   </div>
 
                   {/* Item Type (title-cased display; legacy "-"/"GENERAL" shown as Other) */}

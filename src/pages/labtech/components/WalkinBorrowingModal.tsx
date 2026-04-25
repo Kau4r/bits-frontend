@@ -158,6 +158,11 @@ const WalkinBorrowingModal: FC<Props> = ({ isOpen, onClose, onSubmit, availableI
 
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+            {itemTypeOptions.length === 0 && (
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+                No borrowable items are currently available. Mark an item as <span className="font-medium">AVAILABLE</span> in inventory before recording a walk-in.
+              </div>
+            )}
             <div>
               <label className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
                 <UserRound className="h-4 w-4" />

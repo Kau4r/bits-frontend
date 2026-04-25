@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { fetchTickets } from '@/services/tickets';
 import AssignTicketDropdown from '@/pages/labhead/components/AssignTicketDropdown';
 import { getReports, reviewReport, downloadWeeklyReportsCsv } from '@/services/reports';
@@ -6,6 +6,11 @@ import type { Ticket } from '@/types/tickets';
 import type { WeeklyReport } from '@/types/report';
 import { reportStatusLabels, reportStatusColors } from '@/types/report';
 import { formatTicketLocationDisplay } from '@/lib/ticketLocation';
+import { Badge } from '@/ui';
+import { TICKET_STATUS_VARIANT, VARIANT_DOT_CLASS } from '@/lib/constants';
+import Table from '@/components/Table';
+import TicketingModal from '@/pages/tickets/components/TicketingModal';
+import { LoadingSkeleton } from '@/ui';
 
 type LabTech = {
   dbId: number;
@@ -33,6 +38,29 @@ export default function LabTechDetailPanel({ labTech, onTicketReassigned }: Prop
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [isLoadingTickets, setIsLoadingTickets] = useState(false);
+  const [viewingTicket, setViewingTicket] = useState<Ticket | null>(null);
+
+  const ticketTableHeaders = useMemo(() => [
+    { label: 'Priority', align: 'left' as const },
+    { label: 'Description', align: 'left' as const },
+    { label: 'Location', align: 'left' as const },
+    { label: 'Date', align: 'left' as const },
+    { label: 'Status', align: 'center' as const },
+    { label: 'Actions', align: 'right' as const },
+  ], []);
+
+  const handleTicketUpdated = (updated: Ticket) => {
+    setTickets(prev => {
+      const stillBelongs = updated.Technician_ID === labTech.dbId
+        && !updated.Archived
+        && updated.Status !== 'RESOLVED';
+      if (stillBelongs) {
+        return prev.map(t => t.Ticket_ID === updated.Ticket_ID ? updated : t);
+      }
+      return prev.filter(t => t.Ticket_ID !== updated.Ticket_ID);
+    });
+    onTicketReassigned?.();
+  };
 
   const [reports, setReports] = useState<WeeklyReport[]>([]);
   const [isLoadingReports, setIsLoadingReports] = useState(false);
@@ -160,74 +188,67 @@ export default function LabTechDetailPanel({ labTech, onTicketReassigned }: Prop
       {activeTab === 'Tickets' && (
         <section className="flex min-h-0 flex-1 animate-fade-in">
           {isLoadingTickets ? (
-            <div className="flex flex-1 items-center justify-center p-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 dark:border-indigo-400" />
-            </div>
-          ) : activeTickets.length === 0 ? (
-            <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50 py-10 text-center text-gray-500 dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-400">
-              <p>No active tickets assigned.</p>
-            </div>
+            <LoadingSkeleton type="table-rows" columns={6} rows={5} className="flex-1" />
           ) : (
-            <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-gray-200 custom-scrollbar dark:border-gray-700">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">
-                  <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Priority</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Issue</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Location</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                  {[...pendingTickets, ...inProgressTickets].map((ticket) => (
-                    <tr key={ticket.Ticket_ID} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${ticket.Priority === 'HIGH' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' :
-                          ticket.Priority === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
-                            'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
-                          }`}>
-                          {ticket.Priority}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
-                        <div className="max-w-xs truncate" title={ticket.Report_Problem}>{ticket.Report_Problem}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {formatTicketLocationDisplay(ticket.Location, ticket.Room?.Name || '—')} {ticket.Room && !ticket.Location?.toLowerCase().includes(ticket.Room.Name.toLowerCase()) ? `(${ticket.Room.Name})` : ''}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {new Date(ticket.Created_At).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${ticket.Status === 'RESOLVED'
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-                          : ticket.Status === 'IN_PROGRESS'
-                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
-                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
-                          }`}>
-                          <span className={`h-1.5 w-1.5 rounded-full ${ticket.Status === 'RESOLVED' ? 'bg-green-500' : ticket.Status === 'IN_PROGRESS' ? 'bg-blue-500' : 'bg-yellow-500'}`} />
+            <Table headers={ticketTableHeaders} columnWidths="0.7fr 1.6fr 1.2fr 0.8fr 1fr 0.9fr" density="compact">
+              {activeTickets.length === 0 ? (
+                <div className="flex flex-1 items-center justify-center py-10 text-center text-gray-500 dark:text-gray-400" data-full-row>
+                  <p>No active tickets assigned.</p>
+                </div>
+              ) : (
+                [...pendingTickets, ...inProgressTickets].map((ticket) => (
+                  <div
+                    key={ticket.Ticket_ID}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setViewingTicket(ticket)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setViewingTicket(ticket);
+                      }
+                    }}
+                    className="cursor-pointer transition-colors hover:bg-gray-50 focus:bg-gray-100 focus:outline-none dark:hover:bg-gray-800/50 dark:focus:bg-gray-800"
+                  >
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${ticket.Priority === 'HIGH' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' :
+                      ticket.Priority === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
+                        'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+                      }`}>
+                      {ticket.Priority || 'N/A'}
+                    </span>
+                    <div className="min-w-0 truncate text-sm font-medium text-gray-900 dark:text-white" title={ticket.Report_Problem}>
+                      {ticket.Report_Problem}
+                    </div>
+                    <span className="truncate text-sm text-gray-500 dark:text-gray-400">
+                      {formatTicketLocationDisplay(ticket.Location, ticket.Room?.Name || '—')}
+                    </span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      {new Date(ticket.Created_At).toLocaleDateString()}
+                    </span>
+                    {(() => {
+                      const variant = TICKET_STATUS_VARIANT[ticket.Status] || 'default';
+                      return (
+                        <Badge variant={variant}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${VARIANT_DOT_CLASS[variant]}`} />
                           {ticket.Status.replace('_', ' ')}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
-                        <AssignTicketDropdown
-                          ticketId={ticket.Ticket_ID}
-                          currentTechnicianId={ticket.Technician_ID ?? undefined}
-                          onAssigned={() => {
-                            // Remove ticket from this tech's list locally
-                            setTickets(prev => prev.filter(t => t.Ticket_ID !== ticket.Ticket_ID));
-                            onTicketReassigned?.();
-                          }}
-                          buttonLabel="Reassign"
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                        </Badge>
+                      );
+                    })()}
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <AssignTicketDropdown
+                        ticketId={ticket.Ticket_ID}
+                        currentTechnicianId={ticket.Technician_ID ?? undefined}
+                        onAssigned={() => {
+                          setTickets(prev => prev.filter(t => t.Ticket_ID !== ticket.Ticket_ID));
+                          onTicketReassigned?.();
+                        }}
+                        buttonLabel="Reassign"
+                      />
+                    </div>
+                  </div>
+                ))
+              )}
+            </Table>
           )}
         </section>
       )}
@@ -249,9 +270,7 @@ export default function LabTechDetailPanel({ labTech, onTicketReassigned }: Prop
           </div>
 
           {isLoadingReports ? (
-            <div className="flex justify-center p-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 dark:border-indigo-400" />
-            </div>
+            <LoadingSkeleton type="card" rows={3} />
           ) : reports.length === 0 ? (
             <div className="text-center py-10 text-gray-500 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
               <p>No reports submitted yet.</p>
@@ -528,6 +547,14 @@ export default function LabTechDetailPanel({ labTech, onTicketReassigned }: Prop
           </div>
         </div>
       )}
+
+      <TicketingModal
+        isOpen={viewingTicket !== null}
+        onClose={() => setViewingTicket(null)}
+        ticket={viewingTicket}
+        onUpdate={handleTicketUpdated}
+        isCreating={false}
+      />
     </div>
   );
 }

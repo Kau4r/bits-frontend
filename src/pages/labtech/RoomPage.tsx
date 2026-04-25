@@ -16,6 +16,7 @@ import { useAuth } from '@/context/AuthContext'
 import Search from '@/components/Search'
 import { CalendarDays, Building2 } from 'lucide-react'
 import { FloatingSelect } from '@/ui/FloatingSelect'
+import { Skeleton } from '@/ui'
 
 
 type TabType = 'rooms' | 'queue';
@@ -696,7 +697,18 @@ export default function Room() {
                     isLoading ? (
                         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                             {[...Array(8)].map((_, i) => (
-                                <div key={i} className="h-48 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-800" />
+                                <div key={i} className="rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
+                                    <div className="mb-3 flex items-center justify-between">
+                                        <Skeleton className="h-5 w-24" />
+                                        <Skeleton className="h-5 w-16 rounded-full" />
+                                    </div>
+                                    <Skeleton className="mb-2 h-4 w-2/3" />
+                                    <Skeleton className="mb-4 h-4 w-1/2" />
+                                    <div className="flex justify-between border-t border-gray-100 pt-3 dark:border-gray-700">
+                                        <Skeleton className="h-3 w-20" />
+                                        <Skeleton className="h-3 w-16" />
+                                    </div>
+                                </div>
                             ))}
                         </div>
                     ) : filteredRooms.length === 0 ? (
@@ -737,7 +749,14 @@ export default function Room() {
                         {isLoading ? (
                             <div className="space-y-4">
                                 {[...Array(3)].map((_, i) => (
-                                    <div key={i} className="h-40 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-800" />
+                                    <div key={i} className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+                                        <div className="mb-3 flex items-center justify-between">
+                                            <Skeleton className="h-5 w-32" />
+                                            <Skeleton className="h-5 w-20 rounded-full" />
+                                        </div>
+                                        <Skeleton className="mb-2 h-3 w-full" />
+                                        <Skeleton className="h-3 w-3/4" />
+                                    </div>
                                 ))}
                             </div>
                         ) : labRooms.length > 0 ? (

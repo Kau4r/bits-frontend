@@ -17,6 +17,7 @@ import MaintenancePage from '@/pages/sysad/MaintenancePage';
 import InventoryPage from '@/pages/labtech/InventoryPage';
 import InventoryItemInfo from '@/pages/labtech/InventoryItemInfoPage';
 import Room from '@/pages/labtech/RoomPage';
+import RoomQRPrintPage from '@/pages/labtech/RoomQRPrintPage';
 import Forms from '@/pages/labtech/FormsPage';
 import LabheadDashboard from '@/pages/labhead/DashboardPage';
 import FacultyScheduling from '@/pages/faculty/SchedulingPage';
@@ -129,6 +130,7 @@ function AppContent() {
         <Route path="/labtech-mobile" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><InventoryMobile /></ProtectedRoute>} />
         <Route path="/inventory-audit" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><InventoryAuditPage /></ProtectedRoute>} />
         <Route path="/labtech/room" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Room /></ProtectedRoute>} />
+        <Route path="/labtech/room/:roomId/print-qr" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><RoomQRPrintPage /></ProtectedRoute>} />
         <Route path="/forms" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><Forms /></ProtectedRoute>} />
         <Route path="/inventory" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><InventoryPage /></ProtectedRoute>} />
         <Route path="/inventory/item/:itemCode" element={<ProtectedRoute roles={[ROLES.LAB_TECH, ROLES.LAB_HEAD]}><InventoryItemInfo /></ProtectedRoute>} />

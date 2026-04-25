@@ -10,6 +10,7 @@ import { useModal } from "@/context/ModalContext";
 import toast from "react-hot-toast";
 import { sortRoomsForDisplay } from "@/utils/roomSort";
 import { FloatingSelect } from "@/ui/FloatingSelect";
+import { Skeleton } from "@/ui";
 import { SysAdEyebrow, SysAdPageShell } from "@/pages/sysad/components/SysAdPageShell";
 
 export default function RoomPage() {
@@ -112,23 +113,31 @@ export default function RoomPage() {
     return (
       <div className="h-full w-full bg-white p-6 sm:px-8 lg:px-10 dark:bg-gray-900">
         <div className="mb-6 flex items-center justify-between">
-          <div>
-            <div className="h-8 w-48 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
-            <div className="mt-1 h-4 w-64 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+          <div className="space-y-2">
+            <Skeleton className="h-7 w-48" />
+            <Skeleton className="h-4 w-72" />
           </div>
-          <div className="h-10 w-32 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+          <Skeleton className="h-10 w-32" />
         </div>
         <div className="mb-6 flex flex-wrap items-center gap-3">
-          <div className="h-10 w-64 flex-1 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
-          <div className="h-10 w-32 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
-          <div className="h-10 w-24 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+          <Skeleton className="h-10 min-w-[280px] flex-1" />
+          <Skeleton className="h-10 w-32" />
+          <Skeleton className="h-10 w-24" />
         </div>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {[...Array(8)].map((_, i) => (
-            <div
-              key={i}
-              className="h-48 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-700"
-            />
+            <div key={i} className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
+              <div className="mb-3 flex items-center justify-between">
+                <Skeleton className="h-5 w-24" />
+                <Skeleton className="h-5 w-16 rounded-full" />
+              </div>
+              <Skeleton className="mb-2 h-4 w-2/3" />
+              <Skeleton className="mb-4 h-4 w-1/2" />
+              <div className="flex justify-between border-t border-gray-100 pt-3 dark:border-gray-700">
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+            </div>
           ))}
         </div>
       </div>
