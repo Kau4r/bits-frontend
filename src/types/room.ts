@@ -31,6 +31,12 @@ export interface Room {
     Room_Type: RoomType;
     Status: RoomStatus;
     Lab_Type?: LabType | null;
+    /**
+     * Whether this room can be selected in the booking flow. Storage rooms,
+     * control rooms, dept office, faculty office, green room etc are flagged
+     * non-bookable from the sysad UI. Defaults to true on the server.
+     */
+    Is_Bookable?: boolean;
     Schedule?: RoomSchedule[]; // Optional array of schedules for this room
 }
 

@@ -48,6 +48,7 @@ export default function RoomModal({
     Status: initialData?.Status ?? 'AVAILABLE',
     Capacity: initialData?.Capacity ?? getDefaultCapacity(initialData?.Room_Type ?? 'LECTURE'),
     Lab_Type: initialData?.Lab_Type ?? undefined,
+    Is_Bookable: initialData?.Is_Bookable ?? true,
   })
 
   const readOnly = mode === 'view'
@@ -62,6 +63,7 @@ export default function RoomModal({
         Status: initialData.Status ?? 'AVAILABLE',
         Capacity: initialData.Capacity ?? getDefaultCapacity(initialData.Room_Type ?? 'LECTURE'),
         Lab_Type: initialData.Lab_Type ?? undefined,
+        Is_Bookable: initialData.Is_Bookable ?? true,
       })
     }
   }, [initialData])
@@ -239,6 +241,26 @@ export default function RoomModal({
                 <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
                   Default capacity: {getDefaultCapacity(room.Room_Type)} (can be customized)
                 </p>
+              </div>
+
+              <div className="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/60">
+                <input
+                  id="room-modal-bookable"
+                  type="checkbox"
+                  checked={room.Is_Bookable !== false}
+                  onChange={(e) => setRoom((prev) => ({ ...prev, Is_Bookable: e.target.checked }))}
+                  disabled={readOnly}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600"
+                />
+                <div className="flex-1">
+                  <label htmlFor="room-modal-bookable" className="block text-sm font-medium text-gray-800 dark:text-gray-200">
+                    Bookable
+                  </label>
+                  <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                    When unchecked, this room will not appear in the booking flow.
+                    Use for storage, control rooms, dept office, faculty office, green room, etc.
+                  </p>
+                </div>
               </div>
             </div>
           </div>

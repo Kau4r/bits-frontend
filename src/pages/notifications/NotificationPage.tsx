@@ -18,6 +18,7 @@ export default function NotificationPage() {
     notifications: apiNotifications,
     loading,
     markAsRead,
+    markAsUnread,
     archiveNotification,
     restoreNotification
   } = useNotifications();
@@ -41,6 +42,10 @@ export default function NotificationPage() {
         title: n.title,
         message: n.message,
         time: n.time,
+        timestamp: n.timestamp,
+        senderName: n.user
+          ? `${n.user.First_Name} ${n.user.Last_Name}`.trim()
+          : undefined,
         isRead: n.read,
         isArchived: n.archived,
         type: type,
@@ -83,6 +88,10 @@ export default function NotificationPage() {
 
   const handleMarkAsRead = async (id: number) => {
     await markAsRead(id);
+  };
+
+  const handleMarkAsUnread = async (id: number) => {
+    await markAsUnread(id);
   };
 
   const handleArchive = async (id: number) => {
@@ -204,6 +213,7 @@ export default function NotificationPage() {
               key={notification.id}
               notification={notification}
               onMarkAsRead={handleMarkAsRead}
+              onMarkAsUnread={handleMarkAsUnread}
               onArchive={handleArchive}
               onRestore={handleRestore}
             />

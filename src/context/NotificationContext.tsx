@@ -9,6 +9,7 @@ import {
     getUnreadCount,
     markAllNotificationsRead,
     markNotificationRead,
+    markNotificationUnread,
     restoreNotification as restoreNotificationRequest,
     type Notification
 } from '@/services/notifications';
@@ -19,6 +20,7 @@ interface NotificationContextType {
     pendingTicketCount: number;
     loading: boolean;
     markAsRead: (id: number) => Promise<void>;
+    markAsUnread: (id: number) => Promise<void>;
     markAllAsRead: () => Promise<void>;
     archiveNotification: (id: number) => Promise<void>;
     restoreNotification: (id: number) => Promise<void>;
@@ -254,6 +256,31 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }
     };
 
+    const markAsUnread = async (id: number) => {
+        // Optimistic flip back to unread.
+        const notification = notifications.find(n => n.id === id);
+        const wasRead = notification?.read ?? false;
+        setNotifications(prev => prev.map(n =>
+            n.id === id ? { ...n, read: false, readAt: null } : n
+        ));
+        if (wasRead) {
+            setUnreadCount(prev => prev + 1);
+        }
+
+        try {
+            await markNotificationUnread(id);
+        } catch (err) {
+            console.error('Failed to mark notification as unread:', err);
+            // Revert on error
+            setNotifications(prev => prev.map(n =>
+                n.id === id ? { ...n, read: notification?.read ?? false, readAt: notification?.readAt ?? null } : n
+            ));
+            if (wasRead) {
+                setUnreadCount(prev => Math.max(0, prev - 1));
+            }
+        }
+    };
+
     const markAllAsRead = async () => {
         // Optimistic update
         const readAt = new Date().toISOString();
@@ -318,7 +345,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     };
 
     return (
-        <NotificationContext.Provider value={{ notifications, unreadCount, pendingTicketCount, loading, markAsRead, markAllAsRead, archiveNotification, restoreNotification }}>
+        <NotificationContext.Provider value={{ notifications, unreadCount, pendingTicketCount, loading, markAsRead, markAsUnread, markAllAsRead, archiveNotification, restoreNotification }}>
             {children}
         </NotificationContext.Provider>
     );

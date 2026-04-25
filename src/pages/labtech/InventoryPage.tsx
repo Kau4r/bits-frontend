@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { type Item, type InventoryStatus } from '@/types/inventory'
 import { Plus, Filter, Package, Pencil, Tag, X } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { LoadingSkeleton } from '@/ui/LoadingSkeleton'
+import { LoadingSkeleton, Skeleton } from '@/ui/LoadingSkeleton'
 import { EmptyState } from '@/ui/EmptyState'
 import { FloatingSelect } from '@/ui/FloatingSelect'
 import Table, { type SortConfig, type SortDirection } from '@/components/Table'
@@ -707,7 +707,24 @@ const InventoryPage = () => {
             columnWidths={columnWidths}
           >
             {loading ? (
-              <LoadingSkeleton rows={8} type="table" />
+              <div data-full-row>
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="border-b border-gray-100 px-6 py-3 dark:border-gray-800"
+                    style={{ display: 'grid', gridTemplateColumns: columnWidths }}
+                  >
+                    <Skeleton className="mx-auto h-4 w-4" />            {/* checkbox */}
+                    <Skeleton className="h-4 w-28" />                   {/* asset code */}
+                    <Skeleton className="h-4 w-20" />                   {/* brand */}
+                    <Skeleton className="h-4 w-24" />                   {/* item type */}
+                    <Skeleton className="h-6 w-20 rounded-full" />      {/* status pill */}
+                    <Skeleton className="h-4 w-24" />                   {/* location */}
+                    <Skeleton className="h-4 w-28" />                   {/* last updated */}
+                    <Skeleton className="ml-auto h-8 w-8 rounded-md" /> {/* action */}
+                  </div>
+                ))}
+              </div>
             ) : filteredAndSortedInventory.length === 0 && inventory.length === 0 ? (
               <EmptyState
                 icon={Package}

@@ -186,7 +186,7 @@ export default function LabTechOverview() {
             </div>
 
             {!isUnassignedCollapsed && (
-              <div className="flex min-h-0 flex-1 p-3">
+              <div className="flex min-h-0 flex-1">
                 {isLoadingUnassigned ? (
                   <LoadingSkeleton type="table-rows" columns={5} rows={4} className="flex-1" />
                 ) : (

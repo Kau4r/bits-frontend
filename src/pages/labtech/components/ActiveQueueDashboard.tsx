@@ -146,7 +146,14 @@ export default function ActiveQueueDashboard({
         return (
             <div className="space-y-3">
                 {[...Array(2)].map((_, i) => (
-                    <div key={i} className="h-24 animate-pulse rounded-xl bg-gray-100 dark:bg-gray-800" />
+                    <div key={i} className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+                        <div className="mb-3 flex items-center justify-between">
+                            <div className="h-5 w-32 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+                            <div className="h-5 w-16 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" />
+                        </div>
+                        <div className="mb-2 h-3 w-full animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+                        <div className="h-3 w-2/3 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+                    </div>
                 ))}
             </div>
         );

@@ -179,9 +179,12 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        const allRooms = await getRooms();
+        // Only show rooms an admin has flagged as bookable. Storage rooms,
+        // control rooms, dept office, faculty office, green room, etc are
+        // hidden from the scheduling/booking flow.
+        const allRooms = (await getRooms()).filter(r => r.Is_Bookable !== false);
         if (allRooms.length > 0) {
-          setSelectedRooms(allRooms.map(r => r.Room_ID)); // Select ALL rooms by default
+          setSelectedRooms(allRooms.map(r => r.Room_ID)); // Select ALL bookable rooms by default
         } else {
           setSelectedRooms([]);
         }
@@ -700,6 +703,9 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
             headerToolbar={false}
             selectable={true}
             selectMirror={true}
+            // Block selecting time ranges that start in the past — bookings
+            // must be for now or later. Backend enforces this too.
+            selectAllow={(selectInfo) => selectInfo.start.getTime() > Date.now()}
             editable={true}
             eventDurationEditable={false}
             select={handleDateSelect}

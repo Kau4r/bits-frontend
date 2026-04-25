@@ -47,6 +47,11 @@ export const markNotificationRead = async (id: number): Promise<void> => {
     await api.patch(`/notifications/${id}/read`);
 };
 
+// Mark single notification as unread (flip back for follow-up)
+export const markNotificationUnread = async (id: number): Promise<void> => {
+    await api.patch(`/notifications/${id}/unread`);
+};
+
 // Mark all notifications as read
 export const markAllNotificationsRead = async (): Promise<{ count: number }> => {
     const { data } = await api.post<{ count: number }>("/notifications/mark-all-read");

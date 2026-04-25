@@ -160,14 +160,17 @@ const InventorySidePanel = ({ inventory }: InventorySidePanelProps) => {
           iconClass="text-indigo-600 dark:text-indigo-400"
         />
         {loadingBorrowings ? (
-          <div className="space-y-2">
+          <ul className="min-h-0 flex-1 divide-y divide-gray-100 dark:divide-gray-700">
             {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                className="h-5 w-full animate-pulse rounded bg-gray-100 dark:bg-gray-700"
-              />
+              <li key={i} className="flex items-center justify-between gap-2 py-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <div className="h-2 w-2 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" />
+                  <div className="h-3 w-28 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+                </div>
+                <div className="h-3 w-6 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+              </li>
             ))}
-          </div>
+          </ul>
         ) : mostBorrowed.length === 0 ? (
           <EmptyRow text="No borrows in the past 7 days" />
         ) : (
