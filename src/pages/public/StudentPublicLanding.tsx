@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { DoorOpen, Presentation, Loader2, MessageSquareWarning, Info } from 'lucide-react';
+import { DoorOpen, Presentation, Loader2, MessageSquareWarning, Info, Clock } from 'lucide-react';
 import type { OpenedLabRoom } from '@/services/room';
 import {
     getPublicOpenedLabs,
@@ -93,11 +93,17 @@ export default function StudentPublicLanding() {
                     </div>
 
                     {/* Helper banner: if a lab is full, ask a lab tech to open another room. */}
-                    <p className="mb-3 flex items-start gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                    <p className="mb-2 flex items-start gap-1.5 text-xs text-gray-500 dark:text-gray-400">
                         <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                         <span>
                             If a lab is full when you arrive, please ask the lab technician — they can open another room for you.
                         </span>
+                    </p>
+
+                    {/* Time-mindfulness reminder for student usage. */}
+                    <p className="mb-3 flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400">
+                        <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        <span>Please be mindful of the time — student usage hours have an end time.</span>
                     </p>
 
                     {isLoadingLabs ? (
