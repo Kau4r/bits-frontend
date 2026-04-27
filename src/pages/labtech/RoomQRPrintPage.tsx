@@ -3,8 +3,8 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import QRCode from 'react-qr-code';
 import { getInventory } from '@/services/inventory';
 import { getRooms } from '@/services/room';
-import { getComputers } from '@/services/computers';
-import type { Item, Computer } from '@/types/inventory';
+import { getComputers, type Computer } from '@/services/computers';
+import type { Item } from '@/types/inventory';
 import type { Room } from '@/types/room';
 import { formatItemType, resolveItemType, formatBrand } from '@/lib/utils';
 

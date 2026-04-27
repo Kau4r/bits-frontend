@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { type Item, type InventoryStatus } from '@/types/inventory'
 import { Plus, Filter, Package, Pencil, Tag, X } from 'lucide-react'
