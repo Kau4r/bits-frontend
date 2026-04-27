@@ -733,22 +733,18 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
             eventTextColor="#ffffff"
             eventContent={({ event }) => {
               const status = event.extendedProps.status as string;
-              const timeText = event.start && event.end
-                ? `${dayjs(event.start).format('h:mma')}`
-                : '';
 
               return (
                 <div
-                  className="schedule-calendar-event relative h-full w-full overflow-hidden rounded px-2 py-1 pr-5 text-xs text-white"
+                  className="schedule-calendar-event relative flex h-full w-full items-center overflow-hidden rounded px-2 py-1 pr-5 text-xs text-white"
                 >
                   <span
-                    className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full ring-1 ring-white/70 dark:ring-gray-900/70"
+                    className="absolute right-1.5 top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full ring-1 ring-white/70 dark:ring-gray-900/70"
                     style={{ backgroundColor: statusColor[status] || '#6366f1' }}
                     title={status}
                     aria-label={`Status: ${status}`}
                   />
-                  <div className="font-medium truncate">{event.title}</div>
-                  <div className="text-white/75">{timeText}</div>
+                  <div className="font-medium truncate leading-tight">{event.title}</div>
                 </div>
               );
             }}
