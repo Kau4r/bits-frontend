@@ -830,7 +830,13 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
         isSubmitting={isSubmitting}
         viewingBooking={viewingBooking}
         canEdit={canEditBooking}
-        canApprove={userRole === 'SECRETARY' || userRole === 'LAB_HEAD'}
+        canApprove={(() => {
+          const viewingRoomType = rooms.find(r => r.Room_ID === viewingBooking?.roomId)?.Room_Type;
+          if (viewingRoomType === 'CONFERENCE' || viewingRoomType === 'CONSULTATION') {
+            return userRole === 'SECRETARY' || userRole === 'ADMIN';
+          }
+          return userRole === 'LAB_HEAD' || userRole === 'LAB_TECH' || userRole === 'ADMIN';
+        })()}
       />
 
       <ReportIssueModal
