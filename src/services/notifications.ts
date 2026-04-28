@@ -19,14 +19,14 @@ export interface Notification {
     details?: Record<string, unknown>;
 }
 
-// Fetch notifications
+// Fetch notifications. Returns the page plus a cursor for the next older page.
 export const getNotifications = async (params?: {
     limit?: number;
     unreadOnly?: boolean;
-}): Promise<Notification[]> => {
+    cursor?: number;
+}): Promise<{ notifications: Notification[]; nextCursor: number | null }> => {
     const response = await api.get<any[]>("/notifications", { params });
-    // Map backend Audit_Log format to frontend Notification interface
-    return response.data.map((log: any) => ({
+    const notifications = response.data.map((log: any) => ({
         id: log.Log_ID,
         type: log.Action.includes('ERROR') || log.Action.includes('REJECT') ? 'warning' : 'info',
         title: log.Action.replace(/_/g, ' '),
@@ -40,6 +40,20 @@ export const getNotifications = async (params?: {
         user: log.User,
         details: log.Notification_Data || {}
     }));
+
+    // The api interceptor stashes `meta` on the response headers as JSON.
+    let nextCursor: number | null = null;
+    const rawMeta = response.headers?.['x-meta'];
+    if (typeof rawMeta === 'string') {
+        try {
+            const parsed = JSON.parse(rawMeta);
+            nextCursor = parsed?.nextCursor ?? null;
+        } catch {
+            // ignore malformed meta
+        }
+    }
+
+    return { notifications, nextCursor };
 };
 
 // Mark single notification as read

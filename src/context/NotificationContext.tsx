@@ -19,12 +19,17 @@ interface NotificationContextType {
     unreadCount: number;
     pendingTicketCount: number;
     loading: boolean;
+    loadingMore: boolean;
+    hasMore: boolean;
+    loadMore: () => Promise<void>;
     markAsRead: (id: number) => Promise<void>;
     markAsUnread: (id: number) => Promise<void>;
     markAllAsRead: () => Promise<void>;
     archiveNotification: (id: number) => Promise<void>;
     restoreNotification: (id: number) => Promise<void>;
 }
+
+const PAGE_SIZE = 50;
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
@@ -41,6 +46,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [nextCursor, setNextCursor] = useState<number | null>(null);
     const wsRef = useRef<WebSocket | null>(null);
     const processedIdsRef = useRef(new Set<string>());
     const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -66,15 +73,17 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         if (!user) return;
         try {
             setLoading(true);
-            const [notifs, count] = await Promise.all([
-                getNotifications(),
+            const [page, count] = await Promise.all([
+                getNotifications({ limit: PAGE_SIZE }),
                 getUnreadCount()
             ]);
-            const loadedNotifs = Array.isArray(notifs) ? notifs : [];
+            const loadedNotifs = page.notifications;
             setNotifications(loadedNotifs);
+            setNextCursor(page.nextCursor);
             setUnreadCount(count);
 
             // Populate ref with initial IDs to avoid toasting them if they come in again via WS immediately
+            processedIdsRef.current = new Set();
             loadedNotifs.forEach(n => processedIdsRef.current.add(String(n.id)));
 
             fetchTicketCount();
@@ -84,6 +93,26 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             setLoading(false);
         }
     }, [user, fetchTicketCount]);
+
+    // Append the next page of older notifications using the cursor.
+    const loadMore = useCallback(async () => {
+        if (!nextCursor || loadingMore) return;
+        try {
+            setLoadingMore(true);
+            const page = await getNotifications({ limit: PAGE_SIZE, cursor: nextCursor });
+            setNotifications(prev => {
+                const seen = new Set(prev.map(n => String(n.id)));
+                const fresh = page.notifications.filter(n => !seen.has(String(n.id)));
+                fresh.forEach(n => processedIdsRef.current.add(String(n.id)));
+                return [...prev, ...fresh];
+            });
+            setNextCursor(page.nextCursor);
+        } catch (err) {
+            console.error('Error loading more notifications:', err);
+        } finally {
+            setLoadingMore(false);
+        }
+    }, [nextCursor, loadingMore]);
 
     useEffect(() => {
         fetchInitialData();
@@ -345,7 +374,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     };
 
     return (
-        <NotificationContext.Provider value={{ notifications, unreadCount, pendingTicketCount, loading, markAsRead, markAsUnread, markAllAsRead, archiveNotification, restoreNotification }}>
+        <NotificationContext.Provider value={{ notifications, unreadCount, pendingTicketCount, loading, loadingMore, hasMore: nextCursor !== null, loadMore, markAsRead, markAsUnread, markAllAsRead, archiveNotification, restoreNotification }}>
             {children}
         </NotificationContext.Provider>
     );

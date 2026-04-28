@@ -16,7 +16,11 @@ export default function NotificationPage() {
   const [activeView, setActiveView] = useState<NotificationView>('all');
   const {
     notifications: apiNotifications,
+    unreadCount,
     loading,
+    loadingMore,
+    hasMore,
+    loadMore,
     markAsRead,
     markAsUnread,
     archiveNotification,
@@ -153,7 +157,7 @@ export default function NotificationPage() {
               }`}
           >
             <Inbox className="h-4 w-4" />
-            Inbox ({getViewCount('all')})
+            Inbox ({unreadCount})
           </button>
           <button
             onClick={() => setActiveView('read')}
@@ -208,16 +212,30 @@ export default function NotificationPage() {
       {/* Notifications List */}
       <div className="flex-1 min-h-0 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
         {filteredNotifications.length > 0 ? (
-          filteredNotifications.map((notification) => (
-            <NotificationCard
-              key={notification.id}
-              notification={notification}
-              onMarkAsRead={handleMarkAsRead}
-              onMarkAsUnread={handleMarkAsUnread}
-              onArchive={handleArchive}
-              onRestore={handleRestore}
-            />
-          ))
+          <>
+            {filteredNotifications.map((notification) => (
+              <NotificationCard
+                key={notification.id}
+                notification={notification}
+                onMarkAsRead={handleMarkAsRead}
+                onMarkAsUnread={handleMarkAsUnread}
+                onArchive={handleArchive}
+                onRestore={handleRestore}
+              />
+            ))}
+            {hasMore && (
+              <div className="flex justify-center pt-2 pb-4">
+                <button
+                  type="button"
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                >
+                  {loadingMore ? 'Loading...' : 'Load older notifications'}
+                </button>
+              </div>
+            )}
+          </>
         ) : (
           <div className="flex flex-col items-center justify-center py-20">
             <Bell className="h-12 w-12 text-gray-400" />

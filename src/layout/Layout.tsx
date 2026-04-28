@@ -14,11 +14,9 @@ const Layout = () => {
   const [isMobile, setIsMobile] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
-  const [badgeDismissed, setBadgeDismissed] = useState(false);
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  useEffect(() => { setBadgeDismissed(false); }, [unreadCount]);
   const profileRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -137,21 +135,10 @@ const Layout = () => {
                   aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
                 >
                   <Bell className="h-6 w-6 text-gray-700 dark:text-gray-300" />
-                  {unreadCount > 0 && !badgeDismissed && (
+                  {unreadCount > 0 && (
                     <span
-                      role="button"
-                      tabIndex={0}
-                      onClick={(e) => { e.stopPropagation(); setBadgeDismissed(true); }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setBadgeDismissed(true);
-                        }
-                      }}
-                      title="Click to hide"
-                      aria-label="Dismiss notifications badge"
-                      className="absolute -right-1 -bottom-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[11px] font-bold leading-none text-white ring-2 ring-white dark:ring-gray-800 cursor-pointer hover:bg-red-700"
+                      aria-label={`${unreadCount} unread notifications`}
+                      className="absolute -right-1 -bottom-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[11px] font-bold leading-none text-white ring-2 ring-white dark:ring-gray-800"
                     >
                       {unreadCount > 99 ? "99+" : unreadCount}
                     </span>

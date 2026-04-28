@@ -146,15 +146,6 @@ const Navbar = ({ collapsed, setCollapsed, isMobile }: { collapsed: boolean; set
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement | null>(null);
   const { unreadCount, pendingTicketCount } = useNotifications();
-
-  // Allow the user to dismiss either badge with a click. The dismissed flag is
-  // cleared whenever the underlying count changes (e.g. a new notification
-  // arrives), so the badge returns naturally.
-  const [notifBadgeDismissed, setNotifBadgeDismissed] = useState(false);
-  const [ticketBadgeDismissed, setTicketBadgeDismissed] = useState(false);
-
-  useEffect(() => { setNotifBadgeDismissed(false); }, [unreadCount]);
-  useEffect(() => { setTicketBadgeDismissed(false); }, [pendingTicketCount]);
   const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
@@ -319,28 +310,22 @@ const Navbar = ({ collapsed, setCollapsed, isMobile }: { collapsed: boolean; set
                         >
                           {navIcons[item.label] || <span className="w-6 h-6" />}
                           {/* Notification badge */}
-                          {item.label === 'Notifications' && unreadCount > 0 && !notifBadgeDismissed && (
-                            <button
-                              type="button"
-                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setNotifBadgeDismissed(true); }}
-                              aria-label="Dismiss notifications badge"
-                              title="Click to hide"
-                              className="absolute -bottom-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white hover:bg-red-600 cursor-pointer"
+                          {item.label === 'Notifications' && unreadCount > 0 && (
+                            <span
+                              aria-label={`${unreadCount} unread notifications`}
+                              className="absolute -bottom-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[11px] font-bold leading-none text-white ring-2 ring-white dark:ring-gray-800"
                             >
                               {unreadCount > 99 ? '99+' : unreadCount}
-                            </button>
+                            </span>
                           )}
                           {/* Pending Tickets badge */}
-                          {item.label === 'Tickets' && pendingTicketCount > 0 && !ticketBadgeDismissed && (
-                            <button
-                              type="button"
-                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTicketBadgeDismissed(true); }}
-                              aria-label="Dismiss tickets badge"
-                              title="Click to hide"
-                              className="absolute -bottom-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white hover:bg-red-600 cursor-pointer"
+                          {item.label === 'Tickets' && pendingTicketCount > 0 && (
+                            <span
+                              aria-label={`${pendingTicketCount} pending tickets`}
+                              className="absolute -bottom-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[11px] font-bold leading-none text-white ring-2 ring-white dark:ring-gray-800"
                             >
                               {pendingTicketCount > 99 ? '99+' : pendingTicketCount}
-                            </button>
+                            </span>
                           )}
                         </span>
                         <span className={collapsed && !isMobile ? "sr-only" : ""}>{item.label}</span>
