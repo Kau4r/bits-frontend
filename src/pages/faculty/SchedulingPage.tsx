@@ -109,6 +109,7 @@ const FacultyScheduling = () => {
       const availableItems = allItems.filter((item: any) =>
         item.Item_Type &&
         item.Status === 'AVAILABLE' &&
+        item.IsBorrowable !== false &&
         item.Item_ID
       ) as Item[];
       setInventoryItems(availableItems);
