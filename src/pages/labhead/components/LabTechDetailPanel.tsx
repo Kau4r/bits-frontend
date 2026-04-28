@@ -132,16 +132,15 @@ export default function LabTechDetailPanel({ labTech, onTicketReassigned }: Prop
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden pr-2">
-      <header className="mb-6 flex shrink-0 flex-col gap-2 rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-700 dark:bg-gray-800">
-        <div className="flex items-center gap-4">
-          <span className="rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-200 w-16 h-16 flex items-center justify-center text-2xl font-bold">
-            {labTech.name.charAt(0)}
-          </span>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{labTech.name}</h1>
-            <p className="text-lg text-gray-500 dark:text-gray-400">{labTech.id} &nbsp;|&nbsp; {labTech.email || labTech.department || 'Lab Technician'}</p>
+      <header className="mb-4 flex shrink-0 items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm transition-colors dark:border-gray-700 dark:bg-gray-800">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-base font-bold text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-200">
+          {labTech.name.charAt(0)}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h1 className="truncate text-base font-semibold text-gray-900 dark:text-white">{labTech.name}</h1>
             <span
-              className={`mt-2 inline-block px-3 py-1 text-sm font-semibold rounded-full ${labTech.status === 'Active'
+              className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${labTech.status === 'Active'
                 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                 : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
                 }`}
@@ -149,6 +148,9 @@ export default function LabTechDetailPanel({ labTech, onTicketReassigned }: Prop
               {labTech.status}
             </span>
           </div>
+          <p className="truncate text-xs text-gray-500 dark:text-gray-400">
+            {labTech.id} &nbsp;|&nbsp; {labTech.email || labTech.department || 'Lab Technician'}
+          </p>
         </div>
       </header>
 
