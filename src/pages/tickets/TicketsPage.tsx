@@ -334,6 +334,11 @@ export default function Tickets() {
                                     <p className="font-semibold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
                                         {ticket.Reported_By.First_Name} {ticket.Reported_By.Last_Name}
                                     </p>
+                                    {ticket.Reporter_Identifier && (
+                                        <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                                            ID: {ticket.Reporter_Identifier}
+                                        </p>
+                                    )}
                                 </div>
                                 <div className="min-w-0 pr-3">
                                     <p className="truncate text-sm font-semibold text-gray-900 dark:text-white">

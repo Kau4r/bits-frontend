@@ -10,6 +10,7 @@ export interface Ticket {
     Ticket_ID: number;
     Reported_By_ID: number;
     Reported_By: User;
+    Reporter_Identifier?: string | null;
     Item_ID?: number | null;
     Item?: Item | null;
     Report_Problem: string;
