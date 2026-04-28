@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getBorrowings } from '@/services/borrowing';
 import type { Borrowing } from '@/types/borrowing';
+import { formatItemType } from '@/lib/utils';
 
 interface CountdownProps {
     returnDate: string;
@@ -107,7 +108,7 @@ export default function MyBorrowingRequests() {
                                 <div className="flex justify-between items-center">
                                     <div>
                                         <p className="text-gray-900 dark:text-white font-medium text-sm">
-                                            {req.Item?.Item_Type || req.Requested_Item_Type || 'Unknown Item'}
+                                            {formatItemType(req.Item?.Item_Type || req.Requested_Item_Type) || 'Unknown Item'}
                                         </p>
                                         <p className="text-gray-600 dark:text-gray-400 text-xs">
                                             {req.Item ? `${req.Item.Brand} • ${req.Item.Item_Code}` : 'Specific Item Pending Assignment'}
@@ -135,7 +136,7 @@ export default function MyBorrowingRequests() {
                                 <div className="flex justify-between items-start">
                                     <div>
                                         <p className="text-gray-900 dark:text-white font-medium text-sm">
-                                            {req.Item?.Item_Type || req.Requested_Item_Type || 'Unknown Item'}
+                                            {formatItemType(req.Item?.Item_Type || req.Requested_Item_Type) || 'Unknown Item'}
                                         </p>
                                         <p className="text-gray-600 dark:text-gray-400 text-xs">
                                             {req.Item ? `${req.Item.Brand} • ${req.Item.Item_Code}` : 'Item Info Unavailable'}

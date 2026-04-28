@@ -5,20 +5,30 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+// Words that should stay all-caps in display (acronyms, abbreviations).
+const ITEM_TYPE_ACRONYMS = new Set([
+  'HDMI', 'VGA', 'DVI', 'USB', 'CCTV', 'ACU', 'PC', 'CPU', 'GPU',
+  'TV', 'AC', 'DC', 'LED', 'LCD', 'OLED', 'AV', 'IT', 'ID',
+  'SSD', 'HDD', 'RAM', 'IP', 'IO', 'UPS', 'PSU', 'NIC',
+]);
+
 /**
- * Converts an ENUM_VALUE string like "SYSTEM_UNIT" to title case "System Unit".
+ * Converts an ENUM_VALUE string like "SYSTEM_UNIT" to title case "System Unit",
+ * preserving known acronyms ("CCTV_SWITCH" -> "CCTV Switch", "HDMI" -> "HDMI").
  * Handles empty, null, and already-normalized values.
  */
 export const formatItemType = (raw?: string | null): string => {
   if (!raw) return '';
   const resolved = resolveItemType(raw);
-  if (resolved === 'MINI_PC') return 'Mini PC';
   return resolved
     .toString()
-    .toLowerCase()
     .split(/[\s_-]+/)
     .filter(Boolean)
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .map(word => {
+      const upper = word.toUpperCase();
+      if (ITEM_TYPE_ACRONYMS.has(upper)) return upper;
+      return upper.charAt(0) + upper.slice(1).toLowerCase();
+    })
     .join(' ');
 };
 

@@ -15,6 +15,7 @@ import { useBorrowingEvents } from '@/hooks/useBorrowingEvents';
 import { createTicket } from '@/services/tickets';
 import { buildTicketLocation } from '@/lib/ticketLocation';
 import { FloatingSelect } from '@/ui/FloatingSelect';
+import { formatItemType } from '@/lib/utils';
 
 const formatDateInput = (date: Date) => {
   const year = date.getFullYear();
@@ -360,7 +361,7 @@ const FacultyScheduling = () => {
               // Check if there are any items of this type available
               const availableCount = inventoryItems.filter(item => item.Item_Type === selectedType).length;
               if (availableCount === 0) {
-                modal.showError(`No ${selectedType} items currently available`, 'Validation Error');
+                modal.showError(`No ${formatItemType(selectedType)} items currently available`, 'Validation Error');
                 return;
               }
 
@@ -396,12 +397,12 @@ const FacultyScheduling = () => {
                         id="faculty-borrow-item-type"
                         value={selectedType}
                         placeholder="Select an item type"
-                        options={uniqueTypes.map((type) => ({ value: type, label: type }))}
+                        options={uniqueTypes.map((type) => ({ value: type, label: formatItemType(type) }))}
                         onChange={setSelectedType}
                       />
                       {selectedType && (
                         <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                          ✓ {inventoryItems.filter(item => item.Item_Type === selectedType).length} {selectedType}(s) available - Lab Tech will assign a specific item
+                          ✓ {inventoryItems.filter(item => item.Item_Type === selectedType).length} {formatItemType(selectedType)}(s) available - Lab Tech will assign a specific item
                         </p>
                       )}
                     </>

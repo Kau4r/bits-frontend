@@ -10,6 +10,7 @@ import type { Room } from "@/types/room";
 import { useAuth } from "@/context/AuthContext";
 import { FloatingSelect } from "@/ui/FloatingSelect";
 import { isLabStaffRole } from "@/types/user";
+import { formatItemType } from "@/lib/utils";
 
 type LoadState = "loading" | "loaded" | "not-found" | "error";
 
@@ -254,7 +255,7 @@ export default function InventoryItemInfoPage() {
             </div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-200">Inventory Item</p>
             <h1 className="mt-2 break-words text-3xl font-black tracking-tight">{item.Item_Code}</h1>
-            <p className="mt-2 text-sm text-indigo-100">{item.Brand || "No brand"} - {item.Item_Type || "No type"}</p>
+            <p className="mt-2 text-sm text-indigo-100">{item.Brand || "No brand"} - {formatItemType(item.Item_Type) || "No type"}</p>
           </div>
         </section>
 
@@ -340,7 +341,7 @@ export default function InventoryItemInfoPage() {
           <>
             <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <InfoRow label="Item Code" value={item.Item_Code || "Not available"} />
-              <InfoRow label="Item Type" value={item.Item_Type || "Not available"} />
+              <InfoRow label="Item Type" value={formatItemType(item.Item_Type) || "Not available"} />
               <InfoRow label="Brand" value={item.Brand || "Not available"} />
               <InfoRow label="Serial Number" value={item.Serial_Number || "Not available"} />
               <InfoRow label="Status" value={item.Status || "Not available"} />

@@ -10,6 +10,7 @@ import api from '@/services/api';
 import { FloatingSelect } from '@/ui/FloatingSelect';
 import { FloatingCombobox } from '@/ui/FloatingCombobox';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
+import { formatItemType } from '@/lib/utils';
 
 // Asset type for item selection
 interface Asset {
@@ -560,7 +561,7 @@ export default function TicketingModal({
                       placeholder="Select an item..."
                       options={assets.map((asset) => ({
                         value: asset.Item_ID,
-                        label: `${asset.Item_Code} - ${asset.Item_Type.replace('_', ' ')}${asset.Brand ? ` (${asset.Brand})` : ''}`,
+                        label: `${asset.Item_Code} - ${formatItemType(asset.Item_Type)}${asset.Brand ? ` (${asset.Brand})` : ''}`,
                       }))}
                       onChange={(value) => setFormData({ ...formData, itemId: Number(value) })}
                       disabled={isLoadingAssets}
@@ -568,7 +569,7 @@ export default function TicketingModal({
                   ) : (
                     <div className={readOnlyFieldClass}>
                       {selectedAsset
-                        ? `${selectedAsset.Item_Code} - ${selectedAsset.Item_Type.replace('_', ' ')}${selectedAsset.Brand ? ` (${selectedAsset.Brand})` : ''}`
+                        ? `${selectedAsset.Item_Code} - ${formatItemType(selectedAsset.Item_Type)}${selectedAsset.Brand ? ` (${selectedAsset.Brand})` : ''}`
                         : '—'}
                     </div>
                   )}

@@ -76,6 +76,7 @@ export default function Borrowing() {
                         Item_Type: b.Item?.Item_Type || b.Requested_Item_Type || 'Unknown',
                         Brand: b.Item?.Brand || 'TBD',
                         Serial_Number: b.Item?.Serial_Number || 'Not Assigned',
+                        location: b.Item?.Room?.Name ?? b.Item?.Location ?? null,
                     },
                     borrower: {
                         User_ID: b.Borrower_ID,
@@ -448,20 +449,22 @@ export default function Borrowing() {
                     borrower: approvalModal.request.borrower,
                 } : null}
                 availableItems={approvalModal.request ? (() => {
-                    // Normalize the requested type the same way the inventory
-                    // dropdown does. If the request didn't specify a usable type
-                    // (missing / blank / generic "Unknown"), fall back to showing
-                    // every available item so the lab tech can still approve
-                    // instead of seeing an empty list — the source of the
-                    // "No Item Type" dead-end the user reported.
                     const requested = approvalModal.request.item.Item_Type?.trim().toUpperCase() ?? '';
                     const usable = requested && requested !== 'UNKNOWN' && requested !== 'OTHER';
-                    return inventoryItems
-                        .filter(item =>
-                            item.Item_ID
-                            && (!usable || item.Item_Type.trim().toUpperCase() === requested)
-                        )
-                        .map(item => ({ Item_ID: item.Item_ID!, Item_Type: item.Item_Type, Brand: item.Brand, Serial_Number: item.Serial_Number }));
+                    const allWithIds = inventoryItems.filter(item => item.Item_ID);
+                    const filtered = usable
+                        ? allWithIds.filter(item => item.Item_Type.trim().toUpperCase() === requested)
+                        : allWithIds;
+                    // If the type-specific filter wipes the list, widen to all
+                    // available items so the lab tech is never dead-ended.
+                    const finalList = filtered.length > 0 ? filtered : allWithIds;
+                    return finalList.map(item => ({
+                        Item_ID: item.Item_ID!,
+                        Item_Type: item.Item_Type,
+                        Brand: item.Brand,
+                        Serial_Number: item.Serial_Number,
+                        location: item.Room?.Name ?? item.Location ?? null,
+                    }));
                 })() : []}
                 isLoading={isLoading}
             />
