@@ -190,6 +190,7 @@ export default function ItemModal({
           Serial_Number: formData.serialNumber.trim(),
           Status: formData.status,
           Room_ID: formData.roomId,
+          IsBorrowable: formData.isBorrowable,
           Updated_At: new Date().toISOString(),
         };
         onSave({ id: item.Item_ID, data: updateData });
@@ -734,6 +735,23 @@ export default function ItemModal({
                 {fieldErrors.serialNumber && (
                   <p className="mt-1 text-xs font-medium text-red-600 dark:text-red-400">{fieldErrors.serialNumber}</p>
                 )}
+              </div>
+
+              {/* Borrowable */}
+              <div className={`flex flex-col ${mode === "add" ? "" : "sm:col-span-2"}`}>
+                <label className={`flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-gray-300 px-3 py-2.5 dark:border-[#334155] ${readOnly ? 'bg-gray-50 cursor-default dark:bg-[#1e2939]/60' : 'bg-white dark:bg-[#1e2939] hover:border-indigo-400 dark:hover:border-indigo-500'}`}>
+                  <span className="flex flex-col">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Borrowable</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">Allow this item to appear in borrowing requests</span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={formData.isBorrowable}
+                    onChange={(e) => setFormData({ ...formData, isBorrowable: e.target.checked })}
+                    disabled={readOnly}
+                    className="h-5 w-5 shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  />
+                </label>
               </div>
             </div>
           </div>
