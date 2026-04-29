@@ -158,7 +158,8 @@ export default function Scheduling({ showRejectedMyBookings = false }: Schedulin
       isVirtual: !!e.extendedProps.isVirtual,
       isRecurring: !!e.extendedProps.isRecurring,
     });
-    setCanEditBooking(e.extendedProps.createdById === currentUserId || canManageAllBookings);
+    const isApproved = (e.extendedProps.status || '').toUpperCase() === 'APPROVED';
+    setCanEditBooking(!isApproved && (e.extendedProps.createdById === currentUserId || canManageAllBookings));
     setPopoverPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
     setPopoverTimes({ start, end });
     setShowPopover(true);
@@ -594,7 +595,8 @@ export default function Scheduling({ showRejectedMyBookings = false }: Schedulin
 
     // Determine if user can edit this booking
     const isOwner = event.extendedProps.createdById === currentUserId;
-    const canEdit = isOwner || canManageAllBookings;
+    const isApproved = (event.extendedProps.status || '').toUpperCase() === 'APPROVED';
+    const canEdit = !isApproved && (isOwner || canManageAllBookings);
 
     setViewingBooking({
       id: event.id,
@@ -842,7 +844,8 @@ export default function Scheduling({ showRejectedMyBookings = false }: Schedulin
               isVirtual: !!booking.extendedProps.isVirtual,
               isRecurring: !!booking.extendedProps.isRecurring,
             });
-            setCanEditBooking(booking.extendedProps.createdById === currentUserId || canManageAllBookings);
+            const isApprovedBooking = (booking.extendedProps.status || '').toUpperCase() === 'APPROVED';
+            setCanEditBooking(!isApprovedBooking && (booking.extendedProps.createdById === currentUserId || canManageAllBookings));
 
             // Center the popover
             setPopoverPosition({
