@@ -219,12 +219,15 @@
    - WHAT: Loads bookable rooms (`GET /rooms` filtered by `Is_Bookable !== false`) and all non-CANCELLED bookings
    - BACKEND: `GET /rooms` → module: `rooms`; `GET /bookings` → module: `bookings`
    - NEXT: FullCalendar renders existing bookings + class schedules; room sidebar shown.
-     Event tint is derived per viewer by `lib/bookingDisplayColor.ts`: viewer's own bookings = whitish green, other users' bookings = whitish gray, scheduled classes = reddish white. Status (approved/pending) remains a separate corner dot.
+     Event tint is derived per viewer by `lib/bookingDisplayColor.ts`: viewer's own bookings = whitish blue (was green — swapped because emerald containers were misleading users into thinking pending blocks were approved), other users' bookings = whitish gray, scheduled classes = reddish white. Status (approved/pending/rejected) remains a separate corner dot.
 
 2. **User selects time slot**
    - WHO: Faculty or Secretary
    - WHERE: `pages/scheduling/SchedulingPage.tsx` — FullCalendar `select` handler (`handleDateSelect`)
-   - WHAT: Drags to select time range. Client-side `checkOverlap()` checks for existing APPROVED or PENDING bookings in selected room. If overlap found → `WarningModal` shown, flow stops. If clear → `BookingPopover` opens.
+   - WHAT: Drags to select time range. Two client-side guards before the popover opens:
+     1. `checkClassConflict()` — hard block: if the slot overlaps any of the active room's `Schedule[]` class periods, a "Time Slot Reserved for Class" `WarningModal` is shown (naming the offending class) and the flow stops. Class slots are off-limits — there is no "adjust" affordance here.
+     2. `checkOverlap()` — checks for existing APPROVED or other users' PENDING bookings in the selected room. If a same-user PENDING booking is found, the user is offered to open it for edit instead. If APPROVED → `WarningModal`, flow stops. If clear → `BookingPopover` opens.
+     `handleEventDrop` (drag-reschedule) applies the same two guards in the same order.
    - BACKEND: (client-side only at this stage)
    - NEXT: `BookingPopover` opens with pre-filled start/end times
 
@@ -240,7 +243,7 @@
    - WHERE: `pages/scheduling/SchedulingPage.tsx` — click PENDING event → `BookingPopover` with `canApprove=true`
    - WHAT: Lab Head or Secretary clicks Approve or Reject. `applyToSeries` checkbox available for recurring bookings.
    - BACKEND: Single booking → `PATCH /bookings/:id/status` with `{ status, approverId }`; recurring series → `POST /bookings/series/:id/decision` with `{ status, applyToSeries, Original_Start }` → module: `bookings`
-   - NEXT: Status → APPROVED (green) or REJECTED (hidden from calendar). Notification fires to requestor (uncertain — verify).
+   - NEXT: Status → APPROVED (green dot) or REJECTED (rose dot). REJECTED bookings are hidden from everyone *except* their owner, who sees them on the calendar grid so they can confirm what slot was rejected. The owner can also surface them via the sidebar's "Rejected" filter card. Notification fires to requestor (uncertain — verify). Once APPROVED, the popover opens read-only on subsequent clicks (no edit form, no save) — owners must cancel and recreate to change time/room.
 
 5. **User reschedules booking (drag)**
    - WHO: Booking owner (faculty/secretary who created it)

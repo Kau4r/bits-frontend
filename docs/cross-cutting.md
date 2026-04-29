@@ -212,10 +212,10 @@ The `SchedulingPage.tsx` in `pages/scheduling/` is the shared implementation. Ro
 **Calendar:** FullCalendar (`@fullcalendar/react`) with `dayGrid`, `timeGrid`, `list`, `interaction` plugins. Views: Day, Week, Month, List.
 
 **Bookings vs. Schedules overlay:** The calendar renders two event layers:
-1. Booking events (from `GET /bookings`) — color-coded by status (green=APPROVED, yellow=PENDING).
+1. Booking events (from `GET /bookings`) — status dot colors: green=APPROVED, yellow=PENDING, rose=REJECTED. REJECTED bookings are filtered out of the calendar grid except for their owner (so a user can still see what slot they were rejected for). Container tint is per-viewer via `lib/bookingDisplayColor.ts`: own=blue, others=gray, classes=rose.
 2. Schedule events (from room's `Schedule[]` field) — rendered as pink read-only blocks labeled "Class".
 
-**Conflict detection:** Client-side `checkSlotConflict()` probes both layers before submission. Backend enforces with HTTP 409.
+**Conflict detection:** Two layers. (1) Hard block at selection / drag time: `checkClassConflict()` in `SchedulingPage.tsx` aborts before the popover opens / reverts a drop if the slot overlaps a class period — bookings can never coexist with a class. (2) Pre-submit probe: `checkSlotConflict()` in the popover walks both classes and APPROVED bookings to surface inline warnings. Backend enforces with HTTP 409.
 
 **Recurring bookings:** Handled via `services/bookingSeries.ts` — `POST /bookings/series`. RRULE stored server-side; occurrences are virtually expanded on read. Single-occurrence overrides via `POST /bookings/series/:id/overrides`.
 
@@ -225,6 +225,13 @@ The `SchedulingPage.tsx` in `pages/scheduling/` is the shared implementation. Ro
 - `ConfirmModal.tsx` — drag-reschedule confirmation.
 - `WarningModal.tsx` — time-conflict / permission-denied warning.
 - `RoomCombobox.tsx` — searchable room selector for the booking form. Locks to a single room when the sidebar filter has exactly one bookable room selected (`lockedRoomId` only forwarded in create mode).
+
+**Calendar sidebar** (`components/CalendarSidebar.tsx`):
+- Mini-calendar (react-calendar) with full-week-row highlight on the selected date (rendered via `tileClassName` — week is Sunday-anchored to match the en-US locale default).
+- "My Schedules" section listing the viewer's own bookings (across all rooms — not filtered by active room, so the user can jump between rooms).
+- Three counter cards (Requested / Approved / Rejected) double as toggleable status filters: clicking a card filters the list to that status and bolds the card; clicking the active card again clears. The Rejected card is always visible regardless of the parent's `showRejectedBookings` prop, so rejections are always reachable.
+- Clicking a booking card jumps the whole schedule context to that booking: switches `activeRoomId` to the booking's room, navigates FullCalendar to its date, syncs `selectedDate` (so the week-row highlight follows), then opens the popover.
+- Scroll is scoped to the booking list only (`min-h-0 flex-1 overflow-y-auto`); the create button, mini-calendar, and counter row stay pinned.
 
 **REST endpoints used** (from `services/booking.ts`, `services/bookingSeries.ts`):
 | Action | Endpoint |
