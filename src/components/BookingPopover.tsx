@@ -5,6 +5,7 @@ import { AlignLeft, Check, Clock3, MapPin, Repeat, Trash2, UserRound, X } from '
 import type { Room } from '@/types/room';
 import { useModal } from '@/context/ModalContext';
 import { FloatingSelect } from '@/ui/FloatingSelect';
+import RoomCombobox from '@/pages/scheduling/components/RoomCombobox';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 import RecurrenceModal, { type RecurrenceConfig, buildRrule } from '@/components/RecurrenceModal';
 
@@ -67,6 +68,10 @@ interface BookingPopoverProps {
     endTime: Date;
     rooms: Room[];
     selectedRoomId?: number;
+    // When the sidebar's room filter is narrowed to a single room, the booking
+    // form locks the room field to that room — no other rooms appear in the
+    // combo box and the user cannot change the selection.
+    lockedRoomId?: number;
     isSubmitting?: boolean;
     viewingBooking?: ViewingBooking | null;
     canEdit?: boolean;
@@ -124,9 +129,10 @@ interface TimeInputProps {
     onChange: (next: string) => void;
     placeholder?: string;
     ariaLabel?: string;
+    disabled?: boolean;
 }
 
-const TimeInput = ({ id, value, onChange, placeholder, ariaLabel }: TimeInputProps) => {
+const TimeInput = ({ id, value, onChange, placeholder, ariaLabel, disabled = false }: TimeInputProps) => {
     const [draft, setDraft] = useState(value ? formatTimeDisplay(value) : '');
     const [isOpen, setIsOpen] = useState(false);
     const [isDirty, setIsDirty] = useState(false);
@@ -194,10 +200,19 @@ const TimeInput = ({ id, value, onChange, placeholder, ariaLabel }: TimeInputPro
                 aria-label={ariaLabel}
                 aria-haspopup="listbox"
                 aria-expanded={isOpen}
+                disabled={disabled}
+                readOnly={disabled}
                 value={draft}
-                onChange={(e) => { setDraft(e.target.value); setIsDirty(true); setIsOpen(true); }}
-                onFocus={(e) => { e.currentTarget.select(); setIsDirty(false); setIsOpen(true); }}
+                onChange={(e) => {
+                    if (disabled) return;
+                    setDraft(e.target.value); setIsDirty(true); setIsOpen(true);
+                }}
+                onFocus={(e) => {
+                    if (disabled) return;
+                    e.currentTarget.select(); setIsDirty(false); setIsOpen(true);
+                }}
                 onKeyDown={(e) => {
+                    if (disabled) return;
                     if (e.key === 'Enter') {
                         e.preventDefault();
                         commitDraft();
@@ -211,7 +226,7 @@ const TimeInput = ({ id, value, onChange, placeholder, ariaLabel }: TimeInputPro
                     }
                 }}
                 placeholder={placeholder}
-                className="w-28 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-slate-500 dark:focus:border-cyan-300 dark:focus:ring-cyan-300/20"
+                className={`w-28 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-slate-500 dark:focus:border-cyan-300 dark:focus:ring-cyan-300/20 ${disabled ? 'cursor-not-allowed bg-slate-100 dark:bg-white/[0.06]' : ''}`}
             />
             {isOpen && (
                 <ul
@@ -318,6 +333,7 @@ export default function BookingPopover({
     endTime,
     rooms,
     selectedRoomId,
+    lockedRoomId,
     isSubmitting = false,
     viewingBooking,
     canEdit = false,
@@ -417,9 +433,19 @@ export default function BookingPopover({
 
     if (!isOpen) return null;
 
-    const selectedRoom = rooms.find(r => r.Room_ID === roomId);
     const currentStatus = getStatusTheme(viewingBooking?.status);
-    const roomOptions = rooms.map(room => ({ value: room.Room_ID, label: room.Name }));
+    // Approved-locked: once a booking is APPROVED ("done"), the owner can no
+    // longer reschedule it. Date / time / room fields lock; title and notes
+    // remain editable so users can refine purpose without changing the slot.
+    const isApprovedLocked = isEditMode && String(viewingBooking?.status || '').toUpperCase() === 'APPROVED';
+    // Only enforce the sidebar's single-room lock during creation. In edit mode
+    // the user is amending an existing booking that may live in a different
+    // room — locking would silently rewrite the booking's room on open.
+    // For approved-locked bookings we pin the room to the booking's own room
+    // so the combobox shows it as locked too.
+    const effectiveLockedRoomId = isCreateMode
+        ? lockedRoomId
+        : (isApprovedLocked ? viewingBooking?.roomId : undefined);
     const repeatLabel = `Every week on ${dayjs(date).format('dddd')}`;
     const repeatOptions = [
         { value: 'NONE', label: 'Does not repeat' },
@@ -637,6 +663,16 @@ export default function BookingPopover({
                                 />
                             </div>
 
+                            {isApprovedLocked && (
+                                <div className="mb-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+                                    <span aria-hidden="true" className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-amber-200 text-[11px] font-bold text-amber-900 dark:bg-amber-400/30 dark:text-amber-100">!</span>
+                                    <p className="leading-snug">
+                                        This booking has been approved, so its date, time, and room are locked.
+                                        Cancel and create a new booking if you need to change the schedule.
+                                    </p>
+                                </div>
+                            )}
+
                             <div className="space-y-3">
                                 <div className="flex gap-4">
                                     <FieldIcon><Clock3 className="h-4 w-4" /></FieldIcon>
@@ -647,7 +683,9 @@ export default function BookingPopover({
                                             type="date"
                                             value={date}
                                             onChange={(e) => setDate(e.target.value)}
-                                            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:focus:border-cyan-300 dark:focus:ring-cyan-300/20"
+                                            disabled={isApprovedLocked}
+                                            readOnly={isApprovedLocked}
+                                            className={`rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:focus:border-cyan-300 dark:focus:ring-cyan-300/20 ${isApprovedLocked ? 'cursor-not-allowed bg-slate-100 dark:bg-white/[0.06]' : ''}`}
                                             required
                                         />
                                         <label className="sr-only" htmlFor="booking-start-time">Start time</label>
@@ -657,6 +695,7 @@ export default function BookingPopover({
                                             onChange={setStartTimeValue}
                                             placeholder="Start time"
                                             ariaLabel="Start time"
+                                            disabled={isApprovedLocked}
                                         />
                                         <label className="sr-only" htmlFor="booking-end-time">End time</label>
                                         <TimeInput
@@ -665,6 +704,7 @@ export default function BookingPopover({
                                             onChange={setEndTimeValue}
                                             placeholder="End time"
                                             ariaLabel="End time"
+                                            disabled={isApprovedLocked}
                                         />
                                     </div>
                                 </div>
@@ -673,15 +713,18 @@ export default function BookingPopover({
                                     <FieldIcon><MapPin className="h-4 w-4" /></FieldIcon>
                                     <div className="relative flex-1">
                                         <label className="sr-only" htmlFor="booking-room">Room</label>
-                                        <FloatingSelect
+                                        <RoomCombobox
                                             id="booking-room"
                                             value={roomId || ''}
-                                            placeholder="Select room"
-                                            options={roomOptions}
+                                            rooms={rooms}
                                             onChange={setRoomId}
+                                            lockedRoomId={effectiveLockedRoomId}
+                                            placeholder="Select Room"
                                         />
-                                        {selectedRoom && (
-                                            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Selected room: {selectedRoom.Name}</p>
+                                        {effectiveLockedRoomId != null && !isApprovedLocked && (
+                                            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                                                Room is locked to your sidebar filter.
+                                            </p>
                                         )}
                                     </div>
                                 </div>

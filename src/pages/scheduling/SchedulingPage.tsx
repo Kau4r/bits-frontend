@@ -1,5 +1,3 @@
-import { getRooms } from "@/services/room";
-import type { Room, RoomType } from '@/types/room';
 import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import type { CalendarApi, DateSelectArg, EventDropArg } from '@fullcalendar/core';
@@ -10,50 +8,42 @@ import interactionPlugin from '@fullcalendar/interaction';
 import dayjs from 'dayjs';
 import ReportIssueModal from '@/pages/student/components/ReportIssue';
 import { getBookings, createBooking, updateBooking, updateBookingStatus } from "@/services/booking";
-import { getBorrowings } from "@/services/borrowing";
 import type { Booking } from '@/types/booking';
 import { useAuth } from '@/context/AuthContext';
 import { useModal } from '@/context/ModalContext';
+import { useActiveRoom } from '@/context/ActiveRoomContext';
 import CalendarSidebar from '@/components/CalendarSidebar';
 import BookingPopover from '@/components/BookingPopover';
+import RoomCombobox from '@/pages/scheduling/components/RoomCombobox';
 import WarningModal from '@/pages/scheduling/components/WarningModal';
 import ConfirmModal from '@/pages/scheduling/components/ConfirmModal';
 import { useBookingEvents } from '@/hooks/useBookingEvents';
-import type { BorrowingRequest } from '@/components/RequestCard';
 import type { RecurrenceConfig } from '@/components/RecurrenceModal';
 import { createBookingSeries, upsertSeriesOverride, excludeSeriesDate, updateBookingSeries, deleteBookingSeries, decideSeriesStatus } from '@/services/bookingSeries';
+import { bookingDisplayColor } from '@/lib/bookingDisplayColor';
 
 interface SchedulingProps {
-  allowedRoomTypes?: RoomType[];
   showRejectedMyBookings?: boolean;
 }
 
-export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = false }: SchedulingProps = {}) {
+export default function Scheduling({ showRejectedMyBookings = false }: SchedulingProps = {}) {
   const { user } = useAuth();
   const modal = useModal();
+  const { rooms, activeRoom, activeRoomId, setActiveRoomId } = useActiveRoom();
   const currentUserId = user?.User_ID ?? 0;
   const userRole = user?.User_Role.toUpperCase() ?? 'FACULTY';
   // Scheduling is owned by SECRETARY (CONF/CONS) and LAB_HEAD/LAB_TECH (LAB/LECTURE).
   // ADMIN is intentionally not part of the scheduling workflow — they can view but
   // cannot edit other users' bookings here. Lab heads approve/reject without editing.
   const canManageAllBookings = false;
-  const allowedRoomTypeSet = useMemo(
-    () => allowedRoomTypes ? new Set(allowedRoomTypes) : null,
-    [allowedRoomTypes]
-  );
   type CalendarViewType = 'dayGridMonth' | 'timeGridWeek' | 'timeGridDay' | 'listWeek';
 
   const calendarRef = useRef<FullCalendar | null>(null);
   const [calendarView, setCalendarView] = useState<CalendarViewType>('timeGridWeek');
   const [currentDate, setCurrentDate] = useState(dayjs().format('MMMM YYYY'));
   const [events, setEvents] = useState<any[]>([]);
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [selectedRooms, setSelectedRooms] = useState<number[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showReportIssueModal, setShowReportIssueModal] = useState(false);
-
-  // Borrowing requests state (for faculty users)
-  const [borrowingRequests, setBorrowingRequests] = useState<BorrowingRequest[]>([]);
 
   // Popover state
   const [showPopover, setShowPopover] = useState(false);
@@ -113,18 +103,66 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
     newEnd: Date;
   } | null>(null);
 
-  // Helper to check if a time range overlaps with existing events
-  const checkOverlap = (start: Date, end: Date, roomId: number, excludeEventId?: string) => {
-    return events.find(e => {
-      if (excludeEventId && e.id === excludeEventId) return false;
-      if (e.extendedProps.roomId !== roomId) return false;
-      if (!['APPROVED', 'PENDING'].includes(e.extendedProps.status?.toUpperCase())) return false;
+  // Helper to check if a time range overlaps with existing events.
+  // Multi-user pending policy: other users' PENDING bookings on the same
+  // slot do NOT block — multiple competing pending requests are allowed.
+  // Only APPROVED conflicts (anyone) and the current user's OWN pending
+  // bookings are returned as overlaps. The caller distinguishes via
+  // `isOwnPending` to drive the "Adjust existing schedule?" prompt.
+  const checkOverlap = (
+    start: Date,
+    end: Date,
+    roomId: number,
+    excludeEventId?: string
+  ): { event: any; isOwnPending: boolean } | null => {
+    for (const e of events) {
+      if (excludeEventId && e.id === excludeEventId) continue;
+      if (e.extendedProps.roomId !== roomId) continue;
+      const status = e.extendedProps.status?.toUpperCase();
+      if (status !== 'APPROVED' && status !== 'PENDING') continue;
 
       const eventStart = new Date(e.start);
       const eventEnd = new Date(e.end);
-      return start < eventEnd && end > eventStart;
-    });
+      if (!(start < eventEnd && end > eventStart)) continue;
+
+      const isOwnPending = status === 'PENDING' && e.extendedProps.createdById === currentUserId;
+      const isOthersPending = status === 'PENDING' && !isOwnPending;
+      if (isOthersPending) continue;
+      return { event: e, isOwnPending };
+    }
+    return null;
   };
+
+  // Open an existing booking (by id) in the popover in edit mode. Used by
+  // the "Adjust existing schedule?" flow when a same-user pending booking
+  // is detected at the slot the user just tried to book.
+  const openBookingForEdit = useCallback((bookingId: string) => {
+    const e = events.find(ev => ev.id === bookingId);
+    if (!e) return;
+    const start = new Date(e.start);
+    const end = new Date(e.end);
+    setViewingBooking({
+      id: e.id,
+      title: e.title,
+      description: e.extendedProps.description || '',
+      roomId: e.extendedProps.roomId,
+      roomName: e.extendedProps.roomName || 'Unknown',
+      date: dayjs(start).format('YYYY-MM-DD'),
+      startTime: dayjs(start).format('HH:mm'),
+      endTime: dayjs(end).format('HH:mm'),
+      createdBy: e.extendedProps.createdBy || 'Unknown',
+      createdById: e.extendedProps.createdById,
+      status: e.extendedProps.status || 'PENDING',
+      seriesId: e.extendedProps.seriesId ?? null,
+      originalStart: e.extendedProps.originalStart ?? (e.extendedProps.isVirtual ? new Date(e.start).toISOString() : null),
+      isVirtual: !!e.extendedProps.isVirtual,
+      isRecurring: !!e.extendedProps.isRecurring,
+    });
+    setCanEditBooking(e.extendedProps.createdById === currentUserId || canManageAllBookings);
+    setPopoverPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+    setPopoverTimes({ start, end });
+    setShowPopover(true);
+  }, [events, currentUserId, canManageAllBookings]);
 
   const loadBookings = useCallback(async () => {
     try {
@@ -162,61 +200,10 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
     loadBookings();
   }, [loadBookings]));
 
-  // Load borrowing requests from API for faculty users
-  const loadBorrowingRequests = async () => {
-    try {
-      const data = await getBorrowings({ role: 'borrower' });
-      // Transform API response to BorrowingRequest format
-      const mapped: BorrowingRequest[] = data.map((b: any) => ({
-        id: b.Borrow_Item_ID,
-        item: {
-          Item_ID: b.Item?.Item_ID || 0,
-          Item_Type: b.Item?.Item_Type || 'Unknown',
-          Brand: b.Item?.Brand || 'Unknown',
-          Serial_Number: b.Item?.Serial_Number || '',
-        },
-        borrower: {
-          User_ID: b.Borrower?.User_ID || 0,
-          First_Name: b.Borrower?.First_Name || '',
-          Last_Name: b.Borrower?.Last_Name || '',
-        },
-        borrowDate: b.Borrow_Date,
-        returnDate: b.Return_Date,
-        purpose: b.Purpose || '',
-        status: b.Status,
-        createdAt: b.Created_At,
-      }));
-      setBorrowingRequests(mapped);
-    } catch (error) {
-      console.error('Failed to load borrowing requests:', error);
-    }
-  };
-
-  // Load rooms and bookings
+  // Initial load: bookings only. Rooms come from ActiveRoomContext, and the
+  // sidebar no longer renders borrow-request cards.
   useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        // Only show rooms an admin has flagged as bookable. Storage rooms,
-        // control rooms, dept office, faculty office, green room, etc are
-        // hidden from the scheduling/booking flow.
-        const allRooms = (await getRooms()).filter(r => r.Is_Bookable !== false);
-        if (allRooms.length > 0) {
-          setSelectedRooms([allRooms[0].Room_ID]); // Default to just the first bookable room
-        } else {
-          setSelectedRooms([]);
-        }
-        setRooms(allRooms);
-        await loadBookings();
-
-        // Load borrowing requests for faculty users
-        if (userRole === 'FACULTY') {
-          await loadBorrowingRequests();
-        }
-      } catch (error) {
-        console.error('Failed to load initial data:', error);
-      }
-    };
-    loadInitialData();
+    loadBookings();
   }, [userRole, currentUserId, loadBookings]);
 
   const updateCurrentDate = () => {
@@ -241,40 +228,39 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
     updateCurrentDate();
   };
 
-  const handleRoomToggle = (roomId: number) => {
-    setSelectedRooms(prev => {
-      if (prev.includes(roomId)) {
-        return prev.filter(id => id !== roomId);
-      }
-      return [...prev, roomId];
-    });
-  };
-
-  const handleDateSelect = (selectInfo: DateSelectArg) => {
+  const handleDateSelect = async (selectInfo: DateSelectArg) => {
     calendarRef.current?.getApi()?.unselect();
 
-    if (bookableRooms.length === 0) {
+    if (rooms.length === 0 || activeRoomId == null) {
       setWarningModal({
         isOpen: true,
         title: 'No Rooms Available',
-        message: noRoomsMessage,
+        message: 'No rooms are available for booking.',
         type: 'info',
       });
       return;
     }
 
-    // Only pre-check conflicts when a single room is focused.
-    if (selectedRooms.length === 1) {
-      const overlap = checkOverlap(selectInfo.start, selectInfo.end, selectedRooms[0]);
-      if (overlap) {
-        setWarningModal({
-          isOpen: true,
-          title: 'Time Slot Unavailable',
-          message: `This time slot is already ${overlap.extendedProps.status === 'PENDING' ? 'pending approval' : 'booked'} by ${overlap.extendedProps.createdBy || 'someone else'}.\n\nBooking: "${overlap.title}"\nTime: ${dayjs(overlap.start).format('h:mm A')} - ${dayjs(overlap.end).format('h:mm A')}`,
-          type: 'warning',
-        });
-        return; // Don't open popover
+    // Pre-check conflicts against the active room.
+    const overlap = checkOverlap(selectInfo.start, selectInfo.end, activeRoomId);
+    if (overlap) {
+      // Same-user pending: prompt to adjust the existing booking instead.
+      if (overlap.isOwnPending) {
+        const confirmed = await modal.showConfirm(
+          'You already have a pending booking at this time. Adjust existing schedule?',
+          'Pending Booking Exists'
+        );
+        if (confirmed) openBookingForEdit(overlap.event.id);
+        return;
       }
+      // APPROVED block (anyone). Other-user PENDING is filtered out earlier.
+      setWarningModal({
+        isOpen: true,
+        title: 'Time Slot Unavailable',
+        message: `This time slot is already booked by ${overlap.event.extendedProps.createdBy || 'someone else'}.\n\nBooking: "${overlap.event.title}"\nTime: ${dayjs(overlap.event.start).format('h:mm A')} - ${dayjs(overlap.event.end).format('h:mm A')}`,
+        type: 'warning',
+      });
+      return; // Don't open popover
     }
 
     // Get the click position for popover - use RIGHT edge so popover appears beside cell
@@ -312,11 +298,11 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
   };
 
   const handleCreateClick = () => {
-    if (bookableRooms.length === 0) {
+    if (rooms.length === 0 || activeRoomId == null) {
       setWarningModal({
         isOpen: true,
         title: 'No Rooms Available',
-        message: noRoomsMessage,
+        message: 'No rooms are available for booking.',
         type: 'info',
       });
       return;
@@ -425,6 +411,25 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
     } catch (error: any) {
       console.error('Failed to create booking:', error);
 
+      // Same-user pending conflict — backend returns this when the requester
+      // already has an overlapping pending booking. Offer to open it for edit.
+      if (error.response?.status === 409 && error.response?.data?.code === 'SELF_PENDING_CONFLICT') {
+        setShowPopover(false);
+        const existing = error.response.data.existingBooking;
+        const confirmed = await modal.showConfirm(
+          'You already have a pending booking at this time. Adjust existing schedule?',
+          'Pending Booking Exists'
+        );
+        if (confirmed && existing?.id != null) {
+          // The booking is in our events array (loadBookings runs on mount).
+          // If a fresh fetch is needed (race), reload first.
+          const exists = events.some(e => e.id === String(existing.id));
+          if (!exists) await loadBookings();
+          openBookingForEdit(String(existing.id));
+        }
+        return;
+      }
+
       // Show user-friendly conflict error
       if (error.response?.status === 409) {
         const conflict = error.response?.data?.conflictingBooking;
@@ -454,6 +459,19 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
       return;
     }
 
+    // Approved bookings are locked: once approved, the owner can no longer
+    // reschedule. They must cancel and create a new booking.
+    if (event.extendedProps.status?.toUpperCase() === 'APPROVED') {
+      setWarningModal({
+        isOpen: true,
+        title: 'Approved Booking Locked',
+        message: 'Approved bookings cannot be rescheduled. Cancel this booking and create a new one to change its time.',
+        type: 'info',
+      });
+      revert();
+      return;
+    }
+
     const newStart = event.start;
     const newEnd = event.end;
     const oldStart = oldEvent.start;
@@ -467,10 +485,20 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
     // Frontend check for overlap before showing confirm modal
     const overlap = checkOverlap(newStart, newEnd, event.extendedProps.roomId, event.id);
     if (overlap) {
+      // Same-user pending at the drop target — surface the same prompt.
+      if (overlap.isOwnPending) {
+        revert();
+        const confirmed = await modal.showConfirm(
+          'You already have a pending booking at this time. Adjust existing schedule?',
+          'Pending Booking Exists'
+        );
+        if (confirmed) openBookingForEdit(overlap.event.id);
+        return;
+      }
       setWarningModal({
         isOpen: true,
         title: 'Time Slot Unavailable',
-        message: `Cannot move here - this slot is already ${overlap.extendedProps.status === 'PENDING' ? 'pending approval' : 'booked'} by ${overlap.extendedProps.createdBy || 'someone else'}.\n\nBooking: "${overlap.title}"`,
+        message: `Cannot move here - this slot is already booked by ${overlap.event.extendedProps.createdBy || 'someone else'}.\n\nBooking: "${overlap.event.title}"`,
         type: 'warning',
       });
       revert();
@@ -684,13 +712,15 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
     }
   };
 
-  // Filter events by selected rooms
-  const filteredEvents = events.filter(e =>
-    selectedRooms.includes(e.extendedProps.roomId) &&
-    e.extendedProps.status !== 'REJECTED'
+  // Calendar shows only the active room — header combo box is the single
+  // source of truth for room context across the whole module.
+  const filteredEvents = useMemo(
+    () => events.filter(e =>
+      e.extendedProps.roomId === activeRoomId &&
+      e.extendedProps.status !== 'REJECTED'
+    ),
+    [events, activeRoomId]
   );
-
-  const scheduleColor = '#6f7f8f';
 
   const statusColor: Record<string, string> = {
     APPROVED: '#22c55e',
@@ -698,48 +728,40 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
     CANCELLED: '#6b7280'
   };
 
-  const bookableRooms = useMemo(
-    () => allowedRoomTypeSet ? rooms.filter(room => allowedRoomTypeSet.has(room.Room_Type)) : rooms,
-    [rooms, allowedRoomTypeSet]
-  );
-
   // Recurring class-schedule events from the Schedule Import. Rendered as
   // non-editable red blocks alongside booking events so users can see when a
-  // room is occupied by a scheduled class.
+  // room is occupied by a scheduled class. Only the active room contributes.
   const scheduleEvents = useMemo(() => {
     const pad = (n: number) => String(n).padStart(2, '0');
     const result: any[] = [];
-    for (const room of rooms) {
-      if (!selectedRooms.includes(room.Room_ID)) continue;
-      if (!room.Schedule || room.Schedule.length === 0) continue;
-      for (const sched of room.Schedule) {
-        const days = sched.Days?.split(',')
-          .map(d => parseInt(d.trim(), 10))
-          .filter(d => !Number.isNaN(d)) ?? [];
-        if (days.length === 0) continue;
-        const start = new Date(sched.Start_Time);
-        const end = new Date(sched.End_Time);
-        if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) continue;
-        result.push({
-          id: `schedule-${sched.Schedule_ID}`,
-          title: sched.Title || sched.Schedule_Type || 'Scheduled Class',
-          daysOfWeek: days,
-          startTime: `${pad(start.getHours())}:${pad(start.getMinutes())}:00`,
-          endTime: `${pad(end.getHours())}:${pad(end.getMinutes())}:00`,
-          editable: false,
-          startEditable: false,
-          durationEditable: false,
-          extendedProps: {
-            isScheduleEvent: true,
-            roomId: room.Room_ID,
-            roomName: room.Name,
-            scheduleType: sched.Schedule_Type,
-          },
-        });
-      }
+    if (!activeRoom || !activeRoom.Schedule) return result;
+    for (const sched of activeRoom.Schedule) {
+      const days = sched.Days?.split(',')
+        .map(d => parseInt(d.trim(), 10))
+        .filter(d => !Number.isNaN(d)) ?? [];
+      if (days.length === 0) continue;
+      const start = new Date(sched.Start_Time);
+      const end = new Date(sched.End_Time);
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) continue;
+      result.push({
+        id: `schedule-${sched.Schedule_ID}`,
+        title: sched.Title || sched.Schedule_Type || 'Scheduled Class',
+        daysOfWeek: days,
+        startTime: `${pad(start.getHours())}:${pad(start.getMinutes())}:00`,
+        endTime: `${pad(end.getHours())}:${pad(end.getMinutes())}:00`,
+        editable: false,
+        startEditable: false,
+        durationEditable: false,
+        extendedProps: {
+          isScheduleEvent: true,
+          roomId: activeRoom.Room_ID,
+          roomName: activeRoom.Name,
+          scheduleType: sched.Schedule_Type,
+        },
+      });
     }
     return result;
-  }, [rooms, selectedRooms]);
+  }, [activeRoom]);
 
   const calendarEvents = useMemo(
     () => [...filteredEvents, ...scheduleEvents],
@@ -747,7 +769,7 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
   );
 
   // Client-side conflict probe used by the booking popover + recurrence
-  // modal to flag bad slots BEFORE the user submits. Walks the rooms[]
+  // modal to flag bad slots BEFORE the user submits. Walks the active room's
   // schedule expansion (Days + time-of-day) and the loaded events list
   // (approved bookings only, to avoid noise from PENDING). Returns a short
   // human reason or null when the slot is free.
@@ -786,23 +808,14 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
     [rooms, events]
   );
 
-  const noRoomsMessage = allowedRoomTypes?.length
-    ? 'No rooms matching the allowed room types are available for booking.'
-    : 'No rooms are available for booking.';
-
   return (
     <div className="box-border h-full bg-[#f4f7fa] p-4 dark:bg-[#101828]">
       <div className="flex h-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-[#334155] dark:bg-[#1e2939]">
         {/* Left Sidebar */}
         <CalendarSidebar
-          rooms={rooms}
-          selectedRooms={selectedRooms}
-          onRoomToggle={handleRoomToggle}
           onDateSelect={handleSidebarDateSelect}
           selectedDate={selectedDate}
           onCreateClick={handleCreateClick}
-          borrowingRequests={borrowingRequests}
-          showBorrowingRequests={userRole === 'FACULTY'}
           showRejectedBookings={showRejectedMyBookings}
           myBookings={events.filter(e =>
             e.extendedProps.createdById === currentUserId &&
@@ -843,12 +856,10 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
 
         {/* Main Calendar Area */}
         <div className="flex min-h-0 flex-1 flex-col">
-          {/* Top Navigation */}
-          <div className="flex items-center justify-between border-b border-slate-200 bg-white/90 px-4 py-3 shadow-sm shadow-slate-200/60 dark:border-[#334155] dark:bg-[#1e2939] dark:shadow-none">
-          <div className="flex items-center gap-4">
-            <div className="mr-2 hidden lg:block">
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{selectedRooms.length} room{selectedRooms.length === 1 ? '' : 's'} visible</p>
-            </div>
+          {/* Top Navigation: 3-column flex so the room context selector stays
+              centered regardless of how wide the side groups grow. */}
+          <div className="flex items-center border-b border-slate-200 bg-white/90 px-4 py-3 shadow-sm shadow-slate-200/60 dark:border-[#334155] dark:bg-[#1e2939] dark:shadow-none">
+          <div className="flex flex-1 items-center gap-4 min-w-0">
             <button
               onClick={goToToday}
               className="rounded-lg border border-slate-200 bg-white px-4 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-[#4a5563] dark:bg-transparent dark:text-gray-300 dark:hover:bg-[#2b3440]"
@@ -863,14 +874,32 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
                 ›
               </button>
             </div>
-            <h1 className="text-xl font-semibold text-slate-900 dark:text-white">{currentDate}</h1>
-            <div className="hidden items-center gap-3 rounded-lg bg-slate-100 px-3 py-1.5 text-xs text-slate-600 dark:bg-white/[0.05] dark:text-slate-300 xl:flex">
+            <h1 className="truncate text-xl font-semibold text-slate-900 dark:text-white">{currentDate}</h1>
+            <div className="hidden items-center gap-3 rounded-lg bg-slate-100 px-3 py-1.5 text-xs text-slate-600 dark:bg-white/[0.05] dark:text-slate-300 2xl:flex">
               <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-green-500" />Approved</span>
               <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-yellow-500" />Pending</span>
+              <span className="mx-1 h-3 w-px bg-slate-300 dark:bg-white/10" />
+              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-emerald-100 ring-1 ring-emerald-300 dark:bg-emerald-900/50 dark:ring-emerald-700" />Yours</span>
+              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-zinc-100 ring-1 ring-zinc-300 dark:bg-zinc-700/60 dark:ring-zinc-500" />Other user</span>
+              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-rose-100 ring-1 ring-rose-300 dark:bg-rose-900/50 dark:ring-rose-700" />Class</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          {/* Active Room Context Switcher — single source of truth for which
+              room the calendar, booking form, and borrow form operate on. */}
+          <div className="flex shrink-0 items-center justify-center">
+            <div className="w-36 rounded-xl ring-1 ring-indigo-200/70 ring-offset-1 ring-offset-white transition focus-within:ring-2 focus-within:ring-indigo-400 sm:w-40 md:w-44 dark:ring-[#615fff]/40 dark:ring-offset-[#1e2939]">
+              <RoomCombobox
+                id="schedule-active-room"
+                value={activeRoomId ?? ''}
+                rooms={rooms}
+                onChange={setActiveRoomId}
+                placeholder="Select Room"
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-1 items-center justify-end gap-3">
             {/* View Selector */}
             <div className="flex rounded-lg bg-slate-100 p-1 ring-1 ring-slate-200 dark:bg-[#2b3440] dark:ring-transparent">
               {(['timeGridDay', 'timeGridWeek', 'dayGridMonth', 'listWeek'] as const).map((view) => (
@@ -925,28 +954,33 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
             }}
             eventMouseLeave={() => setTooltipInfo(prev => ({ ...prev, visible: false }))}
             events={calendarEvents}
-            eventColor={scheduleColor}
-            eventBackgroundColor={scheduleColor}
-            eventBorderColor={scheduleColor}
-            eventTextColor="#ffffff"
+            eventBackgroundColor="transparent"
+            eventBorderColor="transparent"
+            eventTextColor="inherit"
             eventContent={(arg) => {
               const { event, view } = arg;
               const roomName = event.extendedProps.roomName as string | undefined;
               const isScheduleEvent = event.extendedProps.isScheduleEvent as boolean | undefined;
+              const createdById = event.extendedProps.createdById as number | undefined;
+              const colors = bookingDisplayColor({
+                isScheduleEvent,
+                createdById,
+                viewerUserId: currentUserId,
+              });
 
-              // In list view we render plain inline content so FullCalendar's
-              // built-in row layout (.fc-list-event-title CSS) handles colors
-              // and spacing. Returning a colored block here would clash with
-              // the table layout and end up white-on-white in light mode.
               if (view.type.startsWith('list')) {
                 return (
                   <span className="inline-flex flex-wrap items-center gap-2">
+                    <span
+                      className={`inline-block h-2.5 w-2.5 shrink-0 rounded-sm ${colors.container}`}
+                      aria-hidden="true"
+                    />
                     <span className="font-semibold">{event.title}</span>
                     {roomName && (
                       <span className="text-slate-500 dark:text-slate-400">— {roomName}</span>
                     )}
                     {isScheduleEvent && (
-                      <span className="rounded bg-pink-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-pink-700 dark:bg-pink-300/30 dark:text-pink-200">
+                      <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-700 dark:bg-rose-300/30 dark:text-rose-200">
                         Class
                       </span>
                     )}
@@ -962,7 +996,7 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
               if (isScheduleEvent) {
                 return (
                   <div
-                    className={`schedule-class-event flex h-full w-full overflow-hidden rounded bg-pink-200 px-2 text-xs text-pink-900 dark:bg-pink-300/80 dark:text-pink-950 ${
+                    className={`schedule-class-event flex h-full w-full overflow-hidden rounded px-2 text-xs ${colors.container} ${
                       isShort ? 'items-center py-0' : 'flex-col justify-start py-1'
                     }`}
                   >
@@ -978,19 +1012,20 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
 
               return (
                 <div
-                  className={`schedule-calendar-event relative flex h-full w-full overflow-hidden rounded px-2 pr-5 text-xs text-white ${
+                  className={`schedule-calendar-event relative flex h-full w-full overflow-hidden rounded px-2 pr-5 text-xs ${colors.container} ${
                     isShort ? 'items-center py-0' : 'flex-col justify-start py-1'
                   }`}
+                  aria-label={colors.label}
                 >
                   <span
-                    className={`absolute right-1.5 ${isShort ? 'top-1/2 -translate-y-1/2' : 'top-1.5'} h-2.5 w-2.5 rounded-full ring-1 ring-white/70 dark:ring-gray-900/70`}
+                    className={`absolute right-1.5 ${isShort ? 'top-1/2 -translate-y-1/2' : 'top-1.5'} h-2.5 w-2.5 rounded-full ${colors.dotRing}`}
                     style={{ backgroundColor: statusColor[status] || '#6366f1' }}
                     title={status}
                     aria-label={`Status: ${status}`}
                   />
                   <div className="min-w-0 truncate font-medium leading-tight">{event.title}</div>
                   {!isShort && roomName && (
-                    <div className="truncate text-[11px] leading-tight opacity-90">{roomName}</div>
+                    <div className="truncate text-[11px] leading-tight opacity-80">{roomName}</div>
                   )}
                 </div>
               );
@@ -1136,8 +1171,11 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
         }}
         startTime={popoverTimes.start}
         endTime={popoverTimes.end}
-        rooms={bookableRooms}
-        selectedRoomId={bookableRooms.find(room => selectedRooms.includes(room.Room_ID))?.Room_ID ?? bookableRooms[0]?.Room_ID}
+        rooms={rooms}
+        selectedRoomId={activeRoomId ?? undefined}
+        // Booking form's room field always tracks the active room context.
+        // The header combobox is the authority — booking form just reads it.
+        lockedRoomId={activeRoomId ?? undefined}
         isSubmitting={isSubmitting}
         viewingBooking={viewingBooking}
         canEdit={canEditBooking}
@@ -1156,7 +1194,7 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
         onSubmit={async (description, issueType, equipment, pcNumber, noRoom) => {
           console.log('Submitting issue:', { description, issueType, equipment, pcNumber, noRoom });
         }}
-        room={rooms.find(r => r.Room_ID === selectedRooms[0])?.Name || ''}
+        room={activeRoom?.Name || ''}
         pcNumber="N/A"
       />
 

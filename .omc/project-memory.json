@@ -246,16 +246,16 @@
       "type": "file"
     },
     {
+      "path": "src",
+      "accessCount": 32,
+      "lastAccessed": 1777483310227,
+      "type": "directory"
+    },
+    {
       "path": "src\\pages\\labtech\\BorrowingPage.tsx",
       "accessCount": 31,
       "lastAccessed": 1777433232870,
       "type": "file"
-    },
-    {
-      "path": "src",
-      "accessCount": 30,
-      "lastAccessed": 1777433092994,
-      "type": "directory"
     },
     {
       "path": "src\\pages\\labtech\\components\\WeeklyReportDialog.tsx",
@@ -336,6 +336,12 @@
       "type": "file"
     },
     {
+      "path": "CLAUDE.md",
+      "accessCount": 6,
+      "lastAccessed": 1777478801514,
+      "type": "file"
+    },
+    {
       "path": "src\\services\\inventory.ts",
       "accessCount": 5,
       "lastAccessed": 1776869397376,
@@ -405,12 +411,6 @@
       "path": "src\\context\\HeartbeatContext.tsx",
       "accessCount": 3,
       "lastAccessed": 1776856489735,
-      "type": "file"
-    },
-    {
-      "path": "CLAUDE.md",
-      "accessCount": 3,
-      "lastAccessed": 1776911511294,
       "type": "file"
     },
     {

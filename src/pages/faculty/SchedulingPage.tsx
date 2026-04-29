@@ -1,14 +1,13 @@
 import Scheduling from '@/pages/scheduling/SchedulingPage';
-import { Bell, LogOut, PlusCircle, AlertTriangle, X, Package, Calendar, Clock, MapPin, FileText } from 'lucide-react';
+import { Bell, LogOut, PlusCircle, AlertTriangle, X, Package, Calendar, Clock, MapPin, FileText, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useModal } from '@/context/ModalContext';
 import { useNotifications } from '@/context/NotificationContext';
+import { ActiveRoomProvider, useActiveRoom } from '@/context/ActiveRoomContext';
 import { getInventory } from '@/services/inventory';
 import type { Item } from '@/types/inventory';
-import { getRooms } from '@/services/room';
-import type { Room } from '@/types/room';
 import { getNotifications, type Notification } from '@/services/notifications';
 import { createBorrowing } from '@/services/borrowing';
 import { getBookings } from '@/services/booking';
@@ -45,11 +44,15 @@ const getBorrowDefaults = () => {
   };
 };
 
-const FacultyScheduling = () => {
+const FacultySchedulingInner = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const modal = useModal();
   const { notifications: liveNotifications, unreadCount, markAsRead } = useNotifications();
+  // Active room context — single source of truth for which room the
+  // calendar, booking form, and borrow form operate on. Driven by the
+  // header combo box inside <Scheduling/>.
+  const { activeRoom, activeRoomId } = useActiveRoom();
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
@@ -58,36 +61,22 @@ const FacultyScheduling = () => {
   const [showReportIssueModal, setShowReportIssueModal] = useState(false);
   const [currentRoom, setCurrentRoom] = useState<string>('General Facility');
 
-  // Borrow Modal State
+  // Borrow Modal State — note: the room field is no longer user-selectable.
+  // It tracks `activeRoomId` from the schedule header context.
   const [isBorrowModalOpen, setIsBorrowModalOpen] = useState(false);
   const [inventoryItems, setInventoryItems] = useState<Item[]>([]);
   const [selectedType, setSelectedType] = useState<string>('');
   const [isLoadingItems, setIsLoadingItems] = useState(false);
   const [borrowSchedule, setBorrowSchedule] = useState(getBorrowDefaults);
-  const [borrowRooms, setBorrowRooms] = useState<Room[]>([]);
-  const [selectedBorrowRoomId, setSelectedBorrowRoomId] = useState<number | ''>('');
 
-  // Fetch items + rooms when modal opens
+  // Fetch items when modal opens.
   useEffect(() => {
     if (isBorrowModalOpen) {
       loadItems();
-      loadBorrowRooms();
       setSelectedType(''); // Reset type
-      setSelectedBorrowRoomId('');
       setBorrowSchedule(getBorrowDefaults());
     }
   }, [isBorrowModalOpen]);
-
-  const loadBorrowRooms = async () => {
-    try {
-      const rooms = await getRooms();
-      // Restrict to bookable rooms; faculty borrowing usually targets the
-      // room they're teaching/working in, not storage/control rooms.
-      setBorrowRooms(rooms.filter(r => r.Is_Bookable !== false));
-    } catch (error) {
-      console.error('Failed to load rooms', error);
-    }
-  };
 
   // Fetch current active booking for room context
   useEffect(() => {
@@ -365,9 +354,14 @@ const FacultyScheduling = () => {
               const returnTime = formData.get('returnTime') as string;
               const purpose = formData.get('purpose') as string;
 
-              // Validation - only need item type now, not specific item
-              if (!selectedType || !borrowDate || !borrowTime || !returnDate || !returnTime || !purpose.trim() || !selectedBorrowRoomId) {
-                modal.showError('Please fill in all required fields, including the room.', 'Validation Error');
+              // Validation - only need item type now, not specific item.
+              // Room comes from the active room context, not a form input.
+              if (!selectedType || !borrowDate || !borrowTime || !returnDate || !returnTime || !purpose.trim()) {
+                modal.showError('Please fill in all required fields.', 'Validation Error');
+                return;
+              }
+              if (activeRoomId == null) {
+                modal.showError('Pick a room from the header before requesting a borrow.', 'No active room');
                 return;
               }
 
@@ -396,7 +390,7 @@ const FacultyScheduling = () => {
                   purpose,
                   borrowDate: borrowDateTime.toISOString(),
                   expectedReturnDate: returnDateTime.toISOString(),
-                  roomId: typeof selectedBorrowRoomId === 'number' ? selectedBorrowRoomId : undefined,
+                  roomId: activeRoomId,
                 });
 
                 modal.showSuccess('Borrowing request submitted! A Lab Tech will assign a specific item.', 'Success');
@@ -443,13 +437,21 @@ const FacultyScheduling = () => {
                         <MapPin className="h-3.5 w-3.5 text-slate-400" />
                         Room <span className="text-rose-500">*</span>
                       </label>
-                      <FloatingSelect
+                      {/* Room is locked to the active room context — change
+                          rooms via the header combo box on the schedule. */}
+                      <div
                         id="faculty-borrow-room"
-                        value={selectedBorrowRoomId === '' ? '' : selectedBorrowRoomId}
-                        placeholder="Where you'll use the item"
-                        options={borrowRooms.map((room) => ({ value: room.Room_ID, label: room.Name }))}
-                        onChange={(value) => setSelectedBorrowRoomId(typeof value === 'number' ? value : Number(value))}
-                      />
+                        aria-readonly="true"
+                        className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-100 px-3 py-2.5 text-sm font-medium text-slate-700 dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-200"
+                      >
+                        <span className="truncate">
+                          {activeRoom ? activeRoom.Name : 'No active room — select one in the schedule header'}
+                        </span>
+                        <Lock className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-label="Room locked to active room context" />
+                      </div>
+                      <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+                        Set in the schedule header.
+                      </p>
                     </div>
                   </div>
                 </section>
@@ -599,5 +601,11 @@ const FacultyScheduling = () => {
     </div>
   );
 };
+
+const FacultyScheduling = () => (
+  <ActiveRoomProvider storageScope="faculty">
+    <FacultySchedulingInner />
+  </ActiveRoomProvider>
+);
 
 export default FacultyScheduling;
