@@ -184,8 +184,8 @@ const FacultyScheduling = () => {
   const loadNotifications = async () => {
     setIsLoadingNotifications(true);
     try {
-      const data = await getNotifications({ limit: 10 });
-      setNotifications(data);
+      const { notifications: fetched } = await getNotifications({ limit: 10 });
+      setNotifications(fetched);
     } catch (error) {
       console.error('Failed to load notifications:', error);
     } finally {

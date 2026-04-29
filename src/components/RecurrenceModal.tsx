@@ -96,7 +96,7 @@ const buildRrule = (cfg: RecurrenceConfig): string => {
     }
 
     if (cfg.endType === 'ON_DATE' && cfg.endDate) {
-        parts.push(`UNTIL=${cfg.endDate.replaceAll('-', '')}T235959Z`);
+        parts.push(`UNTIL=${cfg.endDate.replace(/-/g, '')}T235959Z`);
     } else if (cfg.endType === 'AFTER_COUNT' && cfg.endCount > 0) {
         parts.push(`COUNT=${cfg.endCount}`);
     }

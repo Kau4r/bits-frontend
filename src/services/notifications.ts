@@ -26,9 +26,9 @@ export const getNotifications = async (params?: {
     cursor?: number;
 }): Promise<{ notifications: Notification[]; nextCursor: number | null }> => {
     const response = await api.get<any[]>("/notifications", { params });
-    const notifications = response.data.map((log: any) => ({
+    const notifications: Notification[] = response.data.map((log: any) => ({
         id: log.Log_ID,
-        type: log.Action.includes('ERROR') || log.Action.includes('REJECT') ? 'warning' : 'info',
+        type: (log.Action.includes('ERROR') || log.Action.includes('REJECT') ? 'warning' : 'info') as Notification['type'],
         title: log.Action.replace(/_/g, ' '),
         message: log.Details,
         time: new Date(log.Timestamp).toLocaleTimeString(),

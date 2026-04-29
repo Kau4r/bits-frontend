@@ -353,7 +353,6 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
     try {
       const anchorStart = new Date(`${data.date}T${data.startTime}:00`);
       const anchorEnd = new Date(`${data.date}T${data.endTime}:00`);
-      const durationMs = anchorEnd.getTime() - anchorStart.getTime();
 
       // Recurrence path: persist a single Booking_Series row on the backend.
       // The backend expands the RRULE virtually on read, so individual
