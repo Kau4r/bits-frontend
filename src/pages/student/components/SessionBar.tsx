@@ -7,15 +7,30 @@ import { useHeartbeat } from '@/context/HeartbeatContext';
 import { useHeartbeatInterval } from '@/hooks/useHeartbeat';
 import { endSession } from '@/services/heartbeat';
 import { createTicket } from '@/services/tickets';
-import { getOpenedLabs, type OpenedLabRoom, type StudentUsageBooking } from '@/services/room';
-import { buildTicketLocation } from '@/lib/ticketLocation';
+import { getOpenedLabs, getRooms, type OpenedLabRoom, type StudentUsageBooking } from '@/services/room';
+import type { Room } from '@/types/room';
 
 interface SessionBarProps {
   timeSlot?: string;
-  onReportIssue?: (description: string, issueType: string, equipment: string, pcNumber: string) => Promise<void>;
+  onReportIssue?: (
+    description: string,
+    issueType: string,
+    equipment: string,
+    pcNumber: string,
+    noRoom: boolean,
+    roomId: number | null,
+  ) => Promise<void>;
   onEndSession?: () => void; // optional; if not provided, SessionBar will logout by itself
   isLoading?: boolean;
 }
+
+const EQUIPMENT_LABEL: Record<string, string> = {
+  monitor: 'Monitor',
+  keyboard: 'Keyboard',
+  mouse: 'Mouse',
+  'mini-pc': 'Mini PC',
+  headset: 'Headset',
+};
 
 interface StudentUsageSummary {
   roomName: string;
@@ -68,6 +83,7 @@ export default function SessionBar({
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [studentUsage, setStudentUsage] = useState<StudentUsageSummary | null>(null);
   const [isUsageLoading, setIsUsageLoading] = useState(true);
+  const [rooms, setRooms] = useState<Room[]>([]);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { computer, isDetecting, detectionFailed, sessionId, stopHeartbeat } = useHeartbeat();
@@ -108,26 +124,58 @@ export default function SessionBar({
     };
   }, []);
 
+  // Fetch the room list once for the Report Issue combobox so the student
+  // can correct or change the auto-detected room.
+  useEffect(() => {
+    let isMounted = true;
+    getRooms()
+      .then((data) => {
+        if (isMounted) setRooms(data);
+      })
+      .catch((err) => console.error('Failed to fetch rooms for report modal:', err));
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Default ticket creation for students creates a real ticket and notifies LabTechs via backend
-  const handleReportIssue = async (description: string, issueType: string, equipment: string, editedPcNumber: string) => {
+  const handleReportIssue = async (
+    description: string,
+    issueType: string,
+    equipment: string,
+    editedPcNumber: string,
+    noRoom: boolean,
+    chosenRoomId: number | null,
+  ) => {
     if (onReportIssue) {
-      return onReportIssue(description, issueType, equipment, editedPcNumber);
+      return onReportIssue(description, issueType, equipment, editedPcNumber, noRoom, chosenRoomId);
     }
 
     if (!user?.User_ID) return;
 
-    const categoryMap: Record<string, 'HARDWARE' | 'SOFTWARE' | 'FACILITY' | 'OTHER'> = {
+    const categoryMap: Record<string, 'HARDWARE' | 'SOFTWARE' | 'OTHER'> = {
       hardware: 'HARDWARE',
       software: 'SOFTWARE',
-      network: 'FACILITY',
+      network: 'OTHER',
       other: 'OTHER',
     };
 
+    // Equipment + PC are folded into a single "[Equipment · PC X]" tag prefix on
+    // the description so the labtech UI can render them as a small chip. Location
+    // stays null — Room_ID is the structured "where", and labtechs use Location
+    // only as a free-text override.
+    const equipmentLabel = equipment ? EQUIPMENT_LABEL[equipment] || null : null;
+    const tagParts: string[] = [];
+    if (equipmentLabel) tagParts.push(equipmentLabel);
+    if (editedPcNumber) tagParts.push(editedPcNumber);
+    const tagPrefix = tagParts.length > 0 ? `[${tagParts.join(' · ')}] ` : '';
+    const finalDescription = `${tagPrefix}${description}`;
+
     await createTicket({
       Reported_By_ID: user.User_ID,
-      Report_Problem: description,
-      Location: buildTicketLocation({ equipment, pcLabel: editedPcNumber, roomName }),
-      Room_ID: roomId,
+      Report_Problem: finalDescription,
+      Location: null,
+      Room_ID: noRoom ? null : chosenRoomId ?? null,
       Category: categoryMap[issueType] ?? 'OTHER',
       Status: 'PENDING',
     });
@@ -228,6 +276,8 @@ export default function SessionBar({
         onSubmit={handleReportIssue}
         room={roomName}
         pcNumber={pcLabel}
+        rooms={rooms.map((r) => ({ Room_ID: r.Room_ID, Name: r.Name }))}
+        defaultRoomId={roomId ?? null}
       />
     </div>
   );

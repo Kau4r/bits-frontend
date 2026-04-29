@@ -6,21 +6,10 @@ import { createTicket, updateTicket } from '@/services/tickets';
 import { getRooms } from '@/services/room';
 import type { Room } from '@/types/room';
 import { useAuth } from '@/context/AuthContext';
-import api from '@/services/api';
 import { FloatingSelect } from '@/ui/FloatingSelect';
 import { FloatingCombobox } from '@/ui/FloatingCombobox';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
-import { formatItemType } from '@/lib/utils';
-
-// Asset type for item selection
-interface Asset {
-  Item_ID: number;
-  Item_Code: string;
-  Item_Type: string;
-  Brand: string | null;
-  Status: string;
-  Room?: { Name: string } | null;
-}
+import { parseTicketDescriptionTag, parseTicketTag, buildTicketDescription } from '@/lib/ticketLocation';
 
 interface TicketingModalProps {
   isOpen: boolean;
@@ -48,14 +37,14 @@ export default function TicketingModal({
   const [rooms, setRooms] = useState<Room[]>([]);
   const [formData, setFormData] = useState({
     reportProblem: '',
+    pcNumber: '',
+    equipmentLabel: '',
     location: '',
     itemId: undefined as number | undefined,
     roomId: undefined as number | undefined,
   });
   const [feedbackMessage, setFeedbackMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [assets, setAssets] = useState<Asset[]>([]);
-  const [isLoadingAssets, setIsLoadingAssets] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditingExisting, setIsEditingExisting] = useState(false);
   const [editBaseline, setEditBaseline] = useState<{
@@ -63,6 +52,8 @@ export default function TicketingModal({
     priority: TicketPriority | '';
     category: TicketCategory | '';
     reportProblem: string;
+    pcNumber: string;
+    equipmentLabel: string;
     location: string;
     itemId: number | undefined;
   } | null>(null);
@@ -83,13 +74,14 @@ export default function TicketingModal({
   const categoryLabels: Record<string, string> = { HARDWARE: 'Hardware', SOFTWARE: 'Software', FACILITY: 'Facility', OTHER: 'Other' };
   const priorityLabels: Record<string, string> = { HIGH: 'High', MEDIUM: 'Medium', LOW: 'Low' };
   const statusLabels: Record<string, string> = { PENDING: 'Pending', IN_PROGRESS: 'In Progress', RESOLVED: 'Resolved' };
-  const selectedAsset = assets.find(a => a.Item_ID === formData.itemId);
 
   const hasTicketChanges = !isCreating && Boolean(editBaseline) && (
     status !== editBaseline?.status ||
     (priority || '') !== (editBaseline?.priority || '') ||
     (category || '') !== (editBaseline?.category || '') ||
     formData.reportProblem !== (editBaseline?.reportProblem || '') ||
+    formData.pcNumber !== (editBaseline?.pcNumber || '') ||
+    formData.equipmentLabel !== (editBaseline?.equipmentLabel || '') ||
     formData.location !== (editBaseline?.location || '') ||
     (formData.itemId ?? undefined) !== (editBaseline?.itemId ?? undefined)
   );
@@ -117,74 +109,6 @@ export default function TicketingModal({
     }
   }, [isOpen]);
 
-  // Fetch assets when category is HARDWARE and location is selected
-  useEffect(() => {
-    const fetchAssets = async () => {
-      if (category !== 'HARDWARE') {
-        setAssets([]);
-        return;
-      }
-
-      // Find room ID from location
-      const selectedRoom = rooms.find(r => r.Name === formData.location);
-
-      if (!selectedRoom) {
-        setAssets([]);
-        return;
-      }
-
-      setIsLoadingAssets(true);
-      try {
-        // Get items directly linked to the room
-        const inventoryResponse = await api.get<Asset[]>('/inventory', { params: { roomId: selectedRoom.Room_ID } });
-
-        // Also get items from computers in this room
-        const computersResponse = await api.get<{
-          Computer_ID: number;
-          Name: string;
-          Item: { Item_ID: number; Item_Code: string; Item_Type: string; Brand: string | null; Status: string }[];
-        }[]>('/computers', { params: { roomId: selectedRoom.Room_ID } });
-
-        // Map computer items to Asset format
-        const computerItems: Asset[] = computersResponse.data.flatMap(computer =>
-          computer.Item.map(item => ({
-            Item_ID: item.Item_ID,
-            Item_Code: item.Item_Code,
-            Item_Type: item.Item_Type,
-            Brand: item.Brand,
-            Status: item.Status,
-            Room: { Name: selectedRoom.Name },
-          }))
-        );
-
-        // Combine both sources, avoiding duplicates
-        const directItems = inventoryResponse.data;
-        const allItems = [...directItems];
-
-        computerItems.forEach(ci => {
-          if (!allItems.some(item => item.Item_ID === ci.Item_ID)) {
-            allItems.push(ci);
-          }
-        });
-
-        // Filter to show only available/defective items
-        const relevantAssets = allItems.filter(item =>
-          ['AVAILABLE', 'BORROWED', 'DEFECTIVE'].includes(item.Status)
-        );
-        setAssets(relevantAssets);
-      } catch (err) {
-        console.error('Failed to fetch assets', err);
-      } finally {
-        setIsLoadingAssets(false);
-      }
-    };
-
-    if (isOpen && category === 'HARDWARE' && formData.location) {
-      fetchAssets();
-    } else {
-      setAssets([]);
-    }
-  }, [isOpen, category, formData.location, rooms]);
 
   // Populate form when editing or creating
   useEffect(() => {
@@ -192,8 +116,14 @@ export default function TicketingModal({
       setStatus(ticket.Status);
       setPriority(ticket.Priority || '');
       setCategory(ticket.Category || '');
+      // Split the stored "[Equipment · PC] body" string into editable parts so
+      // the textarea shows just the body and PC has its own input.
+      const parsed = parseTicketDescriptionTag(ticket.Report_Problem);
+      const { equipment, pcNumber } = parseTicketTag(parsed.tag);
       setFormData({
-        reportProblem: ticket.Report_Problem,
+        reportProblem: parsed.body,
+        pcNumber: pcNumber ?? '',
+        equipmentLabel: equipment ?? '',
         location: ticket.Location || ticket.Room?.Name || '',
         itemId: ticket.Item?.Item_ID ?? ticket.Item_ID ?? undefined,
         roomId: ticket.Room_ID ?? undefined,
@@ -207,7 +137,7 @@ export default function TicketingModal({
       setStatus('PENDING');
       setPriority('');
       setCategory('');
-      setFormData({ reportProblem: '', location: '', itemId: undefined, roomId: undefined });
+      setFormData({ reportProblem: '', pcNumber: '', equipmentLabel: '', location: '', itemId: undefined, roomId: undefined });
       setLocalTechnician(null);
       setIsEditingExisting(false);
       setEditBaseline(null);
@@ -244,14 +174,14 @@ export default function TicketingModal({
       return;
     }
 
-    const reportProblem = formData.reportProblem.trim();
+    const reportBody = formData.reportProblem.trim();
     const nextFieldErrors: Record<string, string> = {};
 
     if (category === 'HARDWARE' && !formData.location.trim()) {
       nextFieldErrors.location = 'Location is required for hardware tickets.';
     }
 
-    if (!reportProblem) {
+    if (!reportBody) {
       nextFieldErrors.reportProblem = 'Report description cannot be empty.';
     }
 
@@ -259,6 +189,13 @@ export default function TicketingModal({
       setFieldErrors(nextFieldErrors);
       return;
     }
+
+    // Re-fold equipment + PC into the "[Equipment · PC] body" tag prefix on the
+    // way out. PC only gets carried through when the category supports it.
+    const supportsPc = category === 'HARDWARE' || category === 'SOFTWARE';
+    const finalEquipment = formData.equipmentLabel.trim() || null;
+    const finalPc = supportsPc ? (formData.pcNumber.trim() || null) : null;
+    const finalDescription = buildTicketDescription(finalEquipment, finalPc, reportBody);
 
     setFieldErrors({});
     setIsSubmitting(true);
@@ -281,7 +218,7 @@ export default function TicketingModal({
 
         const newTicket = await createTicket({
           Reported_By_ID: user.User_ID,
-          Report_Problem: reportProblem,
+          Report_Problem: finalDescription,
           Location: formData.location || undefined,
           Item_ID: formData.itemId,
           Room_ID: roomId,
@@ -293,7 +230,7 @@ export default function TicketingModal({
       } else if (ticket) {
         const updatedTicket = await updateTicket(ticket.Ticket_ID, {
           Status: status,
-          Report_Problem: reportProblem,
+          Report_Problem: finalDescription,
           Location: formData.location || null,
           Item_ID: formData.itemId ?? null,
           Room_ID: roomId ?? null,
@@ -335,6 +272,8 @@ export default function TicketingModal({
       priority,
       category,
       reportProblem: formData.reportProblem,
+      pcNumber: formData.pcNumber,
+      equipmentLabel: formData.equipmentLabel,
       location: formData.location,
       itemId: formData.itemId,
     });
@@ -391,6 +330,14 @@ export default function TicketingModal({
           {/* Ticket Meta Info */}
           {ticket && !isCreating && (
             <div className="mb-6 grid grid-cols-2 gap-4 rounded-lg bg-gray-100 dark:bg-gray-800 p-4 border border-gray-200 dark:border-gray-700">
+              <div>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Reported By</p>
+                <p className="font-medium text-gray-900 dark:text-white mt-1 truncate">
+                  {ticket.Reporter_Identifier
+                    ? ticket.Reporter_Identifier
+                    : `${ticket.Reported_By.First_Name} ${ticket.Reported_By.Last_Name}`}
+                </p>
+              </div>
               <div>
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Date Reported</p>
                 <p className="font-medium text-gray-900 dark:text-white mt-1">
@@ -516,7 +463,7 @@ export default function TicketingModal({
                       }}
                     />
                   ) : (
-                    <div className={readOnlyFieldClass}>{category ? categoryLabels[category] : '—'}</div>
+                    <div className={readOnlyFieldClass}>{category ? categoryLabels[category] : 'None'}</div>
                   )}
                 </div>
               </div>
@@ -540,48 +487,12 @@ export default function TicketingModal({
                   required={category === 'HARDWARE'}
                 />
               ) : (
-                <div className={readOnlyFieldClass}>{formData.location || '—'}</div>
+                <div className={readOnlyFieldClass}>{formData.location || 'None'}</div>
               )}
               {fieldErrors.location && (
                 <p className="mt-1.5 text-xs font-medium text-red-600 dark:text-red-400">{fieldErrors.location}</p>
               )}
             </div>
-
-            {/* Asset/Item Selector - Only for HARDWARE category after location is selected */}
-            {category === 'HARDWARE' && formData.location && rooms.some(r => r.Name === formData.location) && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  Affected Item (Optional)
-                </label>
-                <div>
-                  {canModifyTicketFields ? (
-                    <FloatingSelect
-                      id="ticket-item"
-                      value={formData.itemId || ''}
-                      placeholder="Select an item..."
-                      options={assets.map((asset) => ({
-                        value: asset.Item_ID,
-                        label: `${asset.Item_Code} - ${formatItemType(asset.Item_Type)}${asset.Brand ? ` (${asset.Brand})` : ''}`,
-                      }))}
-                      onChange={(value) => setFormData({ ...formData, itemId: Number(value) })}
-                      disabled={isLoadingAssets}
-                    />
-                  ) : (
-                    <div className={readOnlyFieldClass}>
-                      {selectedAsset
-                        ? `${selectedAsset.Item_Code} - ${formatItemType(selectedAsset.Item_Type)}${selectedAsset.Brand ? ` (${selectedAsset.Brand})` : ''}`
-                        : '—'}
-                    </div>
-                  )}
-                </div>
-                {isLoadingAssets && (
-                  <p className="mt-1.5 text-xs text-gray-500">Loading assets from {formData.location}...</p>
-                )}
-                {!isLoadingAssets && assets.length === 0 && (
-                  <p className="mt-1.5 text-xs text-gray-500">No items found in this room</p>
-                )}
-              </div>
-            )}
 
             {/* Priority - Third Position */}
             {showTicketManagementFields && (
@@ -601,17 +512,51 @@ export default function TicketingModal({
                       onChange={(value) => setPriority(value as TicketPriority)}
                     />
                   ) : (
-                    <div className={readOnlyFieldClass}>{priority ? priorityLabels[priority] : '—'}</div>
+                    <div className={readOnlyFieldClass}>{priority ? priorityLabels[priority] : 'Not set'}</div>
                   )}
                 </div>
               </div>
             )}
 
+            {/* PC Number - only relevant for hardware/software issues */}
+            {(category === 'HARDWARE' || category === 'SOFTWARE') && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  PC <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                {canModifyTicketFields ? (
+                  <input
+                    type="text"
+                    value={formData.pcNumber}
+                    onChange={(e) => setFormData({ ...formData, pcNumber: e.target.value })}
+                    maxLength={50}
+                    placeholder="e.g. PC-12"
+                    className="w-full px-4 py-3 bg-white dark:bg-[#1e2939] border border-gray-300 dark:border-[#334155] rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                ) : (
+                  <div className={readOnlyFieldClass}>{formData.pcNumber || 'None'}</div>
+                )}
+              </div>
+            )}
+
             {/* Report Description - Fourth Position */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                Report Description
-              </label>
+              <div className="mb-1.5 flex items-center gap-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Report Description
+                </label>
+                {(() => {
+                  const parts: string[] = [];
+                  if (formData.equipmentLabel) parts.push(formData.equipmentLabel);
+                  const supportsPc = category === 'HARDWARE' || category === 'SOFTWARE';
+                  if (supportsPc && formData.pcNumber.trim()) parts.push(formData.pcNumber.trim());
+                  return parts.length > 0 ? (
+                    <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800">
+                      {parts.join(' · ')}
+                    </span>
+                  ) : null;
+                })()}
+              </div>
               <textarea
                 rows={4}
                 value={formData.reportProblem}

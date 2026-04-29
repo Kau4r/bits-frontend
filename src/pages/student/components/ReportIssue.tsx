@@ -1,13 +1,27 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import type { FormEvent } from 'react';
 import { FloatingSelect } from '@/ui/FloatingSelect';
+
+interface RoomOption {
+  Room_ID: number;
+  Name: string;
+}
 
 interface ReportIssueModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (description: string, issueType: string, equipment: string, pcNumber: string, noRoom?: boolean) => Promise<void>;
+  onSubmit: (
+    description: string,
+    issueType: string,
+    equipment: string,
+    pcNumber: string,
+    noRoom: boolean,
+    roomId: number | null,
+  ) => Promise<void>;
   room: string;
   pcNumber: string;
+  rooms?: RoomOption[];
+  defaultRoomId?: number | null;
 }
 
 const showPcNumberFor = (issueType: string) => issueType === 'hardware' || issueType === 'software';
@@ -18,7 +32,9 @@ export default function ReportIssueModal({
   onClose,
   onSubmit,
   room,
-  pcNumber
+  pcNumber,
+  rooms,
+  defaultRoomId,
 }: ReportIssueModalProps) {
   const [description, setDescription] = useState('');
   const [issueType, setIssueType] = useState('hardware');
@@ -28,6 +44,18 @@ export default function ReportIssueModal({
   const [noRoom, setNoRoom] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Resolve initial room selection: explicit defaultRoomId, or look up by display name in `rooms`.
+  const initialRoomId = useMemo<number | null>(() => {
+    if (defaultRoomId != null) return defaultRoomId;
+    if (rooms && room) {
+      const match = rooms.find((r) => r.Name.trim().toLowerCase() === room.trim().toLowerCase());
+      if (match) return match.Room_ID;
+    }
+    return null;
+  }, [defaultRoomId, rooms, room]);
+  const [selectedRoomId, setSelectedRoomId] = useState<number | null>(initialRoomId);
+
+  const hasRoomList = !!rooms && rooms.length > 0;
   const needsEquipment = showEquipmentFor(issueType);
   const needsPcNumber = showPcNumberFor(issueType);
 
@@ -38,17 +66,20 @@ export default function ReportIssueModal({
 
     setIsSubmitting(true);
     try {
+      const effectiveRoomId = noRoom ? null : selectedRoomId;
       await onSubmit(
         description.trim(),
         issueType,
         needsEquipment ? equipment : '',
         needsPcNumber ? editablePcNumber.trim() : '',
         noRoom,
+        effectiveRoomId,
       );
       setDescription('');
       setEquipment('monitor');
       setEditablePcNumber(isPlaceholderPc ? '' : pcNumber);
       setNoRoom(false);
+      setSelectedRoomId(initialRoomId);
       onClose();
     } finally {
       setIsSubmitting(false);
@@ -91,16 +122,38 @@ export default function ReportIssueModal({
                 Not tied to a specific room
               </label>
             </div>
-            <input
-              type="text"
-              value={noRoom ? 'No room selected' : room}
-              readOnly
-              className={`w-full px-3 py-2 border border-gray-300 dark:border-[#334155] rounded-md shadow-sm dark:text-gray-300 cursor-not-allowed ${
-                noRoom
-                  ? 'bg-gray-200 italic text-gray-500 dark:bg-[#0f172a] dark:text-gray-500'
-                  : 'bg-gray-100 dark:bg-[#1e2939]'
-              }`}
-            />
+            {noRoom ? (
+              <input
+                type="text"
+                value="No room selected"
+                readOnly
+                className="w-full px-3 py-2 border border-gray-300 dark:border-[#334155] rounded-md shadow-sm cursor-not-allowed bg-gray-200 italic text-gray-500 dark:bg-[#0f172a] dark:text-gray-500"
+              />
+            ) : hasRoomList ? (
+              <select
+                value={selectedRoomId ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setSelectedRoomId(v === '' ? null : Number(v));
+                }}
+                disabled={isSubmitting}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-[#334155] rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-[#1e2939] dark:text-white"
+              >
+                <option value="">Select a room</option>
+                {rooms!.map((r) => (
+                  <option key={r.Room_ID} value={r.Room_ID}>
+                    {r.Name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                value={room}
+                readOnly
+                className="w-full px-3 py-2 border border-gray-300 dark:border-[#334155] rounded-md shadow-sm dark:text-gray-300 cursor-not-allowed bg-gray-100 dark:bg-[#1e2939]"
+              />
+            )}
           </div>
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

@@ -44,8 +44,24 @@ export default function PublicReportIssueModal({ isOpen, onClose }: PublicReport
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
 
-    const showPcNumber = issueType === 'HARDWARE' || issueType === 'SOFTWARE';
-    const showEquipment = issueType === 'HARDWARE';
+    // Hardware/Software issues only make sense at a specific PC in a lab room.
+    // When the reporter picks "Not tied to a specific room" or a non-lab room,
+    // restrict the issue-type options to Network/Other and force-reset stale
+    // selections.
+    const selectedRoom = typeof roomId === 'number' ? rooms.find((r) => r.Room_ID === roomId) : null;
+    const isLabContext = selectedRoom?.Room_Type === 'LAB';
+    const availableIssueTypes = isLabContext
+        ? ISSUE_TYPES
+        : ISSUE_TYPES.filter((t) => t.value === 'NETWORK' || t.value === 'OTHER');
+
+    useEffect(() => {
+        if (!isLabContext && (issueType === 'HARDWARE' || issueType === 'SOFTWARE')) {
+            setIssueType('OTHER');
+        }
+    }, [isLabContext, issueType]);
+
+    const showPcNumber = isLabContext && (issueType === 'HARDWARE' || issueType === 'SOFTWARE');
+    const showEquipment = isLabContext && issueType === 'HARDWARE';
 
     // Load rooms when modal opens.
     useEffect(() => {
@@ -177,14 +193,14 @@ export default function PublicReportIssueModal({ isOpen, onClose }: PublicReport
                         {/* Reporter identifier */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                Your name or student ID <span className="text-red-500">*</span>
+                                Name - ID number <span className="text-red-500">*</span>
                             </label>
                             <input
                                 type="text"
                                 value={reporterIdentifier}
                                 onChange={(e) => setReporterIdentifier(e.target.value)}
                                 maxLength={100}
-                                placeholder="e.g. 22102606"
+                                placeholder="John - 22102606"
                                 className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                 disabled={isSubmitting}
                                 required
@@ -236,7 +252,7 @@ export default function PublicReportIssueModal({ isOpen, onClose }: PublicReport
                                 className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                 disabled={isSubmitting}
                             >
-                                {ISSUE_TYPES.map((o) => (
+                                {availableIssueTypes.map((o) => (
                                     <option key={o.value} value={o.value}>{o.label}</option>
                                 ))}
                             </select>

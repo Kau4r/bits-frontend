@@ -3,7 +3,7 @@ import Table from "@/components/Table"
 import Search from "@/components/Search"
 import TicketingModal from "@/pages/tickets/components/TicketingModal"
 import { fetchTickets, archiveTicket, restoreTicket } from "@/services/tickets";
-import { formatTicketLocationDisplay } from "@/lib/ticketLocation";
+import { formatTicketLocationDisplay, parseTicketDescriptionTag } from "@/lib/ticketLocation";
 import type { Ticket } from "@/types/tickets";
 import { useNotifications } from "@/context/NotificationContext";
 import { Plus, Eye, Inbox, Archive } from "lucide-react";
@@ -26,11 +26,6 @@ const formatTicketDateTime = (value?: string | null) => {
         hour: 'numeric',
         minute: '2-digit',
     });
-};
-
-const getTicketTitle = (ticket: Ticket) => {
-    const firstLine = ticket.Report_Problem.split(/\r?\n/).find(line => line.trim());
-    return firstLine?.trim() || 'Untitled ticket';
 };
 
 const getTicketResolvedAt = (ticket: Ticket) => {
@@ -330,20 +325,30 @@ export default function Tickets() {
                                 className="group grid w-full cursor-pointer items-center px-6 py-4 text-left transition-all duration-150 hover:bg-indigo-50/50 focus:bg-indigo-50 focus:outline-none dark:hover:bg-indigo-900/10 dark:focus:bg-indigo-900/20"
                                 style={{ gridTemplateColumns: ticketColumnWidths }}
                             >
-                                <div>
-                                    <p className="font-semibold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
-                                        {ticket.Reported_By.First_Name} {ticket.Reported_By.Last_Name}
+                                <div className="min-w-0">
+                                    <p className="truncate font-semibold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                                        {ticket.Reporter_Identifier
+                                            ? ticket.Reporter_Identifier
+                                            : `${ticket.Reported_By.First_Name} ${ticket.Reported_By.Last_Name}`}
                                     </p>
-                                    {ticket.Reporter_Identifier && (
-                                        <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                                            ID: {ticket.Reporter_Identifier}
-                                        </p>
-                                    )}
                                 </div>
                                 <div className="min-w-0 pr-3">
-                                    <p className="truncate text-sm font-semibold text-gray-900 dark:text-white">
-                                        {getTicketTitle(ticket)}
-                                    </p>
+                                    {(() => {
+                                        const parsed = parseTicketDescriptionTag(ticket.Report_Problem);
+                                        const titleLine = (parsed.body.split(/\r?\n/).find(line => line.trim()) || 'Untitled ticket').trim();
+                                        return (
+                                            <div className="flex min-w-0 items-center gap-1.5">
+                                                {parsed.tag && (
+                                                    <span className="inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800">
+                                                        {parsed.tag}
+                                                    </span>
+                                                )}
+                                                <p className="truncate text-sm font-semibold text-gray-900 dark:text-white">
+                                                    {titleLine}
+                                                </p>
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                                 <div className="text-sm text-gray-600 dark:text-gray-300">{formatTicketLocationDisplay(ticket.Location, ticket.Room?.Name || '-')}</div>
                                 <div>

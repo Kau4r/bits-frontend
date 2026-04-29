@@ -1270,8 +1270,8 @@ export default function Scheduling({ showRejectedMyBookings = false }: Schedulin
       <ReportIssueModal
         isOpen={showReportIssueModal}
         onClose={() => setShowReportIssueModal(false)}
-        onSubmit={async (description, issueType, equipment, pcNumber, noRoom) => {
-          console.log('Submitting issue:', { description, issueType, equipment, pcNumber, noRoom });
+        onSubmit={async (description, issueType, equipment, pcNumber, noRoom, chosenRoomId) => {
+          console.log('Submitting issue:', { description, issueType, equipment, pcNumber, noRoom, chosenRoomId });
         }}
         room={activeRoom?.Name || ''}
         pcNumber="N/A"

@@ -14,7 +14,6 @@ import { getBookings } from '@/services/booking';
 import ReportIssueModal from '@/pages/student/components/ReportIssue';
 import { useBorrowingEvents } from '@/hooks/useBorrowingEvents';
 import { createTicket } from '@/services/tickets';
-import { buildTicketLocation } from '@/lib/ticketLocation';
 import { FloatingSelect } from '@/ui/FloatingSelect';
 import { formatItemType } from '@/lib/utils';
 
@@ -567,23 +566,35 @@ const FacultySchedulingInner = () => {
       <ReportIssueModal
         isOpen={showReportIssueModal}
         onClose={() => setShowReportIssueModal(false)}
-        onSubmit={async (description, issueType, equipment, pcNumber, noRoom) => {
+        onSubmit={async (description, issueType, equipment, pcNumber, noRoom, chosenRoomId) => {
           if (!user?.User_ID) return;
 
-          const categoryMap: Record<string, 'HARDWARE' | 'SOFTWARE' | 'FACILITY' | 'OTHER'> = {
+          const categoryMap: Record<string, 'HARDWARE' | 'SOFTWARE' | 'OTHER'> = {
             hardware: 'HARDWARE',
             software: 'SOFTWARE',
-            network: 'FACILITY',
+            network: 'OTHER',
             other: 'OTHER',
           };
 
-          const targetRoomName = noRoom ? '' : currentRoom;
+          const equipmentLabelMap: Record<string, string> = {
+            monitor: 'Monitor',
+            keyboard: 'Keyboard',
+            mouse: 'Mouse',
+            'mini-pc': 'Mini PC',
+            headset: 'Headset',
+          };
+          const equipmentLabel = equipment ? equipmentLabelMap[equipment] || null : null;
+          const tagParts: string[] = [];
+          if (equipmentLabel) tagParts.push(equipmentLabel);
+          if (pcNumber) tagParts.push(pcNumber);
+          const tagPrefix = tagParts.length > 0 ? `[${tagParts.join(' · ')}] ` : '';
+          const finalDescription = `${tagPrefix}${description}`;
 
           await createTicket({
             Reported_By_ID: user.User_ID,
-            Report_Problem: description,
-            Location: buildTicketLocation({ equipment, pcLabel: pcNumber, roomName: targetRoomName }),
-            Room_ID: noRoom ? null : undefined,
+            Report_Problem: finalDescription,
+            Location: null,
+            Room_ID: noRoom ? null : chosenRoomId ?? null,
             Category: categoryMap[issueType] ?? 'OTHER',
             Status: 'PENDING',
           });

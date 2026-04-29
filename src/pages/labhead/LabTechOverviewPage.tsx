@@ -217,15 +217,21 @@ export default function LabTechOverview() {
                             ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
                             : ticket.Priority === 'MEDIUM'
                               ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
-                              : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+                              : ticket.Priority === 'LOW'
+                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+                                : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
                             }`}>
-                            {ticket.Priority || 'N/A'}
+                            {ticket.Priority || 'Not set'}
                           </span>
                           <div className="min-w-0 truncate text-sm font-medium text-gray-900 dark:text-white" title={ticket.Report_Problem}>
                             {ticket.Report_Problem}
                           </div>
                           <span className="truncate text-sm text-gray-500 dark:text-gray-400">
-                            {ticket.Reported_By ? `${ticket.Reported_By.First_Name} ${ticket.Reported_By.Last_Name}` : '-'}
+                            {ticket.Reporter_Identifier
+                              ? ticket.Reporter_Identifier
+                              : ticket.Reported_By
+                                ? `${ticket.Reported_By.First_Name} ${ticket.Reported_By.Last_Name}`
+                                : 'None'}
                           </span>
                           <span className="text-sm text-gray-500 dark:text-gray-400">
                             {new Date(ticket.Created_At).toLocaleDateString()}
