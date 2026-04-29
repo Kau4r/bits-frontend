@@ -420,6 +420,8 @@ const FacultyScheduling = () => {
                       </label>
                       {isLoadingItems ? (
                         <div className="rounded-lg border border-dashed border-slate-200 px-3 py-2.5 text-sm text-slate-500 dark:border-white/10 dark:text-slate-400">Loading available items…</div>
+                      ) : uniqueTypes.length === 0 ? (
+                        <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50 px-3 py-2.5 text-sm text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400">No borrowable items currently available</div>
                       ) : (
                         <FloatingSelect
                           id="faculty-borrow-item-type"

@@ -40,6 +40,7 @@ export default function CalendarSidebar({
     const acceptedSchedules = visibleBookings.filter(b => b.extendedProps.status === 'APPROVED').length;
     const rejectedSchedules = visibleBookings.filter(b => b.extendedProps.status === 'REJECTED').length;
 
+    const [isCalendarCollapsed, setIsCalendarCollapsed] = useState(false);
     const [isRoomsCollapsed, setIsRoomsCollapsed] = useState(false);
     const [isSchedulesCollapsed, setIsSchedulesCollapsed] = useState(false);
     const [roomSearch, setRoomSearch] = useState('');
@@ -86,26 +87,45 @@ export default function CalendarSidebar({
                 <span className="grid h-6 w-6 place-items-center rounded-md text-lg font-semibold leading-none transition-transform group-hover:scale-110">+</span>
             </button>
 
-            <div className="calendar-dark mb-5 shrink-0 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-white/10 dark:bg-white/[0.04]">
-                <Calendar
-                    onChange={(value) => {
-                        if (value instanceof Date) {
-                            onDateSelect(value);
-                        }
-                    }}
-                    value={selectedDate}
-                    className="!border-none !bg-transparent text-sm"
-                    tileClassName="!rounded-lg !text-slate-600 hover:!bg-white dark:!text-gray-300 dark:hover:!bg-white/10"
-                    navigationLabel={({ date }) => (
-                        <span className="font-semibold text-slate-950 dark:text-white">
-                            {date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-                        </span>
-                    )}
-                    prevLabel={<span className="text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">{'<'}</span>}
-                    nextLabel={<span className="text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">{'>'}</span>}
-                    prev2Label={null}
-                    next2Label={null}
-                />
+            <div className="mb-5 shrink-0 rounded-xl border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/[0.04]">
+                <button
+                    type="button"
+                    onClick={() => setIsCalendarCollapsed(!isCalendarCollapsed)}
+                    className="flex w-full items-center justify-between px-3 py-2.5"
+                >
+                    <span className="text-sm font-semibold text-slate-700 dark:text-gray-300">
+                        {isCalendarCollapsed
+                            ? selectedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                            : 'Calendar'}
+                    </span>
+                    <ChevronDown
+                        className="h-4 w-4 text-slate-400 transition-transform dark:text-gray-500"
+                        style={{ transform: isCalendarCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}
+                    />
+                </button>
+                {!isCalendarCollapsed && (
+                    <div className="calendar-dark px-3 pb-3">
+                        <Calendar
+                            onChange={(value) => {
+                                if (value instanceof Date) {
+                                    onDateSelect(value);
+                                }
+                            }}
+                            value={selectedDate}
+                            className="!border-none !bg-transparent text-sm"
+                            tileClassName="!rounded-lg !text-slate-600 hover:!bg-white dark:!text-gray-300 dark:hover:!bg-white/10"
+                            navigationLabel={({ date }) => (
+                                <span className="font-semibold text-slate-950 dark:text-white">
+                                    {date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                                </span>
+                            )}
+                            prevLabel={<span className="text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">{'<'}</span>}
+                            nextLabel={<span className="text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">{'>'}</span>}
+                            prev2Label={null}
+                            next2Label={null}
+                        />
+                    </div>
+                )}
             </div>
 
             <div ref={splitContainerRef} className="flex min-h-0 flex-1 flex-col overflow-hidden">
