@@ -20,15 +20,29 @@ export default function CalendarSidebar({
     showRejectedBookings = false,
     onBookingClick,
 }: CalendarSidebarProps) {
+    // Counters reflect the full picture (including rejected) so the Rejected
+    // filter card is always discoverable, even when the parent passes
+    // showRejectedBookings=false. The default list view still respects the
+    // parent's preference — REJECTED rows are hidden until the user opts in
+    // by clicking the Rejected filter.
+    const requestedSchedules = myBookings.filter(b => b.extendedProps.status === 'PENDING').length;
+    const acceptedSchedules = myBookings.filter(b => b.extendedProps.status === 'APPROVED').length;
+    const rejectedSchedules = myBookings.filter(b => b.extendedProps.status === 'REJECTED').length;
     const visibleBookings = showRejectedBookings
         ? myBookings
         : myBookings.filter(b => b.extendedProps.status !== 'REJECTED');
-    const requestedSchedules = visibleBookings.filter(b => b.extendedProps.status === 'PENDING').length;
-    const acceptedSchedules = visibleBookings.filter(b => b.extendedProps.status === 'APPROVED').length;
-    const rejectedSchedules = visibleBookings.filter(b => b.extendedProps.status === 'REJECTED').length;
 
     const [isCalendarCollapsed, setIsCalendarCollapsed] = useState(false);
     const [isSchedulesCollapsed, setIsSchedulesCollapsed] = useState(false);
+    // null = no filter (show all visible bookings); otherwise restrict to one
+    // status. When the user picks REJECTED, source from myBookings so the
+    // parent's hide-rejected default is overridden by the explicit filter.
+    const [statusFilter, setStatusFilter] = useState<'PENDING' | 'APPROVED' | 'REJECTED' | null>(null);
+    const filteredBookings = statusFilter
+        ? myBookings.filter(b => b.extendedProps.status === statusFilter)
+        : visibleBookings;
+    const toggleFilter = (status: 'PENDING' | 'APPROVED' | 'REJECTED') =>
+        setStatusFilter(prev => (prev === status ? null : status));
 
     // Sunday-anchored week comparison (react-calendar defaults to en-US,
     // which starts the week on Sunday). Returns true when both dates fall
@@ -44,7 +58,7 @@ export default function CalendarSidebar({
     };
 
     return (
-        <div className="flex h-full w-72 shrink-0 flex-col overflow-y-auto border-r border-slate-200 bg-white/95 p-4 shadow-sm shadow-slate-200/60 dark:border-[#334155] dark:bg-[#1e2939] dark:shadow-none">
+        <div className="flex h-full w-72 shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white/95 p-4 shadow-sm shadow-slate-200/60 dark:border-[#334155] dark:bg-[#1e2939] dark:shadow-none">
             <button
                 type="button"
                 onClick={onCreateClick}
@@ -107,9 +121,9 @@ export default function CalendarSidebar({
                 shows only the date picker, the user's own bookings, and the
                 Create button. */}
 
-            {visibleBookings.length > 0 && (
-                <div className="flex flex-col">
-                    <div className="mb-3 flex items-center justify-between">
+            {myBookings.length > 0 && (
+                <div className={`${isSchedulesCollapsed ? 'shrink-0' : 'min-h-0 flex-1'} flex flex-col overflow-hidden`}>
+                    <div className="mb-3 flex shrink-0 items-center justify-between">
                         <span className="text-sm font-semibold text-slate-700 dark:text-gray-300">My Schedules</span>
                         <div className="flex items-center gap-2">
                             <span className="text-xs text-gray-500">{visibleBookings.length}</span>
@@ -126,25 +140,58 @@ export default function CalendarSidebar({
 
                     {!isSchedulesCollapsed && (
                         <>
-                            <div className={`mb-3 grid gap-2 ${showRejectedBookings ? 'grid-cols-3' : 'grid-cols-2'}`}>
-                                <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-2 dark:border-yellow-500/20 dark:bg-yellow-500/10">
-                                    <div className="text-xs text-yellow-700 dark:text-yellow-400">Requested</div>
+                            <div className="mb-3 grid grid-cols-3 gap-2 shrink-0">
+                                <button
+                                    type="button"
+                                    onClick={() => toggleFilter('PENDING')}
+                                    aria-pressed={statusFilter === 'PENDING'}
+                                    className={`rounded-lg border p-2 text-left transition ${
+                                        statusFilter === 'PENDING'
+                                            ? 'border-yellow-400 bg-yellow-100 ring-2 ring-yellow-400/60 dark:border-yellow-400/60 dark:bg-yellow-500/20 dark:ring-yellow-400/40'
+                                            : 'border-yellow-200 bg-yellow-50 hover:border-yellow-300 dark:border-yellow-500/20 dark:bg-yellow-500/10 dark:hover:border-yellow-400/40'
+                                    }`}
+                                >
+                                    <div className={`text-xs text-yellow-700 dark:text-yellow-400 ${statusFilter === 'PENDING' ? 'font-bold' : ''}`}>Requested</div>
                                     <div className="text-lg font-bold text-yellow-700 dark:text-yellow-300">{requestedSchedules}</div>
-                                </div>
-                                <div className="rounded-lg border border-green-200 bg-green-50 p-2 dark:border-green-500/20 dark:bg-green-500/10">
-                                    <div className="text-xs text-green-700 dark:text-green-400">Accepted</div>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => toggleFilter('APPROVED')}
+                                    aria-pressed={statusFilter === 'APPROVED'}
+                                    className={`rounded-lg border p-2 text-left transition ${
+                                        statusFilter === 'APPROVED'
+                                            ? 'border-green-400 bg-green-100 ring-2 ring-green-400/60 dark:border-green-400/60 dark:bg-green-500/20 dark:ring-green-400/40'
+                                            : 'border-green-200 bg-green-50 hover:border-green-300 dark:border-green-500/20 dark:bg-green-500/10 dark:hover:border-green-400/40'
+                                    }`}
+                                >
+                                    <div className={`text-xs text-green-700 dark:text-green-400 ${statusFilter === 'APPROVED' ? 'font-bold' : ''}`}>Approved</div>
                                     <div className="text-lg font-bold text-green-700 dark:text-green-300">{acceptedSchedules}</div>
-                                </div>
-                                {showRejectedBookings && (
-                                    <div className="rounded-lg border border-rose-200 bg-rose-50 p-2 dark:border-rose-500/20 dark:bg-rose-500/10">
-                                        <div className="text-xs text-rose-700 dark:text-rose-400">Rejected</div>
-                                        <div className="text-lg font-bold text-rose-700 dark:text-rose-300">{rejectedSchedules}</div>
-                                    </div>
-                                )}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => toggleFilter('REJECTED')}
+                                    aria-pressed={statusFilter === 'REJECTED'}
+                                    className={`rounded-lg border p-2 text-left transition ${
+                                        statusFilter === 'REJECTED'
+                                            ? 'border-rose-400 bg-rose-100 ring-2 ring-rose-400/60 dark:border-rose-400/60 dark:bg-rose-500/20 dark:ring-rose-400/40'
+                                            : 'border-rose-200 bg-rose-50 hover:border-rose-300 dark:border-rose-500/20 dark:bg-rose-500/10 dark:hover:border-rose-400/40'
+                                    }`}
+                                >
+                                    <div className={`text-xs text-rose-700 dark:text-rose-400 ${statusFilter === 'REJECTED' ? 'font-bold' : ''}`}>Rejected</div>
+                                    <div className="text-lg font-bold text-rose-700 dark:text-rose-300">{rejectedSchedules}</div>
+                                </button>
                             </div>
 
-                            <div className="space-y-2">
-                                {visibleBookings
+                            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+                                {filteredBookings.length === 0 && (
+                                    <div className="rounded-lg border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-500 dark:border-white/10 dark:text-slate-400">
+                                        {statusFilter === 'PENDING' && 'No requested schedules.'}
+                                        {statusFilter === 'APPROVED' && 'No approved schedules.'}
+                                        {statusFilter === 'REJECTED' && 'No rejected schedules.'}
+                                        {statusFilter === null && 'Click Rejected to view hidden schedules.'}
+                                    </div>
+                                )}
+                                {filteredBookings
                                     .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
                                     .map((booking) => (
                                         <div
@@ -158,7 +205,7 @@ export default function CalendarSidebar({
                                                     booking.extendedProps.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
                                                         'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
                                                     }`}>
-                                                    {booking.extendedProps.status === 'APPROVED' ? 'ACC' : booking.extendedProps.status === 'PENDING' ? 'REQ' : booking.extendedProps.status.substring(0, 3)}
+                                                    {booking.extendedProps.status === 'APPROVED' ? 'APR' : booking.extendedProps.status === 'PENDING' ? 'REQ' : booking.extendedProps.status.substring(0, 3)}
                                                 </span>
                                             </div>
                                             <div className="flex justify-between text-[10px] text-gray-500">
