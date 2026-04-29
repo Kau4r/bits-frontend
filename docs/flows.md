@@ -291,9 +291,9 @@
 4. **Lab Tech scans QR codes**
    - WHO: Lab Tech (mobile)
    - WHERE: `pages/labtech/InventoryAuditPage.tsx` — "Scan Item or PC QR" button → camera overlay (`@zxing/browser`)
-   - WHAT: Camera decodes QR value. If matches `Item_Code` → checks that item. If matches a PC name → checks all items on that PC via `markAllOnPc()`. 2-second cooldown prevents double-scan.
+   - WHAT: Camera decodes QR value. If matches `Item_Code` → checks that item. If matches a PC name → `markAllOnPc()` validates the PC has the canonical 4-item set (Monitor, Mini PC, Keyboard, Mouse) before batch-checking; partial sets are rejected with a toast listing the missing types. PCs already confirmed earlier in the session are also rejected (session-level duplicate guard via `confirmedPcsRef`). The 2-second `scanCooldownRef` separately suppresses decoder repeats.
    - BACKEND: `POST /inventory/:id/check` → module: `inventory`
-   - NEXT: Item checked; toast confirms. Progress bar advances.
+   - NEXT: Item checked; toast confirms. Progress bar advances. PC group cards mark incomplete sets in amber and disable their "Check PC" button.
 
 5. **Audit complete**
    - WHO: Lab Tech

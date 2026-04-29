@@ -409,7 +409,7 @@ const FacultySchedulingInner = () => {
                     <div className="flex flex-col">
                       <label className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-slate-700 dark:text-slate-200">
                         <Package className="h-3.5 w-3.5 text-slate-400" />
-                        Item Type <span className="text-rose-500">*</span>
+                        Item <span className="text-rose-500">*</span>
                       </label>
                       {isLoadingItems ? (
                         <div className="rounded-lg border border-dashed border-slate-200 px-3 py-2.5 text-sm text-slate-500 dark:border-white/10 dark:text-slate-400">Loading available items…</div>

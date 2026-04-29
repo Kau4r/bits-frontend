@@ -35,7 +35,7 @@ export interface Ticket {
 export interface NewTicketInput {
     Reported_By_ID: number;
     Report_Problem: string;
-    Location?: string;
+    Location?: string | null;
     Item_ID?: number;
     Room_ID?: number | null;
     Status?: TicketStatus;

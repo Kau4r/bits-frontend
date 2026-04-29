@@ -12,6 +12,7 @@ import InventoryItemCombobox from '@/pages/labtech/components/InventoryItemCombo
 import { getNextComputerName, getNumberedComputers } from '@/utils/computerDisplay';
 import { FloatingSelect } from '@/ui/FloatingSelect';
 import RoomExportButton from '@/pages/labtech/components/RoomExportButton';
+import { formatBrand } from '@/lib/utils';
 
 // Asset/Item type from inventory
 interface RoomAsset {
@@ -76,7 +77,7 @@ const formatItemType = (type: string) => {
 export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }: RoomDetailModalProps) {
     const modal = useModal();
     const { userRole } = useAuth();
-    const canDeleteComputer = userRole === 'LAB_HEAD' || userRole === 'ADMIN';
+    const canDeleteComputer = userRole === 'LAB_HEAD' || userRole === 'LAB_TECH';
     const [activeTab, setActiveTab] = useState<'Computers' | 'Assets' | 'Schedule'>('Computers');
     const [computers, setComputers] = useState<Computer[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -282,13 +283,16 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
         }
     };
 
-    const handleDeleteComputer = async (computerId: number, e: React.MouseEvent) => {
-        e.stopPropagation(); // Prevent triggering edit
+    const handleDeleteComputer = async (computerId: number, e?: React.MouseEvent) => {
+        e?.stopPropagation(); // Prevent triggering edit when invoked from card
         const confirmed = await modal.showConfirm('Are you sure you want to delete this computer?', 'Delete Computer');
         if (!confirmed) return;
 
         try {
             await deleteComputer(computerId);
+            if (editingComputer?.Computer_ID === computerId) {
+                setEditingComputer(null);
+            }
             await loadComputers();
         } catch (err) {
             console.error('Failed to delete computer:', err);
@@ -1037,7 +1041,9 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                                     <span className="text-sm font-semibold text-gray-900 dark:text-white">{formatItemType(itemType)}</span>
                                                     <span className="font-mono text-xs text-gray-500 dark:text-gray-400">{item?.Item_Code || '-'}</span>
                                                 </div>
-                                                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{item?.Brand || 'No item selected'}</p>
+                                                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                                                    {item ? formatBrand(item.Brand, 'No Brand') : 'No item selected'}
+                                                </p>
                                             </div>
                                         );
                                     })}
@@ -1046,7 +1052,16 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                         </div>
 
                         {/* Actions */}
-                        <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <div className="flex flex-wrap justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                            {canDeleteComputer && editingComputer && (
+                                <button
+                                    type="button"
+                                    onClick={() => handleDeleteComputer(editingComputer.Computer_ID)}
+                                    className="mr-auto px-4 py-2 border border-red-300 text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                >
+                                    Delete PC
+                                </button>
+                            )}
                             <button
                                 onClick={() => setEditingComputer(null)}
                                 className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"

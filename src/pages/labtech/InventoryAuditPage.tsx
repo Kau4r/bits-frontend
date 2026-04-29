@@ -5,6 +5,7 @@ import type { IScannerControls } from '@zxing/browser';
 import {
   Check,
   CheckCircle2,
+  ChevronDown,
   Circle,
   CameraOff,
   ScanLine,
@@ -47,6 +48,15 @@ const getItemComputerName = (item: ItemWithComputers): string | null => {
   return pc?.Name || null;
 };
 
+// A complete PC set must include exactly these four item types.
+const REQUIRED_PC_ITEM_TYPES = ['MONITOR', 'MINI_PC', 'KEYBOARD', 'MOUSE'] as const;
+type RequiredPcType = typeof REQUIRED_PC_ITEM_TYPES[number];
+
+const getMissingPcTypes = (pcItems: ItemWithComputers[]): RequiredPcType[] => {
+  const present = new Set(pcItems.map(i => resolveItemType(i.Item_Type)));
+  return REQUIRED_PC_ITEM_TYPES.filter(t => !present.has(t));
+};
+
 export default function InventoryAuditPage() {
   const navigate = useNavigate();
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -61,9 +71,12 @@ export default function InventoryAuditPage() {
 
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scannerError, setScannerError] = useState<string | null>(null);
+  const [pcPanelOpen, setPcPanelOpen] = useState(true);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const scannerControlsRef = useRef<IScannerControls | null>(null);
   const scanCooldownRef = useRef<Map<string, number>>(new Map());
+  // PCs whose 4-item set has already been confirmed in this audit session.
+  const confirmedPcsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const load = async () => {
@@ -162,19 +175,42 @@ export default function InventoryAuditPage() {
     [isItemCheckedForSemester, selectedRoomId],
   );
 
-  // Mark all (unchecked) items on a given PC as checked
+  // Confirm a PC set: validate the 4 required item types are all linked to the
+  // PC, then mark each unchecked one. Refuses to confirm partial sets and
+  // rejects duplicate confirmations within the same session.
   const markAllOnPc = useCallback(
     async (pcName: string) => {
-      const pcItems = items.filter(
-        i => getItemComputerName(i) === pcName && !isItemCheckedForSemester(i) && i.Item_ID,
-      );
-      if (pcItems.length === 0) {
-        toast(`No unchecked items on ${pcName}`, { icon: 'ℹ️' });
+      if (confirmedPcsRef.current.has(pcName)) {
+        toast(`${pcName} already confirmed in this session`, { icon: '🔒' });
         return;
       }
+
+      const allPcItems = items.filter(i => getItemComputerName(i) === pcName);
+      if (allPcItems.length === 0) {
+        toast.error(`No items linked to ${pcName} in this room`);
+        return;
+      }
+
+      const missing = getMissingPcTypes(allPcItems);
+      if (missing.length > 0) {
+        const labels = missing.map(t => formatItemType(t)).join(', ');
+        toast.error(`${pcName} missing required items: ${labels}`);
+        return;
+      }
+
+      const toCheck = allPcItems.filter(
+        i => !isItemCheckedForSemester(i) && i.Item_ID,
+      );
+
+      if (toCheck.length === 0) {
+        confirmedPcsRef.current.add(pcName);
+        toast(`${pcName} already fully checked`, { icon: '✅' });
+        return;
+      }
+
       setBusyPcName(pcName);
       let ok = 0;
-      for (const it of pcItems) {
+      for (const it of toCheck) {
         try {
           const updated = await checkInventoryItem(it.Item_ID!);
           setItems(prev => prev.map(x => (x.Item_ID === it.Item_ID ? { ...x, ...updated } : x)));
@@ -188,7 +224,13 @@ export default function InventoryAuditPage() {
         setAuditStatus(status);
       }
       setBusyPcName(null);
-      toast.success(`Checked ${ok} item${ok === 1 ? '' : 's'} on ${pcName}`);
+
+      if (ok === toCheck.length) {
+        confirmedPcsRef.current.add(pcName);
+        toast.success(`${pcName} confirmed — ${ok} item${ok === 1 ? '' : 's'} checked`);
+      } else {
+        toast.error(`${pcName}: only ${ok}/${toCheck.length} items checked — try again`);
+      }
     },
     [items, isItemCheckedForSemester, selectedRoomId],
   );
@@ -296,6 +338,7 @@ export default function InventoryAuditPage() {
         name,
         total: pcItems.length,
         checked: pcItems.filter(isItemCheckedForSemester).length,
+        missing: getMissingPcTypes(pcItems),
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [items, isItemCheckedForSemester]);
@@ -375,12 +418,6 @@ export default function InventoryAuditPage() {
                 Room audit complete — you can now export this room's report.
               </p>
             )}
-            {!semester && (
-              <p className="mt-2 flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
-                <AlertTriangle className="h-3.5 w-3.5" />
-                No active semester is set. Checks will still record.
-              </p>
-            )}
           </div>
 
           {/* Scan */}
@@ -418,42 +455,71 @@ export default function InventoryAuditPage() {
 
           {/* PC groups */}
           {pcGroups.length > 0 && (
-            <div className="mb-3 space-y-2">
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                PCs in this room
-              </p>
+            <div className="mb-3">
+              <button
+                type="button"
+                onClick={() => setPcPanelOpen(o => !o)}
+                aria-expanded={pcPanelOpen}
+                aria-controls="audit-pc-panel"
+                className="mb-2 flex w-full items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2 text-left shadow-sm dark:border-gray-800 dark:bg-gray-900"
+              >
+                <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  PCs in this room ({pcGroups.length})
+                </span>
+                <ChevronDown
+                  className={`h-4 w-4 text-gray-400 transition-transform ${pcPanelOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+              {pcPanelOpen && (
+                <div id="audit-pc-panel" className="space-y-2">
               {pcGroups.map(pc => {
                 const allDone = pc.total > 0 && pc.checked === pc.total;
                 const busy = busyPcName === pc.name;
+                const incomplete = pc.missing.length > 0;
+                const cardTone = incomplete
+                  ? 'border-amber-200 bg-amber-50 dark:border-amber-800/60 dark:bg-amber-900/20'
+                  : allDone
+                    ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-800/60 dark:bg-emerald-900/20'
+                    : 'border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900';
+                const iconTone = incomplete
+                  ? 'text-amber-500'
+                  : allDone
+                    ? 'text-emerald-500'
+                    : 'text-indigo-500';
                 return (
                   <div
                     key={pc.name}
-                    className={`flex items-center justify-between rounded-lg border px-3 py-2 shadow-sm ${
-                      allDone
-                        ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-800/60 dark:bg-emerald-900/20'
-                        : 'border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900'
-                    }`}
+                    className={`flex items-center justify-between rounded-lg border px-3 py-2 shadow-sm ${cardTone}`}
                   >
                     <div className="flex min-w-0 items-center gap-2">
-                      <Monitor className={`h-4 w-4 flex-shrink-0 ${allDone ? 'text-emerald-500' : 'text-indigo-500'}`} />
+                      <Monitor className={`h-4 w-4 flex-shrink-0 ${iconTone}`} />
                       <div className="min-w-0">
                         <p className="truncate text-sm font-bold text-gray-900 dark:text-white">{pc.name}</p>
                         <p className="text-[11px] text-gray-500 dark:text-gray-400">
                           {pc.checked}/{pc.total} items checked
                         </p>
+                        {incomplete && (
+                          <p className="flex items-center gap-1 text-[11px] font-semibold text-amber-700 dark:text-amber-400">
+                            <AlertTriangle className="h-3 w-3" />
+                            Missing: {pc.missing.map(t => formatItemType(t)).join(', ')}
+                          </p>
+                        )}
                       </div>
                     </div>
                     <button
                       type="button"
                       onClick={() => markAllOnPc(pc.name)}
-                      disabled={allDone || busy}
+                      disabled={allDone || busy || incomplete}
+                      title={incomplete ? `Cannot confirm: missing ${pc.missing.map(t => formatItemType(t)).join(', ')}` : undefined}
                       className="ml-3 flex-shrink-0 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {busy ? '...' : allDone ? 'Done' : 'Check PC'}
+                      {busy ? '...' : incomplete ? 'Incomplete' : allDone ? 'Done' : 'Check PC'}
                     </button>
                   </div>
                 );
               })}
+                </div>
+              )}
             </div>
           )}
 

@@ -191,7 +191,7 @@ const WalkinBorrowingModal: FC<Props> = ({ isOpen, onClose, onSubmit, availableI
               <div>
                 <label className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
                   <Tag className="h-4 w-4" />
-                  Item Type <span className="text-red-500">*</span>
+                  Item <span className="text-red-500">*</span>
                 </label>
                 <FloatingSelect
                   id="walkin-borrow-item-type"
