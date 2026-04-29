@@ -30,8 +30,21 @@ export default function CalendarSidebar({
     const [isCalendarCollapsed, setIsCalendarCollapsed] = useState(false);
     const [isSchedulesCollapsed, setIsSchedulesCollapsed] = useState(false);
 
+    // Sunday-anchored week comparison (react-calendar defaults to en-US,
+    // which starts the week on Sunday). Returns true when both dates fall
+    // in the same calendar-week row inside the month view.
+    const isSameWeek = (a: Date, b: Date) => {
+        const startOfWeek = (d: Date) => {
+            const start = new Date(d);
+            start.setDate(start.getDate() - start.getDay());
+            start.setHours(0, 0, 0, 0);
+            return start;
+        };
+        return startOfWeek(a).getTime() === startOfWeek(b).getTime();
+    };
+
     return (
-        <div className="flex h-full w-72 shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white/95 p-4 shadow-sm shadow-slate-200/60 dark:border-[#334155] dark:bg-[#1e2939] dark:shadow-none">
+        <div className="flex h-full w-72 shrink-0 flex-col overflow-y-auto border-r border-slate-200 bg-white/95 p-4 shadow-sm shadow-slate-200/60 dark:border-[#334155] dark:bg-[#1e2939] dark:shadow-none">
             <button
                 type="button"
                 onClick={onCreateClick}
@@ -67,7 +80,15 @@ export default function CalendarSidebar({
                             }}
                             value={selectedDate}
                             className="!border-none !bg-transparent text-sm"
-                            tileClassName="!rounded-lg !text-slate-600 hover:!bg-white dark:!text-gray-300 dark:hover:!bg-white/10"
+                            tileClassName={({ date, view }) => {
+                                const base = '!rounded-lg !text-slate-600 hover:!bg-white dark:!text-gray-300 dark:hover:!bg-white/10';
+                                if (view !== 'month') return base;
+                                const isSelectedDay = date.toDateString() === selectedDate.toDateString();
+                                if (!isSelectedDay && isSameWeek(date, selectedDate)) {
+                                    return `${base} !bg-[#006edc]/40 dark:!bg-[#1e40af]/40`;
+                                }
+                                return base;
+                            }}
                             navigationLabel={({ date }) => (
                                 <span className="font-semibold text-slate-950 dark:text-white">
                                     {date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
@@ -87,8 +108,8 @@ export default function CalendarSidebar({
                 Create button. */}
 
             {visibleBookings.length > 0 && (
-                <div className={`${isSchedulesCollapsed ? 'shrink-0' : 'min-h-0 flex-1'} flex flex-col overflow-hidden`}>
-                    <div className="mb-3 flex shrink-0 items-center justify-between">
+                <div className="flex flex-col">
+                    <div className="mb-3 flex items-center justify-between">
                         <span className="text-sm font-semibold text-slate-700 dark:text-gray-300">My Schedules</span>
                         <div className="flex items-center gap-2">
                             <span className="text-xs text-gray-500">{visibleBookings.length}</span>
@@ -105,7 +126,7 @@ export default function CalendarSidebar({
 
                     {!isSchedulesCollapsed && (
                         <>
-                            <div className={`mb-3 grid shrink-0 gap-2 ${showRejectedBookings ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                            <div className={`mb-3 grid gap-2 ${showRejectedBookings ? 'grid-cols-3' : 'grid-cols-2'}`}>
                                 <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-2 dark:border-yellow-500/20 dark:bg-yellow-500/10">
                                     <div className="text-xs text-yellow-700 dark:text-yellow-400">Requested</div>
                                     <div className="text-lg font-bold text-yellow-700 dark:text-yellow-300">{requestedSchedules}</div>
@@ -122,7 +143,7 @@ export default function CalendarSidebar({
                                 )}
                             </div>
 
-                            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+                            <div className="space-y-2">
                                 {visibleBookings
                                     .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
                                     .map((booking) => (

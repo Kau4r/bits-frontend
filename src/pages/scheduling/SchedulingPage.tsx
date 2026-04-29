@@ -819,6 +819,7 @@ export default function Scheduling({ showRejectedMyBookings = false }: Schedulin
           showRejectedBookings={showRejectedMyBookings}
           myBookings={events.filter(e =>
             e.extendedProps.createdById === currentUserId &&
+            e.extendedProps.roomId === activeRoomId &&
             (showRejectedMyBookings || e.extendedProps.status !== 'REJECTED')
           )}
           onBookingClick={(booking) => {
