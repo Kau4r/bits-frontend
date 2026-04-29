@@ -1,5 +1,5 @@
 import Scheduling from '@/pages/scheduling/SchedulingPage';
-import { Bell, LogOut, PlusCircle, AlertTriangle } from 'lucide-react';
+import { Bell, LogOut, PlusCircle, AlertTriangle, X, Package, Calendar, Clock, MapPin, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -7,6 +7,8 @@ import { useModal } from '@/context/ModalContext';
 import { useNotifications } from '@/context/NotificationContext';
 import { getInventory } from '@/services/inventory';
 import type { Item } from '@/types/inventory';
+import { getRooms } from '@/services/room';
+import type { Room } from '@/types/room';
 import { getNotifications, type Notification } from '@/services/notifications';
 import { createBorrowing } from '@/services/borrowing';
 import { getBookings } from '@/services/booking';
@@ -62,15 +64,30 @@ const FacultyScheduling = () => {
   const [selectedType, setSelectedType] = useState<string>('');
   const [isLoadingItems, setIsLoadingItems] = useState(false);
   const [borrowSchedule, setBorrowSchedule] = useState(getBorrowDefaults);
+  const [borrowRooms, setBorrowRooms] = useState<Room[]>([]);
+  const [selectedBorrowRoomId, setSelectedBorrowRoomId] = useState<number | ''>('');
 
-  // Fetch items when modal opens
+  // Fetch items + rooms when modal opens
   useEffect(() => {
     if (isBorrowModalOpen) {
       loadItems();
+      loadBorrowRooms();
       setSelectedType(''); // Reset type
+      setSelectedBorrowRoomId('');
       setBorrowSchedule(getBorrowDefaults());
     }
   }, [isBorrowModalOpen]);
+
+  const loadBorrowRooms = async () => {
+    try {
+      const rooms = await getRooms();
+      // Restrict to bookable rooms; faculty borrowing usually targets the
+      // room they're teaching/working in, not storage/control rooms.
+      setBorrowRooms(rooms.filter(r => r.Is_Bookable !== false));
+    } catch (error) {
+      console.error('Failed to load rooms', error);
+    }
+  };
 
   // Fetch current active booking for room context
   useEffect(() => {
@@ -313,25 +330,28 @@ const FacultyScheduling = () => {
 
       {/* Enhanced Device Borrowing Request Modal */}
       {isBorrowModalOpen && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={() => setIsBorrowModalOpen(false)}>
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 p-4 backdrop-blur-[2px]" onClick={() => setIsBorrowModalOpen(false)}>
           <div
-            className="w-full max-w-2xl rounded-xl bg-white dark:bg-gray-900 shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[90vh]"
+            className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/20 dark:border-white/10 dark:bg-[#0f172a]"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="px-6 py-4 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">📱 Request a Device</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Fill out the form below to request a device. Your request will be reviewed by the department admin.</p>
+            <div className="flex items-start justify-between gap-4 border-b border-slate-200 bg-gradient-to-br from-indigo-50 to-white px-6 py-5 dark:border-white/10 dark:from-indigo-500/10 dark:to-transparent">
+              <div className="flex items-start gap-3">
+                <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-indigo-600 text-white shadow-sm shadow-indigo-600/30">
+                  <Package className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">Request a Device</h2>
+                  <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">A Lab Tech will review and assign a specific item.</p>
+                </div>
               </div>
               <button
                 onClick={() => setIsBorrowModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-white/10 dark:hover:text-white"
                 aria-label="Close"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <X className="h-5 w-5" />
               </button>
             </div>
 
@@ -346,8 +366,8 @@ const FacultyScheduling = () => {
               const purpose = formData.get('purpose') as string;
 
               // Validation - only need item type now, not specific item
-              if (!selectedType || !borrowDate || !borrowTime || !returnDate || !returnTime || !purpose.trim()) {
-                modal.showError('Please fill in all required fields', 'Validation Error');
+              if (!selectedType || !borrowDate || !borrowTime || !returnDate || !returnTime || !purpose.trim() || !selectedBorrowRoomId) {
+                modal.showError('Please fill in all required fields, including the room.', 'Validation Error');
                 return;
               }
 
@@ -355,7 +375,10 @@ const FacultyScheduling = () => {
               const returnDateTime = new Date(`${returnDate}T${returnTime}`);
 
               if (returnDateTime <= borrowDateTime) {
-                modal.showError('Return date/time must be after borrow date/time', 'Validation Error');
+                modal.showError(
+                  'The return date and time need to come after the borrow date and time. Please pick a return that is later than when you start borrowing.',
+                  'Check your borrow window'
+                );
                 return;
               }
 
@@ -372,7 +395,8 @@ const FacultyScheduling = () => {
                   itemType: selectedType,
                   purpose,
                   borrowDate: borrowDateTime.toISOString(),
-                  expectedReturnDate: returnDateTime.toISOString()
+                  expectedReturnDate: returnDateTime.toISOString(),
+                  roomId: typeof selectedBorrowRoomId === 'number' ? selectedBorrowRoomId : undefined,
                 });
 
                 modal.showSuccess('Borrowing request submitted! A Lab Tech will assign a specific item.', 'Success');
@@ -384,126 +408,153 @@ const FacultyScheduling = () => {
               }
             }} className="flex flex-col flex-1 overflow-hidden">
               {/* Scrollable Body */}
-              <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-                {/* Item Type */}
-                <div className="flex flex-col">
-                  <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Item Type <span className="text-red-500">*</span>
-                  </label>
-                  {isLoadingItems ? (
-                    <div className="text-sm text-gray-600 dark:text-gray-400">Loading available items...</div>
-                  ) : (
-                    <>
-                      <FloatingSelect
-                        id="faculty-borrow-item-type"
-                        value={selectedType}
-                        placeholder="Select an item type"
-                        options={uniqueTypes.map((type) => ({ value: type, label: formatItemType(type) }))}
-                        onChange={setSelectedType}
-                      />
+              <div className="flex-1 space-y-6 overflow-y-auto px-6 py-5">
+                {/* Item + Room — side by side */}
+                <section>
+                  <h3 className="mb-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">What & where</h3>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="flex flex-col">
+                      <label className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-slate-700 dark:text-slate-200">
+                        <Package className="h-3.5 w-3.5 text-slate-400" />
+                        Item Type <span className="text-rose-500">*</span>
+                      </label>
+                      {isLoadingItems ? (
+                        <div className="rounded-lg border border-dashed border-slate-200 px-3 py-2.5 text-sm text-slate-500 dark:border-white/10 dark:text-slate-400">Loading available items…</div>
+                      ) : (
+                        <FloatingSelect
+                          id="faculty-borrow-item-type"
+                          value={selectedType}
+                          placeholder="Select an item type"
+                          options={uniqueTypes.map((type) => ({ value: type, label: formatItemType(type) }))}
+                          onChange={setSelectedType}
+                        />
+                      )}
                       {selectedType && (
-                        <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                          ✓ {inventoryItems.filter(item => item.Item_Type === selectedType).length} {formatItemType(selectedType)}(s) available - Lab Tech will assign a specific item
+                        <p className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                          ✓ {inventoryItems.filter(item => item.Item_Type === selectedType).length} {formatItemType(selectedType)}{inventoryItems.filter(item => item.Item_Type === selectedType).length === 1 ? '' : 's'} available
                         </p>
                       )}
-                    </>
-                  )}
-                </div>
+                    </div>
 
-                {/* Borrow Date & Time */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="flex flex-col">
-                    <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Borrow Date <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      name="borrowDate"
-                      required
-                      min={formatDateInput(new Date())}
-                      value={borrowSchedule.borrowDate}
-                      onChange={(event) => handleBorrowDateTimeChange('borrowDate', event.target.value)}
-                      className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
+                    <div className="flex flex-col">
+                      <label className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-slate-700 dark:text-slate-200">
+                        <MapPin className="h-3.5 w-3.5 text-slate-400" />
+                        Room <span className="text-rose-500">*</span>
+                      </label>
+                      <FloatingSelect
+                        id="faculty-borrow-room"
+                        value={selectedBorrowRoomId === '' ? '' : selectedBorrowRoomId}
+                        placeholder="Where you'll use the item"
+                        options={borrowRooms.map((room) => ({ value: room.Room_ID, label: room.Name }))}
+                        onChange={(value) => setSelectedBorrowRoomId(typeof value === 'number' ? value : Number(value))}
+                      />
+                    </div>
                   </div>
-                  <div className="flex flex-col">
-                    <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Borrow Time <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="time"
-                      name="borrowTime"
-                      required
-                      value={borrowSchedule.borrowTime}
-                      onChange={(event) => handleBorrowDateTimeChange('borrowTime', event.target.value)}
-                      className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                </div>
+                </section>
 
-                {/* Return Date & Time */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="flex flex-col">
-                    <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Return Date <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      name="returnDate"
-                      required
-                      min={borrowSchedule.borrowDate || formatDateInput(new Date())}
-                      value={borrowSchedule.returnDate}
-                      onChange={(event) => setBorrowSchedule(prev => ({ ...prev, returnDate: event.target.value }))}
-                      className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
+                {/* Borrow window */}
+                <section>
+                  <h3 className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                    <Calendar className="h-3.5 w-3.5" />
+                    Borrow window
+                  </h3>
+                  <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4 dark:border-white/10 dark:bg-white/[0.03]">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_auto_1fr_1fr]">
+                      <div className="flex flex-col">
+                        <label className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Borrow Date</label>
+                        <input
+                          type="date"
+                          name="borrowDate"
+                          required
+                          min={formatDateInput(new Date())}
+                          value={borrowSchedule.borrowDate}
+                          onChange={(event) => handleBorrowDateTimeChange('borrowDate', event.target.value)}
+                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-[#334155] dark:bg-[#1e2939] dark:text-white"
+                        />
+                      </div>
+                      <div className="flex flex-col">
+                        <label className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Borrow Time</label>
+                        <input
+                          type="time"
+                          name="borrowTime"
+                          required
+                          value={borrowSchedule.borrowTime}
+                          onChange={(event) => handleBorrowDateTimeChange('borrowTime', event.target.value)}
+                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-[#334155] dark:bg-[#1e2939] dark:text-white"
+                        />
+                      </div>
+                      <div className="hidden items-end justify-center pb-2 text-slate-400 sm:flex">
+                        <span className="text-lg font-bold">→</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <label className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Return Date</label>
+                        <input
+                          type="date"
+                          name="returnDate"
+                          required
+                          min={borrowSchedule.borrowDate || formatDateInput(new Date())}
+                          value={borrowSchedule.returnDate}
+                          onChange={(event) => setBorrowSchedule(prev => ({ ...prev, returnDate: event.target.value }))}
+                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-[#334155] dark:bg-[#1e2939] dark:text-white"
+                        />
+                      </div>
+                      <div className="flex flex-col">
+                        <label className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Return Time</label>
+                        <input
+                          type="time"
+                          name="returnTime"
+                          required
+                          value={borrowSchedule.returnTime}
+                          onChange={(event) => setBorrowSchedule(prev => ({ ...prev, returnTime: event.target.value }))}
+                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-[#334155] dark:bg-[#1e2939] dark:text-white"
+                        />
+                      </div>
+                    </div>
+                    <p className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                      <Clock className="h-3 w-3" />
+                      Default duration is 1 hour. Adjust the return time as needed.
+                    </p>
                   </div>
-                  <div className="flex flex-col">
-                    <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Return Time <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="time"
-                      name="returnTime"
-                      required
-                      value={borrowSchedule.returnTime}
-                      onChange={(event) => setBorrowSchedule(prev => ({ ...prev, returnTime: event.target.value }))}
-                      className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                </div>
+                </section>
 
                 {/* Purpose / Reason */}
-                <div className="flex flex-col">
-                  <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Purpose / Reason <span className="text-red-500">*</span>
-                  </label>
+                <section>
+                  <h3 className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                    <FileText className="h-3.5 w-3.5" />
+                    Purpose
+                  </h3>
                   <textarea
                     name="purpose"
                     required
                     rows={3}
-                    placeholder="Briefly describe why you need this device..."
-                    className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                    placeholder="Briefly describe why you need this device…"
+                    className="w-full resize-none rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-[#334155] dark:bg-[#1e2939] dark:text-white dark:placeholder:text-slate-500"
                   />
-                </div>
+                </section>
               </div>
 
               {/* Footer */}
-              <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsBorrowModalOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isLoadingItems}
-                  className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-                >
-                  <PlusCircle className="h-4 w-4" />
-                  Submit Request
-                </button>
+              <div className="flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4 dark:border-white/10 dark:bg-white/[0.03]">
+                <p className="hidden text-xs text-slate-500 dark:text-slate-400 sm:block">
+                  <span className="text-rose-500">*</span> required
+                </p>
+                <div className="flex flex-1 items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsBorrowModalOpen(false)}
+                    className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-200 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isLoadingItems}
+                    className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-600/20 transition hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus:ring-offset-slate-900"
+                  >
+                    <PlusCircle className="h-4 w-4" />
+                    Submit Request
+                  </button>
+                </div>
               </div>
             </form>
           </div>

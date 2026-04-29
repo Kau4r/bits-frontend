@@ -31,6 +31,15 @@ export interface Booking {
     Approver?: Pick<User, "First_Name" | "Last_Name" | "User_Role"> | null;
 
     Borrowed_Items?: number[]; // Array of item/computer IDs
+
+    // Recurrence linkage. Booked_Room_ID is negative for virtual occurrences
+    // expanded from a Booking_Series rule (no real DB row). Override rows
+    // (real DB rows that replace one occurrence) keep a positive ID and
+    // populate Series_ID + Original_Start.
+    Series_ID?: number | null;
+    Original_Start?: string | null;
+    Is_Virtual?: boolean;
+    Series_Title?: string;
 }
 
 // DTOs

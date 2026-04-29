@@ -6,7 +6,13 @@ import {
     Info,
 } from 'lucide-react';
 
-type ModalType = 'alert' | 'confirm' | 'error' | 'success';
+type ModalType = 'alert' | 'confirm' | 'error' | 'success' | 'choice';
+
+interface ChoiceOption<T extends string> {
+    value: T;
+    label: string;
+    tone?: 'primary' | 'neutral' | 'danger';
+}
 
 interface ModalState {
     isOpen: boolean;
@@ -17,6 +23,8 @@ interface ModalState {
     onCancel?: () => void;
     confirmText?: string;
     cancelText?: string;
+    choices?: ChoiceOption<string>[];
+    onChoose?: (value: string | null) => void;
 }
 
 interface ModalContextType {
@@ -24,6 +32,12 @@ interface ModalContextType {
     showConfirm: (message: string, title?: string) => Promise<boolean>;
     showError: (message: string, title?: string) => Promise<void>;
     showSuccess: (message: string, title?: string) => Promise<void>;
+    // Returns the chosen `value` or null if dismissed.
+    showChoice: <T extends string>(
+        message: string,
+        options: ChoiceOption<T>[],
+        title?: string
+    ) => Promise<T | null>;
 }
 
 const ModalContext = createContext<ModalContextType | null>(null);
@@ -115,6 +129,26 @@ export function ModalProvider({ children }: ModalProviderProps) {
         });
     }, [closeModal]);
 
+    const showChoice = useCallback(<T extends string>(
+        message: string,
+        options: ChoiceOption<T>[],
+        title: string = 'Choose'
+    ) => {
+        return new Promise<T | null>((resolve) => {
+            setModal({
+                isOpen: true,
+                type: 'choice',
+                title,
+                message,
+                choices: options as ChoiceOption<string>[],
+                onChoose: (value) => {
+                    closeModal();
+                    setTimeout(() => resolve(value as T | null), 150);
+                },
+            });
+        });
+    }, [closeModal]) as ModalContextType['showChoice'];
+
     const showSuccess = useCallback((message: string, title: string = 'Success') => {
         return new Promise<void>((resolve) => {
             setModal({
@@ -167,7 +201,7 @@ export function ModalProvider({ children }: ModalProviderProps) {
     const { Icon, iconBg, iconColor, buttonClass } = getModalStyle();
 
     return (
-        <ModalContext.Provider value={{ showAlert, showConfirm, showError, showSuccess }}>
+        <ModalContext.Provider value={{ showAlert, showConfirm, showError, showSuccess, showChoice }}>
             {children}
 
             {modal.isOpen && (
@@ -175,7 +209,11 @@ export function ModalProvider({ children }: ModalProviderProps) {
                     {/* Backdrop */}
                     <div
                         className={`absolute inset-0 bg-black/50 transition-opacity duration-150 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
-                        onClick={modal.onCancel || modal.onConfirm}
+                        onClick={
+                            modal.type === 'choice'
+                                ? () => modal.onChoose?.(null)
+                                : (modal.onCancel || modal.onConfirm)
+                        }
                     />
 
                     {/* Modal */}
@@ -202,22 +240,50 @@ export function ModalProvider({ children }: ModalProviderProps) {
                         </div>
 
                         {/* Actions */}
-                        <div className="flex gap-3 border-t border-gray-200 bg-gray-50 px-6 py-4 dark:border-gray-700 dark:bg-gray-800/50">
-                            {modal.type === 'confirm' && modal.onCancel && (
+                        {modal.type === 'choice' ? (
+                            <div className="flex flex-col gap-2 border-t border-gray-200 bg-gray-50 px-6 py-4 dark:border-gray-700 dark:bg-gray-800/50">
+                                {modal.choices?.map((option) => {
+                                    const toneClass =
+                                        option.tone === 'danger'
+                                            ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500 text-white'
+                                            : option.tone === 'neutral'
+                                                ? 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                                                : 'bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500 text-white';
+                                    return (
+                                        <button
+                                            key={option.value}
+                                            onClick={() => modal.onChoose?.(option.value)}
+                                            className={`w-full rounded-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${toneClass}`}
+                                        >
+                                            {option.label}
+                                        </button>
+                                    );
+                                })}
                                 <button
-                                    onClick={modal.onCancel}
-                                    className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                                    onClick={() => modal.onChoose?.(null)}
+                                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
                                 >
-                                    {modal.cancelText}
+                                    Cancel
                                 </button>
-                            )}
-                            <button
-                                onClick={modal.onConfirm}
-                                className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${buttonClass}`}
-                            >
-                                {modal.confirmText}
-                            </button>
-                        </div>
+                            </div>
+                        ) : (
+                            <div className="flex gap-3 border-t border-gray-200 bg-gray-50 px-6 py-4 dark:border-gray-700 dark:bg-gray-800/50">
+                                {modal.type === 'confirm' && modal.onCancel && (
+                                    <button
+                                        onClick={modal.onCancel}
+                                        className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                                    >
+                                        {modal.cancelText}
+                                    </button>
+                                )}
+                                <button
+                                    onClick={modal.onConfirm}
+                                    className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${buttonClass}`}
+                                >
+                                    {modal.confirmText}
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

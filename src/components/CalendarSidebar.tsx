@@ -3,14 +3,13 @@ import 'react-calendar/dist/Calendar.css';
 import type { Room } from '@/types/room';
 import type { BorrowingRequest } from '@/components/RequestCard';
 import type { PointerEvent as ReactPointerEvent } from 'react';
-import { useRef, useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
+import { ChevronDown, Search as SearchIcon, X } from 'lucide-react';
 
 interface CalendarSidebarProps {
     rooms: Room[];
     selectedRooms: number[];
     onRoomToggle: (roomId: number) => void;
-    onSelectAll: (selectAll: boolean) => void;
     onDateSelect: (date: Date) => void;
     selectedDate: Date;
     onCreateClick: () => void;
@@ -25,7 +24,6 @@ export default function CalendarSidebar({
     rooms,
     selectedRooms,
     onRoomToggle,
-    onSelectAll,
     onDateSelect,
     selectedDate,
     onCreateClick,
@@ -35,7 +33,6 @@ export default function CalendarSidebar({
     showRejectedBookings = false,
     onBookingClick,
 }: CalendarSidebarProps) {
-    const allSelected = rooms.length > 0 && selectedRooms.length === rooms.length;
     const visibleBookings = showRejectedBookings
         ? myBookings
         : myBookings.filter(b => b.extendedProps.status !== 'REJECTED');
@@ -45,6 +42,15 @@ export default function CalendarSidebar({
 
     const [isRoomsCollapsed, setIsRoomsCollapsed] = useState(false);
     const [isSchedulesCollapsed, setIsSchedulesCollapsed] = useState(false);
+    const [roomSearch, setRoomSearch] = useState('');
+    const filteredRooms = useMemo(() => {
+        const q = roomSearch.trim().toLowerCase();
+        if (!q) return rooms;
+        return rooms.filter(r =>
+            r.Name.toLowerCase().includes(q) ||
+            r.Room_Type.toLowerCase().includes(q)
+        );
+    }, [rooms, roomSearch]);
     const [roomsPanelPercent, setRoomsPanelPercent] = useState(48);
     const splitContainerRef = useRef<HTMLDivElement>(null);
     const canResizePanels = visibleBookings.length > 0 && !isRoomsCollapsed && !isSchedulesCollapsed;
@@ -120,35 +126,54 @@ export default function CalendarSidebar({
                     </div>
 
                     {!isRoomsCollapsed && (
-                        <div className="space-y-1 overflow-y-auto pr-1">
-                            <label className="mb-2 flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 pb-2 hover:bg-white dark:border-white/10 dark:bg-white/[0.04] dark:hover:bg-white/[0.07] group">
+                        <>
+                            <div className="relative mb-2 shrink-0">
+                                <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-gray-500" />
                                 <input
-                                    type="checkbox"
-                                    checked={allSelected}
-                                    onChange={() => onSelectAll(!allSelected)}
-                                    className="h-4 w-4 shrink-0 cursor-pointer rounded border border-gray-400 bg-white text-[#615fff] checked:border-[#615fff] checked:bg-[#615fff] focus:ring-2 focus:ring-[#615fff] dark:border-[#334155] dark:bg-[#1e2939]"
+                                    type="text"
+                                    value={roomSearch}
+                                    onChange={(e) => setRoomSearch(e.target.value)}
+                                    placeholder="Search rooms..."
+                                    className="w-full rounded-lg border border-slate-200 bg-white py-1.5 pl-8 pr-7 text-sm text-slate-700 placeholder:text-slate-400 focus:border-[#615fff] focus:outline-none focus:ring-1 focus:ring-[#615fff] dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-200 dark:placeholder:text-gray-500"
                                 />
-                                <span className="text-sm font-medium text-slate-700 group-hover:text-slate-950 dark:text-gray-200 dark:group-hover:text-white">All Rooms</span>
-                            </label>
+                                {roomSearch && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setRoomSearch('')}
+                                        aria-label="Clear room search"
+                                        className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-white"
+                                    >
+                                        <X className="h-3.5 w-3.5" />
+                                    </button>
+                                )}
+                            </div>
 
-                            {rooms.map((room) => (
-                                <label
-                                    key={room.Room_ID}
-                                    className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 hover:bg-slate-100 dark:hover:bg-white/[0.06] group"
-                                >
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedRooms.includes(room.Room_ID)}
-                                        onChange={() => onRoomToggle(room.Room_ID)}
-                                        className="h-4 w-4 shrink-0 cursor-pointer rounded border border-gray-400 bg-white text-[#615fff] checked:border-[#615fff] checked:bg-[#615fff] focus:ring-2 focus:ring-[#615fff] dark:border-[#334155] dark:bg-[#1e2939]"
-                                    />
-                                    <span className="h-2.5 w-2.5 rounded-full bg-[#6f7f8f]" />
-                                    <span className="text-sm text-slate-600 group-hover:text-slate-950 dark:text-gray-300 dark:group-hover:text-white">
-                                        {room.Name}
-                                    </span>
-                                </label>
-                            ))}
-                        </div>
+                            <div className="space-y-1 overflow-y-auto pr-1">
+                                {filteredRooms.length === 0 ? (
+                                    <div className="px-2 py-3 text-center text-xs text-slate-500 dark:text-gray-400">
+                                        No rooms match "{roomSearch}"
+                                    </div>
+                                ) : (
+                                    filteredRooms.map((room) => (
+                                        <label
+                                            key={room.Room_ID}
+                                            className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 hover:bg-slate-100 dark:hover:bg-white/[0.06] group"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedRooms.includes(room.Room_ID)}
+                                                onChange={() => onRoomToggle(room.Room_ID)}
+                                                className="h-4 w-4 shrink-0 cursor-pointer rounded border border-gray-400 bg-white text-[#615fff] checked:border-[#615fff] checked:bg-[#615fff] focus:ring-2 focus:ring-[#615fff] dark:border-[#334155] dark:bg-[#1e2939]"
+                                            />
+                                            <span className="h-2.5 w-2.5 rounded-full bg-[#6f7f8f]" />
+                                            <span className="text-sm text-slate-600 group-hover:text-slate-950 dark:text-gray-300 dark:group-hover:text-white">
+                                                {room.Name}
+                                            </span>
+                                        </label>
+                                    ))
+                                )}
+                            </div>
+                        </>
                     )}
                 </div>
 

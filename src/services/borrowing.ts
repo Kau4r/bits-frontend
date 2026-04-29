@@ -38,6 +38,7 @@ export interface WalkinBorrowingInput {
     itemId: number;
     returnDate: string; // ISO datetime
     purpose?: string;
+    roomId?: number;
 }
 export const createWalkinBorrowing = async (input: WalkinBorrowingInput): Promise<any> => {
     const { data } = await api.post(`${API_BASE}/walkin`, input);

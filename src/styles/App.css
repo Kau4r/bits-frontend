@@ -334,7 +334,7 @@ html {
 
 /* List day header */
 .fc-list-day th {
-  background-color: #f8fafc !important;
+  background-color: #eef2ff !important;
 }
 
 .dark .fc-list-day th {
@@ -342,17 +342,20 @@ html {
 }
 
 .fc-list-day-cushion {
-  background-color: #f1f5f9 !important;
+  background-color: #eef2ff !important;
+  border-bottom: 1px solid #c7d2fe !important;
 }
 
 .dark .fc-list-day-cushion {
   background-color: #243248 !important;
+  border-bottom: 1px solid #334155 !important;
 }
 
 .fc-list-day-text,
 .fc-list-day-side-text {
-  color: #1e293b !important;
-  font-weight: 600 !important;
+  color: #312e81 !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.01em;
 }
 
 .dark .fc-list-day-text,
@@ -372,7 +375,7 @@ html {
 }
 
 .fc-list-event:hover {
-  background-color: #f1f5f9 !important;
+  background-color: #eef2ff !important;
 }
 
 .dark .fc-list-event:hover {
@@ -380,7 +383,7 @@ html {
 }
 
 .fc-list-event:hover td {
-  background-color: #f1f5f9 !important;
+  background-color: #eef2ff !important;
 }
 
 .dark .fc-list-event:hover td {
@@ -389,8 +392,8 @@ html {
 
 /* List event time */
 .fc-list-event-time {
-  color: #64748b !important;
-  font-weight: 500 !important;
+  color: #334155 !important;
+  font-weight: 600 !important;
   white-space: nowrap;
 }
 
@@ -400,8 +403,8 @@ html {
 
 /* List event title */
 .fc-list-event-title {
-  color: #1e293b !important;
-  font-weight: 500 !important;
+  color: #0f172a !important;
+  font-weight: 600 !important;
 }
 
 .dark .fc-list-event-title {
@@ -409,7 +412,7 @@ html {
 }
 
 .fc-list-event-title a {
-  color: #1e293b !important;
+  color: #0f172a !important;
   text-decoration: none !important;
 }
 
@@ -419,7 +422,7 @@ html {
 
 .fc-list-event:hover .fc-list-event-title,
 .fc-list-event:hover .fc-list-event-title a {
-  color: #0f172a !important;
+  color: #4338ca !important;
 }
 
 .dark .fc-list-event:hover .fc-list-event-title,
@@ -464,11 +467,11 @@ html {
 
 /* List event dot/graphic */
 .fc-list-event-graphic {
-  padding-right: 8px !important;
+  padding-right: 10px !important;
 }
 
 .fc-list-event-dot {
-  border-color: #6366f1 !important;
+  border-width: 6px !important;
 }
 
 /* Table cells in list view */

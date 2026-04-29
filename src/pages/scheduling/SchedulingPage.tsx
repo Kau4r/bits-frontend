@@ -20,6 +20,8 @@ import WarningModal from '@/pages/scheduling/components/WarningModal';
 import ConfirmModal from '@/pages/scheduling/components/ConfirmModal';
 import { useBookingEvents } from '@/hooks/useBookingEvents';
 import type { BorrowingRequest } from '@/components/RequestCard';
+import type { RecurrenceConfig } from '@/components/RecurrenceModal';
+import { createBookingSeries, upsertSeriesOverride, excludeSeriesDate, updateBookingSeries, deleteBookingSeries, decideSeriesStatus } from '@/services/bookingSeries';
 
 interface SchedulingProps {
   allowedRoomTypes?: RoomType[];
@@ -31,7 +33,10 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
   const modal = useModal();
   const currentUserId = user?.User_ID ?? 0;
   const userRole = user?.User_Role.toUpperCase() ?? 'FACULTY';
-  const canManageAllBookings = userRole === 'ADMIN' || userRole === 'LAB_HEAD';
+  // Scheduling is owned by SECRETARY (CONF/CONS) and LAB_HEAD/LAB_TECH (LAB/LECTURE).
+  // ADMIN is intentionally not part of the scheduling workflow — they can view but
+  // cannot edit other users' bookings here. Lab heads approve/reject without editing.
+  const canManageAllBookings = false;
   const allowedRoomTypeSet = useMemo(
     () => allowedRoomTypes ? new Set(allowedRoomTypes) : null,
     [allowedRoomTypes]
@@ -52,6 +57,10 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
 
   // Popover state
   const [showPopover, setShowPopover] = useState(false);
+  // Holds the per-occurrence conflicts the backend returns when a recurring
+  // series clashes with existing schedules/bookings. Surfaced in the
+  // recurrence modal's right pane so the user can resolve them inline.
+  const [seriesConflicts, setSeriesConflicts] = useState<Array<{ when: string; reason: string }> | null>(null);
   const [, setPopoverPosition] = useState({ x: 0, y: 0 });
   const [popoverTimes, setPopoverTimes] = useState({ start: new Date(), end: new Date() });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -67,6 +76,10 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
     createdBy: string;
     createdById: number;
     status: string;
+    seriesId?: number | null;
+    originalStart?: string | null;
+    isVirtual?: boolean;
+    isRecurring?: boolean;
   } | null>(null);
   const [canEditBooking, setCanEditBooking] = useState(false);
 
@@ -120,7 +133,7 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
         .filter((b: Booking) => b.Status !== 'CANCELLED')
         .map((b: Booking) => ({
           id: String(b.Booked_Room_ID),
-          title: b.Purpose ?? 'No Title',
+          title: b.Purpose ?? b.Series_Title ?? 'No Title',
           start: b.Start_Time,
           end: b.End_Time,
           extendedProps: {
@@ -130,6 +143,10 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
             createdBy: b.User ? `${b.User.First_Name || ''} ${b.User.Last_Name || ''}`.trim() : 'Unknown',
             createdById: b.User_ID,
             description: b.Notes ?? '',
+            seriesId: b.Series_ID ?? null,
+            originalStart: b.Original_Start ?? (b.Is_Virtual ? b.Start_Time : null),
+            isVirtual: !!b.Is_Virtual,
+            isRecurring: b.Series_ID != null,
           },
         }));
       setEvents(mapped);
@@ -184,7 +201,7 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
         // hidden from the scheduling/booking flow.
         const allRooms = (await getRooms()).filter(r => r.Is_Bookable !== false);
         if (allRooms.length > 0) {
-          setSelectedRooms(allRooms.map(r => r.Room_ID)); // Select ALL bookable rooms by default
+          setSelectedRooms([allRooms[0].Room_ID]); // Default to just the first bookable room
         } else {
           setSelectedRooms([]);
         }
@@ -227,8 +244,6 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
   const handleRoomToggle = (roomId: number) => {
     setSelectedRooms(prev => {
       if (prev.includes(roomId)) {
-        // Don't allow deselecting all rooms
-        if (prev.length === 1) return prev;
         return prev.filter(id => id !== roomId);
       }
       return [...prev, roomId];
@@ -332,17 +347,62 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
     startTime: string;
     endTime: string;
     repeat: boolean;
+    recurrence?: { rrule: string; config: RecurrenceConfig };
   }) => {
     setIsSubmitting(true);
     try {
-      const startDateTime = `${data.date}T${data.startTime}:00`;
-      const endDateTime = `${data.date}T${data.endTime}:00`;
+      const anchorStart = new Date(`${data.date}T${data.startTime}:00`);
+      const anchorEnd = new Date(`${data.date}T${data.endTime}:00`);
+      const durationMs = anchorEnd.getTime() - anchorStart.getTime();
+
+      // Recurrence path: persist a single Booking_Series row on the backend.
+      // The backend expands the RRULE virtually on read, so individual
+      // occurrences appear on the calendar without bloating the bookings table.
+      if (data.recurrence) {
+        try {
+          const series = await createBookingSeries({
+            User_ID: currentUserId,
+            Room_ID: data.roomId,
+            Title: data.title,
+            Purpose: data.title,
+            Notes: data.description,
+            Recurrence_Rule: data.recurrence.rrule,
+            Anchor_Start: anchorStart.toISOString(),
+            Anchor_End: anchorEnd.toISOString(),
+            Excluded_Dates: data.recurrence.config.excludedDates,
+          });
+
+          setSeriesConflicts(null);
+          await loadBookings();
+          setShowPopover(false);
+          await modal.showSuccess(
+            `Created a recurring series with ${series.occurrenceCount} occurrences.`,
+            series.Status === 'APPROVED' ? 'Series scheduled' : 'Series request submitted'
+          );
+        } catch (error: any) {
+          const status = error.response?.status;
+          const body = error.response?.data;
+          if (status === 409 && Array.isArray(body?.conflicts)) {
+            // Hand the per-occurrence reasons to the popover, which auto-opens
+            // the recurrence modal with a fixable conflicts panel. Don't close
+            // the popover — the user is mid-edit.
+            setSeriesConflicts(body.conflicts);
+          } else {
+            setSeriesConflicts(null);
+            await modal.showError(
+              body?.details || body?.error || 'Failed to create recurring series.',
+              'Series failed'
+            );
+          }
+        }
+        return;
+      }
 
       const newBooking = await createBooking({
         User_ID: currentUserId,
         Room_ID: data.roomId,
-        Start_Time: startDateTime,
-        End_Time: endDateTime,
+        Start_Time: anchorStart.toISOString(),
+        End_Time: anchorEnd.toISOString(),
         Purpose: data.title,
       });
 
@@ -437,6 +497,21 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
     setIsSubmitting(true);
 
     try {
+      const seriesId = event.extendedProps.seriesId as number | null;
+      const originalStart = event.extendedProps.originalStart as string | null;
+
+      if (seriesId && originalStart) {
+        // Dragging an instance of a recurring series → override that occurrence.
+        await upsertSeriesOverride(seriesId, {
+          Original_Start: originalStart,
+          Start_Time: newStart.toISOString(),
+          End_Time: newEnd.toISOString(),
+        });
+        await loadBookings();
+        setPendingDrag(null);
+        return;
+      }
+
       await updateBooking(parseInt(event.id), {
         Start_Time: newStart.toISOString(),
         End_Time: newEnd.toISOString(),
@@ -485,6 +560,8 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
   // Handle clicking on an existing event
   const handleEventClick = (clickInfo: { event: any; jsEvent: MouseEvent }) => {
     const { event, jsEvent } = clickInfo;
+    // Class-schedule events from the Schedule Import are read-only; ignore clicks.
+    if (event.extendedProps.isScheduleEvent) return;
     const start = new Date(event.start);
     const end = new Date(event.end);
 
@@ -504,6 +581,10 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
       createdBy: event.extendedProps.createdBy || 'Unknown',
       createdById: event.extendedProps.createdById,
       status: event.extendedProps.status || 'PENDING',
+      seriesId: event.extendedProps.seriesId ?? null,
+      originalStart: event.extendedProps.originalStart ?? (event.extendedProps.isVirtual ? new Date(event.start).toISOString() : null),
+      isVirtual: !!event.extendedProps.isVirtual,
+      isRecurring: !!event.extendedProps.isRecurring,
     });
     setCanEditBooking(canEdit);
 
@@ -523,11 +604,66 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
     date: string;
     startTime: string;
     endTime: string;
-  }) => {
+  }, applyToSeries?: boolean) => {
     setIsSubmitting(true);
     try {
       const startDateTime = `${data.date}T${data.startTime}:00`;
       const endDateTime = `${data.date}T${data.endTime}:00`;
+
+      // Recurring instance — the popover's "Apply to all events" checkbox
+      // tells us whether to override one occurrence or update the whole series.
+      const seriesId = viewingBooking?.seriesId;
+      const originalStart = viewingBooking?.originalStart;
+      if (seriesId && originalStart) {
+        if (!applyToSeries) {
+          // Single occurrence → override row.
+          await upsertSeriesOverride(seriesId, {
+            Original_Start: originalStart,
+            Start_Time: new Date(startDateTime).toISOString(),
+            End_Time: new Date(endDateTime).toISOString(),
+            Room_ID: data.roomId,
+            Purpose: data.title,
+            Notes: data.description,
+          });
+        } else {
+          // Whole series → PATCH series. Title/Notes always propagate.
+          // If the user shifted time-of-day or room, propagate those onto
+          // the series's anchor so every virtual occurrence shifts in turn.
+          const newStartDate = new Date(startDateTime);
+          const newEndDate = new Date(endDateTime);
+          const orig = new Date(originalStart);
+          const tShift = (
+            newStartDate.getHours() !== orig.getHours() ||
+            newStartDate.getMinutes() !== orig.getMinutes() ||
+            (newEndDate.getTime() - newStartDate.getTime()) !==
+              (new Date(`${viewingBooking.date}T${viewingBooking.endTime}:00`).getTime() -
+               new Date(`${viewingBooking.date}T${viewingBooking.startTime}:00`).getTime())
+          );
+
+          const payload: Parameters<typeof updateBookingSeries>[1] = {
+            Title: data.title,
+            Purpose: data.title,
+            Notes: data.description,
+          };
+          if (data.roomId !== viewingBooking.roomId) payload.Room_ID = data.roomId;
+          if (tShift) {
+            // Anchor stays on the original date; only its time-of-day moves
+            // so the rule keeps generating from the same starting point.
+            const newAnchorStart = new Date(orig);
+            newAnchorStart.setHours(newStartDate.getHours(), newStartDate.getMinutes(), 0, 0);
+            const newAnchorEnd = new Date(newAnchorStart.getTime() + (newEndDate.getTime() - newStartDate.getTime()));
+            payload.Anchor_Start = newAnchorStart.toISOString();
+            payload.Anchor_End = newAnchorEnd.toISOString();
+          }
+          await updateBookingSeries(seriesId, payload);
+        }
+
+        await loadBookings();
+        setShowPopover(false);
+        setViewingBooking(null);
+        setCanEditBooking(false);
+        return;
+      }
 
       await updateBooking(parseInt(id), {
         Room_ID: data.roomId,
@@ -558,9 +694,10 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
       setShowPopover(false);
       setViewingBooking(null);
       setCanEditBooking(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to update booking:', error);
-      await modal.showError('Failed to update booking', 'Error');
+      const detail = error.response?.data?.details || error.response?.data?.error;
+      await modal.showError(detail || 'Failed to update booking', 'Error');
     } finally {
       setIsSubmitting(false);
     }
@@ -585,6 +722,89 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
     [rooms, allowedRoomTypeSet]
   );
 
+  // Recurring class-schedule events from the Schedule Import. Rendered as
+  // non-editable red blocks alongside booking events so users can see when a
+  // room is occupied by a scheduled class.
+  const scheduleEvents = useMemo(() => {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const result: any[] = [];
+    for (const room of rooms) {
+      if (!selectedRooms.includes(room.Room_ID)) continue;
+      if (!room.Schedule || room.Schedule.length === 0) continue;
+      for (const sched of room.Schedule) {
+        const days = sched.Days?.split(',')
+          .map(d => parseInt(d.trim(), 10))
+          .filter(d => !Number.isNaN(d)) ?? [];
+        if (days.length === 0) continue;
+        const start = new Date(sched.Start_Time);
+        const end = new Date(sched.End_Time);
+        if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) continue;
+        result.push({
+          id: `schedule-${sched.Schedule_ID}`,
+          title: sched.Title || sched.Schedule_Type || 'Scheduled Class',
+          daysOfWeek: days,
+          startTime: `${pad(start.getHours())}:${pad(start.getMinutes())}:00`,
+          endTime: `${pad(end.getHours())}:${pad(end.getMinutes())}:00`,
+          editable: false,
+          startEditable: false,
+          durationEditable: false,
+          extendedProps: {
+            isScheduleEvent: true,
+            roomId: room.Room_ID,
+            roomName: room.Name,
+            scheduleType: sched.Schedule_Type,
+          },
+        });
+      }
+    }
+    return result;
+  }, [rooms, selectedRooms]);
+
+  const calendarEvents = useMemo(
+    () => [...filteredEvents, ...scheduleEvents],
+    [filteredEvents, scheduleEvents]
+  );
+
+  // Client-side conflict probe used by the booking popover + recurrence
+  // modal to flag bad slots BEFORE the user submits. Walks the rooms[]
+  // schedule expansion (Days + time-of-day) and the loaded events list
+  // (approved bookings only, to avoid noise from PENDING). Returns a short
+  // human reason or null when the slot is free.
+  const checkSlotConflict = useCallback(
+    (roomId: number, start: Date, end: Date): string | null => {
+      const room = rooms.find(r => r.Room_ID === roomId);
+      if (room?.Schedule) {
+        for (const sched of room.Schedule) {
+          const days = (sched.Days || '')
+            .split(',')
+            .map(d => parseInt(d.trim(), 10))
+            .filter(d => !Number.isNaN(d));
+          if (!days.includes(start.getDay())) continue;
+          const sStart = new Date(sched.Start_Time);
+          const sEnd = new Date(sched.End_Time);
+          const startMin = start.getHours() * 60 + start.getMinutes();
+          const endMin = end.getHours() * 60 + end.getMinutes();
+          const sStartMin = sStart.getHours() * 60 + sStart.getMinutes();
+          const sEndMin = sEnd.getHours() * 60 + sEnd.getMinutes();
+          if (startMin < sEndMin && endMin > sStartMin) {
+            return `Class: ${sched.Title || sched.Schedule_Type || 'Scheduled'}`;
+          }
+        }
+      }
+      for (const e of events) {
+        if (e.extendedProps.roomId !== roomId) continue;
+        if (e.extendedProps.status !== 'APPROVED') continue;
+        const eStart = new Date(e.start);
+        const eEnd = new Date(e.end);
+        if (start < eEnd && end > eStart) {
+          return `Booked by ${e.extendedProps.createdBy || 'someone else'}`;
+        }
+      }
+      return null;
+    },
+    [rooms, events]
+  );
+
   const noRoomsMessage = allowedRoomTypes?.length
     ? 'No rooms matching the allowed room types are available for booking.'
     : 'No rooms are available for booking.';
@@ -597,13 +817,6 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
           rooms={rooms}
           selectedRooms={selectedRooms}
           onRoomToggle={handleRoomToggle}
-          onSelectAll={(selectAll) => {
-            if (selectAll) {
-              setSelectedRooms(rooms.map(r => r.Room_ID));
-            } else {
-              setSelectedRooms([]);
-            }
-          }}
           onDateSelect={handleSidebarDateSelect}
           selectedDate={selectedDate}
           onCreateClick={handleCreateClick}
@@ -630,6 +843,10 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
               createdBy: booking.extendedProps.createdBy || 'Unknown',
               createdById: booking.extendedProps.createdById,
               status: booking.extendedProps.status || 'PENDING',
+              seriesId: booking.extendedProps.seriesId ?? null,
+              originalStart: booking.extendedProps.originalStart ?? (booking.extendedProps.isVirtual ? new Date(booking.start).toISOString() : null),
+              isVirtual: !!booking.extendedProps.isVirtual,
+              isRecurring: !!booking.extendedProps.isRecurring,
             });
             setCanEditBooking(booking.extendedProps.createdById === currentUserId || canManageAllBookings);
 
@@ -721,30 +938,79 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
                 title: info.event.title,
                 roomName: ep.roomName || 'Unknown',
                 time: `${dayjs(info.event.start).format('h:mm A')} – ${dayjs(info.event.end).format('h:mm A')}`,
-                createdBy: ep.createdBy || 'Unknown',
-                status: ep.status || 'PENDING',
+                createdBy: ep.isScheduleEvent ? 'Class Schedule' : (ep.createdBy || 'Unknown'),
+                status: ep.isScheduleEvent ? 'CLASS' : (ep.status || 'PENDING'),
               });
             }}
             eventMouseLeave={() => setTooltipInfo(prev => ({ ...prev, visible: false }))}
-            events={filteredEvents}
+            events={calendarEvents}
             eventColor={scheduleColor}
             eventBackgroundColor={scheduleColor}
             eventBorderColor={scheduleColor}
             eventTextColor="#ffffff"
-            eventContent={({ event }) => {
+            eventContent={(arg) => {
+              const { event, view } = arg;
+              const roomName = event.extendedProps.roomName as string | undefined;
+              const isScheduleEvent = event.extendedProps.isScheduleEvent as boolean | undefined;
+
+              // In list view we render plain inline content so FullCalendar's
+              // built-in row layout (.fc-list-event-title CSS) handles colors
+              // and spacing. Returning a colored block here would clash with
+              // the table layout and end up white-on-white in light mode.
+              if (view.type.startsWith('list')) {
+                return (
+                  <span className="inline-flex flex-wrap items-center gap-2">
+                    <span className="font-semibold">{event.title}</span>
+                    {roomName && (
+                      <span className="text-slate-500 dark:text-slate-400">— {roomName}</span>
+                    )}
+                    {isScheduleEvent && (
+                      <span className="rounded bg-pink-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-pink-700 dark:bg-pink-300/30 dark:text-pink-200">
+                        Class
+                      </span>
+                    )}
+                  </span>
+                );
+              }
+
+              const start = event.start ? event.start.getTime() : 0;
+              const end = event.end ? event.end.getTime() : start + 60 * 60 * 1000;
+              const durationMin = (end - start) / 60000;
+              const isShort = durationMin <= 30;
+
+              if (isScheduleEvent) {
+                return (
+                  <div
+                    className={`schedule-class-event flex h-full w-full overflow-hidden rounded bg-pink-200 px-2 text-xs text-pink-900 dark:bg-pink-300/80 dark:text-pink-950 ${
+                      isShort ? 'items-center py-0' : 'flex-col justify-start py-1'
+                    }`}
+                  >
+                    <div className="min-w-0 truncate font-medium leading-tight">{event.title}</div>
+                    {!isShort && roomName && (
+                      <div className="truncate text-[11px] leading-tight opacity-80">{roomName}</div>
+                    )}
+                  </div>
+                );
+              }
+
               const status = event.extendedProps.status as string;
 
               return (
                 <div
-                  className="schedule-calendar-event relative flex h-full w-full items-center overflow-hidden rounded px-2 py-1 pr-5 text-xs text-white"
+                  className={`schedule-calendar-event relative flex h-full w-full overflow-hidden rounded px-2 pr-5 text-xs text-white ${
+                    isShort ? 'items-center py-0' : 'flex-col justify-start py-1'
+                  }`}
                 >
                   <span
-                    className="absolute right-1.5 top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full ring-1 ring-white/70 dark:ring-gray-900/70"
+                    className={`absolute right-1.5 ${isShort ? 'top-1/2 -translate-y-1/2' : 'top-1.5'} h-2.5 w-2.5 rounded-full ring-1 ring-white/70 dark:ring-gray-900/70`}
                     style={{ backgroundColor: statusColor[status] || '#6366f1' }}
                     title={status}
                     aria-label={`Status: ${status}`}
                   />
-                  <div className="font-medium truncate leading-tight">{event.title}</div>
+                  <div className="min-w-0 truncate font-medium leading-tight">{event.title}</div>
+                  {!isShort && roomName && (
+                    <div className="truncate text-[11px] leading-tight opacity-90">{roomName}</div>
+                  )}
                 </div>
               );
             }}
@@ -764,57 +1030,125 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
       {/* Booking Popover */}
       <BookingPopover
         isOpen={showPopover}
+        recurrenceConflicts={seriesConflicts ?? undefined}
+        checkConflict={checkSlotConflict}
         onClose={() => {
           setShowPopover(false);
           setViewingBooking(null);
           setCanEditBooking(false);
+          setSeriesConflicts(null);
         }}
         onSave={handlePopoverSave}
         onUpdate={handlePopoverUpdate}
-        onApprove={async (id) => {
+        onApprove={async (id, applyToSeries) => {
           setIsSubmitting(true);
           try {
+            // Recurring path — never call /bookings/:id/status with a virtual id.
+            if (viewingBooking?.seriesId && viewingBooking.originalStart) {
+              const result = await decideSeriesStatus(viewingBooking.seriesId, {
+                status: 'APPROVED',
+                applyToSeries: !!applyToSeries,
+                Original_Start: viewingBooking.originalStart,
+              });
+              await loadBookings();
+              setShowPopover(false);
+              setViewingBooking(null);
+
+              // Surface partial-rejection summary so the approver sees what
+              // got auto-rejected for conflicts.
+              if (applyToSeries && Array.isArray(result.conflicts) && result.conflicts.length > 0) {
+                const sample = result.conflicts.slice(0, 5).map((c) => {
+                  const when = new Date(c.when).toLocaleString(undefined, {
+                    weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+                  });
+                  return `• ${when} — ${c.reason}`;
+                }).join('\n');
+                const extra = result.conflicts.length > 5 ? `\n…and ${result.conflicts.length - 5} more` : '';
+                await modal.showAlert(
+                  `Approved ${result.approved} of ${result.totalOccurrences} occurrences.\n\nThe following were auto-rejected with a reason:\n\n${sample}${extra}`,
+                  'Series approved with exceptions'
+                );
+              } else {
+                await modal.showSuccess(
+                  applyToSeries
+                    ? `Approved ${result.approved} occurrence${typeof result.approved === 'number' && result.approved !== 1 ? 's' : ''}.`
+                    : 'This occurrence was approved.',
+                  'Approved'
+                );
+              }
+              return;
+            }
+
             await updateBookingStatus(parseInt(id), { status: 'APPROVED', approverId: currentUserId });
             setEvents(prev => prev.map(e =>
               e.id === id ? { ...e, extendedProps: { ...e.extendedProps, status: 'APPROVED' } } : e
             ));
             setShowPopover(false);
             setViewingBooking(null);
-          } catch (error) {
+          } catch (error: any) {
             console.error('Failed to approve booking:', error);
-            await modal.showError('Failed to approve booking', 'Error');
+            const detail = error.response?.data?.details || error.response?.data?.error;
+            await modal.showError(detail || 'Failed to approve booking', 'Error');
           } finally {
             setIsSubmitting(false);
           }
         }}
-        onReject={async (id) => {
+        onReject={async (id, applyToSeries) => {
           setIsSubmitting(true);
           try {
+            if (viewingBooking?.seriesId && viewingBooking.originalStart) {
+              await decideSeriesStatus(viewingBooking.seriesId, {
+                status: 'REJECTED',
+                applyToSeries: !!applyToSeries,
+                Original_Start: viewingBooking.originalStart,
+              });
+              await loadBookings();
+              setShowPopover(false);
+              setViewingBooking(null);
+              return;
+            }
+
             await updateBookingStatus(parseInt(id), { status: 'REJECTED', approverId: currentUserId });
             setEvents(prev => prev.map(e =>
               e.id === id ? { ...e, extendedProps: { ...e.extendedProps, status: 'REJECTED' } } : e
             ));
             setShowPopover(false);
             setViewingBooking(null);
-          } catch (error) {
+          } catch (error: any) {
             console.error('Failed to reject booking:', error);
-            await modal.showError('Failed to reject booking', 'Error');
+            const detail = error.response?.data?.details || error.response?.data?.error;
+            await modal.showError(detail || 'Failed to reject booking', 'Error');
           } finally {
             setIsSubmitting(false);
           }
         }}
-        onRemove={async (id) => {
+        onRemove={async (id, applyToSeries) => {
           setIsSubmitting(true);
           try {
+            // Recurring instance — popover passed the "apply to all" checkbox state.
+            if (viewingBooking?.seriesId && viewingBooking.originalStart) {
+              if (applyToSeries) {
+                await deleteBookingSeries(viewingBooking.seriesId);
+              } else {
+                await excludeSeriesDate(viewingBooking.seriesId, viewingBooking.originalStart);
+              }
+              await loadBookings();
+              setShowPopover(false);
+              setViewingBooking(null);
+              setCanEditBooking(false);
+              return;
+            }
+
             await updateBookingStatus(parseInt(id), { status: 'CANCELLED', approverId: currentUserId });
             // Remove from calendar
             setEvents(prev => prev.filter(e => e.id !== id));
             setShowPopover(false);
             setViewingBooking(null);
             setCanEditBooking(false);
-          } catch (error) {
+          } catch (error: any) {
             console.error('Failed to remove booking:', error);
-            await modal.showError('Failed to remove booking', 'Error');
+            const detail = error.response?.data?.details || error.response?.data?.error;
+            await modal.showError(detail || 'Failed to remove booking', 'Error');
           } finally {
             setIsSubmitting(false);
           }
@@ -829,9 +1163,9 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
         canApprove={(() => {
           const viewingRoomType = rooms.find(r => r.Room_ID === viewingBooking?.roomId)?.Room_Type;
           if (viewingRoomType === 'CONFERENCE' || viewingRoomType === 'CONSULTATION') {
-            return userRole === 'SECRETARY' || userRole === 'ADMIN';
+            return userRole === 'SECRETARY';
           }
-          return userRole === 'LAB_HEAD' || userRole === 'LAB_TECH' || userRole === 'ADMIN';
+          return userRole === 'LAB_HEAD' || userRole === 'LAB_TECH';
         })()}
       />
 

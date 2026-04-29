@@ -45,6 +45,7 @@ export interface CreateBorrowingDTO {
     purpose?: string;
     borrowDate?: string | Date; // Requested pickup time
     expectedReturnDate?: string | Date;
+    roomId?: number; // Where the item will be used (used for routing/notifications)
 }
 
 export interface UpdateBorrowingStatusDTO {

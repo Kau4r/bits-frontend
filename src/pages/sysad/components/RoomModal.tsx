@@ -244,23 +244,33 @@ export default function RoomModal({
               </div>
 
               <div className="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/60">
-                <input
-                  id="room-modal-bookable"
-                  type="checkbox"
-                  checked={room.Is_Bookable !== false}
-                  onChange={(e) => setRoom((prev) => ({ ...prev, Is_Bookable: e.target.checked }))}
-                  disabled={readOnly}
-                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600"
-                />
                 <div className="flex-1">
                   <label htmlFor="room-modal-bookable" className="block text-sm font-medium text-gray-800 dark:text-gray-200">
                     Bookable
                   </label>
                   <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                    When unchecked, this room will not appear in the booking flow.
+                    When off, this room will not appear in the booking flow.
                     Use for storage, control rooms, dept office, faculty office, green room, etc.
                   </p>
                 </div>
+                <button
+                  id="room-modal-bookable"
+                  type="button"
+                  role="switch"
+                  aria-checked={room.Is_Bookable !== false}
+                  aria-label="Toggle bookable"
+                  disabled={readOnly}
+                  onClick={() => setRoom((prev) => ({ ...prev, Is_Bookable: !(prev.Is_Bookable !== false) }))}
+                  className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-300 ease-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${
+                    room.Is_Bookable !== false ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform duration-300 ease-out motion-safe:[transition-timing-function:cubic-bezier(0.34,1.56,0.64,1)] ${
+                      room.Is_Bookable !== false ? 'translate-x-5' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
               </div>
             </div>
           </div>

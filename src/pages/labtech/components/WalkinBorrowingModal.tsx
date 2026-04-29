@@ -1,17 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FC, FormEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Clock, UserRound, Box, Tag } from 'lucide-react';
+import { X, Clock, UserRound, Box, Tag, MapPin } from 'lucide-react';
 import { FloatingSelect } from '@/ui/FloatingSelect';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { formatItemType, resolveItemType } from '@/lib/utils';
 import type { Item } from '@/types/inventory';
+import type { Room } from '@/types/room';
 
 export interface WalkinBorrowingSubmit {
   borrowerIdentifier: string;
   itemId: number;
   returnDate: string;
   purpose?: string;
+  roomId?: number;
 }
 
 interface Props {
@@ -19,6 +21,7 @@ interface Props {
   onClose: () => void;
   onSubmit: (payload: WalkinBorrowingSubmit) => Promise<void> | void;
   availableItems: Item[];
+  rooms?: Room[];
 }
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -26,13 +29,14 @@ const toDateTimeLocal = (d: Date) =>
   `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 const fromDateTimeLocal = (s: string) => new Date(s);
 
-const WalkinBorrowingModal: FC<Props> = ({ isOpen, onClose, onSubmit, availableItems }) => {
+const WalkinBorrowingModal: FC<Props> = ({ isOpen, onClose, onSubmit, availableItems, rooms = [] }) => {
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef, isOpen);
 
   const [borrowerIdentifier, setBorrowerIdentifier] = useState('');
   const [itemType, setItemType] = useState<string>('');
   const [itemId, setItemId] = useState<number | ''>('');
+  const [roomId, setRoomId] = useState<number | ''>('');
   const [borrowedAt, setBorrowedAt] = useState(() => toDateTimeLocal(new Date()));
   const [returnAt, setReturnAt] = useState(() =>
     toDateTimeLocal(new Date(Date.now() + 60 * 60 * 1000)),
@@ -48,6 +52,7 @@ const WalkinBorrowingModal: FC<Props> = ({ isOpen, onClose, onSubmit, availableI
     setBorrowerIdentifier('');
     setItemType('');
     setItemId('');
+    setRoomId('');
     setBorrowedAt(toDateTimeLocal(now));
     setReturnAt(toDateTimeLocal(new Date(now.getTime() + 60 * 60 * 1000)));
     setMinReturnAt(toDateTimeLocal(now));
@@ -122,6 +127,7 @@ const WalkinBorrowingModal: FC<Props> = ({ isOpen, onClose, onSubmit, availableI
         itemId: Number(itemId),
         returnDate: returnDate.toISOString(),
         purpose: purpose.trim() || undefined,
+        roomId: typeof roomId === 'number' ? roomId : undefined,
       });
       onClose();
     } catch (err: any) {
@@ -217,6 +223,24 @@ const WalkinBorrowingModal: FC<Props> = ({ isOpen, onClose, onSubmit, availableI
                   disabled={!itemType || itemOptions.length === 0}
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
+                <MapPin className="h-4 w-4" />
+                Room (where it'll be used)
+              </label>
+              <FloatingSelect
+                id="walkin-borrow-room"
+                value={roomId === '' ? '' : String(roomId)}
+                placeholder={rooms.length === 0 ? 'No rooms loaded' : 'Select a room (optional)'}
+                options={rooms.map(r => ({ value: String(r.Room_ID), label: r.Name }))}
+                onChange={v => setRoomId(v ? Number(v) : '')}
+                disabled={rooms.length === 0}
+              />
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Optional. Tags this borrow with the room the item is being used in.
+              </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

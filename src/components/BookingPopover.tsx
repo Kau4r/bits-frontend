@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import type { FormEvent } from 'react';
 import dayjs from 'dayjs';
 import { AlignLeft, Check, Clock3, MapPin, Repeat, Trash2, UserRound, X } from 'lucide-react';
@@ -6,6 +6,7 @@ import type { Room } from '@/types/room';
 import { useModal } from '@/context/ModalContext';
 import { FloatingSelect } from '@/ui/FloatingSelect';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
+import RecurrenceModal, { type RecurrenceConfig, buildRrule } from '@/components/RecurrenceModal';
 
 interface ViewingBooking {
     id: string;
@@ -19,11 +20,28 @@ interface ViewingBooking {
     createdBy: string;
     createdById: number;
     status: string;
+    seriesId?: number | null;
+    originalStart?: string | null;
+    isVirtual?: boolean;
+    isRecurring?: boolean;
+}
+
+interface RecurrenceConflict {
+    when: string;
+    reason: string;
 }
 
 interface BookingPopoverProps {
     isOpen: boolean;
     onClose: () => void;
+    // When the parent's create-series call returns 409, hand the per-occurrence
+    // conflicts back so the recurrence modal can render them with quick "skip"
+    // actions instead of blowing the user away with a wall of error text.
+    recurrenceConflicts?: RecurrenceConflict[];
+    // Live conflict check using already-loaded room schedules + bookings.
+    // The popover shows a banner for one-off bookings, and the recurrence
+    // modal flags conflicting preview occurrences in red.
+    checkConflict?: (roomId: number, start: Date, end: Date) => string | null;
     onSave: (data: {
         title: string;
         description: string;
@@ -32,6 +50,7 @@ interface BookingPopoverProps {
         startTime: string;
         endTime: string;
         repeat: boolean;
+        recurrence?: { rrule: string; config: RecurrenceConfig };
     }) => void;
     onUpdate?: (id: string, data: {
         title: string;
@@ -40,10 +59,10 @@ interface BookingPopoverProps {
         date: string;
         startTime: string;
         endTime: string;
-    }) => void;
-    onApprove?: (id: string) => void;
-    onReject?: (id: string) => void;
-    onRemove?: (id: string) => void;
+    }, applyToSeries?: boolean) => void;
+    onApprove?: (id: string, applyToSeries?: boolean) => void;
+    onReject?: (id: string, applyToSeries?: boolean) => void;
+    onRemove?: (id: string, applyToSeries?: boolean) => void;
     startTime: Date;
     endTime: Date;
     rooms: Room[];
@@ -54,25 +73,184 @@ interface BookingPopoverProps {
     canApprove?: boolean;
 }
 
-const generateTimeOptions = () => {
-    const options: string[] = [];
-    for (let h = 0; h < 24; h++) {
-        for (let m = 0; m < 60; m += 30) {
-            const hour = h.toString().padStart(2, '0');
-            const min = m.toString().padStart(2, '0');
-            options.push(`${hour}:${min}`);
-        }
-    }
-    return options;
-};
-
-const TIME_OPTIONS = generateTimeOptions();
-
 const formatTimeDisplay = (time: string) => {
     const [h, m] = time.split(':').map(Number);
     const period = h >= 12 ? 'PM' : 'AM';
     const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
     return `${hour12}:${m.toString().padStart(2, '0')} ${period}`;
+};
+
+// Parses free-form time input like "11:30", "1130", "11:30am", "11pm",
+// "11 30", "23:00". Returns HH:MM (24-hour) or null if unparseable.
+const parseTimeInput = (input: string): string | null => {
+    const trimmed = input.trim().toLowerCase();
+    if (!trimmed) return null;
+    const match = trimmed.match(/^(\d{1,2})[\s:.\-]?(\d{2})?\s*(am|pm|a|p)?$/);
+    if (!match) return null;
+
+    let hour = parseInt(match[1], 10);
+    const minute = match[2] ? parseInt(match[2], 10) : 0;
+    const period = match[3]?.[0];
+
+    if (Number.isNaN(hour) || Number.isNaN(minute)) return null;
+    if (minute < 0 || minute > 59) return null;
+
+    if (period === 'a') {
+        if (hour < 1 || hour > 12) return null;
+        hour = hour === 12 ? 0 : hour;
+    } else if (period === 'p') {
+        if (hour < 1 || hour > 12) return null;
+        hour = hour === 12 ? 12 : hour + 12;
+    } else {
+        if (hour < 0 || hour > 23) return null;
+    }
+
+    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+};
+
+const TIME_OPTIONS_30MIN = (() => {
+    const opts: string[] = [];
+    for (let h = 0; h < 24; h++) {
+        for (let m = 0; m < 60; m += 30) {
+            opts.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+        }
+    }
+    return opts;
+})();
+
+interface TimeInputProps {
+    id: string;
+    value: string; // HH:MM 24-hour
+    onChange: (next: string) => void;
+    placeholder?: string;
+    ariaLabel?: string;
+}
+
+const TimeInput = ({ id, value, onChange, placeholder, ariaLabel }: TimeInputProps) => {
+    const [draft, setDraft] = useState(value ? formatTimeDisplay(value) : '');
+    const [isOpen, setIsOpen] = useState(false);
+    const [isDirty, setIsDirty] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const listRef = useRef<HTMLUListElement>(null);
+
+    useEffect(() => {
+        setDraft(value ? formatTimeDisplay(value) : '');
+        setIsDirty(false);
+    }, [value]);
+
+    const filteredOptions = useMemo(() => {
+        if (!isDirty) return TIME_OPTIONS_30MIN;
+        const q = draft.trim().toLowerCase().replace(/\s+/g, '');
+        if (!q) return TIME_OPTIONS_30MIN;
+        return TIME_OPTIONS_30MIN.filter((opt) => {
+            const display = formatTimeDisplay(opt).toLowerCase().replace(/\s+/g, '');
+            return display.includes(q) || opt.replace(':', '').includes(q);
+        });
+    }, [draft, isDirty]);
+
+    const commitDraft = () => {
+        const parsed = parseTimeInput(draft);
+        if (parsed) {
+            if (parsed !== value) onChange(parsed);
+            setDraft(formatTimeDisplay(parsed));
+        } else {
+            setDraft(value ? formatTimeDisplay(value) : '');
+        }
+    };
+
+    const handleSelect = (opt: string) => {
+        onChange(opt);
+        setDraft(formatTimeDisplay(opt));
+        setIsOpen(false);
+    };
+
+    // Click outside closes & commits typed value.
+    useEffect(() => {
+        if (!isOpen) return;
+        const handler = (e: MouseEvent) => {
+            if (!containerRef.current?.contains(e.target as Node)) {
+                commitDraft();
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [isOpen, draft, value]);
+
+    // Scroll the highlighted option into view when opening.
+    useEffect(() => {
+        if (!isOpen || !listRef.current) return;
+        const active = listRef.current.querySelector('[data-active="true"]') as HTMLElement | null;
+        active?.scrollIntoView({ block: 'nearest' });
+    }, [isOpen, value]);
+
+    return (
+        <div ref={containerRef} className="relative">
+            <input
+                id={id}
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
+                aria-label={ariaLabel}
+                aria-haspopup="listbox"
+                aria-expanded={isOpen}
+                value={draft}
+                onChange={(e) => { setDraft(e.target.value); setIsDirty(true); setIsOpen(true); }}
+                onFocus={(e) => { e.currentTarget.select(); setIsDirty(false); setIsOpen(true); }}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        commitDraft();
+                        setIsOpen(false);
+                        e.currentTarget.blur();
+                    } else if (e.key === 'Escape') {
+                        setIsOpen(false);
+                        e.currentTarget.blur();
+                    } else if (e.key === 'ArrowDown' && !isOpen) {
+                        setIsOpen(true);
+                    }
+                }}
+                placeholder={placeholder}
+                className="w-28 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-slate-500 dark:focus:border-cyan-300 dark:focus:ring-cyan-300/20"
+            />
+            {isOpen && (
+                <ul
+                    ref={listRef}
+                    role="listbox"
+                    className="absolute left-0 right-0 z-50 mt-1 max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg dark:border-white/10 dark:bg-slate-900"
+                >
+                    {filteredOptions.length === 0 ? (
+                        <li className="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">
+                            No matching time. Press Enter to use what you typed.
+                        </li>
+                    ) : (
+                        filteredOptions.map((opt) => {
+                            const isActive = opt === value;
+                            return (
+                                <li key={opt}>
+                                    <button
+                                        type="button"
+                                        role="option"
+                                        aria-selected={isActive}
+                                        data-active={isActive}
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        onClick={() => handleSelect(opt)}
+                                        className={`block w-full px-3 py-1.5 text-left text-sm transition-colors ${
+                                            isActive
+                                                ? 'bg-indigo-50 font-semibold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200'
+                                                : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/10'
+                                        }`}
+                                    >
+                                        {formatTimeDisplay(opt)}
+                                    </button>
+                                </li>
+                            );
+                        })
+                    )}
+                </ul>
+            )}
+        </div>
+    );
 };
 
 const statusTheme: Record<string, { dot: string; pill: string; label: string }> = {
@@ -99,7 +277,28 @@ const statusTheme: Record<string, { dot: string; pill: string; label: string }> 
 };
 
 const getStatusTheme = (status?: string) => statusTheme[String(status || 'PENDING').toUpperCase()] || statusTheme.PENDING;
-type RepeatMode = 'NONE' | 'WEEKLY';
+type RepeatMode = 'NONE' | 'WEEKLY' | 'CUSTOM';
+
+const DAY_LABELS_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
+const DAY_LABELS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
+
+const summarizeRecurrence = (cfg: RecurrenceConfig): string => {
+    const every = cfg.interval > 1 ? `every ${cfg.interval} ` : 'every ';
+    if (cfg.frequency === 'DAILY') return `Repeats ${every}${cfg.interval > 1 ? 'days' : 'day'}`;
+    if (cfg.frequency === 'WEEKLY') {
+        const days = [...cfg.byDay].sort().map((d) => DAY_LABELS_SHORT[d]).join(', ');
+        return `Repeats ${every}${cfg.interval > 1 ? 'weeks' : 'week'} on ${days}`;
+    }
+    if (cfg.frequency === 'MONTHLY') {
+        if (cfg.monthlyMode === 'BYSETPOS') {
+            const pos = cfg.setPos === -1 ? 'last' : ['first', 'second', 'third', 'fourth'][cfg.setPos - 1];
+            return `Repeats ${every}${cfg.interval > 1 ? 'months' : 'month'} on the ${pos} ${DAY_LABELS_FULL[cfg.byDay[0] ?? 0]}`;
+        }
+        return `Repeats ${every}${cfg.interval > 1 ? 'months' : 'month'} on day ${cfg.byMonthDay}`;
+    }
+    if (cfg.frequency === 'YEARLY') return `Repeats yearly`;
+    return 'Custom recurrence';
+};
 
 const FieldIcon = ({ children }: { children: React.ReactNode }) => (
     <div className="mt-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-300">
@@ -123,6 +322,8 @@ export default function BookingPopover({
     viewingBooking,
     canEdit = false,
     canApprove = false,
+    recurrenceConflicts,
+    checkConflict,
 }: BookingPopoverProps) {
     const modal = useModal();
     const isViewMode = !!viewingBooking && !canEdit;
@@ -136,6 +337,11 @@ export default function BookingPopover({
     const [startTimeValue, setStartTimeValue] = useState(dayjs(startTime).format('HH:mm'));
     const [endTimeValue, setEndTimeValue] = useState(dayjs(endTime).format('HH:mm'));
     const [repeatMode, setRepeatMode] = useState<RepeatMode>('NONE');
+    const [recurrenceConfig, setRecurrenceConfig] = useState<RecurrenceConfig | null>(null);
+    const [isRecurrenceModalOpen, setIsRecurrenceModalOpen] = useState(false);
+    // Single checkbox shared by Update + Remove. When ticked on a recurring
+    // event, the action applies to the whole series; otherwise just this one.
+    const [applyToSeries, setApplyToSeries] = useState(false);
 
     const popoverRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -162,6 +368,9 @@ export default function BookingPopover({
         setEndTimeValue(dayjs(endTime).format('HH:mm'));
         if (selectedRoomId) setRoomId(selectedRoomId);
         setRepeatMode('NONE');
+        setRecurrenceConfig(null);
+        setIsRecurrenceModalOpen(false);
+        setApplyToSeries(false);
     }, [isOpen, startTime, endTime, selectedRoomId, viewingBooking]);
 
     useEffect(() => {
@@ -170,10 +379,22 @@ export default function BookingPopover({
         }
     }, [isOpen, isViewMode]);
 
+    // When the parent reports series-creation conflicts, auto-open the
+    // recurrence modal so the user can resolve them inline.
+    useEffect(() => {
+        if (isOpen && recurrenceConflicts && recurrenceConflicts.length > 0 && recurrenceConfig) {
+            setIsRecurrenceModalOpen(true);
+        }
+    }, [isOpen, recurrenceConflicts, recurrenceConfig]);
+
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             const target = event.target as HTMLElement | null;
             if (target?.closest('[data-floating-dropdown="true"]')) return;
+            // The recurrence modal is rendered in a portal outside this popover,
+            // so without this guard a click inside it would bubble up and close
+            // the popover (along with the modal it lives inside).
+            if (target?.closest('[data-recurrence-modal="true"]')) return;
 
             if (popoverRef.current && target && !popoverRef.current.contains(target)) {
                 onClose();
@@ -198,17 +419,30 @@ export default function BookingPopover({
 
     const selectedRoom = rooms.find(r => r.Room_ID === roomId);
     const currentStatus = getStatusTheme(viewingBooking?.status);
-    const timeOptions = TIME_OPTIONS.map(t => ({ value: t, label: formatTimeDisplay(t) }));
     const roomOptions = rooms.map(room => ({ value: room.Room_ID, label: room.Name }));
     const repeatLabel = `Every week on ${dayjs(date).format('dddd')}`;
     const repeatOptions = [
         { value: 'NONE', label: 'Does not repeat' },
         { value: 'WEEKLY', label: repeatLabel },
+        { value: 'CUSTOM', label: recurrenceConfig ? summarizeRecurrence(recurrenceConfig) : 'Custom…' },
     ];
 
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
         if (!title.trim() || !roomId) return;
+
+        const startMs = dayjs(`${date}T${startTimeValue}`).valueOf();
+        const endMs = dayjs(`${date}T${endTimeValue}`).valueOf();
+        if (Number.isFinite(startMs) && Number.isFinite(endMs)) {
+            if (endMs <= startMs) {
+                modal.showError('Please set end time to be more than start time', 'Invalid time');
+                return;
+            }
+            if (endMs - startMs < 30 * 60 * 1000) {
+                modal.showError('Bookings must be at least 30 minutes long.', 'Booking too short');
+                return;
+            }
+        }
 
         if (isEditMode && viewingBooking && onUpdate) {
             onUpdate(viewingBooking.id, {
@@ -218,9 +452,9 @@ export default function BookingPopover({
                 date,
                 startTime: startTimeValue,
                 endTime: endTimeValue,
-            });
+            }, viewingBooking.isRecurring ? applyToSeries : undefined);
         } else if (isCreateMode) {
-            onSave({
+            const payload: Parameters<typeof onSave>[0] = {
                 title: title.trim(),
                 description: description.trim(),
                 roomId,
@@ -228,7 +462,14 @@ export default function BookingPopover({
                 startTime: startTimeValue,
                 endTime: endTimeValue,
                 repeat: repeatMode === 'WEEKLY',
-            });
+            };
+            if (repeatMode === 'CUSTOM' && recurrenceConfig) {
+                payload.recurrence = {
+                    rrule: buildRrule(recurrenceConfig),
+                    config: recurrenceConfig,
+                };
+            }
+            onSave(payload);
         }
         setTitle('');
         setDescription('');
@@ -237,10 +478,15 @@ export default function BookingPopover({
 
     const handleRemove = async () => {
         if (!viewingBooking || !onRemove) return;
-        const confirmed = await modal.showConfirm('Are you sure you want to remove this booking? This action cannot be undone.', 'Remove Booking');
-        if (confirmed) {
-            onRemove(viewingBooking.id);
-        }
+        const isRecurring = !!viewingBooking.isRecurring;
+        const confirmMessage = isRecurring
+            ? (applyToSeries
+                ? 'Cancel ALL events in this recurring series? This cannot be undone.'
+                : 'Cancel just this occurrence? Other events in the series stay scheduled.')
+            : 'Are you sure you want to remove this booking? This action cannot be undone.';
+        const confirmed = await modal.showConfirm(confirmMessage, 'Remove Booking');
+        if (!confirmed) return;
+        onRemove(viewingBooking.id, isRecurring ? applyToSeries : undefined);
     };
 
     return (
@@ -325,12 +571,29 @@ export default function BookingPopover({
                             )}
                         </div>
 
+                        {canApprove && viewingBooking.status === 'PENDING' && viewingBooking.isRecurring && (
+                            <label className="mt-4 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-200">
+                                <input
+                                    type="checkbox"
+                                    checked={applyToSeries}
+                                    onChange={(e) => setApplyToSeries(e.target.checked)}
+                                    className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-white/20"
+                                />
+                                <span>
+                                    Agree to all events in the series
+                                    {!applyToSeries && (
+                                        <span className="ml-2 text-xs text-slate-500 dark:text-slate-400">— off = this occurrence only</span>
+                                    )}
+                                </span>
+                            </label>
+                        )}
+
                         <div className="mt-6 flex items-center justify-end gap-3 border-t border-slate-200 pt-4 dark:border-white/10">
                             {canApprove && viewingBooking.status === 'PENDING' && (
                                 <>
                                     <button
                                         type="button"
-                                        onClick={() => onReject?.(viewingBooking.id)}
+                                        onClick={() => onReject?.(viewingBooking.id, viewingBooking.isRecurring ? applyToSeries : undefined)}
                                         disabled={isSubmitting}
                                         className="rounded-full px-4 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-50 dark:text-rose-300 dark:hover:bg-rose-500/10"
                                     >
@@ -338,7 +601,7 @@ export default function BookingPopover({
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => onApprove?.(viewingBooking.id)}
+                                        onClick={() => onApprove?.(viewingBooking.id, viewingBooking.isRecurring ? applyToSeries : undefined)}
                                         disabled={isSubmitting}
                                         className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 disabled:opacity-50"
                                     >
@@ -388,20 +651,20 @@ export default function BookingPopover({
                                             required
                                         />
                                         <label className="sr-only" htmlFor="booking-start-time">Start time</label>
-                                        <FloatingSelect
+                                        <TimeInput
                                             id="booking-start-time"
                                             value={startTimeValue}
-                                            placeholder="Start time"
-                                            options={timeOptions}
                                             onChange={setStartTimeValue}
+                                            placeholder="Start time"
+                                            ariaLabel="Start time"
                                         />
                                         <label className="sr-only" htmlFor="booking-end-time">End time</label>
-                                        <FloatingSelect
+                                        <TimeInput
                                             id="booking-end-time"
                                             value={endTimeValue}
-                                            placeholder="End time"
-                                            options={timeOptions}
                                             onChange={setEndTimeValue}
+                                            placeholder="End time"
+                                            ariaLabel="End time"
                                         />
                                     </div>
                                 </div>
@@ -437,19 +700,51 @@ export default function BookingPopover({
                                 {isCreateMode && (
                                     <div className="flex gap-4">
                                         <FieldIcon><Repeat className="h-4 w-4" /></FieldIcon>
-                                        <div className="flex-1">
+                                        <div className="flex-1 space-y-2">
                                             <FloatingSelect
                                                 id="booking-repeat"
                                                 value={repeatMode}
                                                 placeholder="Does not repeat"
                                                 options={repeatOptions}
-                                                onChange={(value) => setRepeatMode(value as RepeatMode)}
+                                                onChange={(value) => {
+                                                    const next = value as RepeatMode;
+                                                    setRepeatMode(next);
+                                                    if (next === 'CUSTOM') {
+                                                        setIsRecurrenceModalOpen(true);
+                                                    }
+                                                }}
                                             />
+                                            {repeatMode === 'CUSTOM' && recurrenceConfig && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsRecurrenceModalOpen(true)}
+                                                    className="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-300"
+                                                >
+                                                    Edit recurrence rule
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 )}
                             </div>
                         </div>
+
+                        {isEditMode && viewingBooking?.isRecurring && (
+                            <label className="flex items-center gap-2 border-t border-slate-200 bg-slate-50 px-6 py-3 text-sm text-slate-700 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-200">
+                                <input
+                                    type="checkbox"
+                                    checked={applyToSeries}
+                                    onChange={(e) => setApplyToSeries(e.target.checked)}
+                                    className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/20"
+                                />
+                                <span>
+                                    Apply to all events in the series
+                                    {!applyToSeries && (
+                                        <span className="ml-2 text-xs text-slate-500 dark:text-slate-400">— off = this occurrence only</span>
+                                    )}
+                                </span>
+                            </label>
+                        )}
 
                         <div className="flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4 dark:border-white/10 dark:bg-white/[0.03]">
                             {isEditMode && viewingBooking && onRemove ? (
@@ -484,6 +779,34 @@ export default function BookingPopover({
                     </form>
                 )}
             </div>
+
+            {isCreateMode && (
+                <RecurrenceModal
+                    isOpen={isRecurrenceModalOpen}
+                    anchorStart={dayjs(`${date}T${startTimeValue}`).toDate()}
+                    anchorEnd={dayjs(`${date}T${endTimeValue}`).toDate()}
+                    initial={recurrenceConfig ?? undefined}
+                    conflicts={recurrenceConflicts}
+                    checkConflict={
+                        checkConflict && roomId
+                            ? (start, end) => checkConflict(roomId, start, end)
+                            : undefined
+                    }
+                    onClose={() => {
+                        setIsRecurrenceModalOpen(false);
+                        // If user dismissed the modal without saving and never had
+                        // a config, fall back to NONE so the selector matches reality.
+                        if (!recurrenceConfig && repeatMode === 'CUSTOM') {
+                            setRepeatMode('NONE');
+                        }
+                    }}
+                    onSave={(config) => {
+                        setRecurrenceConfig(config);
+                        setRepeatMode('CUSTOM');
+                        setIsRecurrenceModalOpen(false);
+                    }}
+                />
+            )}
         </div>
     );
 }

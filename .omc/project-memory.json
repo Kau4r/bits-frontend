@@ -229,8 +229,8 @@
   "hotPaths": [
     {
       "path": "src\\pages\\labtech\\InventoryPage.tsx",
-      "accessCount": 60,
-      "lastAccessed": 1777126853799,
+      "accessCount": 68,
+      "lastAccessed": 1777133421435,
       "type": "file"
     },
     {
@@ -246,9 +246,15 @@
       "type": "file"
     },
     {
+      "path": "src\\pages\\labtech\\BorrowingPage.tsx",
+      "accessCount": 31,
+      "lastAccessed": 1777433232870,
+      "type": "file"
+    },
+    {
       "path": "src",
-      "accessCount": 25,
-      "lastAccessed": 1777129259975,
+      "accessCount": 30,
+      "lastAccessed": 1777433092994,
       "type": "directory"
     },
     {
@@ -261,12 +267,6 @@
       "path": "src\\components\\Table.tsx",
       "accessCount": 20,
       "lastAccessed": 1777123632184,
-      "type": "file"
-    },
-    {
-      "path": "src\\pages\\labtech\\BorrowingPage.tsx",
-      "accessCount": 19,
-      "lastAccessed": 1777126611927,
       "type": "file"
     },
     {
@@ -318,6 +318,12 @@
       "type": "file"
     },
     {
+      "path": "src\\pages\\labtech\\components\\WalkinBorrowingModal.tsx",
+      "accessCount": 9,
+      "lastAccessed": 1777433182544,
+      "type": "file"
+    },
+    {
       "path": "src\\app\\App.tsx",
       "accessCount": 8,
       "lastAccessed": 1777129468325,
@@ -339,6 +345,12 @@
       "path": "src\\lib\\utils.ts",
       "accessCount": 5,
       "lastAccessed": 1777126816366,
+      "type": "file"
+    },
+    {
+      "path": "src\\types\\inventory.ts",
+      "accessCount": 5,
+      "lastAccessed": 1777432617629,
       "type": "file"
     },
     {
@@ -384,15 +396,9 @@
       "type": "file"
     },
     {
-      "path": "src\\pages\\labtech\\components\\WalkinBorrowingModal.tsx",
+      "path": "src\\services\\borrowing.ts",
       "accessCount": 4,
-      "lastAccessed": 1777126619437,
-      "type": "file"
-    },
-    {
-      "path": "src\\types\\inventory.ts",
-      "accessCount": 4,
-      "lastAccessed": 1777129508306,
+      "lastAccessed": 1777433135812,
       "type": "file"
     },
     {
@@ -432,6 +438,12 @@
       "type": "file"
     },
     {
+      "path": "src\\types\\borrowing.ts",
+      "accessCount": 3,
+      "lastAccessed": 1777431661108,
+      "type": "file"
+    },
+    {
       "path": "src\\hooks\\useBorrowingEvents.ts",
       "accessCount": 2,
       "lastAccessed": 1776856551004,
@@ -444,33 +456,21 @@
       "type": "file"
     },
     {
-      "path": "src\\services\\borrowing.ts",
-      "accessCount": 2,
-      "lastAccessed": 1776858163693,
-      "type": "file"
-    },
-    {
       "path": "src\\app",
       "accessCount": 2,
       "lastAccessed": 1777129346873,
       "type": "directory"
     },
     {
-      "path": "src\\types\\borrowing.ts",
-      "accessCount": 1,
-      "lastAccessed": 1776850222228,
+      "path": "src\\pages\\monitoring\\MonitoringDashboard.tsx",
+      "accessCount": 2,
+      "lastAccessed": 1777133908920,
       "type": "file"
     },
     {
       "path": "src\\pages\\labtech\\components\\DeptSelect.tsx",
       "accessCount": 1,
       "lastAccessed": 1776850230978,
-      "type": "file"
-    },
-    {
-      "path": "src\\pages\\monitoring\\MonitoringDashboard.tsx",
-      "accessCount": 1,
-      "lastAccessed": 1776850239586,
       "type": "file"
     },
     {

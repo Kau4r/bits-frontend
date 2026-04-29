@@ -8,7 +8,9 @@ import type { WalkinBorrowingSubmit } from '@/pages/labtech/components/WalkinBor
 import { useModal } from '@/context/ModalContext';
 import { getBorrowings, approveBorrowing, rejectBorrowing, returnBorrowing, createWalkinBorrowing } from '@/services/borrowing';
 import { getInventory } from '@/services/inventory';
+import { getRooms } from '@/services/room';
 import type { Item } from '@/types/inventory';
+import type { Room } from '@/types/room';
 import Search from '@/components/Search';
 import {
     Inbox,
@@ -34,6 +36,7 @@ export default function Borrowing() {
     const [sortBy, setSortBy] = useState<SortOption>('newest');
     const [requests, setRequests] = useState<BorrowingRequest[]>([]);
     const [inventoryItems, setInventoryItems] = useState<Item[]>([]);
+    const [rooms, setRooms] = useState<Room[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     // Modal state
@@ -62,9 +65,10 @@ export default function Borrowing() {
     const loadRequests = async () => {
         try {
             setIsLoading(true);
-            const [borrowings, items] = await Promise.all([
+            const [borrowings, items, allRooms] = await Promise.all([
                 getBorrowings(),
-                getInventory()
+                getInventory(),
+                getRooms(),
             ]);
 
             const mapped: BorrowingRequest[] = borrowings
@@ -99,6 +103,7 @@ export default function Borrowing() {
                 item.Status === 'AVAILABLE'
             );
             setInventoryItems(itemsOnly);
+            setRooms(allRooms.filter(r => r.Is_Bookable !== false));
         } catch (error) {
             console.error('Failed to load borrowings:', error);
             await modal.showError('Failed to load borrowing requests', 'Error');
@@ -452,13 +457,29 @@ export default function Borrowing() {
                     const requested = approvalModal.request.item.Item_Type?.trim().toUpperCase() ?? '';
                     const usable = requested && requested !== 'UNKNOWN' && requested !== 'OTHER';
                     const allWithIds = inventoryItems.filter(item => item.Item_ID);
+                    // Always include OTHER-tagged items in the picklist — they're a
+                    // catch-all pool (control room misc, generic spares) and the
+                    // backend allows assigning any concrete item to an OTHER request,
+                    // so the reverse should also be permitted: any specific request
+                    // can be fulfilled from the OTHER bucket too.
                     const filtered = usable
-                        ? allWithIds.filter(item => item.Item_Type.trim().toUpperCase() === requested)
+                        ? allWithIds.filter(item => {
+                            const itemType = item.Item_Type.trim().toUpperCase();
+                            return itemType === requested || itemType === 'OTHER';
+                        })
                         : allWithIds;
-                    // If the type-specific filter wipes the list, widen to all
-                    // available items so the lab tech is never dead-ended.
+                    // If the filter wipes the list, widen to all available items so
+                    // the lab tech is never dead-ended.
                     const finalList = filtered.length > 0 ? filtered : allWithIds;
-                    return finalList.map(item => ({
+                    // Sort: exact-type matches first, then OTHER, then everything else,
+                    // so the most relevant items surface at the top.
+                    const sorted = [...finalList].sort((a, b) => {
+                        const aType = a.Item_Type.trim().toUpperCase();
+                        const bType = b.Item_Type.trim().toUpperCase();
+                        const score = (t: string) => (t === requested ? 0 : t === 'OTHER' ? 1 : 2);
+                        return score(aType) - score(bType);
+                    });
+                    return sorted.map(item => ({
                         Item_ID: item.Item_ID!,
                         Item_Type: item.Item_Type,
                         Brand: item.Brand,
@@ -486,6 +507,7 @@ export default function Borrowing() {
                 onClose={() => setWalkinOpen(false)}
                 onSubmit={handleWalkinSubmit}
                 availableItems={inventoryItems}
+                rooms={rooms}
             />
         </div>
     );

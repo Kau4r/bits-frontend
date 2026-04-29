@@ -56,6 +56,7 @@ export default function RoomPage() {
           Capacity: room.Capacity,
           Room_Type: room.Room_Type,
           Status: room.Status || "AVAILABLE",
+          Is_Bookable: room.Is_Bookable !== false,
           ...(room.Room_Type === 'LAB' && room.Lab_Type ? { Lab_Type: room.Lab_Type } : {}),
           Created_By: user.User_ID,
         };
@@ -68,6 +69,7 @@ export default function RoomPage() {
           Capacity: room.Capacity,
           Room_Type: room.Room_Type,
           Status: room.Status,
+          Is_Bookable: room.Is_Bookable !== false,
           ...(room.Room_Type === 'LAB' ? { Lab_Type: room.Lab_Type || undefined } : { Lab_Type: null }),
           Updated_By: user.User_ID,
         };
