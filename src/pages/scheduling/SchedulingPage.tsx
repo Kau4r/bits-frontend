@@ -109,6 +109,36 @@ export default function Scheduling({ showRejectedMyBookings = false }: Schedulin
   // Only APPROVED conflicts (anyone) and the current user's OWN pending
   // bookings are returned as overlaps. The caller distinguishes via
   // `isOwnPending` to drive the "Adjust existing schedule?" prompt.
+  // Hard-block helper for scheduled classes. The Schedule rows on a Room are
+  // recurring class periods imported by the SysAd. Bookings must never land
+  // on top of a class — return the matching schedule entry so the warning
+  // modal can name what was hit.
+  const checkClassConflict = (
+    roomId: number,
+    start: Date,
+    end: Date,
+  ): { title: string } | null => {
+    const room = rooms.find(r => r.Room_ID === roomId);
+    if (!room?.Schedule) return null;
+    for (const sched of room.Schedule) {
+      const days = (sched.Days || '')
+        .split(',')
+        .map(d => parseInt(d.trim(), 10))
+        .filter(d => !Number.isNaN(d));
+      if (!days.includes(start.getDay())) continue;
+      const sStart = new Date(sched.Start_Time);
+      const sEnd = new Date(sched.End_Time);
+      const startMin = start.getHours() * 60 + start.getMinutes();
+      const endMin = end.getHours() * 60 + end.getMinutes();
+      const sStartMin = sStart.getHours() * 60 + sStart.getMinutes();
+      const sEndMin = sEnd.getHours() * 60 + sEnd.getMinutes();
+      if (startMin < sEndMin && endMin > sStartMin) {
+        return { title: sched.Title || sched.Schedule_Type || 'Scheduled Class' };
+      }
+    }
+    return null;
+  };
+
   const checkOverlap = (
     start: Date,
     end: Date,
@@ -238,6 +268,20 @@ export default function Scheduling({ showRejectedMyBookings = false }: Schedulin
         title: 'No Rooms Available',
         message: 'No rooms are available for booking.',
         type: 'info',
+      });
+      return;
+    }
+
+    // Class slots are off-limits — surface a warning and abort before the
+    // popover opens. The schedule is read-only so there's no "adjust"
+    // affordance here, only a hard "pick another time".
+    const classHit = checkClassConflict(activeRoomId, selectInfo.start, selectInfo.end);
+    if (classHit) {
+      setWarningModal({
+        isOpen: true,
+        title: 'Time Slot Reserved for Class',
+        message: `This time overlaps with a scheduled class (${classHit.title}). Please pick a different time.`,
+        type: 'warning',
       });
       return;
     }
@@ -483,6 +527,20 @@ export default function Scheduling({ showRejectedMyBookings = false }: Schedulin
       return;
     }
 
+    // Block drops onto a scheduled class period — same hard rule as
+    // selection: bookings cannot coexist with a class.
+    const dropClassHit = checkClassConflict(event.extendedProps.roomId, newStart, newEnd);
+    if (dropClassHit) {
+      setWarningModal({
+        isOpen: true,
+        title: 'Time Slot Reserved for Class',
+        message: `Cannot move here — this time overlaps with a scheduled class (${dropClassHit.title}).`,
+        type: 'warning',
+      });
+      revert();
+      return;
+    }
+
     // Frontend check for overlap before showing confirm modal
     const overlap = checkOverlap(newStart, newEnd, event.extendedProps.roomId, event.id);
     if (overlap) {
@@ -715,18 +773,25 @@ export default function Scheduling({ showRejectedMyBookings = false }: Schedulin
   };
 
   // Calendar shows only the active room — header combo box is the single
-  // source of truth for room context across the whole module.
+  // source of truth for room context across the whole module. Rejected
+  // bookings are hidden from everyone *except* their owner, so a user can
+  // jump from "My Schedules → Rejected" and still see the slot they
+  // requested with a clear rejected indicator.
   const filteredEvents = useMemo(
-    () => events.filter(e =>
-      e.extendedProps.roomId === activeRoomId &&
-      e.extendedProps.status !== 'REJECTED'
-    ),
-    [events, activeRoomId]
+    () => events.filter(e => {
+      if (e.extendedProps.roomId !== activeRoomId) return false;
+      if (e.extendedProps.status === 'REJECTED') {
+        return e.extendedProps.createdById === currentUserId;
+      }
+      return true;
+    }),
+    [events, activeRoomId, currentUserId]
   );
 
   const statusColor: Record<string, string> = {
     APPROVED: '#22c55e',
     PENDING: '#eab308',
+    REJECTED: '#f43f5e',
     CANCELLED: '#6b7280'
   };
 
@@ -812,7 +877,7 @@ export default function Scheduling({ showRejectedMyBookings = false }: Schedulin
 
   return (
     <div className="box-border h-full bg-[#f4f7fa] p-4 dark:bg-[#101828]">
-      <div className="flex h-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-[#334155] dark:bg-[#1e2939]">
+      <div className="flex h-full overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-[#334155] dark:bg-[#1e2939]">
         {/* Left Sidebar */}
         <CalendarSidebar
           onDateSelect={handleSidebarDateSelect}
@@ -826,6 +891,17 @@ export default function Scheduling({ showRejectedMyBookings = false }: Schedulin
           onBookingClick={(booking) => {
             const start = new Date(booking.start);
             const end = new Date(booking.end);
+
+            // Jump the schedule context to this booking: switch active room
+            // (so the calendar grid shows it), move the FullCalendar to its
+            // date, and sync the sidebar's selected date / week highlight.
+            const targetRoomId = booking.extendedProps.roomId;
+            if (targetRoomId != null && targetRoomId !== activeRoomId) {
+              setActiveRoomId(targetRoomId);
+            }
+            setSelectedDate(start);
+            calendarRef.current?.getApi()?.gotoDate(start);
+            updateCurrentDate();
 
             setViewingBooking({
               id: booking.id,
@@ -882,7 +958,7 @@ export default function Scheduling({ showRejectedMyBookings = false }: Schedulin
               <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-green-500" />Approved</span>
               <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-yellow-500" />Pending</span>
               <span className="mx-1 h-3 w-px bg-slate-300 dark:bg-white/10" />
-              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-emerald-100 ring-1 ring-emerald-300 dark:bg-emerald-900/50 dark:ring-emerald-700" />Yours</span>
+              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-blue-100 ring-1 ring-blue-300 dark:bg-blue-900/50 dark:ring-blue-700" />Yours</span>
               <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-zinc-100 ring-1 ring-zinc-300 dark:bg-zinc-700/60 dark:ring-zinc-500" />Other user</span>
               <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-rose-100 ring-1 ring-rose-300 dark:bg-rose-900/50 dark:ring-rose-700" />Class</span>
             </div>

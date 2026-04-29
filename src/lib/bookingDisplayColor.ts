@@ -9,10 +9,13 @@ export interface BookingColorClasses {
 
 const VARIANT_CLASSES: Record<BookingColorVariant, Omit<BookingColorClasses, 'variant'>> = {
   own: {
+    // Blue (not green) so "your booking" doesn't read as APPROVED — APPROVED
+    // already owns the green dot, and emerald containers were misleading
+    // people into thinking pending blocks were approved.
     container:
-      'bg-emerald-50 text-emerald-900 ring-1 ring-emerald-200 ' +
-      'dark:bg-emerald-950/40 dark:text-emerald-100 dark:ring-emerald-800/60',
-    dotRing: 'ring-1 ring-emerald-300/80 dark:ring-emerald-200/40',
+      'bg-blue-50 text-blue-900 ring-1 ring-blue-200 ' +
+      'dark:bg-blue-950/40 dark:text-blue-100 dark:ring-blue-800/60',
+    dotRing: 'ring-1 ring-blue-300/80 dark:ring-blue-200/40',
     label: 'My booking',
   },
   others: {
