@@ -671,25 +671,7 @@ export default function Scheduling({ allowedRoomTypes, showRejectedMyBookings = 
         Purpose: data.title,
       });
 
-      // Update local state
-      const room = rooms.find(r => r.Room_ID === data.roomId);
-      setEvents(prev => prev.map(e =>
-        e.id === id
-          ? {
-            ...e,
-            title: data.title,
-            start: startDateTime,
-            end: endDateTime,
-            extendedProps: {
-              ...e.extendedProps,
-              roomId: data.roomId,
-              roomName: room?.Name || 'Unknown',
-              description: data.description,
-            },
-          }
-          : e
-      ));
-
+      await loadBookings();
       setShowPopover(false);
       setViewingBooking(null);
       setCanEditBooking(false);
