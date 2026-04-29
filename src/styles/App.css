@@ -437,7 +437,7 @@ html {
   color: #ffffff !important;
   border-radius: 0.375rem !important;
   border: 1px solid rgba(255, 255, 255, 0.42) !important;
-  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.18) !important;
+  box-shadow: none !important;
   margin-inline: 3px !important;
   overflow: hidden !important;
 }
@@ -449,7 +449,7 @@ html {
 .fc .fc-timegrid-event:hover,
 .fc .fc-daygrid-event:hover {
   z-index: 8 !important;
-  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.24) !important;
+  box-shadow: none !important;
 }
 
 .fc .fc-event-main {
@@ -534,24 +534,24 @@ html {
 .fc-timegrid-event-harness-inset .fc-timegrid-event,
 .fc-timegrid-event.fc-event-mirror,
 .fc-timegrid-more-linkharness {
-  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.16) !important;
+  box-shadow: none !important;
 }
 
 .dark .fc-timegrid-event-harness-inset .fc-timegrid-event,
 .dark .fc-timegrid-event.fc-event-mirror,
 .dark .fc-timegrid-more-linkharness {
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.32), 0 0 0 2px rgba(35, 43, 53, 0.9) !important;
+  box-shadow: 0 0 0 2px rgba(35, 43, 53, 0.9) !important;
 }
 
 .dark .fc .fc-timegrid-event,
 .dark .fc .fc-daygrid-event {
   border-color: rgba(255, 255, 255, 0.18) !important;
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28) !important;
+  box-shadow: none !important;
 }
 
 .dark .fc .fc-timegrid-event:hover,
 .dark .fc .fc-daygrid-event:hover {
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.38) !important;
+  box-shadow: none !important;
 }
 
 /* ---------------------------------- */
