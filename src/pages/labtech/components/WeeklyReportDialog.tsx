@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import type { FC, FormEvent } from 'react';
-import type { WeeklyReport, ReportCreateInput, ReportUpdateInput, ReportTask, ReportTasks, TaskStatus } from '@/types/report';
+import type { WeeklyReport, ReportCreateInput, ReportUpdateInput, ReportTask, ReportTasks } from '@/types/report';
 import { taskCategoryOptions } from '@/types/report';
 import { getAutoPopulateTickets } from '@/services/reports';
 import { FloatingSelect } from '@/ui/FloatingSelect';
 import { Plus, X, Loader2, RefreshCw } from 'lucide-react';
+import { AddTaskModal } from '@/pages/labtech/components/AddTaskModal';
 
 interface Props {
   open: boolean;
@@ -16,13 +17,6 @@ interface Props {
 type SectionKey = 'completed' | 'pending' | 'inProgress';
 
 const SECTION_KEYS: readonly SectionKey[] = ['completed', 'inProgress', 'pending'] as const;
-
-const emptyTask = (status: TaskStatus = 'completed'): ReportTask => ({
-  title: '',
-  description: '',
-  status,
-  category: 'Maintenance',
-});
 
 const getMonday = (d: Date) => {
   const date = new Date(d);
@@ -140,6 +134,7 @@ export const WeeklyReportDialog: FC<Props> = ({ open, onClose, onSave, existing 
   const [saving, setSaving] = useState(false);
   const [isAutoPopulating, setIsAutoPopulating] = useState(false);
   const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [addTaskOpen, setAddTaskOpen] = useState(false);
 
   // Ref used by the polling effect to avoid firing when another call is in
   // flight (isAutoPopulating is state and updates asynchronously).
@@ -261,10 +256,10 @@ export const WeeklyReportDialog: FC<Props> = ({ open, onClose, onSave, existing 
     return mk ? `${section}:${mk}` : `${section}:manual:${idx}`;
   };
 
-  const addTaskToCompleted = () => {
+  const handleAddTask = (task: ReportTask, sectionKey: SectionKey) => {
     setTasks(prev => ({
       ...prev,
-      completed: [...prev.completed, emptyTask('completed')],
+      [sectionKey]: [...prev[sectionKey], task],
     }));
   };
 
@@ -514,6 +509,7 @@ export const WeeklyReportDialog: FC<Props> = ({ open, onClose, onSave, existing 
   };
 
   return (
+    <>
     <div
       className="fixed inset-0 bg-black/40 grid place-items-center p-4 z-50 overflow-y-auto"
       onClick={onClose}
@@ -592,7 +588,7 @@ export const WeeklyReportDialog: FC<Props> = ({ open, onClose, onSave, existing 
                 </button>
                 <button
                   type="button"
-                  onClick={addTaskToCompleted}
+                  onClick={() => setAddTaskOpen(true)}
                   className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-indigo-700"
                 >
                   <Plus className="h-3 w-3" />
@@ -650,5 +646,11 @@ export const WeeklyReportDialog: FC<Props> = ({ open, onClose, onSave, existing 
         </form>
       </div>
     </div>
+    <AddTaskModal
+      open={addTaskOpen}
+      onClose={() => setAddTaskOpen(false)}
+      onAdd={handleAddTask}
+    />
+    </>
   );
 };

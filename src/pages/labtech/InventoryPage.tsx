@@ -38,7 +38,9 @@ const InventoryPage = () => {
   const [inventory, setInventory] = useState<Item[]>([])
   const [selectedType, setSelectedType] = useState('All Types')
   const [selectedStatus, setSelectedStatus] = useState('All Status')
-  const [selectedRoomFilter, setSelectedRoomFilter] = useState('All Rooms')
+  // Empty until rooms load; then defaulted to the first room's ID. The
+  // Inventory module fetches lazily per-room — see useEffect below.
+  const [selectedRoomFilter, setSelectedRoomFilter] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalMode, setModalMode] = useState<'view' | 'edit' | 'add'>('view')
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
@@ -74,21 +76,30 @@ const InventoryPage = () => {
       try {
         const roomsData = await getRooms();
         setRooms(roomsData);
-
+        // Default the active room to the first available one. Items are
+        // fetched lazily per-room — see effect below.
+        const firstId = roomsData[0]?.Room_ID;
+        if (firstId != null) {
+          setSelectedRoomFilter(prev => prev || String(firstId));
+        } else {
+          // No rooms — nothing to fetch; release the loading skeleton.
+          setLoading(false);
+          setInventory([]);
+        }
       } catch (err) {
         console.error("Error fetching rooms or users:", err);
+        setLoading(false);
       }
     };
 
     loadRoomsAndUsers();
   }, []);
 
-  const loadInventory = useCallback(async () => {
+  const loadInventory = useCallback(async (roomId: number) => {
     setLoading(true)
     try {
-      const data = await getInventory()
+      const data = await getInventory(roomId)
       setInventory(data.filter((item): item is Item => !!item));
-      console.log("Fetched inventory:", data);
     } catch (err) {
       console.error("Error fetching inventory:", err)
     } finally {
@@ -96,10 +107,14 @@ const InventoryPage = () => {
     }
   }, [])
 
-  // Fetch inventory from backend on mount
+  // Fetch inventory only for the active room. Switching rooms triggers a
+  // fresh fetch — other rooms are never preloaded.
   useEffect(() => {
-    loadInventory()
-  }, [loadInventory])
+    if (!selectedRoomFilter) return;
+    const roomId = Number(selectedRoomFilter);
+    if (Number.isNaN(roomId)) return;
+    loadInventory(roomId);
+  }, [selectedRoomFilter, loadInventory])
 
   const handleSort = (key: string) => {
     setSortConfig(prev => {
@@ -132,10 +147,9 @@ const InventoryPage = () => {
 
       const matchesStatus =
         selectedStatus === 'All Status' || item.Status?.toLowerCase() === selectedStatus.toLowerCase();
-      const itemRoomId = item.Room_ID ?? item.Room?.Room_ID ?? (item as any).Computers?.[0]?.Room_ID;
-      const matchesRoom = selectedRoomFilter === 'All Rooms' || String(itemRoomId ?? '') === selectedRoomFilter;
-
-      return matchesSearch && matchesType && matchesStatus && matchesRoom;
+      // Room filtering is done server-side via getInventory(roomId); no
+      // client-side room match needed.
+      return matchesSearch && matchesType && matchesStatus;
     });
 
     if (sortConfig.direction) {
@@ -186,6 +200,17 @@ const InventoryPage = () => {
   if (isMobile) {
     return <InventoryMobilePage />;
   }
+
+  // Refetch the currently-active room's inventory after any mutation that
+  // could move items in/out of the active room (add, bulk-add, edit, bulk
+  // room change). Inline status changes don't move items, so they keep
+  // their optimistic local update.
+  const refetchActiveRoom = useCallback(() => {
+    if (!selectedRoomFilter) return;
+    const roomId = Number(selectedRoomFilter);
+    if (Number.isNaN(roomId)) return;
+    void loadInventory(roomId);
+  }, [selectedRoomFilter, loadInventory]);
 
   const handleSaveItem = async (
     payload: Partial<Item> | Partial<Item>[] | { id: number; data: Partial<Item> }
@@ -288,6 +313,10 @@ const InventoryPage = () => {
         }
 
         setIsModalOpen(false);
+        // If the edit moved the item to another room, the optimistic merge
+        // above leaves it visible. Refetch to drop it from the active-room
+        // view (and pick up any server-side normalisation).
+        refetchActiveRoom();
         return;
       }
 
@@ -308,7 +337,13 @@ const InventoryPage = () => {
           Room: rooms.find(r => r.Room_ID === item.Room_ID),
         }));
 
-        setInventory(prev => [...prev, ...itemsWithRooms]);
+        // Only show items that belong to the active room; items in other
+        // rooms shouldn't appear in the active-room view.
+        const activeRoomId = Number(selectedRoomFilter);
+        const itemsForActiveRoom = Number.isNaN(activeRoomId)
+          ? itemsWithRooms
+          : itemsWithRooms.filter(i => i.Room_ID === activeRoomId);
+        setInventory(prev => [...prev, ...itemsForActiveRoom]);
 
         // If single add, select the item
         if (itemsWithRooms.length === 1) {
@@ -422,6 +457,11 @@ const InventoryPage = () => {
         toast.error(`${labelForToast}: ${ok} updated, ${fail} failed`)
       }
       setSelectedIds(new Set())
+      // Bulk Room_ID changes move items out of the active room, so we
+      // need a refetch to keep the active-room view consistent.
+      if (patch.Room_ID != null) {
+        refetchActiveRoom()
+      }
     } finally {
       setBulkBusy(false)
       setBulkStatusOpen(false)
@@ -524,16 +564,14 @@ const InventoryPage = () => {
           />
         </div>
 
-        {/* Room Filter */}
+        {/* Room Filter — drives lazy per-room fetching; no "All Rooms" to
+            avoid preloading every room on mount. */}
         <div className="min-w-48">
           <FloatingSelect
             id="inventory-room-filter"
             value={selectedRoomFilter}
-            placeholder="All Rooms"
-            options={[
-              { value: 'All Rooms', label: 'All Rooms' },
-              ...rooms.map(room => ({ value: String(room.Room_ID), label: room.Name })),
-            ]}
+            placeholder="Select room"
+            options={rooms.map(room => ({ value: String(room.Room_ID), label: room.Name }))}
             onChange={setSelectedRoomFilter}
           />
         </div>
@@ -741,7 +779,7 @@ const InventoryPage = () => {
                   No items match your filters
                 </h3>
                 <button
-                  onClick={() => { setSearchTerm(''); setSelectedType('All Types'); setSelectedStatus('All Status'); setSelectedRoomFilter('All Rooms'); }}
+                  onClick={() => { setSearchTerm(''); setSelectedType('All Types'); setSelectedStatus('All Status'); }}
                   className="mt-4 inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
                 >
                   Clear Filters

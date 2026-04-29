@@ -271,11 +271,13 @@ const InventoryMobilePage = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedType, setSelectedType] = useState('All Types');
     const [selectedStatus, setSelectedStatus] = useState('All Status');
-    const [selectedRoomFilter, setSelectedRoomFilter] = useState('All Rooms');
+    // Empty until rooms load; then defaulted to the first room. Inventory
+    // is fetched lazily per-room — other rooms are never preloaded.
+    const [selectedRoomFilter, setSelectedRoomFilter] = useState('');
     const [isFilterOpen, setIsFilterOpen] = useState(false);
-    const loadInventory = async () => {
+    const loadInventory = async (roomId: number) => {
         try {
-            const data = await getInventory();
+            const data = await getInventory(roomId);
             setInventory(data.filter((item): item is Item => !!item && 'Item_Code' in item));
         } catch (err) {
             console.error('Error fetching inventory:', err);
@@ -288,6 +290,10 @@ const InventoryMobilePage = () => {
             try {
                 const roomsData = await getRooms();
                 setRooms(roomsData);
+                const firstId = roomsData[0]?.Room_ID;
+                if (firstId != null) {
+                    setSelectedRoomFilter(prev => prev || String(firstId));
+                }
             } catch (err) {
                 console.error('Error fetching rooms:', err);
             }
@@ -296,8 +302,11 @@ const InventoryMobilePage = () => {
     }, []);
 
     useEffect(() => {
-        void loadInventory();
-    }, []);
+        if (!selectedRoomFilter) return;
+        const roomId = Number(selectedRoomFilter);
+        if (Number.isNaN(roomId)) return;
+        void loadInventory(roomId);
+    }, [selectedRoomFilter]);
 
     const handleSaveItem = async (payload: {
         Item_Type: string;
@@ -319,7 +328,10 @@ const InventoryMobilePage = () => {
             setIsModalOpen(false);
             setSelectedItem(null);
             setModalMode('view');
-            await loadInventory();
+            const activeRoomId = Number(selectedRoomFilter);
+            if (!Number.isNaN(activeRoomId)) {
+                await loadInventory(activeRoomId);
+            }
         } catch (error) {
             console.error('Error saving inventory item:', error);
             toast.error(error instanceof Error ? error.message : 'Failed to save item');
@@ -332,9 +344,8 @@ const InventoryMobilePage = () => {
             .includes(searchTerm.toLowerCase());
         const matchesType = selectedType === 'All Types' || resolveItemType(item.Item_Type) === selectedType;
         const matchesStatus = selectedStatus === 'All Status' || item.Status?.toLowerCase() === selectedStatus.toLowerCase();
-        const itemRoomId = item.Room_ID ?? item.Room?.Room_ID ?? (item as any).Computers?.[0]?.Room_ID;
-        const matchesRoom = selectedRoomFilter === 'All Rooms' || String(itemRoomId ?? '') === selectedRoomFilter;
-        return matchesSearch && matchesType && matchesStatus && matchesRoom;
+        // Room scope is enforced server-side via getInventory(roomId).
+        return matchesSearch && matchesType && matchesStatus;
     });
 
     return (
@@ -427,11 +438,8 @@ const InventoryMobilePage = () => {
                             <FloatingSelect
                                 id="mobile-inventory-room"
                                 value={selectedRoomFilter}
-                                placeholder="All Rooms"
-                                options={[
-                                    { value: 'All Rooms', label: 'All Rooms' },
-                                    ...rooms.map(room => ({ value: String(room.Room_ID), label: room.Name })),
-                                ]}
+                                placeholder="Select room"
+                                options={rooms.map(room => ({ value: String(room.Room_ID), label: room.Name }))}
                                 onChange={setSelectedRoomFilter}
                             />
                         </div>

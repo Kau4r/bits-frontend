@@ -9,8 +9,8 @@
 |---|---|---|
 | `/` | `DashboardPage.tsx` | Summary dashboard: ticket/form/report counts + inventory pie charts + notifications panel |
 | `/labtech-dashboard` | `DashboardPage.tsx` | Explicit alias for the dashboard (same component) |
-| `/labtech-mobile` | `InventoryMobile.tsx` | Mobile-first inventory list with scan-to-audit shortcut |
-| `/inventory` | `InventoryPage.tsx` | Full inventory table with bulk status/room/brand editing |
+| `/labtech-mobile` | `InventoryMobile.tsx` | Mobile-first inventory list (lazy per-room fetch — first room loads on mount) with scan-to-audit shortcut |
+| `/inventory` | `InventoryPage.tsx` | Per-room inventory table (lazy per-room fetch via `getInventory(roomId)`; switching rooms triggers a fresh fetch — no preloading) with bulk status/room/brand editing |
 | `/inventory/item/:itemCode` | `InventoryItemInfoPage.tsx` | QR-code deep-link: detail view + inline edit for a single item |
 | `/inventory-audit` | `InventoryAuditPage.tsx` | Semestral QR-scan audit: pick room, check items off via camera or manual tap |
 | `/labtech/room` | `RoomPage.tsx` | Room grid + Computer Use Queue (daily and weekly swimlane views) |

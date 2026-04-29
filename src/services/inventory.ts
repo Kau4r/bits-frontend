@@ -33,9 +33,13 @@ export interface CsvImportResult {
     sheetName?: string;
 }
 
-// Fetch all inventory items
-export const getInventory = async (): Promise<(Item | Computer)[]> => {
-    const { data } = await api.get<(Item | Computer)[]>("/inventory");
+// Fetch inventory items. Pass roomId to fetch only items in that room (lazy
+// per-room loading used by the Inventory module). Omit roomId for the
+// previous behaviour (all items) — used by scheduling, borrowing, audit, etc.
+export const getInventory = async (roomId?: number): Promise<(Item | Computer)[]> => {
+    const { data } = await api.get<(Item | Computer)[]>("/inventory", {
+        params: roomId !== undefined ? { roomId } : undefined,
+    });
     return data;
 };
 
