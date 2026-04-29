@@ -2,8 +2,10 @@ import { createPortal } from 'react-dom'
 import type { Room } from '@/types/room'
 import { useState, useEffect, useRef } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
+import { Trash2 } from 'lucide-react'
 import { FloatingSelect } from '@/ui/FloatingSelect'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
+import DeleteRoomConfirmModal from '@/pages/sysad/components/DeleteRoomConfirmModal'
 
 // RoomModal props
 interface RoomModalProps {
@@ -12,6 +14,7 @@ interface RoomModalProps {
   onSubmit: (room: Room) => void;
   onClose: (room?: Room) => void;
   onEditMode?: () => void;
+  onDeleted?: (room: Room) => void;
 }
 
 // Helper function to get default capacity based on room type
@@ -38,9 +41,11 @@ export default function RoomModal({
   onSubmit,
   onClose,
   onEditMode,
+  onDeleted,
 }: RoomModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
   useFocusTrap(dialogRef, true)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [room, setRoom] = useState<Room>({
     Room_ID: initialData?.Room_ID ?? 0,
     Name: initialData?.Name ?? '',
@@ -276,34 +281,56 @@ export default function RoomModal({
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={handleClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-            >
-              Cancel
-            </button>
-            {mode === 'view' && (
+          <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">
+            {mode !== 'add' && room.Room_ID > 0 && onDeleted && (
               <button
                 type="button"
-                onClick={onEditMode}
-                className="px-4 py-2 text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors"
+                onClick={() => setDeleteOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
               >
-                Edit
+                <Trash2 className="h-4 w-4" />
+                Delete
               </button>
             )}
-            {mode !== 'view' && (
+            <div className="ml-auto flex gap-3">
               <button
-                type="submit"
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                type="button"
+                onClick={handleClose}
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
               >
-                Save
+                Cancel
               </button>
-            )}
+              {mode === 'view' && (
+                <button
+                  type="button"
+                  onClick={onEditMode}
+                  className="px-4 py-2 text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors"
+                >
+                  Edit
+                </button>
+              )}
+              {mode !== 'view' && (
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                >
+                  Save
+                </button>
+              )}
+            </div>
           </div>
         </form>
       </div>
+      {onDeleted && room.Room_ID > 0 && (
+        <DeleteRoomConfirmModal
+          open={deleteOpen}
+          room={room}
+          onClose={() => setDeleteOpen(false)}
+          onSuccess={(deleted) => {
+            onDeleted(deleted);
+          }}
+        />
+      )}
     </div>,
     document.body
   )

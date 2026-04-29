@@ -32,6 +32,13 @@ export const updateRoom = async (id: number, room: RoomUpdateInput): Promise<Roo
     return data.room;
 };
 
+// Delete room. Backend rejects deletion when active or future bookings exist
+// for the room; the failsafe modal forces typing the room name to confirm.
+export const deleteRoom = async (id: number): Promise<{ message: string }> => {
+    const { data } = await api.delete<{ message: string }>(`/rooms/${id}`);
+    return data;
+};
+
 export interface StudentAvailabilityResponse {
     message: string;
     roomId: number;

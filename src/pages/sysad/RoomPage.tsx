@@ -282,6 +282,12 @@ export default function RoomPage() {
           }}
           onSubmit={handleRoomSubmit}
           onEditMode={() => setModalMode("edit")}
+          onDeleted={(deleted) => {
+            setRooms((prev) => prev.filter((r) => r.Room_ID !== deleted.Room_ID));
+            setIsModalOpen(false);
+            setSelectedRoom(null);
+            toast.success(`Room "${deleted.Name}" deleted`);
+          }}
         />
       )}
       </div>
