@@ -14,14 +14,13 @@ export interface SuggestionInput {
     itemTypes: string[];
 }
 
+const SILENT = { silent: true } as Parameters<typeof api.get>[1];
+
 export const fetchSuggestions = async (): Promise<ComputerSuggestion[]> => {
     // Silent: this is a background fetch on modal open. Failures (e.g. before
     // the prisma migration is applied) shouldn't toast — caller logs to console.
-    const response = await api.get<ComputerSuggestion[]>('/computer-suggestions', {
-        // @ts-expect-error custom api option, not in axios types
-        silent: true,
-    });
-    return response.data;
+    const { data } = await api.get<ComputerSuggestion[]>('/computer-suggestions', SILENT);
+    return data;
 };
 
 export const createSuggestion = async (data: SuggestionInput): Promise<ComputerSuggestion> => {

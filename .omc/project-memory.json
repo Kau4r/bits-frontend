@@ -234,21 +234,21 @@
       "type": "file"
     },
     {
+      "path": "src\\pages\\labtech\\FormsPage.tsx",
+      "accessCount": 54,
+      "lastAccessed": 1777864245742,
+      "type": "file"
+    },
+    {
       "path": "src\\pages\\labtech\\RoomPage.tsx",
       "accessCount": 51,
       "lastAccessed": 1777126424596,
       "type": "file"
     },
     {
-      "path": "src\\pages\\labtech\\FormsPage.tsx",
-      "accessCount": 35,
-      "lastAccessed": 1777126184424,
-      "type": "file"
-    },
-    {
       "path": "src",
-      "accessCount": 32,
-      "lastAccessed": 1777483310227,
+      "accessCount": 42,
+      "lastAccessed": 1777855493911,
       "type": "directory"
     },
     {
@@ -258,9 +258,21 @@
       "type": "file"
     },
     {
+      "path": "src\\pages\\tickets\\TicketsPage.tsx",
+      "accessCount": 25,
+      "lastAccessed": 1777492350700,
+      "type": "file"
+    },
+    {
       "path": "src\\pages\\labtech\\components\\WeeklyReportDialog.tsx",
-      "accessCount": 24,
-      "lastAccessed": 1776908225998,
+      "accessCount": 25,
+      "lastAccessed": 1777498250951,
+      "type": "file"
+    },
+    {
+      "path": "src\\pages\\labtech\\InventoryAuditPage.tsx",
+      "accessCount": 22,
+      "lastAccessed": 1777856649150,
       "type": "file"
     },
     {
@@ -283,8 +295,8 @@
     },
     {
       "path": "src\\pages\\labtech\\InventoryMobile.tsx",
-      "accessCount": 16,
-      "lastAccessed": 1776867793386,
+      "accessCount": 18,
+      "lastAccessed": 1777859227741,
       "type": "directory"
     },
     {
@@ -294,9 +306,9 @@
       "type": "file"
     },
     {
-      "path": "src\\pages\\tickets\\TicketsPage.tsx",
-      "accessCount": 15,
-      "lastAccessed": 1777126176982,
+      "path": "src\\types\\formtypes.ts",
+      "accessCount": 14,
+      "lastAccessed": 1777862319566,
       "type": "file"
     },
     {
@@ -306,9 +318,9 @@
       "type": "file"
     },
     {
-      "path": "src\\types\\formtypes.ts",
-      "accessCount": 11,
-      "lastAccessed": 1777125577764,
+      "path": "src\\pages\\labtech\\components\\WalkinBorrowingModal.tsx",
+      "accessCount": 12,
+      "lastAccessed": 1777501237929,
       "type": "file"
     },
     {
@@ -318,15 +330,15 @@
       "type": "file"
     },
     {
-      "path": "src\\pages\\labtech\\components\\WalkinBorrowingModal.tsx",
-      "accessCount": 9,
-      "lastAccessed": 1777433182544,
-      "type": "file"
-    },
-    {
       "path": "src\\app\\App.tsx",
       "accessCount": 8,
       "lastAccessed": 1777129468325,
+      "type": "file"
+    },
+    {
+      "path": "src\\services\\inventory.ts",
+      "accessCount": 8,
+      "lastAccessed": 1777855499797,
       "type": "file"
     },
     {
@@ -342,10 +354,10 @@
       "type": "file"
     },
     {
-      "path": "src\\services\\inventory.ts",
-      "accessCount": 5,
-      "lastAccessed": 1776869397376,
-      "type": "file"
+      "path": "",
+      "accessCount": 6,
+      "lastAccessed": 1777855501462,
+      "type": "directory"
     },
     {
       "path": "src\\lib\\utils.ts",
@@ -360,6 +372,12 @@
       "type": "file"
     },
     {
+      "path": "src\\ui\\FloatingSelect.tsx",
+      "accessCount": 5,
+      "lastAccessed": 1777862266410,
+      "type": "file"
+    },
+    {
       "path": "src\\services\\forms.ts",
       "accessCount": 4,
       "lastAccessed": 1776854280343,
@@ -369,18 +387,6 @@
       "path": "src\\context\\NotificationContext.tsx",
       "accessCount": 4,
       "lastAccessed": 1776859688179,
-      "type": "directory"
-    },
-    {
-      "path": "src\\pages\\labtech\\InventoryAuditPage.tsx",
-      "accessCount": 4,
-      "lastAccessed": 1776871985773,
-      "type": "file"
-    },
-    {
-      "path": "",
-      "accessCount": 4,
-      "lastAccessed": 1776903683748,
       "type": "directory"
     },
     {
@@ -450,12 +456,6 @@
       "type": "file"
     },
     {
-      "path": "src\\ui\\FloatingSelect.tsx",
-      "accessCount": 2,
-      "lastAccessed": 1776856591183,
-      "type": "file"
-    },
-    {
       "path": "src\\app",
       "accessCount": 2,
       "lastAccessed": 1777129346873,
@@ -468,9 +468,15 @@
       "type": "file"
     },
     {
+      "path": "src\\utils\\inventoryQr.ts",
+      "accessCount": 2,
+      "lastAccessed": 1777855520963,
+      "type": "file"
+    },
+    {
       "path": "src\\pages\\labtech\\components\\DeptSelect.tsx",
-      "accessCount": 1,
-      "lastAccessed": 1776850230978,
+      "accessCount": 2,
+      "lastAccessed": 1777862261091,
       "type": "file"
     },
     {
@@ -513,12 +519,6 @@
       "path": "src\\services\\semesters.ts",
       "accessCount": 1,
       "lastAccessed": 1776861465511,
-      "type": "file"
-    },
-    {
-      "path": "src\\utils\\inventoryQr.ts",
-      "accessCount": 1,
-      "lastAccessed": 1776863743670,
       "type": "file"
     },
     {

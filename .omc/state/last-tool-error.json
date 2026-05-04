@@ -1,7 +1,0 @@
-{
-  "tool_name": "mcp__plugin_playwright_playwright__browser_click",
-  "tool_input_preview": "{\"target\":\"button[type=&quot;submit&quot;], button:has-text(&quot;Sign in&quot;)\",\"element\":\"Sign in button (CSS selector)\"}",
-  "error": "### Error\nError: browserBackend.callTool: Unexpected token \"\" while parsing css selector \"\". Did you mean to CSS.escape it?",
-  "timestamp": "2026-04-29T16:55:54.545Z",
-  "retry_count": 2
-}
