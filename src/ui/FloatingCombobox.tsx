@@ -20,6 +20,9 @@ interface FloatingComboboxProps {
   required?: boolean;
 }
 
+const normalizeSearchText = (text: string) =>
+  text.toLowerCase().replace(/[^a-z0-9]/g, '');
+
 export function FloatingCombobox({
   id,
   value,
@@ -42,10 +45,13 @@ export function FloatingCombobox({
 
   const filteredOptions = useMemo(() => {
     const query = value.trim().toLowerCase();
+    const normalizedQuery = normalizeSearchText(value.trim());
     if (!query) return options;
     return options.filter(option =>
       option.label.toLowerCase().includes(query) ||
-      option.value.toLowerCase().includes(query)
+      option.value.toLowerCase().includes(query) ||
+      normalizeSearchText(option.label).includes(normalizedQuery) ||
+      normalizeSearchText(option.value).includes(normalizedQuery)
     );
   }, [options, value]);
 

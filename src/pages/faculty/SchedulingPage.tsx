@@ -51,7 +51,7 @@ const FacultySchedulingInner = () => {
   // Active room context — single source of truth for which room the
   // calendar, booking form, and borrow form operate on. Driven by the
   // header combo box inside <Scheduling/>.
-  const { activeRoom, activeRoomId } = useActiveRoom();
+  const { rooms, activeRoom, activeRoomId } = useActiveRoom();
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
@@ -587,8 +587,10 @@ const FacultySchedulingInner = () => {
           const tagParts: string[] = [];
           if (equipmentLabel) tagParts.push(equipmentLabel);
           if (pcNumber) tagParts.push(pcNumber);
-          const tagPrefix = tagParts.length > 0 ? `[${tagParts.join(' · ')}] ` : '';
+          const tagPrefix = tagParts.length > 0 ? `[${tagParts.join(' - ')}] ` : '';
           const finalDescription = `${tagPrefix}${description}`;
+          const chosenRoom = chosenRoomId == null ? null : rooms.find(room => room.Room_ID === chosenRoomId);
+          const targetRoomName = noRoom ? '' : chosenRoom?.Name || activeRoom?.Name || currentRoom;
 
           await createTicket({
             Reported_By_ID: user.User_ID,
@@ -602,11 +604,13 @@ const FacultySchedulingInner = () => {
           modal.showSuccess(
             noRoom
               ? 'Ticket submitted. A Lab Tech will be notified.'
-              : `Ticket submitted for ${currentRoom}. A Lab Tech will be notified.`,
+              : `Ticket submitted for ${targetRoomName}. A Lab Tech will be notified.`,
             'Issue Reported'
           );
         }}
-        room={currentRoom}
+        room={activeRoom?.Name || currentRoom}
+        rooms={rooms}
+        defaultRoomId={activeRoomId}
         pcNumber="N/A"
       />
     </div>

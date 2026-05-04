@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
+import { FloatingCombobox } from '@/ui/FloatingCombobox';
 import { FloatingSelect } from '@/ui/FloatingSelect';
 
 interface RoomOption {
@@ -26,6 +27,24 @@ interface ReportIssueModalProps {
 
 const showPcNumberFor = (issueType: string) => issueType === 'hardware' || issueType === 'software';
 const showEquipmentFor = (issueType: string) => issueType === 'hardware';
+const normalizeRoomSearch = (text: string) => text.toLowerCase().replace(/[^a-z0-9]/g, '');
+const isGeneralRoomPlaceholder = (value: string) => /^(general facility|unknown|n\/?a|none)$/i.test(value.trim());
+
+const resolveRoomChoice = (query: string, rooms: RoomOption[]) => {
+  const trimmed = query.trim();
+  if (!trimmed) return null;
+
+  const normalizedQuery = normalizeRoomSearch(trimmed);
+  const exactMatch = rooms.find((candidate) => normalizeRoomSearch(candidate.Name) === normalizedQuery);
+  if (exactMatch) return exactMatch;
+
+  const containsMatches = rooms.filter((candidate) => {
+    const normalizedName = normalizeRoomSearch(candidate.Name);
+    return normalizedName.includes(normalizedQuery) || candidate.Name.toLowerCase().includes(trimmed.toLowerCase());
+  });
+
+  return containsMatches.length === 1 ? containsMatches[0] : null;
+};
 
 export default function ReportIssueModal({
   isOpen,
@@ -33,7 +52,7 @@ export default function ReportIssueModal({
   onSubmit,
   room,
   pcNumber,
-  rooms,
+  rooms = [],
   defaultRoomId,
 }: ReportIssueModalProps) {
   const [description, setDescription] = useState('');
@@ -42,44 +61,77 @@ export default function ReportIssueModal({
   const isPlaceholderPc = !pcNumber || /^(unknown|n\/?a|none|-+)$/i.test(pcNumber.trim());
   const [editablePcNumber, setEditablePcNumber] = useState(isPlaceholderPc ? '' : pcNumber);
   const [noRoom, setNoRoom] = useState(false);
+  const [roomQuery, setRoomQuery] = useState('');
+  const [roomError, setRoomError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const wasOpenRef = useRef(false);
 
-  // Resolve initial room selection: explicit defaultRoomId, or look up by display name in `rooms`.
-  const initialRoomId = useMemo<number | null>(() => {
-    if (defaultRoomId != null) return defaultRoomId;
-    if (rooms && room) {
-      const match = rooms.find((r) => r.Name.trim().toLowerCase() === room.trim().toLowerCase());
-      if (match) return match.Room_ID;
+  const initialRoomQuery = useMemo(() => {
+    if (defaultRoomId != null) {
+      const defaultRoom = rooms.find((candidate) => candidate.Room_ID === defaultRoomId);
+      if (defaultRoom) return defaultRoom.Name;
     }
-    return null;
-  }, [defaultRoomId, rooms, room]);
-  const [selectedRoomId, setSelectedRoomId] = useState<number | null>(initialRoomId);
 
-  const hasRoomList = !!rooms && rooms.length > 0;
+    return isGeneralRoomPlaceholder(room) ? '' : room;
+  }, [defaultRoomId, room, rooms]);
+
+  const hasRoomList = rooms.length > 0;
   const needsEquipment = showEquipmentFor(issueType);
   const needsPcNumber = showPcNumberFor(issueType);
+  const roomOptions = useMemo(
+    () => rooms.map((roomOption) => ({ value: roomOption.Name, label: roomOption.Name })),
+    [rooms],
+  );
+
+  useEffect(() => {
+    if (!isOpen) {
+      wasOpenRef.current = false;
+      return;
+    }
+
+    if (wasOpenRef.current) return;
+
+    wasOpenRef.current = true;
+    setDescription('');
+    setEquipment('monitor');
+    setEditablePcNumber(isPlaceholderPc ? '' : pcNumber);
+    setNoRoom(false);
+    setRoomQuery(initialRoomQuery);
+    setRoomError('');
+  }, [initialRoomQuery, isOpen, isPlaceholderPc, pcNumber]);
+
+  useEffect(() => {
+    if (!isOpen || noRoom || roomQuery.trim() || !initialRoomQuery) return;
+    setRoomQuery(initialRoomQuery);
+  }, [initialRoomQuery, isOpen, noRoom, roomQuery]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!description) return;
     if (needsEquipment && !equipment) return;
 
+    const selectedRoom = !noRoom && hasRoomList ? resolveRoomChoice(roomQuery, rooms) : null;
+    if (!noRoom && hasRoomList && !selectedRoom) {
+      setRoomError('Select a room from the suggestions.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const effectiveRoomId = noRoom ? null : selectedRoomId;
       await onSubmit(
         description.trim(),
         issueType,
         needsEquipment ? equipment : '',
         needsPcNumber ? editablePcNumber.trim() : '',
         noRoom,
-        effectiveRoomId,
+        noRoom ? null : selectedRoom?.Room_ID ?? defaultRoomId ?? null,
       );
       setDescription('');
       setEquipment('monitor');
       setEditablePcNumber(isPlaceholderPc ? '' : pcNumber);
       setNoRoom(false);
-      setSelectedRoomId(initialRoomId);
+      setRoomQuery(initialRoomQuery);
+      setRoomError('');
       onClose();
     } finally {
       setIsSubmitting(false);
@@ -115,43 +167,50 @@ export default function ReportIssueModal({
                 <input
                   type="checkbox"
                   checked={noRoom}
-                  onChange={(e) => setNoRoom(e.target.checked)}
+                  onChange={(e) => {
+                    setNoRoom(e.target.checked);
+                    setRoomError('');
+                    if (!e.target.checked && !roomQuery) {
+                      setRoomQuery(initialRoomQuery);
+                    }
+                  }}
                   disabled={isSubmitting}
                   className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700"
                 />
                 Not tied to a specific room
               </label>
             </div>
-            {noRoom ? (
-              <input
-                type="text"
-                value="No room selected"
-                readOnly
-                className="w-full px-3 py-2 border border-gray-300 dark:border-[#334155] rounded-md shadow-sm cursor-not-allowed bg-gray-200 italic text-gray-500 dark:bg-[#0f172a] dark:text-gray-500"
-              />
-            ) : hasRoomList ? (
-              <select
-                value={selectedRoomId ?? ''}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setSelectedRoomId(v === '' ? null : Number(v));
-                }}
-                disabled={isSubmitting}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-[#334155] rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-[#1e2939] dark:text-white"
-              >
-                <option value="">Select a room</option>
-                {rooms!.map((r) => (
-                  <option key={r.Room_ID} value={r.Room_ID}>
-                    {r.Name}
-                  </option>
-                ))}
-              </select>
+            {hasRoomList ? (
+              <>
+                <FloatingCombobox
+                  id="report-issue-room"
+                  value={noRoom ? 'No room selected' : roomQuery}
+                  placeholder="Type or select a room"
+                  options={roomOptions}
+                  onChange={(value) => {
+                    setRoomQuery(value);
+                    setRoomError('');
+                  }}
+                  disabled={isSubmitting || noRoom}
+                  required={!noRoom}
+                  inputClassName={
+                    noRoom
+                      ? 'cursor-not-allowed bg-gray-200 italic text-gray-500 dark:bg-[#0f172a] dark:text-gray-500'
+                      : ''
+                  }
+                />
+                {roomError && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{roomError}</p>}
+              </>
             ) : (
               <input
                 type="text"
-                value={room}
+                value={noRoom ? 'No room selected' : room}
                 readOnly
-                className="w-full px-3 py-2 border border-gray-300 dark:border-[#334155] rounded-md shadow-sm dark:text-gray-300 cursor-not-allowed bg-gray-100 dark:bg-[#1e2939]"
+                className={`w-full px-3 py-2 border border-gray-300 dark:border-[#334155] rounded-md shadow-sm dark:text-gray-300 cursor-not-allowed ${
+                  noRoom
+                    ? 'bg-gray-200 italic text-gray-500 dark:bg-[#0f172a] dark:text-gray-500'
+                    : 'bg-gray-100 dark:bg-[#1e2939]'
+                }`}
               />
             )}
           </div>
@@ -224,8 +283,6 @@ export default function ReportIssueModal({
               disabled={isSubmitting}
             />
           </div>
-
-
 
           <div className="flex justify-end space-x-3 pt-2">
             <button
