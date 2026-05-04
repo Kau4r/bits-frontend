@@ -1,14 +1,17 @@
 import { useState, useEffect, useMemo } from 'react';
 import ReactQRCode from 'react-qr-code';
-import { Download, Printer } from 'lucide-react';
+import { Download, Printer, X, Settings } from 'lucide-react';
 import type { Room, RoomSession } from '@/types/room';
-import { fetchComputers, createComputer, updateComputer, deleteComputer, type Computer, type CreateComputerPayload, type UpdateComputerPayload, type ComputerComponentType } from '@/services/computers';
+import { fetchComputers, createComputer, updateComputer, deleteComputer, type Computer, type CreateComputerPayload, type UpdateComputerPayload } from '@/services/computers';
 import { downloadInventoryReportCsv } from '@/services/reports';
+import { getInventoryItemTypes } from '@/services/inventory';
+import { fetchSuggestions, type ComputerSuggestion } from '@/services/computerSuggestions';
 import api from '@/services/api';
 import { useModal } from '@/context/ModalContext';
 import { useAuth } from '@/context/AuthContext';
 import Table from '@/components/Table';
 import InventoryItemCombobox from '@/pages/labtech/components/InventoryItemCombobox';
+import SuggestionManagerModal from '@/pages/labtech/components/SuggestionManagerModal';
 import { getNextComputerName, getNumberedComputers } from '@/utils/computerDisplay';
 import { FloatingSelect } from '@/ui/FloatingSelect';
 import RoomExportButton from '@/pages/labtech/components/RoomExportButton';
@@ -53,16 +56,11 @@ const timeSlots = [
 const SCHEDULE_SLOT_HEIGHT_PX = 44;
 const SCHEDULE_GRID_START_MINS = 7 * 60 + 30;
 
-const ITEM_TYPES: ComputerComponentType[] = ['KEYBOARD', 'MOUSE', 'MONITOR', 'MINI_PC'];
+// Free-form: keys are item-type strings, values are the selected inventory item
+// for that type (or null if the row was added but no item picked yet).
+type SelectedComputerItems = Record<string, InventoryItem | null>;
 
-type SelectedComputerItems = Record<ComputerComponentType, InventoryItem | null>;
-
-const createEmptySelectedItems = (): SelectedComputerItems => ({
-    KEYBOARD: null,
-    MOUSE: null,
-    MONITOR: null,
-    MINI_PC: null,
-});
+const createEmptySelectedItems = (): SelectedComputerItems => ({});
 
 const normalizeItemType = (type?: string | null): string => {
     const normalized = String(type || '').trim().replace(/[\s-]+/g, '_').toUpperCase();
@@ -71,7 +69,7 @@ const normalizeItemType = (type?: string | null): string => {
 
 const formatItemType = (type: string) => {
     if (normalizeItemType(type) === 'MINI_PC') return 'Mini PC';
-    return type.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+    return type.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
 };
 
 export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }: RoomDetailModalProps) {
@@ -101,16 +99,68 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
     // Hover state for showing components
     const [hoveredPc, setHoveredPc] = useState<number | null>(null);
 
+    // Dynamic item types + reusable suggestions (data-driven, replaces the
+    // old hardcoded KEYBOARD/MOUSE/MONITOR/MINI_PC slots).
+    const [availableItemTypes, setAvailableItemTypes] = useState<string[]>([]);
+    const [suggestions, setSuggestions] = useState<ComputerSuggestion[]>([]);
+    const [showSuggestionManager, setShowSuggestionManager] = useState(false);
+
     // Assets state
     const [assets, setAssets] = useState<RoomAsset[]>([]);
     const [isLoadingAssets, setIsLoadingAssets] = useState(false);
     const numberedComputers = useMemo(() => getNumberedComputers(computers), [computers]);
+
+    // Defensive item-type pool: prefer the /inventory/item-types result, but
+    // ALSO include types already in use by computers in this room and types
+    // referenced by suggestions. That way removing + re-adding a row still
+    // shows the picker even if the endpoint isn't reachable yet (e.g. before
+    // the backend is restarted with the new route) or returns an empty list.
+    const itemTypePool = useMemo(() => {
+        const set = new Set<string>();
+        for (const t of availableItemTypes) {
+            const norm = normalizeItemType(t);
+            if (norm) set.add(norm);
+        }
+        for (const c of computers) {
+            for (const item of c.Item) {
+                const norm = normalizeItemType(item.Item_Type);
+                if (norm) set.add(norm);
+            }
+        }
+        for (const s of suggestions) {
+            for (const t of s.Item_Types) {
+                const norm = normalizeItemType(t);
+                if (norm) set.add(norm);
+            }
+        }
+        return [...set].sort();
+    }, [availableItemTypes, computers, suggestions]);
     // Fetch computers when modal opens
     useEffect(() => {
         if (isOpen && room?.Room_ID) {
             loadComputers();
         }
     }, [isOpen, room?.Room_ID]);
+
+    // Load dynamic item types + suggestions when the modal opens
+    useEffect(() => {
+        if (!isOpen) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const [types, sugs] = await Promise.all([
+                    getInventoryItemTypes(),
+                    fetchSuggestions(),
+                ]);
+                if (cancelled) return;
+                setAvailableItemTypes(types);
+                setSuggestions(sugs);
+            } catch (err) {
+                console.error('Failed to load item types or suggestions:', err);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [isOpen]);
 
     // Load assets after computers are loaded
     useEffect(() => {
@@ -202,25 +252,21 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
             return;
         }
 
-        // Check if at least one component is selected
-        const hasAnyComponent = Object.values(selectedItems).some(item => item !== null);
-        if (!hasAnyComponent) {
-            setError('Please select at least one component');
-            return;
-        }
-
         setIsSubmitting(true);
         try {
+            // Empty PCs are allowed; only send rows that have an item picked.
+            const items = Object.entries(selectedItems)
+                .filter(([, item]) => item !== null)
+                .map(([itemType, item]) => ({
+                    itemType,
+                    itemId: item!.Item_ID,
+                }));
+
             const payload: CreateComputerPayload = {
                 name: newComputerName,
                 roomId: room.Room_ID,
                 isTeacher: newComputerIsTeacher,
-                items: ITEM_TYPES
-                    .filter(itemType => selectedItems[itemType] !== null)
-                    .map(itemType => ({
-                        itemType,
-                        itemId: selectedItems[itemType]!.Item_ID, // Use existing item ID
-                    }))
+                items,
             };
 
             await createComputer(payload);
@@ -248,11 +294,13 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
         setEditName(pc.Name);
         setEditStatus(pc.Status);
         setEditIsTeacher(Boolean(pc.Is_Teacher));
-        const existingItems = createEmptySelectedItems();
-        ITEM_TYPES.forEach(type => {
-            const existing = pc.Item.find(i => normalizeItemType(i.Item_Type) === type);
-            existingItems[type] = existing || null;
-        });
+        // Build the rows from whatever components the PC currently has.
+        // Each unique normalized Item_Type becomes a row.
+        const existingItems: SelectedComputerItems = {};
+        for (const item of pc.Item) {
+            const type = normalizeItemType(item.Item_Type);
+            if (type) existingItems[type] = item;
+        }
         setEditSelectedItems(existingItems);
     };
 
@@ -261,15 +309,19 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
 
         setIsSubmitting(true);
         try {
+            // Send only rows with a picked item; backend treats `items` as the
+            // full new set (rows omitted from the payload get disconnected).
+            const items = Object.entries(editSelectedItems)
+                .filter(([, item]) => item !== null)
+                .map(([itemType, item]) => ({
+                    itemId: item!.Item_ID,
+                    itemType,
+                }));
+
             const payload: UpdateComputerPayload = {
                 status: editStatus,
                 isTeacher: editIsTeacher,
-                items: ITEM_TYPES
-                    .filter(itemType => editSelectedItems[itemType] !== null)
-                    .map(itemType => ({
-                        itemId: editSelectedItems[itemType]!.Item_ID,
-                        itemType,
-                    }))
+                items,
             };
 
             await updateComputer(editingComputer.Computer_ID, payload);
@@ -281,6 +333,81 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    // Add/remove rows + suggestion-apply for the dynamic Components section.
+    // Mode = 'add' for the Add Computer dialog state; 'edit' for the editor.
+    type EditorTarget = 'add' | 'edit';
+
+    const setForTarget = (
+        target: EditorTarget,
+        updater: (prev: SelectedComputerItems) => SelectedComputerItems
+    ) => {
+        if (target === 'add') setSelectedItems(updater);
+        else setEditSelectedItems(updater);
+    };
+
+    const addItemTypeRow = (rawType: string, target: EditorTarget) => {
+        const type = normalizeItemType(rawType);
+        if (!type) return;
+        setForTarget(target, (prev) => (type in prev ? prev : { ...prev, [type]: null }));
+    };
+
+    const removeItemTypeRow = (type: string, target: EditorTarget) => {
+        setForTarget(target, (prev) => {
+            if (!(type in prev)) return prev;
+            const next = { ...prev };
+            delete next[type];
+            return next;
+        });
+    };
+
+    const setItemForType = (
+        type: string,
+        item: InventoryItem | null,
+        target: EditorTarget
+    ) => {
+        setForTarget(target, (prev) => ({ ...prev, [type]: item }));
+    };
+
+    const applySuggestion = (suggestionId: string, target: EditorTarget) => {
+        const id = parseInt(suggestionId, 10);
+        if (Number.isNaN(id)) return;
+        const s = suggestions.find(x => x.Suggestion_ID === id);
+        if (!s) return;
+        setForTarget(target, (prev) => {
+            const next = { ...prev };
+            for (const t of s.Item_Types) {
+                const norm = normalizeItemType(t);
+                if (norm && !(norm in next)) next[norm] = null;
+            }
+            return next;
+        });
+    };
+
+    // Confirm-then-close: prompt when there are unsaved edits before
+    // dismissing. View-mode close is always silent — there's nothing to lose.
+    const confirmCloseEditDialog = async () => {
+        if (computerModalMode === 'edit') {
+            const ok = await modal.showConfirm(
+                'Discard your changes? Any unsaved edits to this PC will be lost.',
+                'Cancel edit?'
+            );
+            if (!ok) return;
+        }
+        setEditingComputer(null);
+    };
+
+    const confirmCloseAddDialog = async () => {
+        const hasContent = newComputerIsTeacher || Object.keys(selectedItems).length > 0;
+        if (hasContent) {
+            const ok = await modal.showConfirm(
+                'Discard this new PC? Anything you entered will be lost.',
+                'Cancel add?'
+            );
+            if (!ok) return;
+        }
+        setShowAddDialog(false);
     };
 
     const handleDeleteComputer = async (computerId: number, e?: React.MouseEvent) => {
@@ -622,7 +749,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                                             {pc.Item.map(item => (
                                                                 <div key={item.Item_ID} className="text-xs">
                                                                     <span className="text-gray-600 dark:text-gray-400">{formatItemType(item.Item_Type)}:</span>
-                                                                    <span className="text-gray-900 dark:text-white ml-1">{item.Brand || 'N/A'}</span>
+                                                                    <span className="text-gray-900 dark:text-white ml-1">{formatBrand(item.Brand)}</span>
                                                                     {item.Serial_Number && (
                                                                         <span className="text-gray-500 ml-1">({item.Serial_Number})</span>
                                                                     )}
@@ -694,7 +821,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                         >
                                             <div className="text-sm text-gray-900 dark:text-white font-mono w-full truncate" title={asset.Item_Code}>{asset.Item_Code}</div>
                                             <div className="text-sm text-gray-600 dark:text-gray-300 w-full truncate" title={formatItemType(asset.Item_Type)}>{formatItemType(asset.Item_Type)}</div>
-                                            <div className="text-sm text-gray-600 dark:text-gray-300 w-full truncate" title={asset.Brand || ''}>{asset.Brand || '-'}</div>
+                                            <div className="text-sm text-gray-600 dark:text-gray-300 w-full truncate" title={formatBrand(asset.Brand)}>{formatBrand(asset.Brand)}</div>
                                             <div className="text-sm text-gray-400 font-mono w-full truncate" title={asset.Serial_Number || ''}>{asset.Serial_Number || '-'}</div>
                                             <div className="text-sm w-full truncate">
                                                 {asset.ComputerName ? (
@@ -832,7 +959,16 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
 
             {/* Add Computer Dialog */}
             {showAddDialog && (
-                <div className="fixed inset-0 z-[60] bg-black/40 grid place-items-center p-4 content-center" onClick={() => setShowAddDialog(false)}>
+                <div
+                    className="fixed inset-0 z-[60] bg-black/40 grid place-items-center p-4 content-center"
+                    onClick={(e) => {
+                        // Stop propagation so the click doesn't bubble up and
+                        // close the parent RoomDetailModal too. Confirms first
+                        // if there are unsaved entries.
+                        e.stopPropagation();
+                        confirmCloseAddDialog();
+                    }}
+                >
                     <div
                         className="bg-white dark:bg-gray-900 rounded-xl w-full max-w-lg p-6 shadow-xl border border-gray-200 dark:border-gray-700 max-h-[90vh] overflow-y-auto"
                         onClick={(e) => e.stopPropagation()}
@@ -880,19 +1016,17 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                         </div>
 
                         {/* Components */}
-                        <div className="space-y-4">
-                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Components</p>
-                            {ITEM_TYPES.map((itemType) => (
-                                <InventoryItemCombobox
-                                    key={itemType}
-                                    itemType={itemType}
-                                    label={formatItemType(itemType)}
-                                    value={selectedItems[itemType]}
-                                    onChange={(item: { Item_ID: number; Item_Code: string; Item_Type: string; Brand: string | null; Serial_Number: string | null; Status: string } | null) => setSelectedItems(prev => ({ ...prev, [itemType]: item }))}
-                                    placeholder={`Select ${formatItemType(itemType).toLowerCase()} from inventory...`}
-                                />
-                            ))}
-                        </div>
+                        <ComponentEditor
+                            target="add"
+                            selected={selectedItems}
+                            availableItemTypes={availableItemTypes}
+                            suggestions={suggestions}
+                            onApplySuggestion={applySuggestion}
+                            onSetItem={setItemForType}
+                            onAddType={addItemTypeRow}
+                            onRemoveType={removeItemTypeRow}
+                            onManageSuggestions={() => setShowSuggestionManager(true)}
+                        />
 
                         {/* Actions */}
                         <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
@@ -916,7 +1050,16 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
 
             {/* Edit Computer Dialog */}
             {editingComputer && (
-                <div className="fixed inset-0 z-[60] bg-black/40 grid place-items-center p-4 content-center" onClick={() => setEditingComputer(null)}>
+                <div
+                    className="fixed inset-0 z-[60] bg-black/40 grid place-items-center p-4 content-center"
+                    onClick={(e) => {
+                        // Stop propagation so the click doesn't bubble up and
+                        // close the parent RoomDetailModal too. Confirms first
+                        // when in edit mode (view mode has nothing to lose).
+                        e.stopPropagation();
+                        confirmCloseEditDialog();
+                    }}
+                >
                     <div
                         className="bg-white dark:bg-gray-900 rounded-xl w-full max-w-lg p-6 shadow-xl border border-gray-200 dark:border-gray-700 max-h-[90vh] overflow-y-auto"
                         onClick={(e) => e.stopPropagation()}
@@ -1018,24 +1161,29 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                         </div>
 
                         {/* Components */}
-                        <div className="space-y-4">
-                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Components</p>
-                            {computerModalMode === 'edit' ? (
-                                ITEM_TYPES.map((itemType) => (
-                                    <InventoryItemCombobox
-                                        key={itemType}
-                                        itemType={itemType}
-                                        label={formatItemType(itemType)}
-                                        value={editSelectedItems[itemType]}
-                                        onChange={(item) => setEditSelectedItems(prev => ({ ...prev, [itemType]: item }))}
-                                        placeholder={`Select ${formatItemType(itemType).toLowerCase()} from inventory...`}
-                                    />
-                                ))
-                            ) : (
-                                <div className="space-y-2">
-                                    {ITEM_TYPES.map((itemType) => {
-                                        const item = editSelectedItems[itemType];
-                                        return (
+                        {computerModalMode === 'edit' ? (
+                            <ComponentEditor
+                                target="edit"
+                                selected={editSelectedItems}
+                                availableItemTypes={itemTypePool}
+                                suggestions={suggestions}
+                                onApplySuggestion={applySuggestion}
+                                onSetItem={setItemForType}
+                                onAddType={addItemTypeRow}
+                                onRemoveType={removeItemTypeRow}
+                                onManageSuggestions={() => setShowSuggestionManager(true)}
+                                computerId={editingComputer?.Computer_ID}
+                            />
+                        ) : (
+                            <div className="space-y-3">
+                                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Components</p>
+                                {Object.keys(editSelectedItems).length === 0 ? (
+                                    <div className="rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 p-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                                        No components attached. Click Edit to add some.
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {Object.entries(editSelectedItems).map(([itemType, item]) => (
                                             <div key={itemType} className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/50">
                                                 <div className="flex items-center justify-between gap-3">
                                                     <span className="text-sm font-semibold text-gray-900 dark:text-white">{formatItemType(itemType)}</span>
@@ -1045,11 +1193,11 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                                     {item ? formatBrand(item.Brand, 'No Brand') : 'No item selected'}
                                                 </p>
                                             </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         {/* Actions */}
                         <div className="flex flex-wrap justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
@@ -1089,6 +1237,149 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                     </div>
                 </div>
             )}
+
+            <SuggestionManagerModal
+                isOpen={showSuggestionManager}
+                onClose={() => setShowSuggestionManager(false)}
+                availableItemTypes={itemTypePool}
+                onSuggestionsChanged={setSuggestions}
+            />
+        </div>
+    );
+}
+
+interface ComponentEditorProps {
+    target: 'add' | 'edit';
+    selected: SelectedComputerItems;
+    availableItemTypes: string[];
+    suggestions: ComputerSuggestion[];
+    onApplySuggestion: (id: string, target: 'add' | 'edit') => void;
+    onSetItem: (type: string, item: InventoryItem | null, target: 'add' | 'edit') => void;
+    onAddType: (type: string, target: 'add' | 'edit') => void;
+    onRemoveType: (type: string, target: 'add' | 'edit') => void;
+    onManageSuggestions: () => void;
+    // Edit-mode only: lets the inventory picker include items already
+    // attached to this PC, so removing+re-adding a row works as expected.
+    computerId?: number;
+}
+
+function ComponentEditor({
+    target,
+    selected,
+    availableItemTypes,
+    suggestions,
+    onApplySuggestion,
+    onSetItem,
+    onAddType,
+    onRemoveType,
+    onManageSuggestions,
+    computerId,
+}: ComponentEditorProps) {
+    const formatItemType = (type: string) => {
+        if (type === 'MINI_PC') return 'Mini PC';
+        return type.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+    };
+
+    const usedTypes = new Set(Object.keys(selected));
+    const addableTypes = availableItemTypes.filter(t => !usedTypes.has(t));
+    const rows = Object.entries(selected);
+
+    return (
+        <div className="space-y-3">
+            <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Components</p>
+                <button
+                    type="button"
+                    onClick={onManageSuggestions}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                >
+                    <Settings className="w-3 h-3" />
+                    Manage Suggestions
+                </button>
+            </div>
+
+            {suggestions.length > 0 && (
+                <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                        Apply Suggestion (optional)
+                    </label>
+                    <select
+                        value=""
+                        onChange={(e) => {
+                            if (e.target.value) onApplySuggestion(e.target.value, target);
+                        }}
+                        className="w-full rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                    >
+                        <option value="">— pick a suggestion to fill rows —</option>
+                        {suggestions.map(s => (
+                            <option key={s.Suggestion_ID} value={s.Suggestion_ID}>
+                                {s.Name} ({s.Item_Types.map(formatItemType).join(', ')})
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            )}
+
+            {rows.length === 0 ? (
+                <div className="rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 p-4 text-center">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                        No components yet. Add an item type below — empty PCs are OK, you can attach items later.
+                    </p>
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    {rows.map(([itemType, item]) => (
+                        <div key={itemType} className="flex items-end gap-2">
+                            <div className="flex-1 min-w-0">
+                                <InventoryItemCombobox
+                                    itemType={itemType}
+                                    label={formatItemType(itemType)}
+                                    value={item}
+                                    onChange={(picked) => onSetItem(itemType, picked, target)}
+                                    placeholder={`Select ${formatItemType(itemType).toLowerCase()} from inventory...`}
+                                    computerId={computerId}
+                                />
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => onRemoveType(itemType, target)}
+                                className="mb-0.5 rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                                title={`Remove ${formatItemType(itemType)}`}
+                                aria-label={`Remove ${formatItemType(itemType)}`}
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            <div>
+                <select
+                    value=""
+                    onChange={(e) => {
+                        if (e.target.value) onAddType(e.target.value, target);
+                    }}
+                    disabled={addableTypes.length === 0}
+                    className="w-full rounded-lg border border-dashed border-gray-300 dark:border-gray-600 bg-white dark:bg-[#1e2939] px-3 py-2 text-sm font-medium text-blue-600 hover:border-blue-500 focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:text-blue-400"
+                >
+                    <option value="">
+                        {addableTypes.length === 0
+                            ? 'All available types added'
+                            : '+ Add Item Type…'}
+                    </option>
+                    {addableTypes.map(t => (
+                        <option key={t} value={t}>
+                            {formatItemType(t)}
+                        </option>
+                    ))}
+                </select>
+                {availableItemTypes.length === 0 && (
+                    <p className="mt-1 text-xs text-gray-400">
+                        No item types found in inventory yet. Add inventory items first.
+                    </p>
+                )}
+            </div>
         </div>
     );
 }

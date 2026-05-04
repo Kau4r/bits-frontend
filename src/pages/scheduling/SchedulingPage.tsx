@@ -17,6 +17,7 @@ import BookingPopover from '@/components/BookingPopover';
 import RoomCombobox from '@/pages/scheduling/components/RoomCombobox';
 import WarningModal from '@/pages/scheduling/components/WarningModal';
 import ConfirmModal from '@/pages/scheduling/components/ConfirmModal';
+import ScheduleViewModal from '@/pages/scheduling/components/ScheduleViewModal';
 import { useBookingEvents } from '@/hooks/useBookingEvents';
 import type { RecurrenceConfig } from '@/components/RecurrenceModal';
 import { createBookingSeries, upsertSeriesOverride, excludeSeriesDate, updateBookingSeries, deleteBookingSeries, decideSeriesStatus } from '@/services/bookingSeries';
@@ -32,13 +33,17 @@ export default function Scheduling({ showRejectedMyBookings = false }: Schedulin
   const { rooms, activeRoom, activeRoomId, setActiveRoomId } = useActiveRoom();
   const currentUserId = user?.User_ID ?? 0;
   const userRole = user?.User_Role.toUpperCase() ?? 'FACULTY';
-  // Scheduling is owned by SECRETARY (CONF/CONS) and LAB_HEAD/LAB_TECH (LAB/LECTURE).
-  // ADMIN is intentionally not part of the scheduling workflow — they can view but
-  // cannot edit other users' bookings here. Lab heads approve/reject without editing.
+  // Scheduling here is for faculty, secretary, and lab head users only.
+  // Only scheduling roles use this page.
+  // Rescheduling remains owner-only in this shared calendar workflow.
   const canManageAllBookings = false;
   type CalendarViewType = 'dayGridMonth' | 'timeGridWeek' | 'timeGridDay' | 'listWeek';
 
   const calendarRef = useRef<FullCalendar | null>(null);
+  // Cloned DOM node we render at the dragged event's original position so
+  // users can see where the booking started during a drag. Lives inside
+  // FullCalendar's own DOM so it scrolls with the time grid naturally.
+  const dragMirageRef = useRef<HTMLElement | null>(null);
   const [calendarView, setCalendarView] = useState<CalendarViewType>('timeGridWeek');
   const [currentDate, setCurrentDate] = useState(dayjs().format('MMMM YYYY'));
   const [events, setEvents] = useState<any[]>([]);
@@ -92,6 +97,18 @@ export default function Scheduling({ showRejectedMyBookings = false }: Schedulin
     message: string;
     type: 'warning' | 'error' | 'info';
   }>({ isOpen: false, title: '', message: '', type: 'warning' });
+
+  // Read-only details for a clicked class-schedule block. Class schedules
+  // come from the room's Schedule import and aren't booking-shaped, so we
+  // show them in their own modal rather than reusing BookingPopover.
+  const [viewingSchedule, setViewingSchedule] = useState<{
+    title: string;
+    scheduleType?: string;
+    days: string;
+    startTime: string;
+    endTime: string;
+    roomName: string;
+  } | null>(null);
 
   // Confirm modal state for drag reschedule
   const [pendingDrag, setPendingDrag] = useState<{
@@ -205,6 +222,9 @@ export default function Scheduling({ showRejectedMyBookings = false }: Schedulin
           title: b.Purpose ?? b.Series_Title ?? 'No Title',
           start: b.Start_Time,
           end: b.End_Time,
+          // Approved bookings are locked. handleEventDrop also rejects the
+          // drop, but disabling drag here avoids the misleading visual move.
+          editable: (b.Status?.toUpperCase() ?? 'PENDING') !== 'APPROVED',
           extendedProps: {
             roomId: b.Room_ID,
             roomName: b.Room?.Name ?? 'Unknown',
@@ -442,6 +462,7 @@ export default function Scheduling({ showRejectedMyBookings = false }: Schedulin
         title: newBooking.Purpose ?? 'No Title',
         start: newBooking.Start_Time,
         end: newBooking.End_Time,
+        editable: (newBooking.Status?.toUpperCase() ?? 'PENDING') !== 'APPROVED',
         extendedProps: {
           roomId: newBooking.Room_ID,
           roomName: room?.Name || 'Unknown',
@@ -492,12 +513,28 @@ export default function Scheduling({ showRejectedMyBookings = false }: Schedulin
   const handleEventDrop = async (dropInfo: EventDropArg) => {
     const { event, revert, oldEvent } = dropInfo;
 
-    // Only allow owner or admin to reschedule
+    if (!event.start || !event.end || !oldEvent.start || !oldEvent.end) {
+      revert();
+      return;
+    }
+
+    if (event.start.getTime() < Date.now()) {
+      setWarningModal({
+        isOpen: true,
+        title: 'Past Time Not Allowed',
+        message: 'Bookings cannot be rescheduled to a past date or time.',
+        type: 'warning',
+      });
+      revert();
+      return;
+    }
+
+    // Rescheduling is owner-only in this shared scheduling flow.
     if (event.extendedProps.createdById !== currentUserId && !canManageAllBookings) {
       setWarningModal({
         isOpen: true,
         title: 'Permission Denied',
-        message: 'You can only reschedule your own bookings unless you are a Lab Head or Admin.',
+        message: 'You can only reschedule your own bookings.',
         type: 'error',
       });
       revert();
@@ -646,8 +683,20 @@ export default function Scheduling({ showRejectedMyBookings = false }: Schedulin
   // Handle clicking on an existing event
   const handleEventClick = (clickInfo: { event: any; jsEvent: MouseEvent }) => {
     const { event, jsEvent } = clickInfo;
-    // Class-schedule events from the Schedule Import are read-only; ignore clicks.
-    if (event.extendedProps.isScheduleEvent) return;
+    // Class-schedule events from the Schedule Import are read-only — surface
+    // their details in a dedicated view modal instead of the booking popover.
+    if (event.extendedProps.isScheduleEvent) {
+      const ep = event.extendedProps;
+      setViewingSchedule({
+        title: event.title,
+        scheduleType: ep.scheduleType,
+        days: ep.scheduleDays ?? '',
+        startTime: ep.scheduleStartTime ?? '',
+        endTime: ep.scheduleEndTime ?? '',
+        roomName: ep.roomName ?? '',
+      });
+      return;
+    }
     const start = new Date(event.start);
     const end = new Date(event.end);
 
@@ -824,6 +873,10 @@ export default function Scheduling({ showRejectedMyBookings = false }: Schedulin
           roomId: activeRoom.Room_ID,
           roomName: activeRoom.Name,
           scheduleType: sched.Schedule_Type,
+          scheduleTitle: sched.Title,
+          scheduleDays: sched.Days,
+          scheduleStartTime: sched.Start_Time,
+          scheduleEndTime: sched.End_Time,
         },
       });
     }
@@ -1012,11 +1065,38 @@ export default function Scheduling({ showRejectedMyBookings = false }: Schedulin
             // Block selecting time ranges that start in the past — bookings
             // must be for now or later. Backend enforces this too.
             selectAllow={(selectInfo) => selectInfo.start.getTime() > Date.now()}
+            // Block drops that would land in the past at the calendar level —
+            // handleEventDrop is the backstop with the user-facing warning.
+            eventAllow={(dropInfo) => dropInfo.start.getTime() > Date.now()}
             editable={true}
             eventDurationEditable={false}
             select={handleDateSelect}
             eventClick={handleEventClick}
             eventDrop={handleEventDrop}
+            eventDragStart={(info) => {
+              // Mirage: clone the event harness (which carries the original
+              // top/left/width/height inline styles) and drop the clone next
+              // to itself. Living in the same parent means it scrolls with
+              // the time grid without any offset math on our side.
+              const harness = info.el.parentElement;
+              if (!harness?.parentElement) return;
+              const ghost = harness.cloneNode(true) as HTMLElement;
+              ghost.classList.add('schedule-drag-mirage');
+              ghost.style.opacity = '0.35';
+              ghost.style.pointerEvents = 'none';
+              const inner = ghost.querySelector('.fc-event') as HTMLElement | null;
+              if (inner) {
+                inner.style.outline = '2px dashed #6366f1';
+                inner.style.outlineOffset = '-2px';
+              }
+              harness.parentElement.appendChild(ghost);
+              dragMirageRef.current?.remove();
+              dragMirageRef.current = ghost;
+            }}
+            eventDragStop={() => {
+              dragMirageRef.current?.remove();
+              dragMirageRef.current = null;
+            }}
             eventMouseEnter={(info) => {
               const rect = info.el.getBoundingClientRect();
               const ep = info.event.extendedProps;
@@ -1176,7 +1256,7 @@ export default function Scheduling({ showRejectedMyBookings = false }: Schedulin
 
             await updateBookingStatus(parseInt(id), { status: 'APPROVED', approverId: currentUserId });
             setEvents(prev => prev.map(e =>
-              e.id === id ? { ...e, extendedProps: { ...e.extendedProps, status: 'APPROVED' } } : e
+              e.id === id ? { ...e, editable: false, extendedProps: { ...e.extendedProps, status: 'APPROVED' } } : e
             ));
             setShowPopover(false);
             setViewingBooking(null);
@@ -1283,6 +1363,12 @@ export default function Scheduling({ showRejectedMyBookings = false }: Schedulin
         title={warningModal.title}
         message={warningModal.message}
         type={warningModal.type}
+      />
+
+      <ScheduleViewModal
+        isOpen={!!viewingSchedule}
+        onClose={() => setViewingSchedule(null)}
+        schedule={viewingSchedule}
       />
 
       <ConfirmModal

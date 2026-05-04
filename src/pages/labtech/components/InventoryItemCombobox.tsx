@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import api from '@/services/api';
+import { formatBrand } from '@/lib/utils';
 
 interface InventoryItem {
     Item_ID: number;
@@ -11,11 +12,18 @@ interface InventoryItem {
 }
 
 interface InventoryItemComboboxProps {
-    itemType: 'KEYBOARD' | 'MOUSE' | 'MONITOR' | 'MINI_PC';
+    // Free-form item type string — backend filters via /inventory/available?type=X.
+    // Kept as `string` (rather than a fixed union) so new types added to
+    // inventory work without a frontend code change.
+    itemType: string;
     value: InventoryItem | null;
     onChange: (item: InventoryItem | null) => void;
     placeholder?: string;
     label: string;
+    // When editing a PC, pass its Computer_ID so items already attached to
+    // this PC remain selectable (otherwise removing & re-adding a row hides
+    // the originally-attached item until save).
+    computerId?: number;
 }
 
 export default function InventoryItemCombobox({
@@ -23,7 +31,8 @@ export default function InventoryItemCombobox({
     value,
     onChange,
     placeholder = 'Type to search...',
-    label
+    label,
+    computerId,
 }: InventoryItemComboboxProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [search, setSearch] = useState('');
@@ -32,10 +41,10 @@ export default function InventoryItemCombobox({
     const [error, setError] = useState<string | null>(null);
     const comboboxRef = useRef<HTMLDivElement>(null);
 
-    // Fetch available items when component mounts or itemType changes
+    // Fetch available items when component mounts or itemType/computerId changes
     useEffect(() => {
         loadAvailableItems();
-    }, [itemType]);
+    }, [itemType, computerId]);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -53,8 +62,10 @@ export default function InventoryItemCombobox({
         setIsLoading(true);
         setError(null);
         try {
+            const params = new URLSearchParams({ type: itemType, status: 'AVAILABLE' });
+            if (computerId !== undefined) params.set('computerId', String(computerId));
             const response = await api.get<InventoryItem[] | { items: InventoryItem[] }>(
-                `/inventory/available?type=${itemType}&status=AVAILABLE`
+                `/inventory/available?${params.toString()}`
             );
             const availableItems = Array.isArray(response.data)
                 ? response.data
@@ -90,7 +101,7 @@ export default function InventoryItemCombobox({
     };
 
     const displayValue = value
-        ? `${value.Brand || 'N/A'} - ${value.Serial_Number || value.Item_Code}`
+        ? `${formatBrand(value.Brand)} - ${value.Serial_Number || value.Item_Code}`
         : '';
 
     return (
@@ -172,7 +183,7 @@ export default function InventoryItemCombobox({
                                     <div className="flex justify-between items-start">
                                         <div>
                                             <div className="font-medium text-gray-900 dark:text-white">
-                                                {item.Brand || 'Unknown Brand'}
+                                                {formatBrand(item.Brand)}
                                             </div>
                                             <div className="text-sm text-gray-600 dark:text-gray-400">
                                                 S/N: {item.Serial_Number || 'N/A'}

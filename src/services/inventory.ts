@@ -46,6 +46,58 @@ export const getInventory = async (roomId?: number): Promise<(Item | Computer)[]
 /** @deprecated Use getInventory instead */
 export const fetchInventory = getInventory;
 
+// Distinct Item_Type values currently in inventory. Used by the labtech
+// RoomDetailModal to populate the "Add Item Type" picker dynamically.
+//
+// Two-tier strategy:
+//   1) Primary — hit /inventory/item-types (cheap; backend already aggregates).
+//   2) Fallback — if (1) fails or is empty, derive distinct types client-side
+//      from /inventory. This keeps the picker populated even when the new
+//      route hasn't been deployed yet, the dev backend hasn't been restarted,
+//      or anything else makes the dedicated endpoint unreachable.
+//
+// Both calls are silent — failures shouldn't surface a toast since this is a
+// background fetch on modal open.
+const SILENT = { silent: true } as Parameters<typeof api.get>[1];
+
+const normalizeType = (raw: unknown): string | null => {
+    if (typeof raw !== 'string') return null;
+    const trimmed = raw.trim().toUpperCase().replace(/[\s-]+/g, '_');
+    if (!trimmed) return null;
+    return trimmed === 'SYSTEM_UNIT' ? 'MINI_PC' : trimmed;
+};
+
+export const getInventoryItemTypes = async (): Promise<string[]> => {
+    // Primary
+    try {
+        const { data } = await api.get<string[]>('/inventory/item-types', SILENT);
+        if (Array.isArray(data) && data.length > 0) {
+            const set = new Set<string>();
+            for (const t of data) {
+                const norm = normalizeType(t);
+                if (norm) set.add(norm);
+            }
+            if (set.size > 0) return [...set].sort();
+        }
+    } catch {
+        // fall through to client-side derivation
+    }
+
+    // Fallback: derive from /inventory directly.
+    try {
+        const { data } = await api.get<Array<{ Item_Type?: string | null }>>('/inventory', SILENT);
+        if (!Array.isArray(data)) return [];
+        const set = new Set<string>();
+        for (const item of data) {
+            const norm = normalizeType(item?.Item_Type);
+            if (norm) set.add(norm);
+        }
+        return [...set].sort();
+    } catch {
+        return [];
+    }
+};
+
 // Fetch a single item by code
 export const getInventoryByCode = async (itemCode: string): Promise<Item | Computer> => {
     const { data } = await api.get<Item | Computer>(`/inventory/code/${encodeURIComponent(itemCode)}`);

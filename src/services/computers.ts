@@ -33,10 +33,13 @@ export interface Computer {
     Updated_At: string;
 }
 
-export type ComputerComponentType = 'KEYBOARD' | 'MOUSE' | 'MONITOR' | 'MINI_PC';
+// Free-form — types are data-driven (pulled from inventory at runtime). Kept
+// as a string alias rather than a union so new types added to inventory work
+// without a code change.
+export type ComputerComponentType = string;
 
 export interface CreateComputerItem {
-    itemType: ComputerComponentType;
+    itemType: string;
     itemId?: number; // Existing item ID to link
     brand?: string; // For creating new items (deprecated - use itemId instead)
     serialNumber?: string; // For creating new items (deprecated - use itemId instead)

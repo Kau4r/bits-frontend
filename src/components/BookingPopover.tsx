@@ -565,8 +565,8 @@ export default function BookingPopover({
                                     <div className="text-sm font-semibold text-slate-900 dark:text-white">
                                         {dayjs(viewingBooking.date).format('dddd, MMMM D, YYYY')}
                                     </div>
-                                    <div className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-                                        {formatTimeDisplay(viewingBooking.startTime)} - {formatTimeDisplay(viewingBooking.endTime)}
+                                    <div className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-white">
+                                        {formatTimeDisplay(viewingBooking.startTime)} – {formatTimeDisplay(viewingBooking.endTime)}
                                     </div>
                                 </div>
                             </div>
