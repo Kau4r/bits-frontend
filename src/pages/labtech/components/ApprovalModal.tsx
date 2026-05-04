@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { FloatingCombobox } from '@/ui/FloatingCombobox';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
-import { formatItemType } from '@/lib/utils';
+import { formatItemType, formatBrand, isBrandPlaceholder } from '@/lib/utils';
 
 interface ApprovableItem {
     Item_ID: number;
@@ -35,7 +35,7 @@ interface ApprovalModalProps {
 
 const makeOptionLabel = (item: ApprovableItem): string => {
     const type = formatItemType(item.Item_Type) || 'Unknown';
-    const brand = item.Brand?.trim() || 'No brand';
+    const brand = formatBrand(item.Brand);
     const sn = item.Serial_Number?.trim() || 'No SN';
     const loc = item.location?.trim();
     return loc
@@ -142,7 +142,7 @@ export default function ApprovalModal({
                             <div>
                                 <span className="text-xs text-gray-500 dark:text-gray-400">Requested Item:</span>
                                 <div className="text-sm font-medium text-gray-900 dark:text-white">
-                                    {formatItemType(request.item.Item_Type) || 'Unknown'} {request.item.Brand && request.item.Brand !== 'TBD' ? `— ${request.item.Brand}` : ''}
+                                    {formatItemType(request.item.Item_Type) || 'Unknown'} {!isBrandPlaceholder(request.item.Brand) ? `— ${request.item.Brand}` : ''}
                                 </div>
                             </div>
                         </div>

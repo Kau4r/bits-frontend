@@ -321,10 +321,12 @@ export default function UserDetails() {
                 placeholder="All Types"
                 options={[
                   { value: 'ALL', label: 'All Types' },
-                  ...Object.values(LOG_TYPES).map((type) => ({
-                    value: type,
-                    label: formatAction(type),
-                  })),
+                  ...Object.values(LOG_TYPES)
+                    .map((type) => ({
+                      value: type,
+                      label: formatAction(type),
+                    }))
+                    .sort((a, b) => a.label.localeCompare(b.label)),
                 ]}
                 onChange={setLogTypeFilter}
                 className="min-w-[140px]"
@@ -337,8 +339,8 @@ export default function UserDetails() {
                 options={[
                   { value: 'all', label: 'All Time' },
                   { value: '24h', label: 'Last 24 Hours' },
-                  { value: '7d', label: 'Last 7 Days' },
                   { value: '30d', label: 'Last 30 Days' },
+                  { value: '7d', label: 'Last 7 Days' },
                 ]}
                 onChange={(value) => setDateFilter(value as 'all' | '24h' | '7d' | '30d')}
                 className="min-w-[150px]"

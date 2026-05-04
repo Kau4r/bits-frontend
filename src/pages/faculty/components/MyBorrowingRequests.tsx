@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getBorrowings } from '@/services/borrowing';
 import type { Borrowing } from '@/types/borrowing';
-import { formatItemType } from '@/lib/utils';
+import { formatItemType, formatBrand } from '@/lib/utils';
 
 interface CountdownProps {
     returnDate: string;
@@ -111,7 +111,7 @@ export default function MyBorrowingRequests() {
                                             {formatItemType(req.Item?.Item_Type || req.Requested_Item_Type) || 'Unknown Item'}
                                         </p>
                                         <p className="text-gray-600 dark:text-gray-400 text-xs">
-                                            {req.Item ? `${req.Item.Brand} • ${req.Item.Item_Code}` : 'Specific Item Pending Assignment'}
+                                            {req.Item ? `${formatBrand(req.Item.Brand)} • ${req.Item.Item_Code}` : 'Specific Item Pending Assignment'}
                                         </p>
                                     </div>
                                     <span className="text-xs font-medium px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400">
@@ -139,7 +139,7 @@ export default function MyBorrowingRequests() {
                                             {formatItemType(req.Item?.Item_Type || req.Requested_Item_Type) || 'Unknown Item'}
                                         </p>
                                         <p className="text-gray-600 dark:text-gray-400 text-xs">
-                                            {req.Item ? `${req.Item.Brand} • ${req.Item.Item_Code}` : 'Item Info Unavailable'}
+                                            {req.Item ? `${formatBrand(req.Item.Brand)} • ${req.Item.Item_Code}` : 'Item Info Unavailable'}
                                         </p>
                                     </div>
                                     {req.Return_Date && <Countdown returnDate={req.Return_Date} />}

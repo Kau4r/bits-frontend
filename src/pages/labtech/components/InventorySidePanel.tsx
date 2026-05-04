@@ -8,13 +8,12 @@ import {
 import type { Item } from '@/types/inventory'
 import type { Borrowing } from '@/types/borrowing'
 import { getBorrowings } from '@/services/borrowing'
-import { formatItemType } from '@/lib/utils'
+import { formatItemType, isBrandPlaceholder } from '@/lib/utils'
 
 // Fallback chain for secondary-line text on a small item card.
-// Brand (when present & not a dash) → Item Type → Room → generic fallback.
+// Real brand → Item Type → Room → generic fallback.
 const secondaryLine = (item: Item): string => {
-  const brand = item.Brand?.trim()
-  if (brand && brand !== '—') return brand
+  if (!isBrandPlaceholder(item.Brand)) return item.Brand!.trim()
   const type = formatItemType(item.Item_Type)
   if (type) return type
   if (item.Room?.Name) return item.Room.Name

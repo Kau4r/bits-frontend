@@ -8,7 +8,7 @@ import { FloatingSelect } from '@/ui/FloatingSelect';
 import { LoadingSkeleton, Skeleton } from '@/ui';
 
 
-const notificationTypes: NotificationType[] = ['System', 'Issue Report', 'Asset Request', 'Form Update'];
+const notificationTypes: NotificationType[] = ['Asset Request', 'Form Update', 'Issue Report', 'System'];
 
 export default function NotificationPage() {
   const [searchTerm, setSearchTerm] = useState('');

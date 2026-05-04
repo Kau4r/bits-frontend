@@ -78,7 +78,7 @@ export default function Borrowing() {
                     item: {
                         Item_ID: b.Item?.Item_ID || 0,
                         Item_Type: b.Item?.Item_Type || b.Requested_Item_Type || 'Unknown',
-                        Brand: b.Item?.Brand || 'TBD',
+                        Brand: b.Item?.Brand || 'None',
                         Serial_Number: b.Item?.Serial_Number || 'Not Assigned',
                         location: b.Item?.Room?.Name ?? b.Item?.Location ?? null,
                     },
@@ -383,9 +383,9 @@ export default function Borrowing() {
                             value={sortBy}
                             placeholder="Sort"
                             options={[
+                                { value: 'due_soonest', label: 'Due Soonest' },
                                 { value: 'newest', label: 'Newest First' },
                                 { value: 'oldest', label: 'Oldest First' },
-                                { value: 'due_soonest', label: 'Due Soonest' },
                             ]}
                             onChange={(sort) => setSortBy(sort as SortOption)}
                         />

@@ -40,7 +40,8 @@
 - `RejectionModal.tsx` — confirm borrowing rejection with reason field
 - `ReturnForRevisionModal.tsx` — send a form back to a prior department with reason
 - `RoomCard.tsx` — card tile for one room (name, type, status, next schedule)
-- `RoomDetailModal.tsx` — expanded room detail overlay with today's sessions
+- `RoomDetailModal.tsx` — expanded room detail overlay with today's sessions; PC Add/Edit dialogs use a dynamic Components section (data-driven item types from `/inventory/item-types`, "+ Add Item Type" picker, per-row remove, optional Apply Suggestion preset)
+- `SuggestionManagerModal.tsx` — CRUD for reusable PC component-bundle suggestions (lab-wide, hits `/api/computer-suggestions`)
 - `RoomExportButton.tsx` — triggers QR print-sheet navigation for a room
 - `RowPreview.tsx` — single row in the schedule-import preview table (status badge + course/room/reason columns); imported by `ScheduleImportPage` in sysad
 - `StatusSelect.tsx` — dropdown for selecting a form status (PENDING/IN_REVIEW/APPROVED/etc.)
@@ -53,7 +54,8 @@
 ## Services
 
 - `services/dashboard.ts` → backend `dashboard/`
-- `services/inventory.ts` → backend `inventory/`
+- `services/inventory.ts` → backend `inventory/` (incl. `getInventoryItemTypes()` for the dynamic Components picker)
+- `services/computerSuggestions.ts` → backend `computerSuggestions/`
 - `services/room.ts` → backend `rooms/`
 - `services/borrowing.ts` → backend `borrowing/`
 - `services/forms.ts` → backend `forms/`

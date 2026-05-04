@@ -615,3 +615,45 @@ html {
   white-space: nowrap;
   text-shadow: 0 0 4px rgba(0,0,0,0.5); /* For visibility over grid borders */
 }
+
+/* ---------------------------------- */
+/* Browser autofill / suggestion fix  */
+/* ---------------------------------- */
+/* Chrome (and Edge/Safari) repaint autofilled inputs with their own bg
+   and text color via :-webkit-autofill, which overrides Tailwind classes.
+   The trick: a giant inset box-shadow masks the native bg, and
+   -webkit-text-fill-color overrides the forced text color. The 5000s
+   transition delays Chrome's repaint long enough that you never see it. */
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset;
+  box-shadow: 0 0 0 1000px #ffffff inset;
+  -webkit-text-fill-color: #0f172a;
+  caret-color: #0f172a;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover,
+.dark input:-webkit-autofill:focus,
+.dark input:-webkit-autofill:active,
+.dark textarea:-webkit-autofill,
+.dark textarea:-webkit-autofill:hover,
+.dark textarea:-webkit-autofill:focus,
+.dark select:-webkit-autofill,
+.dark select:-webkit-autofill:hover,
+.dark select:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #1e2939 inset;
+  box-shadow: 0 0 0 1000px #1e2939 inset;
+  -webkit-text-fill-color: #ffffff;
+  caret-color: #ffffff;
+}

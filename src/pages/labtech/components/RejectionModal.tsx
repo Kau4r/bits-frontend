@@ -2,6 +2,7 @@ import { createPortal } from 'react-dom';
 import { useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
+import { formatBrand } from '@/lib/utils';
 
 interface RejectionModalProps {
     isOpen: boolean;
@@ -88,7 +89,7 @@ export default function RejectionModal({
                             </div>
                             <div>
                                 <span className="text-xs text-gray-500 dark:text-gray-400">Requested Item:</span>
-                                <div className="text-sm text-gray-900 dark:text-white font-medium">{request.item.Item_Type} - {request.item.Brand}</div>
+                                <div className="text-sm text-gray-900 dark:text-white font-medium">{request.item.Item_Type} - {formatBrand(request.item.Brand)}</div>
                             </div>
                         </div>
 

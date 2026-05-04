@@ -5,7 +5,7 @@ import { AddFormDialog } from '@/pages/labtech/components/AddFormDialog';
 import { InlineTimeline } from '@/pages/labtech/components/InlineTimeline';
 import { StatusSelect } from '@/pages/labtech/components/StatusSelect';
 import { DeptSelect } from '@/pages/labtech/components/DeptSelect';
-import type { FormRecord, FormStatus, FormType, FormDepartment, FormAttachmentRecord, FormDocumentType, FormHistoryAction } from '@/types/formtypes';
+import type { FormRecord, FormStatus, FormType, FormDepartment, FormAttachmentRecord, FormDocumentType } from '@/types/formtypes';
 import {
   formStatusColors,
   formStatusLabels,
@@ -26,7 +26,6 @@ import { Check, X, Plus, Archive, Inbox, RefreshCw, Lock, CornerUpLeft, Info, Ey
 import type { Form } from '@/types/formtypes';
 import { FloatingSelect } from '@/ui/FloatingSelect';
 import { LoadingSkeleton } from '@/ui';
-import ReturnForRevisionModal from '@/pages/labtech/components/ReturnForRevisionModal';
 
 // Use the imported formStatusColors for status chips
 const statusChip = formStatusColors;
@@ -114,7 +113,7 @@ export default function Forms() {
   const [deletingAttachmentIds, setDeletingAttachmentIds] = useState<Set<string>>(new Set());
   const [deletingFormIds, setDeletingFormIds] = useState<Set<string>>(new Set());
   const [editingCompletedIds, setEditingCompletedIds] = useState<Set<string>>(new Set());
-  const [returnModalFormId, setReturnModalFormId] = useState<string | null>(null);
+  const [revertingIds, setRevertingIds] = useState<Set<string>>(new Set());
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   // Terminal check for local FormRecord (no FormRecord `Department`/`Status` casing — project `Is_*` equivalents)
@@ -123,21 +122,6 @@ export default function Forms() {
   const isCompletedRecord = (form: FormRecord): boolean => form.department === 'COMPLETED';
   const canEditWorkflow = (form: FormRecord): boolean =>
     !isRecordTerminal(form) || (isCompletedRecord(form) && editingCompletedIds.has(form.id));
-
-  // True if the form has visited at least one workflow step earlier than its current step.
-  const hasPriorVisitedStep = useCallback((form: FormRecord): boolean => {
-    const workflow = getDepartmentsForType(form.type);
-    const normalizedCurrent = normalizeFormDepartment(form.department);
-    const currentIndex = normalizedCurrent ? workflow.indexOf(normalizedCurrent) : -1;
-    if (currentIndex <= 0) return false;
-
-    const visited = new Set<FormDepartment>();
-    (form.history || []).forEach(entry => {
-      const normalized = normalizeFormDepartment(entry.dept);
-      if (normalized) visited.add(normalized);
-    });
-    return workflow.slice(0, currentIndex).some(step => visited.has(step));
-  }, []);
 
   // Helper to map API Form to local FormRecord
   const mapFormToRecord = useCallback((form: Form): FormRecord => {
@@ -537,42 +521,40 @@ export default function Forms() {
     }
   };
 
-  const handleReturnSuccess = (updated: Form) => {
-    const updatedRecord = mapFormToRecord(updated);
-    setForms(prev => prev.map(current => current.id === updatedRecord.id ? updatedRecord : current));
-    setEditedForms(prev => {
-      const next = { ...prev };
-      delete next[updatedRecord.id];
-      return next;
-    });
-  };
+  const handleGoBack = async (form: FormRecord) => {
+    const workflow = getDepartmentsForType(form.type);
+    const normalizedCurrent = normalizeFormDepartment(form.department);
+    const currentIndex = normalizedCurrent ? workflow.indexOf(normalizedCurrent) : -1;
+    if (currentIndex <= 0) return;
+    const previousDept = workflow[currentIndex - 1];
 
-  const returnModalForm = useMemo<Form | null>(() => {
-    if (!returnModalFormId) return null;
-    const record = forms.find(f => f.id === returnModalFormId);
-    if (!record) return null;
-    // Synthesize a minimal Form object from the FormRecord for the modal.
-    // The modal only reads: Form_ID, Form_Code, Form_Type, Department, Status, History.
-    return {
-      Form_ID: parseInt(record.id),
-      Form_Code: record.formNumber,
-      Creator_ID: 0,
-      Form_Type: record.type,
-      Status: record.status,
-      Department: (normalizeFormDepartment(record.department) || 'REQUESTOR') as FormDepartment,
-      Is_Archived: record.isArchived,
-      Created_At: record.createdAt,
-      Updated_At: record.createdAt,
-      History: (record.history || []).map((entry, index) => ({
-        History_ID: index,
-        Form_ID: parseInt(record.id),
-        Department: (normalizeFormDepartment(entry.dept) || 'REQUESTOR') as FormDepartment,
-        Changed_At: entry.at,
-        Action: entry.action as FormHistoryAction | undefined,
-        Reason: entry.reason ?? null,
-      })),
-    } satisfies Form;
-  }, [returnModalFormId, forms]);
+    const confirmed = await modal.showConfirm(
+      `Move this form back to ${formDepartmentLabels[previousDept]}? Status will reset to Pending and progress past this step will be cleared.`,
+      'Move Form Back'
+    );
+    if (!confirmed) return;
+
+    setRevertingIds(prev => new Set(prev).add(form.id));
+    try {
+      const updated = await transferForm(parseInt(form.id), previousDept, `Moved back to ${formDepartmentLabels[previousDept]}`);
+      const updatedRecord = mapFormToRecord(updated);
+      setForms(prev => prev.map(current => current.id === form.id ? updatedRecord : current));
+      setEditedForms(prev => {
+        const next = { ...prev };
+        delete next[form.id];
+        return next;
+      });
+    } catch (error) {
+      console.error('Failed to move form back:', error);
+      await modal.showError(error instanceof Error ? error.message : 'Failed to move form back.', 'Move Back Failed');
+    } finally {
+      setRevertingIds(prev => {
+        const next = new Set(prev);
+        next.delete(form.id);
+        return next;
+      });
+    }
+  };
 
   const clearFilters = () => {
     setSearchTerm('');
@@ -813,9 +795,11 @@ export default function Forms() {
             placeholder="All Types"
             options={[
               { value: 'All', label: 'All Types' },
-              { value: 'RIS_E', label: formTypeLabels.RIS_E },
-              { value: 'RIS_NE', label: formTypeLabels.RIS_NE },
-              { value: 'WRF', label: 'WRF' },
+              ...[
+                { value: 'RIS_E', label: formTypeLabels.RIS_E },
+                { value: 'RIS_NE', label: formTypeLabels.RIS_NE },
+                { value: 'WRF', label: 'WRF' },
+              ].sort((a, b) => a.label.localeCompare(b.label)),
             ]}
             onChange={(type) => setFormTypeFilter(type as FormType | 'All')}
           />
@@ -945,13 +929,40 @@ export default function Forms() {
                             Processing Timeline
                           </h4>
                           <div className="p-1">
-                            <InlineTimeline
-                              steps={getTimelineStepsForType(f.type)}
-                              current={formDepartmentLabels[f.department as FormDepartment] || f.department}
-                              completedSteps={f.history?.map(h => h.dept) || []}
-                              history={f.history || []}
-                              compact
-                            />
+                            {(() => {
+                              // When a form is moved backward, "reset" the timeline by hiding
+                              // checks/history for any step beyond the current department.
+                              const workflow = getDepartmentsForType(f.type);
+                              const normalizedCurrent = normalizeFormDepartment(f.department);
+                              const currentIndex = normalizedCurrent ? workflow.indexOf(normalizedCurrent) : -1;
+                              const deptIndex = (dept: string) => {
+                                const normalized = normalizeFormDepartment(dept);
+                                return normalized ? workflow.indexOf(normalized) : -1;
+                              };
+                              const completedSteps = currentIndex >= 0
+                                ? (f.history || [])
+                                    .map(h => h.dept)
+                                    .filter(dept => {
+                                      const idx = deptIndex(dept);
+                                      return idx >= 0 && idx < currentIndex;
+                                    })
+                                : f.history?.map(h => h.dept) || [];
+                              const visibleHistory = currentIndex >= 0
+                                ? (f.history || []).filter(h => {
+                                    const idx = deptIndex(h.dept);
+                                    return idx >= 0 && idx <= currentIndex;
+                                  })
+                                : f.history || [];
+                              return (
+                                <InlineTimeline
+                                  steps={getTimelineStepsForType(f.type)}
+                                  current={formDepartmentLabels[f.department as FormDepartment] || f.department}
+                                  completedSteps={completedSteps}
+                                  history={visibleHistory}
+                                  compact
+                                />
+                              );
+                            })()}
                           </div>
                         </div>
                       </div>
@@ -970,20 +981,6 @@ export default function Forms() {
                                     ? 'This form is Archived and is locked from further changes.'
                                     : 'This form is already marked Completed. Use Edit to make changes.'}
                             </span>
-                          </div>
-                        )}
-
-                        {/* Row actions: Return for Revision */}
-                        {!isRecordTerminal(f) && hasPriorVisitedStep(f) && (
-                          <div className="flex flex-wrap items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setReturnModalFormId(f.id)}
-                              className="inline-flex items-center gap-2 rounded-md border border-amber-300 bg-white px-3 py-1.5 text-sm font-medium text-amber-700 hover:bg-amber-50 dark:border-amber-500/40 dark:bg-gray-900 dark:text-amber-300 dark:hover:bg-amber-500/10 transition-colors"
-                            >
-                              <CornerUpLeft className="h-4 w-4" />
-                              Return for Revision
-                            </button>
                           </div>
                         )}
 
@@ -1085,6 +1082,19 @@ export default function Forms() {
                               {(() => {
                                 const isApproved = (editedForms[f.id]?.status ?? f.status) === 'APPROVED';
                                 const deptSelectDisabled = !canEditWorkflow(f) || !isApproved;
+                                const transferOptions = getTransferDepartmentOptions(
+                                  f.type,
+                                  f.department,
+                                  f.history?.map(h => h.dept) || []
+                                );
+                                // True only on the final step *before* COMPLETED (and not on COMPLETED itself).
+                                const workflow = getDepartmentsForType(f.type);
+                                const normalizedCurrent = normalizeFormDepartment(f.department);
+                                const currentIndex = normalizedCurrent ? workflow.indexOf(normalizedCurrent) : -1;
+                                const nextStep = currentIndex >= 0 && currentIndex < workflow.length - 1
+                                  ? workflow[currentIndex + 1]
+                                  : undefined;
+                                const isPriorToCompletion = nextStep === 'COMPLETED';
 
                                 return (
                                   <>
@@ -1093,17 +1103,35 @@ export default function Forms() {
                                       onChange={(d: FormDepartment) => handleLocalChange(f.id, 'department', d)}
                                       formType={f.type}
                                       disabled={deptSelectDisabled}
-                                      options={getTransferDepartmentOptions(
-                                        f.type,
-                                        f.department,
-                                        f.history?.map(h => h.dept) || []
-                                      ).map(option => ({
-                                        ...option,
-                                        disabled: option.disabled
-                                          || (option.value === 'COMPLETED' && !formHasCurrentStepAttachment(f))
-                                      }))}
+                                      options={transferOptions
+                                        // Hide COMPLETED entirely until the form has reached the final workflow step.
+                                        .filter(option => option.value !== 'COMPLETED' || !option.disabled)
+                                        .map(option => ({
+                                          ...option,
+                                          disabled: option.disabled
+                                            || (option.value === 'COMPLETED' && !formHasCurrentStepAttachment(f))
+                                        }))}
                                       className="w-full"
                                     />
+                                    {isPriorToCompletion && !formHasCurrentStepAttachment(f) && (
+                                      <div className="mt-2 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300">
+                                        <Info className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+                                        <span>Attach the {getCurrentStepLabel(f)} document to mark this form as Completed.</span>
+                                      </div>
+                                    )}
+                                    {currentIndex > 0 && canEditWorkflow(f) && (
+                                      <button
+                                        type="button"
+                                        onClick={() => void handleGoBack(f)}
+                                        disabled={revertingIds.has(f.id)}
+                                        className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-md border border-amber-300 bg-white px-3 py-1.5 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-amber-500/40 dark:bg-gray-900 dark:text-amber-300 dark:hover:bg-amber-500/10"
+                                      >
+                                        <CornerUpLeft className="h-4 w-4" />
+                                        {revertingIds.has(f.id)
+                                          ? 'Moving back...'
+                                          : `Go Back to ${formDepartmentLabels[workflow[currentIndex - 1]]}`}
+                                      </button>
+                                    )}
                                   </>
                                 );
                               })()}
@@ -1123,6 +1151,15 @@ export default function Forms() {
                               </svg>
                               Attachments
                             </h4>
+                            <button
+                              type="button"
+                              disabled={uploadingAttachmentIds.has(f.id)}
+                              onClick={() => fileInputRefs.current[f.id]?.click()}
+                              className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-emerald-500 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-500/70 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/15"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                              {uploadingAttachmentIds.has(f.id) ? 'Uploading...' : 'Add file'}
+                            </button>
                           </div>
                           <div className="flex min-h-0 flex-1 flex-col gap-3">
                             <input
@@ -1140,17 +1177,6 @@ export default function Forms() {
                               }}
                             />
                             <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
-                              <button
-                                type="button"
-                                disabled={uploadingAttachmentIds.has(f.id)}
-                                onClick={() => fileInputRefs.current[f.id]?.click()}
-                                className="flex min-h-20 flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-emerald-500 bg-emerald-50 p-3 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-500/70 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/15"
-                              >
-                                <span className="flex h-8 w-8 items-center justify-center rounded-md border border-dashed border-current">
-                                  <Plus className="h-4 w-4" />
-                                </span>
-                                <span>{uploadingAttachmentIds.has(f.id) ? 'Uploading...' : 'Attach file'}</span>
-                              </button>
                               {(f.attachments || []).length > 0 ? (
                                 (f.attachments || []).map((attachment) => {
                                   const attachmentForm = {
@@ -1307,14 +1333,6 @@ export default function Forms() {
         existing={forms}
       />
 
-      {returnModalForm && (
-        <ReturnForRevisionModal
-          isOpen={!!returnModalFormId}
-          form={returnModalForm}
-          onClose={() => setReturnModalFormId(null)}
-          onSuccess={handleReturnSuccess}
-        />
-      )}
     </div>
   );
 }

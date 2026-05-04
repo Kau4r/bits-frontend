@@ -30,7 +30,9 @@ export default function FilterBar({
           placeholder="All Rooms"
           options={[
             { value: '', label: 'All Rooms' },
-            ...rooms.map(room => ({ value: String(room.room_id), label: room.room_name })),
+            ...[...rooms]
+              .sort((a, b) => a.room_name.localeCompare(b.room_name))
+              .map(room => ({ value: String(room.room_id), label: room.room_name })),
           ]}
           onChange={(roomId) => onRoomChange(roomId === '' ? null : Number(roomId))}
           className="min-w-48"

@@ -535,10 +535,12 @@ const InventoryPage = () => {
             placeholder="All Types"
             options={[
               { value: 'All Types', label: 'All Types' },
-              ...[...new Set(inventory.map(item => resolveItemType(item.Item_Type)))].map(type => ({
-                value: type,
-                label: formatItemType(type) || type,
-              })),
+              ...[...new Set(inventory.map(item => resolveItemType(item.Item_Type)))]
+                .map(type => ({
+                  value: type,
+                  label: formatItemType(type) || type,
+                }))
+                .sort((a, b) => a.label.localeCompare(b.label)),
             ]}
             onChange={setSelectedType}
           />
@@ -571,7 +573,9 @@ const InventoryPage = () => {
             id="inventory-room-filter"
             value={selectedRoomFilter}
             placeholder="Select room"
-            options={rooms.map(room => ({ value: String(room.Room_ID), label: room.Name }))}
+            options={[...rooms]
+              .sort((a, b) => a.Name.localeCompare(b.Name))
+              .map(room => ({ value: String(room.Room_ID), label: room.Name }))}
             onChange={setSelectedRoomFilter}
           />
         </div>

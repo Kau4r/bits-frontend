@@ -11,7 +11,6 @@ import {
   ScanLine,
   X,
   RefreshCw,
-  AlertTriangle,
   ArrowLeft,
   Monitor,
   Search as SearchIcon,
@@ -21,11 +20,12 @@ import { FloatingSelect } from '@/ui/FloatingSelect';
 import { getRooms, getRoomAuditStatus } from '@/services/room';
 import { getInventory, checkInventoryItem, uncheckInventoryItem } from '@/services/inventory';
 import { getActiveSemester } from '@/services/semesters';
+import { useModal } from '@/context/ModalContext';
 import type { Room } from '@/types/room';
 import type { Item } from '@/types/inventory';
 import type { Semester, RoomAuditStatus } from '@/types/semester';
 import { parseInventoryQrValue } from '@/utils/inventoryQr';
-import { formatItemType, resolveItemType } from '@/lib/utils';
+import { formatItemType, resolveItemType, formatBrand } from '@/lib/utils';
 
 interface ItemWithComputers extends Item {
   Computers?: Array<{
@@ -48,17 +48,9 @@ const getItemComputerName = (item: ItemWithComputers): string | null => {
   return pc?.Name || null;
 };
 
-// A complete PC set must include exactly these four item types.
-const REQUIRED_PC_ITEM_TYPES = ['MONITOR', 'MINI_PC', 'KEYBOARD', 'MOUSE'] as const;
-type RequiredPcType = typeof REQUIRED_PC_ITEM_TYPES[number];
-
-const getMissingPcTypes = (pcItems: ItemWithComputers[]): RequiredPcType[] => {
-  const present = new Set(pcItems.map(i => resolveItemType(i.Item_Type)));
-  return REQUIRED_PC_ITEM_TYPES.filter(t => !present.has(t));
-};
-
 export default function InventoryAuditPage() {
   const navigate = useNavigate();
+  const modal = useModal();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [selectedRoomId, setSelectedRoomId] = useState<number | ''>('');
   const [items, setItems] = useState<ItemWithComputers[]>([]);
@@ -75,8 +67,6 @@ export default function InventoryAuditPage() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const scannerControlsRef = useRef<IScannerControls | null>(null);
   const scanCooldownRef = useRef<Map<string, number>>(new Map());
-  // PCs whose 4-item set has already been confirmed in this audit session.
-  const confirmedPcsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const load = async () => {
@@ -175,26 +165,15 @@ export default function InventoryAuditPage() {
     [isItemCheckedForSemester, selectedRoomId],
   );
 
-  // Confirm a PC set: validate the 4 required item types are all linked to the
-  // PC, then mark each unchecked one. Refuses to confirm partial sets and
-  // rejects duplicate confirmations within the same session.
+  // Mark every item currently attached to a PC as audited. Modular Components
+  // means PCs can have any item-type composition, so we don't gate on a
+  // required set. No cooldown either — re-scanning a fully-audited PC just
+  // toasts "already checked" and is otherwise a no-op.
   const markAllOnPc = useCallback(
     async (pcName: string) => {
-      if (confirmedPcsRef.current.has(pcName)) {
-        toast(`${pcName} already confirmed in this session`, { icon: '🔒' });
-        return;
-      }
-
       const allPcItems = items.filter(i => getItemComputerName(i) === pcName);
       if (allPcItems.length === 0) {
         toast.error(`No items linked to ${pcName} in this room`);
-        return;
-      }
-
-      const missing = getMissingPcTypes(allPcItems);
-      if (missing.length > 0) {
-        const labels = missing.map(t => formatItemType(t)).join(', ');
-        toast.error(`${pcName} missing required items: ${labels}`);
         return;
       }
 
@@ -203,7 +182,6 @@ export default function InventoryAuditPage() {
       );
 
       if (toCheck.length === 0) {
-        confirmedPcsRef.current.add(pcName);
         toast(`${pcName} already fully checked`, { icon: '✅' });
         return;
       }
@@ -226,13 +204,33 @@ export default function InventoryAuditPage() {
       setBusyPcName(null);
 
       if (ok === toCheck.length) {
-        confirmedPcsRef.current.add(pcName);
-        toast.success(`${pcName} confirmed — ${ok} item${ok === 1 ? '' : 's'} checked`);
+        toast.success(`${pcName} — ${ok} item${ok === 1 ? '' : 's'} checked`);
       } else {
         toast.error(`${pcName}: only ${ok}/${toCheck.length} items checked — try again`);
       }
     },
     [items, isItemCheckedForSemester, selectedRoomId],
+  );
+
+  // Tap-from-dropdown variant: prompt before marking, since one tap
+  // shouldn't permanently audit a chunk of inventory by accident. Scan
+  // flow stays unconfirmed for speed.
+  const confirmThenMarkPc = useCallback(
+    async (pcName: string) => {
+      const allPcItems = items.filter(i => getItemComputerName(i) === pcName);
+      const remaining = allPcItems.filter(i => !isItemCheckedForSemester(i)).length;
+      if (remaining === 0) {
+        toast(`${pcName} already fully checked`, { icon: '✅' });
+        return;
+      }
+      const ok = await modal.showConfirm(
+        `Mark ${remaining} item${remaining === 1 ? '' : 's'} on ${pcName} as audited?`,
+        'Audit PC',
+      );
+      if (!ok) return;
+      await markAllOnPc(pcName);
+    },
+    [items, isItemCheckedForSemester, markAllOnPc, modal],
   );
 
   useEffect(() => {
@@ -301,7 +299,10 @@ export default function InventoryAuditPage() {
   );
 
   const roomOptions = useMemo(
-    () => rooms.map(r => ({ value: String(r.Room_ID), label: r.Name })),
+    () =>
+      [...rooms]
+        .sort((a, b) => a.Name.localeCompare(b.Name))
+        .map(r => ({ value: String(r.Room_ID), label: r.Name })),
     [rooms],
   );
 
@@ -323,7 +324,8 @@ export default function InventoryAuditPage() {
     });
   }, [items, searchTerm, isItemCheckedForSemester]);
 
-  // Group PC items (only PCs that actually have items in this room)
+  // Group PC items (only PCs that actually have items in this room).
+  // Sort unfinished first so audit work bubbles to the top, then by name.
   const pcGroups = useMemo(() => {
     const map = new Map<string, ItemWithComputers[]>();
     for (const it of items) {
@@ -338,9 +340,16 @@ export default function InventoryAuditPage() {
         name,
         total: pcItems.length,
         checked: pcItems.filter(isItemCheckedForSemester).length,
-        missing: getMissingPcTypes(pcItems),
       }))
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort((a, b) => {
+        const aDone = a.total > 0 && a.checked === a.total ? 1 : 0;
+        const bDone = b.total > 0 && b.checked === b.total ? 1 : 0;
+        if (aDone !== bDone) return aDone - bDone; // unfinished first
+        const aRemaining = a.total - a.checked;
+        const bRemaining = b.total - b.checked;
+        if (aRemaining !== bRemaining) return bRemaining - aRemaining; // most remaining first
+        return a.name.localeCompare(b.name);
+      });
   }, [items, isItemCheckedForSemester]);
 
   const progress = auditStatus
@@ -475,17 +484,10 @@ export default function InventoryAuditPage() {
               {pcGroups.map(pc => {
                 const allDone = pc.total > 0 && pc.checked === pc.total;
                 const busy = busyPcName === pc.name;
-                const incomplete = pc.missing.length > 0;
-                const cardTone = incomplete
-                  ? 'border-amber-200 bg-amber-50 dark:border-amber-800/60 dark:bg-amber-900/20'
-                  : allDone
-                    ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-800/60 dark:bg-emerald-900/20'
-                    : 'border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900';
-                const iconTone = incomplete
-                  ? 'text-amber-500'
-                  : allDone
-                    ? 'text-emerald-500'
-                    : 'text-indigo-500';
+                const cardTone = allDone
+                  ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-800/60 dark:bg-emerald-900/20'
+                  : 'border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900';
+                const iconTone = allDone ? 'text-emerald-500' : 'text-indigo-500';
                 return (
                   <div
                     key={pc.name}
@@ -498,22 +500,15 @@ export default function InventoryAuditPage() {
                         <p className="text-[11px] text-gray-500 dark:text-gray-400">
                           {pc.checked}/{pc.total} items checked
                         </p>
-                        {incomplete && (
-                          <p className="flex items-center gap-1 text-[11px] font-semibold text-amber-700 dark:text-amber-400">
-                            <AlertTriangle className="h-3 w-3" />
-                            Missing: {pc.missing.map(t => formatItemType(t)).join(', ')}
-                          </p>
-                        )}
                       </div>
                     </div>
                     <button
                       type="button"
-                      onClick={() => markAllOnPc(pc.name)}
-                      disabled={allDone || busy || incomplete}
-                      title={incomplete ? `Cannot confirm: missing ${pc.missing.map(t => formatItemType(t)).join(', ')}` : undefined}
+                      onClick={() => confirmThenMarkPc(pc.name)}
+                      disabled={allDone || busy}
                       className="ml-3 flex-shrink-0 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {busy ? '...' : incomplete ? 'Incomplete' : allDone ? 'Done' : 'Check PC'}
+                      {busy ? '...' : allDone ? 'Done' : 'Check PC'}
                     </button>
                   </div>
                 );
@@ -578,7 +573,7 @@ export default function InventoryAuditPage() {
                           {item.Item_Code || '—'}
                         </p>
                         <p className="text-xs text-gray-600 dark:text-gray-400">
-                          {formatItemType(resolveItemType(item.Item_Type))} · {item.Brand || 'no brand'}
+                          {formatItemType(resolveItemType(item.Item_Type))} · {formatBrand(item.Brand)}
                         </p>
                         {pcName && (
                           <p className="flex items-center gap-1 text-[11px] text-indigo-600 dark:text-indigo-400">

@@ -654,10 +654,10 @@ export default function Room() {
                             placeholder="All Types"
                             options={[
                                 { value: 'All Types', label: 'All Types' },
-                                { value: 'LECTURE', label: 'Lecture Room' },
                                 { value: 'CONFERENCE', label: 'Conference Room' },
                                 { value: 'CONSULTATION', label: 'Consultation Room' },
                                 { value: 'LAB', label: 'Lab' },
+                                { value: 'LECTURE', label: 'Lecture Room' },
                                 { value: 'OTHER', label: 'Other' },
                             ]}
                             onChange={(type) => setTypeFilter(type as TypeFilterType)}

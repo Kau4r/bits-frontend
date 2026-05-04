@@ -33,9 +33,10 @@ export const formTypeLabels: Record<FormType, string> = {
 export const formStatusLabels: Record<FormStatus, string> = {
   PENDING: 'Pending',
   IN_REVIEW: 'In Review',
-  // APPROVED is shown as "Signed" — the form has been signed and forwarded to the
-  // next department. Distinct from Completed, which marks the workflow as done.
-  APPROVED: 'Signed',
+  // APPROVED means the form has been approved at the current step and is ready
+  // to forward to the next department. Distinct from Completed (Department=COMPLETED),
+  // which marks the workflow as done.
+  APPROVED: 'Approved',
   CANCELLED: 'Cancelled',
   ARCHIVED: 'Archived',
 };
@@ -164,13 +165,22 @@ export interface FormDepartmentOption {
 export const getTransferDepartmentOptions = (
   formType: FormType,
   currentDepartment: string,
-  visitedDepartments: string[] = []
+  _visitedDepartments: string[] = []
 ): FormDepartmentOption[] => {
-  const { workflow, visited, nextRequiredDepartment } = getVisitedWorkflowDepartments(formType, currentDepartment, visitedDepartments);
+  // The "next" department is always the workflow step immediately after the
+  // form's current position — independent of past history. This means a form
+  // moved back to an earlier step still has to go through every subsequent
+  // step in order, not skip to the next-unvisited step.
+  const workflow = getDepartmentsForType(formType);
+  const normalizedCurrent = normalizeFormDepartment(currentDepartment);
+  const currentIndex = normalizedCurrent ? workflow.indexOf(normalizedCurrent) : -1;
+  const nextDepartment = currentIndex >= 0 && currentIndex < workflow.length - 1
+    ? workflow[currentIndex + 1]
+    : undefined;
 
   return workflow.map(department => ({
     value: department,
-    disabled: !(visited.has(department) || department === nextRequiredDepartment),
+    disabled: department !== normalizedCurrent && department !== nextDepartment,
   }));
 };
 
@@ -219,8 +229,8 @@ export const getTimelineStepsForType = (formType: FormType): string[] => {
   }
 };
 
-// Status chip colors. Signed (APPROVED) and Completed must look distinct:
-// — Signed = indigo (in-transit, signed at this step)
+// Status chip colors. Approved (APPROVED) and Completed must look distinct:
+// — Approved = indigo (approved at this step, ready to forward)
 // — In Review = blue (under review)
 // — Completed (Department=COMPLETED) = green (workflow finished, applied separately)
 export const formStatusColors: Record<FormStatus, string> = {

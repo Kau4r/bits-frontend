@@ -60,10 +60,10 @@ export const isBrandPlaceholder = (raw?: string | null): boolean => {
 };
 
 /**
- * Display helper for the Brand field. Returns the em-dash placeholder when the
- * brand is blank or one of the known sentinel values.
+ * Display helper for the Brand field. Returns "None" when the brand is blank
+ * or one of the known sentinel values (N/A, None, No Brand, -, TBD, ...).
  */
-export const formatBrand = (raw?: string | null, fallback = '—'): string => {
+export const formatBrand = (raw?: string | null, fallback = 'None'): string => {
   if (isBrandPlaceholder(raw)) return fallback;
   return String(raw).trim();
 };

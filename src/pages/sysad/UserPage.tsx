@@ -186,10 +186,12 @@ export default function SysAdDash() {
             placeholder="All Roles"
             options={[
               { value: 'ALL', label: 'All Roles' },
-              ...Object.values(ROLES).map((role) => ({
-                value: role,
-                label: formatRole(role),
-              })),
+              ...Object.values(ROLES)
+                .map((role) => ({
+                  value: role,
+                  label: formatRole(role),
+                }))
+                .sort((a, b) => a.label.localeCompare(b.label)),
             ]}
             onChange={(value) => setRoleFilter(value as User_Role | 'ALL')}
           />

@@ -9,7 +9,7 @@ import { getRooms } from '@/services/room';
 import { FloatingSelect } from '@/ui/FloatingSelect';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
-import { formatItemType, resolveItemType } from '@/lib/utils';
+import { formatItemType, resolveItemType, formatBrand } from '@/lib/utils';
 import { isLabStaffRole } from '@/types/user';
 
 type ModalMode = 'view' | 'edit' | 'add';
@@ -141,7 +141,7 @@ const MobileInventoryModal = ({
                             </div>
                             <div className={detailCardClass}>
                                 <p className="text-xs font-bold uppercase text-gray-500 dark:text-gray-400">Brand</p>
-                                <p className="mt-1 text-base font-black text-gray-900 dark:text-white">{formData.Brand || 'N/A'}</p>
+                                <p className="mt-1 text-base font-black text-gray-900 dark:text-white">{formatBrand(formData.Brand)}</p>
                             </div>
                             <div className="grid grid-cols-2 gap-3">
                                 <div className={detailCardClass}>
@@ -409,10 +409,12 @@ const InventoryMobilePage = () => {
                                 placeholder="All Types"
                                 options={[
                                     { value: 'All Types', label: 'All Types' },
-                                    ...[...new Set(inventory.map(i => resolveItemType(i.Item_Type)))].map(type => ({
-                                        value: type,
-                                        label: formatItemType(type),
-                                    })),
+                                    ...[...new Set(inventory.map(i => resolveItemType(i.Item_Type)))]
+                                        .map(type => ({
+                                            value: type,
+                                            label: formatItemType(type),
+                                        }))
+                                        .sort((a, b) => a.label.localeCompare(b.label)),
                                 ]}
                                 onChange={setSelectedType}
                             />
@@ -439,7 +441,9 @@ const InventoryMobilePage = () => {
                                 id="mobile-inventory-room"
                                 value={selectedRoomFilter}
                                 placeholder="Select room"
-                                options={rooms.map(room => ({ value: String(room.Room_ID), label: room.Name }))}
+                                options={[...rooms]
+                                    .sort((a, b) => a.Name.localeCompare(b.Name))
+                                    .map(room => ({ value: String(room.Room_ID), label: room.Name }))}
                                 onChange={setSelectedRoomFilter}
                             />
                         </div>
@@ -474,7 +478,7 @@ const InventoryMobilePage = () => {
                             <span className="font-mono text-sm font-black text-gray-900 dark:text-white">{item.Item_Code}</span>
                             <span className="rounded-full bg-indigo-50 px-2 py-1 text-xs font-bold text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-200">{formatItemType(resolveItemType(item.Item_Type))}</span>
                         </div>
-                        <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">{item.Brand || 'No brand'}</div>
+                        <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">{formatBrand(item.Brand)}</div>
                         <div className="mt-3 flex items-center justify-between gap-3">
                             <span className={`rounded-full px-2 py-1 text-xs font-bold ${statusColors[item.Status] || 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'}`}>
                                 {formatItemType(item.Status)}

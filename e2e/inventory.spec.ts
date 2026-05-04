@@ -12,7 +12,7 @@ test.describe('Inventory — Phase 4 + Phase 6 changes', () => {
     await expect(page.getByRole('button', { name: /^import$/i })).toHaveCount(0);
   });
 
-  test('Brand sentinel values display as em-dash, not "OLD"/"N/A"', async ({ page }) => {
+  test('Brand sentinel values display as "None", not raw "OLD"/"N/A"', async ({ page }) => {
     // Wait for the table to render at least one row.
     await page.waitForSelector('table, [role="grid"], div[style*="grid"]', { timeout: 10_000 }).catch(() => {});
 

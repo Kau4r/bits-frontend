@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { BorrowingStatus } from '@/types/borrowing';
-import { formatItemType } from '@/lib/utils';
+import { formatItemType, formatBrand } from '@/lib/utils';
 
 export interface BorrowingRequest {
     id: number;
@@ -95,7 +95,7 @@ export default function RequestCard({
                             <p className="truncate text-sm font-medium text-gray-900 dark:text-white">
                                 {formatItemType(request.item.Item_Type)}
                             </p>
-                            <p className="truncate text-xs text-gray-600 dark:text-gray-400">{request.item.Brand}</p>
+                            <p className="truncate text-xs text-gray-600 dark:text-gray-400">{formatBrand(request.item.Brand)}</p>
                         </div>
                     </div>
                     <span className={`inline-flex shrink-0 items-center gap-1 rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${status.className}`}>
@@ -125,7 +125,7 @@ export default function RequestCard({
                         {formatItemType(request.item.Item_Type)}
                     </h3>
                     <p className="mt-0.5 truncate text-sm text-gray-600 dark:text-gray-400">
-                        {request.item.Brand} • SN: {request.item.Serial_Number}
+                        {formatBrand(request.item.Brand)} • SN: {request.item.Serial_Number}
                     </p>
                     <p className="mt-1 flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
                         <MapPin className="h-3.5 w-3.5 shrink-0" />

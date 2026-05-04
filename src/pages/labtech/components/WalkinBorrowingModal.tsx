@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { X, Clock, UserRound, Box, Tag, MapPin } from 'lucide-react';
 import { FloatingSelect } from '@/ui/FloatingSelect';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
-import { formatItemType, resolveItemType } from '@/lib/utils';
+import { formatItemType, resolveItemType, formatBrand } from '@/lib/utils';
 import type { Item } from '@/types/inventory';
 import type { Room } from '@/types/room';
 
@@ -98,7 +98,7 @@ const WalkinBorrowingModal: FC<Props> = ({ isOpen, onClose, onSubmit, availableI
     () =>
       filteredItems.map(i => ({
         value: String(i.Item_ID),
-        label: `${i.Item_Code || formatItemType(i.Item_Type) || 'Item'} — ${i.Brand || 'no brand'}${i.Serial_Number ? ` · SN ${i.Serial_Number}` : ''}`,
+        label: `${i.Item_Code || formatItemType(i.Item_Type) || 'Item'} — ${formatBrand(i.Brand)}${i.Serial_Number ? ` · SN ${i.Serial_Number}` : ''}`,
       })),
     [filteredItems],
   );
