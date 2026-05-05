@@ -4,7 +4,6 @@ import toast from 'react-hot-toast';
 export interface CleanupPreview {
   confirmationText: string;
   willDelete: Record<string, number>;
-  willReset: Record<string, number>;
   willPreserve: Record<string, number>;
 }
 
@@ -27,7 +26,6 @@ export interface SchoolYearArchivePreview {
   };
   willArchive: Record<string, number>;
   willDelete: Record<string, number>;
-  willReset: Record<string, number>;
   willPreserve: Record<string, number>;
   excludedFromArchive: Record<string, number>;
 }

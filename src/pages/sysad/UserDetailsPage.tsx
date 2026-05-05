@@ -290,14 +290,6 @@ export default function UserDetails() {
               {loading ? 'Saving...' : 'Save Changes'}
             </button>
           )}
-          {!isSelf && (
-            <button
-              onClick={async () => await modal.showAlert(`Password reset link would be sent to ${user.Email}`, 'Password Reset')}
-              className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-            >
-              Reset Password
-            </button>
-          )}
         </div>
       </div>
 

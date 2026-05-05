@@ -300,9 +300,8 @@ export default function MaintenancePage() {
           </div>
         ) : preview ? (
           <div className="grid min-h-0 shrink-0 gap-4 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(340px,1.05fr)]">
-            <div className="grid min-h-0 gap-4 xl:grid-cols-3 2xl:col-span-3">
+            <div className="grid min-h-0 gap-4 xl:grid-cols-2 2xl:col-span-3">
               <CountGrid title="Will Delete" counts={preview.willDelete} tone="border-red-200 bg-red-50 text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200" />
-              <CountGrid title="Will Reset" counts={preview.willReset} tone="border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200" />
               <CountGrid title="Will Preserve" counts={preview.willPreserve} tone="border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200" />
             </div>
 
