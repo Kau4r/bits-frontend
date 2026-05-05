@@ -1332,9 +1332,10 @@ export default function Scheduling({ showRejectedMyBookings = false }: Schedulin
         endTime={popoverTimes.end}
         rooms={rooms}
         selectedRoomId={activeRoomId ?? undefined}
-        // Booking form's room field always tracks the active room context.
-        // The header combobox is the authority — booking form just reads it.
-        lockedRoomId={activeRoomId ?? undefined}
+        // Picking a different room in the booking form updates the page's
+        // active room so the calendar grid jumps to show the new room's
+        // existing bookings/schedule before the new booking is saved.
+        onRoomChange={setActiveRoomId}
         isSubmitting={isSubmitting}
         viewingBooking={viewingBooking}
         canEdit={canEditBooking}

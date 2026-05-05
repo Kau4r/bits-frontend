@@ -64,6 +64,10 @@ interface BookingPopoverProps {
     onApprove?: (id: string, applyToSeries?: boolean) => void;
     onReject?: (id: string, applyToSeries?: boolean) => void;
     onRemove?: (id: string, applyToSeries?: boolean) => void;
+    // Fires whenever the user picks a different room in the combo box. The
+    // scheduling page uses this to switch the page's active room so the
+    // calendar shows the booking it's about to be saved into.
+    onRoomChange?: (roomId: number) => void;
     startTime: Date;
     endTime: Date;
     rooms: Room[];
@@ -329,6 +333,7 @@ export default function BookingPopover({
     onApprove,
     onReject,
     onRemove,
+    onRoomChange,
     startTime,
     endTime,
     rooms,
@@ -717,7 +722,10 @@ export default function BookingPopover({
                                             id="booking-room"
                                             value={roomId || ''}
                                             rooms={rooms}
-                                            onChange={setRoomId}
+                                            onChange={(next) => {
+                                                setRoomId(next);
+                                                onRoomChange?.(next);
+                                            }}
                                             lockedRoomId={effectiveLockedRoomId}
                                             placeholder="Select Room"
                                         />
