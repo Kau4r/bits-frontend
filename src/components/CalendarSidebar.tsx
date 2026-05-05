@@ -117,6 +117,22 @@ export default function CalendarSidebar({
                 )}
             </div>
 
+            {/* Status legend — always visible below the mini calendar */}
+            <div className="mb-4 shrink-0 grid grid-cols-3 gap-1.5 px-0.5">
+                <div className="flex items-center gap-1.5 rounded-lg border border-green-200 bg-green-50 px-2 py-1.5 dark:border-green-500/20 dark:bg-green-500/10">
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-green-500" />
+                    <span className="text-[11px] font-medium text-green-700 dark:text-green-400">Approved</span>
+                </div>
+                <div className="flex items-center gap-1.5 rounded-lg border border-yellow-200 bg-yellow-50 px-2 py-1.5 dark:border-yellow-500/20 dark:bg-yellow-500/10">
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-yellow-500" />
+                    <span className="text-[11px] font-medium text-yellow-700 dark:text-yellow-400">Pending</span>
+                </div>
+                <div className="flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2 py-1.5 dark:border-rose-500/20 dark:bg-rose-500/10">
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-rose-500" />
+                    <span className="text-[11px] font-medium text-rose-700 dark:text-rose-400">Rejected</span>
+                </div>
+            </div>
+
             {/* Room selection lives in the schedule header now. The sidebar
                 shows only the date picker, the user's own bookings, and the
                 Create button. */}
