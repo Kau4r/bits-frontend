@@ -83,12 +83,12 @@ export const AddTaskModal: FC<Props> = ({ open, onClose, onAdd }) => {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Section
+                Status
               </label>
               <FloatingSelect
                 id="add-task-section"
                 value={section}
-                placeholder="Section"
+                placeholder="Status"
                 options={SECTION_OPTIONS}
                 onChange={value => setSection(value)}
               />
