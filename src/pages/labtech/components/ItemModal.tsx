@@ -1,4 +1,4 @@
-import { Download, Printer } from "lucide-react";
+import { Download, Printer, ChevronUp, ChevronDown } from "lucide-react";
 import ReactQRCode from "react-qr-code";
 import { createPortal } from "react-dom";
 import { useState, useEffect, useRef } from "react";
@@ -450,7 +450,9 @@ export default function ItemModal({
   const readOnly = mode === "view";
   const modeTitle = mode === "add" ? "Add Item" : mode === "edit" ? "Edit Item" : "View Item";
   const showAssetInfo = (mode === "view" || mode === "edit") && item;
-  const qrItemUrl = showAssetInfo && item?.Item_Code ? buildInventoryItemQrUrl(item.Item_Code) : "";
+  const qrItemUrl = showAssetInfo && item?.Item_Code
+    ? buildInventoryItemQrUrl(item.Item_Code, item.Serial_Number)
+    : "";
   const readOnlyFieldClass = "w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-[#334155] bg-gray-50 dark:bg-[#1e2939] text-gray-900 dark:text-white";
   const selectedRoomName = rooms.find(r => r.Room_ID === formData.roomId)?.Name || "—";
   const statusDisplay = formData.status ? formData.status.charAt(0) + formData.status.slice(1).toLowerCase() : "—";
@@ -572,7 +574,7 @@ export default function ItemModal({
               {/* Item Type */}
               <div className="flex flex-col">
                 <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Item Type *
+                  Item Type <span className="text-red-500">*</span>
                 </label>
                 {readOnly ? (
                   <div className={readOnlyFieldClass}>{formData.itemType || "—"}</div>
@@ -604,7 +606,7 @@ export default function ItemModal({
               {/* Brand */}
               <div className="flex flex-col">
                 <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Brand *
+                  Brand <span className="text-red-500">*</span>
                 </label>
                 {readOnly ? (
                   <div className={readOnlyFieldClass}>{formData.brand || "—"}</div>
@@ -629,7 +631,7 @@ export default function ItemModal({
               {/* Location */}
               <div className="flex flex-col">
                 <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Location *
+                  Location <span className="text-red-500">*</span>
                 </label>
                 {readOnly ? (
                   <div className={readOnlyFieldClass}>{selectedRoomName}</div>
@@ -653,7 +655,7 @@ export default function ItemModal({
               {/* Status */}
               <div className="flex flex-col">
                 <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Status *
+                  Status <span className="text-red-500">*</span>
                 </label>
                 {readOnly ? (
                   <div className={readOnlyFieldClass}>{statusDisplay}</div>
@@ -677,82 +679,148 @@ export default function ItemModal({
                 )}
               </div>
 
-              {/* Quantity (Add mode only) */}
-              {mode === "add" && (
-                <div className="flex flex-col">
-                  <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Quantity *
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    required
-                    value={quantity}
-                    onChange={(e) => handleQuantityChange(parseInt(e.target.value))}
-                    className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-              )}
-
-              {/* Serial Number(s) */}
-              <div className={`flex flex-col ${mode === "add" ? "" : "sm:col-span-2"}`}>
-                <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {mode === "add" && quantity > 1 ? "Serial Numbers *" : "Serial Number *"}
-                </label>
-                {mode === "add" && quantity > 1 ? (
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
-                    {serials.map((s, idx) => (
+              {/* In add mode: left column stacks Quantity over Borrowable,
+                  right column holds the (possibly growing) Serial Number list,
+                  so adding more serials no longer shifts Borrowable. */}
+              {mode === "add" ? (
+                <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+                  <div className="flex flex-col gap-4">
+                    <div className="flex flex-col">
+                      <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Quantity <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min={1}
+                          required
+                          value={quantity}
+                          onChange={(e) => handleQuantityChange(parseInt(e.target.value))}
+                          className="w-full px-3 py-2.5 pr-8 rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-inner-spin-button]:m-0"
+                        />
+                        <div className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 flex flex-col">
+                          <button
+                            type="button"
+                            tabIndex={-1}
+                            aria-label="Increase quantity"
+                            onClick={() => handleQuantityChange(quantity + 1)}
+                            className="pointer-events-auto flex h-4 w-5 items-center justify-center bg-transparent text-gray-500 hover:text-indigo-600 focus:outline-none dark:text-gray-400 dark:hover:text-indigo-400"
+                          >
+                            <ChevronUp className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            tabIndex={-1}
+                            aria-label="Decrease quantity"
+                            onClick={() => handleQuantityChange(quantity - 1)}
+                            className="pointer-events-auto flex h-4 w-5 items-center justify-center bg-transparent text-gray-500 hover:text-indigo-600 focus:outline-none dark:text-gray-400 dark:hover:text-indigo-400"
+                          >
+                            <ChevronDown className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-col">
+                      <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-gray-300 bg-white px-3 py-2.5 hover:border-indigo-400 dark:border-[#334155] dark:bg-[#1e2939] dark:hover:border-indigo-500">
+                        <span className="flex flex-col">
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Borrowable</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">Allow this item to appear in borrowing requests</span>
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={formData.isBorrowable}
+                          onChange={(e) => setFormData({ ...formData, isBorrowable: e.target.checked })}
+                          className="h-5 w-5 shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {quantity > 1 ? "Serial Numbers" : "Serial Number"} <span className="text-red-500">*</span>
+                    </label>
+                    {quantity > 1 ? (
+                      // Cap the list at roughly the left column's height
+                      // (Quantity input + gap + Borrowable card) so growing
+                      // serials scroll instead of stretching the row.
+                      <div className="space-y-2 max-h-[120px] overflow-y-auto pr-1">
+                        {serials.map((s, idx) => (
+                          <input
+                            key={idx}
+                            type="text"
+                            value={s}
+                            onChange={(e) => {
+                              const updated = [...serials];
+                              updated[idx] = e.target.value;
+                              setSerials(updated);
+                              setFieldErrors(prev => ({ ...prev, serialNumber: '' }));
+                            }}
+                            required
+                            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder={`Serial #${idx + 1}`}
+                          />
+                        ))}
+                      </div>
+                    ) : (
                       <input
-                        key={idx}
                         type="text"
-                        value={s}
+                        value={formData.serialNumber}
                         onChange={(e) => {
-                          const updated = [...serials];
-                          updated[idx] = e.target.value;
-                          setSerials(updated);
+                          setFormData({ ...formData, serialNumber: e.target.value });
                           setFieldErrors(prev => ({ ...prev, serialNumber: '' }));
                         }}
                         required
-                        className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder={`Serial #${idx + 1}`}
+                        className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Enter serial number..."
                       />
-                    ))}
+                    )}
+                    {fieldErrors.serialNumber && (
+                      <p className="mt-1 text-xs font-medium text-red-600 dark:text-red-400">{fieldErrors.serialNumber}</p>
+                    )}
                   </div>
-                ) : (
-                  <input
-                    type="text"
-                    value={formData.serialNumber}
-                    onChange={(e) => {
-                      setFormData({ ...formData, serialNumber: e.target.value });
-                      setFieldErrors(prev => ({ ...prev, serialNumber: '' }));
-                    }}
-                    disabled={readOnly}
-                    required
-                    className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60"
-                    placeholder="Enter serial number..."
-                  />
-                )}
-                {fieldErrors.serialNumber && (
-                  <p className="mt-1 text-xs font-medium text-red-600 dark:text-red-400">{fieldErrors.serialNumber}</p>
-                )}
-              </div>
+                </div>
+              ) : (
+                <>
+                  {/* Serial Number (view/edit) */}
+                  <div className="flex flex-col sm:col-span-2">
+                    <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Serial Number <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.serialNumber}
+                      onChange={(e) => {
+                        setFormData({ ...formData, serialNumber: e.target.value });
+                        setFieldErrors(prev => ({ ...prev, serialNumber: '' }));
+                      }}
+                      disabled={readOnly}
+                      required
+                      className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60"
+                      placeholder="Enter serial number..."
+                    />
+                    {fieldErrors.serialNumber && (
+                      <p className="mt-1 text-xs font-medium text-red-600 dark:text-red-400">{fieldErrors.serialNumber}</p>
+                    )}
+                  </div>
 
-              {/* Borrowable */}
-              <div className={`flex flex-col ${mode === "add" ? "" : "sm:col-span-2"}`}>
-                <label className={`flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-gray-300 px-3 py-2.5 dark:border-[#334155] ${readOnly ? 'bg-gray-50 cursor-default dark:bg-[#1e2939]/60' : 'bg-white dark:bg-[#1e2939] hover:border-indigo-400 dark:hover:border-indigo-500'}`}>
-                  <span className="flex flex-col">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Borrowable</span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">Allow this item to appear in borrowing requests</span>
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={formData.isBorrowable}
-                    onChange={(e) => setFormData({ ...formData, isBorrowable: e.target.checked })}
-                    disabled={readOnly}
-                    className="h-5 w-5 shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
-                  />
-                </label>
-              </div>
+                  {/* Borrowable (view/edit) */}
+                  <div className="flex flex-col sm:col-span-2">
+                    <label className={`flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-gray-300 px-3 py-2.5 dark:border-[#334155] ${readOnly ? 'bg-gray-50 cursor-default dark:bg-[#1e2939]/60' : 'bg-white dark:bg-[#1e2939] hover:border-indigo-400 dark:hover:border-indigo-500'}`}>
+                      <span className="flex flex-col">
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Borrowable</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">Allow this item to appear in borrowing requests</span>
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={formData.isBorrowable}
+                        onChange={(e) => setFormData({ ...formData, isBorrowable: e.target.checked })}
+                        disabled={readOnly}
+                        className="h-5 w-5 shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                      />
+                    </label>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
