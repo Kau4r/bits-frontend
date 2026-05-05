@@ -29,6 +29,8 @@ const EQUIPMENT_OPTIONS: { value: PublicTicketPayload['equipment']; label: strin
     { value: 'OTHER', label: 'Other' },
 ];
 
+const REPORTER_IDENTIFIER_PATTERN = /^[A-Za-z][A-Za-z .'-]*\s-\s\d{8}$/;
+
 export default function PublicReportIssueModal({ isOpen, onClose }: PublicReportIssueModalProps) {
     const [rooms, setRooms] = useState<PublicRoom[]>([]);
     const [isLoadingRooms, setIsLoadingRooms] = useState(false);
@@ -112,8 +114,13 @@ export default function PublicReportIssueModal({ isOpen, onClose }: PublicReport
         e.preventDefault();
         setError(null);
 
-        if (!reporterIdentifier.trim()) {
-            setError('Please enter your name or student ID.');
+        const reporterTrimmed = reporterIdentifier.trim();
+        if (!reporterTrimmed) {
+            setError('Please enter your name and student ID.');
+            return;
+        }
+        if (!REPORTER_IDENTIFIER_PATTERN.test(reporterTrimmed)) {
+            setError('Use the format "Name - 8-digit ID" (e.g. "John - 22102606").');
             return;
         }
         if (roomId === '') {
@@ -201,10 +208,15 @@ export default function PublicReportIssueModal({ isOpen, onClose }: PublicReport
                                 onChange={(e) => setReporterIdentifier(e.target.value)}
                                 maxLength={100}
                                 placeholder="John - 22102606"
+                                pattern="[A-Za-z][A-Za-z .'-]*\s-\s\d{8}"
+                                title='Format: "Name - 8-digit ID" (e.g. "John - 22102606")'
                                 className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                 disabled={isSubmitting}
                                 required
                             />
+                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                Format: <span className="font-mono">Name - 8-digit ID</span>
+                            </p>
                         </div>
 
                         {/* Room dropdown */}
