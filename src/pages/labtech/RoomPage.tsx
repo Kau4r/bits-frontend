@@ -10,8 +10,6 @@ import RoomCard from '@/pages/labtech/components/RoomCard'
 import SummaryStrip from '@/pages/labtech/components/SummaryStrip'
 import ActiveQueueDashboard, { type OverflowPreset } from '@/pages/labtech/components/ActiveQueueDashboard'
 import WeeklySwimlaneGrid from '@/pages/labtech/components/WeeklySwimlaneGrid'
-import { getActiveQueues } from '@/services/room'
-import type { ActiveQueueItem } from '@/services/room'
 import { useAuth } from '@/context/AuthContext'
 import Search from '@/components/Search'
 import { CalendarDays, Building2 } from 'lucide-react'
@@ -71,7 +69,6 @@ export default function Room() {
     const [refreshTrigger, setRefreshTrigger] = useState(0);
     const [serverTimeOffsetMs, setServerTimeOffsetMs] = useState(0);
     const [serverCurrentTime, setServerCurrentTime] = useState(() => new Date());
-    const [activeQueues, setActiveQueues] = useState<ActiveQueueItem[]>([]);
 
     useEffect(() => { 
         let cancelled = false;
@@ -374,25 +371,6 @@ export default function Room() {
         };
         loadWeekSessions();
     }, [labRooms.length, weekRangeKey, refreshTrigger]);
-
-    // Poll active queues for the SummaryStrip counters.
-    useEffect(() => {
-        let cancelled = false;
-        const load = async () => {
-            try {
-                const data = await getActiveQueues();
-                if (!cancelled) setActiveQueues(data);
-            } catch (err) {
-                console.error('Failed to load active queues:', err);
-            }
-        };
-        load();
-        const interval = window.setInterval(load, 30000);
-        return () => {
-            cancelled = true;
-            window.clearInterval(interval);
-        };
-    }, [refreshTrigger]);
 
     const handleOpenOverflow = (preset: OverflowPreset) => {
         setOverflowPreset(preset);
@@ -767,7 +745,6 @@ export default function Room() {
                         ) : labRooms.length > 0 ? (
                             <>
                                 <SummaryStrip
-                                    activeQueues={activeQueues}
                                     rooms={labRooms}
                                     weekSessions={weekSessions}
                                     currentTime={serverCurrentTime}
