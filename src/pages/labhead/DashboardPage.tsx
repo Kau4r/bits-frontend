@@ -99,6 +99,7 @@ export default function LabheadDashboard() {
               icon={<ClipboardCheck className="h-5 w-5 text-purple-600 dark:text-purple-300" />}
             >
               <SummaryTile label="Completed" value={metrics?.summaries?.tickets?.completed ?? metrics?.counts.completedTickets} tone="green" />
+              <SummaryTile label="In Progress" value={metrics?.summaries?.tickets?.inProgress ?? metrics?.counts.inProgressTickets} tone="blue" />
               <SummaryTile label="Pending" value={metrics?.summaries?.tickets?.pending ?? metrics?.counts.pendingTickets} tone="amber" />
               <SummaryTile label="Unassigned" value={metrics?.summaries?.tickets?.unassigned ?? metrics?.counts.unassignedTickets} tone="red" />
             </SummaryPanel>

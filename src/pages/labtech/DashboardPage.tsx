@@ -16,12 +16,12 @@ const SummaryPanel = ({
   icon: ReactNode;
   children: ReactNode;
 }) => (
-  <section className="flex flex-col rounded-lg border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800 [@media(min-height:800px)]:h-full [@media(min-height:800px)]:min-h-0">
+  <section className="flex h-full min-h-0 flex-col rounded-lg border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
     <div className="mb-2 flex items-center gap-2">
       {icon}
       <h2 className="text-sm font-bold text-gray-900 dark:text-white">{title}</h2>
     </div>
-    <div className="flex flex-col gap-2 [@media(min-height:800px)]:grid [@media(min-height:800px)]:flex-1 [@media(min-height:800px)]:auto-rows-fr">
+    <div className="grid flex-1 auto-rows-fr gap-2">
       {children}
     </div>
   </section>
@@ -266,6 +266,7 @@ export default function LabtechDashboard() {
               icon={<ClipboardCheck className="h-5 w-5 text-purple-600 dark:text-purple-300" />}
             >
               <SummaryTile label="Completed" value={metrics?.summaries?.tickets?.completedByMe ?? metrics?.counts.myCompletedTickets} tone="green" />
+              <SummaryTile label="In Progress" value={metrics?.summaries?.tickets?.inProgress ?? metrics?.counts.inProgressTickets} tone="blue" />
               <SummaryTile label="Pending" value={metrics?.summaries?.tickets?.pending ?? metrics?.counts.pendingTickets} tone="amber" />
               <SummaryTile label="Unassigned" value={metrics?.summaries?.tickets?.unassigned ?? metrics?.counts.unassignedTickets} tone="red" />
             </SummaryPanel>

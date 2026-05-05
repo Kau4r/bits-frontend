@@ -768,12 +768,14 @@ const InventoryPage = () => {
                 ))}
               </div>
             ) : filteredAndSortedInventory.length === 0 && inventory.length === 0 ? (
-              <EmptyState
-                icon={Package}
-                title="No inventory items"
-                description="Add your first item to get started."
-                action={{ label: 'Add Item', onClick: () => { setModalMode('add'); setSelectedItem(null); setIsModalOpen(true); } }}
-              />
+              <div className="flex flex-col items-center justify-center flex-1 w-full min-h-full" data-full-row>
+                <EmptyState
+                  icon={Package}
+                  title="No inventory items"
+                  description="Add your first item to get started."
+                  action={{ label: 'Add Item', onClick: () => { setModalMode('add'); setSelectedItem(null); setIsModalOpen(true); } }}
+                />
+              </div>
             ) : filteredAndSortedInventory.length === 0 ? (
               <div className="flex flex-col items-center justify-center flex-1 w-full min-h-full" data-full-row>
                 <div className="p-4 bg-gray-100 dark:bg-gray-800/50 rounded-full mb-4">
