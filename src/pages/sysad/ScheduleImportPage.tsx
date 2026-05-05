@@ -157,8 +157,12 @@ export default function ScheduleImportPage() {
           <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
             <div className="shrink-0 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
               <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200">Workbook</label>
-              <label className="mt-3 flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center transition hover:border-indigo-400 hover:bg-indigo-50 dark:border-slate-700 dark:bg-slate-950/60 dark:hover:border-indigo-500 dark:hover:bg-indigo-950/20">
-                <Upload className="h-10 w-10 text-indigo-500" />
+              <label className={`mt-3 flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-4 py-8 text-center transition ${
+                file
+                  ? 'border-slate-300 bg-slate-100 hover:border-slate-400 hover:bg-slate-200 dark:border-slate-600 dark:bg-slate-900/50 dark:hover:border-slate-500'
+                  : 'border-emerald-400 bg-emerald-50 hover:border-emerald-500 hover:bg-emerald-100 dark:border-emerald-600/60 dark:bg-emerald-950/20 dark:hover:border-emerald-500 dark:hover:bg-emerald-950/30'
+              }`}>
+                <Upload className={`h-10 w-10 ${file ? 'text-slate-400' : 'text-emerald-500'}`} />
                 <span className="mt-3 text-sm font-semibold text-slate-900 dark:text-white">
                   {file ? file.name : 'Choose .xlsx file'}
                 </span>

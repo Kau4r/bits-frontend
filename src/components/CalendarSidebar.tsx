@@ -61,7 +61,7 @@ export default function CalendarSidebar({
         <div className="flex h-full w-72 shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white/95 p-4 shadow-sm shadow-slate-200/60 dark:border-[#334155] dark:bg-[#1e2939] dark:shadow-none">
             <button
                 type="button"
-                onClick={onCreateClick}
+                onClick={() => { setIsCalendarCollapsed(true); onCreateClick(); }}
                 className="group mb-5 grid shrink-0 grid-cols-[1fr_1.5rem] items-center rounded-xl border border-[#615fff] bg-[#615fff] px-4 py-3 text-white shadow-sm shadow-[#615fff]/20 transition-all hover:bg-[#504eea] dark:border-[#615fff] dark:bg-[#615fff] dark:text-white dark:shadow-[#615fff]/20 dark:hover:bg-[#504eea]"
             >
                 <span className="justify-self-center pl-6 font-semibold leading-6">Create booking</span>
@@ -117,28 +117,11 @@ export default function CalendarSidebar({
                 )}
             </div>
 
-            {/* Status legend — always visible below the mini calendar */}
-            <div className="mb-4 shrink-0 grid grid-cols-3 gap-1.5 px-0.5">
-                <div className="flex items-center gap-1.5 rounded-lg border border-green-200 bg-green-50 px-2 py-1.5 dark:border-green-500/20 dark:bg-green-500/10">
-                    <span className="h-2 w-2 shrink-0 rounded-full bg-green-500" />
-                    <span className="text-[11px] font-medium text-green-700 dark:text-green-400">Approved</span>
-                </div>
-                <div className="flex items-center gap-1.5 rounded-lg border border-yellow-200 bg-yellow-50 px-2 py-1.5 dark:border-yellow-500/20 dark:bg-yellow-500/10">
-                    <span className="h-2 w-2 shrink-0 rounded-full bg-yellow-500" />
-                    <span className="text-[11px] font-medium text-yellow-700 dark:text-yellow-400">Pending</span>
-                </div>
-                <div className="flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2 py-1.5 dark:border-rose-500/20 dark:bg-rose-500/10">
-                    <span className="h-2 w-2 shrink-0 rounded-full bg-rose-500" />
-                    <span className="text-[11px] font-medium text-rose-700 dark:text-rose-400">Rejected</span>
-                </div>
-            </div>
-
             {/* Room selection lives in the schedule header now. The sidebar
                 shows only the date picker, the user's own bookings, and the
                 Create button. */}
 
-            {myBookings.length > 0 && (
-                <div className={`${isSchedulesCollapsed ? 'shrink-0' : 'min-h-0 flex-1'} flex flex-col overflow-hidden`}>
+            <div className={`${isSchedulesCollapsed ? 'shrink-0' : 'min-h-0 flex-1'} flex flex-col overflow-hidden`}>
                     <div className="mb-3 flex shrink-0 items-center justify-between">
                         <span className="text-sm font-semibold text-slate-700 dark:text-gray-300">My Schedules</span>
                         <div className="flex items-center gap-2">
@@ -204,7 +187,7 @@ export default function CalendarSidebar({
                                         {statusFilter === 'PENDING' && 'No requested schedules.'}
                                         {statusFilter === 'APPROVED' && 'No approved schedules.'}
                                         {statusFilter === 'REJECTED' && 'No rejected schedules.'}
-                                        {statusFilter === null && 'Click Rejected to view hidden schedules.'}
+                                        {statusFilter === null && (myBookings.length === 0 ? 'No schedules yet.' : 'Click Rejected to view hidden schedules.')}
                                     </div>
                                 )}
                                 {filteredBookings
@@ -234,7 +217,6 @@ export default function CalendarSidebar({
                         </>
                     )}
                 </div>
-            )}
         </div>
     );
 }

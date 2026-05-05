@@ -174,7 +174,7 @@ export function FloatingCombobox({
           ref={menuRef}
           id={`${id}-menu`}
           data-floating-dropdown="true"
-          className={`fixed z-[1200] max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl shadow-slate-950/10 scrollbar-thin dark:border-[#334155] dark:bg-[#1e2939] dark:shadow-black/30 ${menuClassName}`}
+          className={`fixed z-[1200] max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-1.5 shadow-xl shadow-slate-950/10 scrollbar-thin dark:border-[#334155] dark:bg-[#1e2939] dark:shadow-black/30 ${menuClassName}`}
           style={{ left: menuRect.left, top: menuRect.top, width: menuRect.width }}
           role="listbox"
           onPointerDown={(event) => event.stopPropagation()}
@@ -198,8 +198,8 @@ export function FloatingCombobox({
                   onMouseEnter={() => setActiveIndex(index)}
                   onClick={() => chooseOption(option)}
                   className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition ${active
-                    ? 'bg-slate-100 text-slate-950 dark:bg-white/10 dark:text-white'
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/[0.07] dark:hover:text-white'
+                    ? 'bg-white text-slate-950 dark:bg-white/10 dark:text-white'
+                    : 'text-slate-600 hover:bg-white hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/[0.07] dark:hover:text-white'
                     } ${selected ? 'font-semibold' : ''}`}
                   role="option"
                   aria-selected={selected}
