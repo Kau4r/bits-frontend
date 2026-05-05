@@ -248,7 +248,7 @@ export default function SessionBar({
         <button
           onClick={() => setIsReportModalOpen(true)}
           disabled={isLoading}
-          className="bg-gray-200 dark:bg-slate-700 text-gray-800 dark:text-gray-200 px-3 py-1.5 md:px-4 md:py-2 rounded-lg border border-gray-300 dark:border-slate-600 hover:bg-gray-300 dark:hover:bg-slate-600 transition-all duration-200 hover:shadow-sm font-medium flex items-center justify-center gap-1.5 sm:gap-2 text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+          className="bg-gray-200 dark:bg-slate-700 text-gray-800 dark:text-gray-200 px-3 py-1.5 md:px-4 md:py-2 rounded-xl border border-gray-300 dark:border-slate-600 hover:bg-gray-300 dark:hover:bg-slate-600 transition-all duration-200 hover:shadow-sm font-medium flex items-center justify-center gap-1.5 sm:gap-2 text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <AlertTriangle className="h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
           <span className="whitespace-nowrap">Report Issue</span>
@@ -256,7 +256,7 @@ export default function SessionBar({
         <button
           onClick={handleEndSessionClick}
           disabled={isLoading}
-          className="bg-red-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg hover:bg-red-700 transition-all duration-200 hover:shadow-sm font-medium flex items-center justify-center gap-1.5 sm:gap-2 text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+          className="bg-red-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-xl hover:bg-red-700 transition-all duration-200 hover:shadow-sm font-medium flex items-center justify-center gap-1.5 sm:gap-2 text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading ? (
             <svg className="animate-spin h-4 w-4 md:h-5 md:w-5 text-white flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

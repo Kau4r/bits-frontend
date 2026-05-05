@@ -261,14 +261,14 @@ export default function Borrowing() {
                 <div className="flex items-center gap-3">
                     <button
                         onClick={loadRequests}
-                        className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                        className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
                     >
                         <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                         Refresh
                     </button>
                     <button
                         onClick={() => setWalkinOpen(true)}
-                        className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-500 hover:shadow-md focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none active:bg-indigo-700"
+                        className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-500 hover:shadow-md focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none active:bg-indigo-700"
                     >
                         <Plus className="h-4 w-4" />
                         New Borrowing
@@ -317,38 +317,25 @@ export default function Borrowing() {
 
             <div className="mb-6 space-y-4">
                 <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex rounded-lg border border-gray-300 bg-white shadow-sm dark:border-gray-600 dark:bg-gray-800">
-                        <button
-                            onClick={() => setActiveTab('all')}
-                            className={`inline-flex items-center gap-2 rounded-l-lg px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'all'
-                                ? 'bg-indigo-600 text-white'
-                                : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+                    <div className="flex rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-0.5 gap-0.5">
+                        {([
+                            { value: 'all', label: 'All Records', icon: List },
+                            { value: 'pending', label: 'Pending Review', icon: Clock },
+                            { value: 'active', label: 'Active', icon: CheckCircle },
+                        ] as const).map(({ value, label, icon: Icon }) => (
+                            <button
+                                key={value}
+                                onClick={() => setActiveTab(value)}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-[10px] transition-colors whitespace-nowrap ${
+                                    activeTab === value
+                                        ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                                 }`}
-                        >
-                            <List className="h-4 w-4" />
-                            All Records
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('pending')}
-                            className={`inline-flex items-center gap-2  px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'pending'
-                                ? 'bg-indigo-600 text-white'
-                                : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
-                                }`}
-                        >
-                            <Clock className="h-4 w-4" />
-                            Pending Review
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('active')}
-                            className={`inline-flex items-center gap-2 rounded-r-lg border-x border-gray-300 px-4 py-2 text-sm font-medium transition-colors dark:border-gray-600 ${activeTab === 'active'
-                                ? 'bg-indigo-600 text-white'
-                                : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
-                                }`}
-                        >
-                            <CheckCircle className="h-4 w-4" />
-                            Active
-                        </button>
-                        
+                            >
+                                <Icon className="h-4 w-4" />
+                                {label}
+                            </button>
+                        ))}
                     </div>
                     <div className="min-w-[280px] flex-1">
                         <Search
@@ -435,7 +422,7 @@ export default function Borrowing() {
                         {hasActiveFilters && (
                             <button
                                 onClick={clearFilters}
-                                className="mt-6 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
+                                className="mt-6 rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
                             >
                                 Clear All Filters
                             </button>

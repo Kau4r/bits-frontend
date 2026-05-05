@@ -25,7 +25,7 @@ export function EmptyState({ icon: Icon = Inbox, title, description, action, cla
       {action && (
         <button
           onClick={action.onClick}
-          className="mt-6 inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
+          className="mt-6 inline-flex items-center rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
         >
           {action.label}
         </button>

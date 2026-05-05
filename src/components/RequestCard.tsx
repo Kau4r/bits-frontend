@@ -182,14 +182,14 @@ export default function RequestCard({
                 <div className="mt-4 flex gap-2">
                     <button
                         onClick={() => onReject?.(request.id)}
-                        className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-red-300 bg-red-100 px-4 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-200 dark:border-red-500/30 dark:bg-red-600/20 dark:text-red-300 dark:hover:bg-red-600/30"
+                        className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-red-300 bg-red-100 px-4 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-200 dark:border-red-500/30 dark:bg-red-600/20 dark:text-red-300 dark:hover:bg-red-600/30"
                     >
                         <X className="h-4 w-4" />
                         Reject
                     </button>
                     <button
                         onClick={() => onApprove?.(request.id)}
-                        className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-green-300 bg-green-100 px-4 py-2 text-sm font-medium text-green-700 transition-colors hover:bg-green-200 dark:border-green-500/30 dark:bg-green-600/20 dark:text-green-300 dark:hover:bg-green-600/30"
+                        className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-green-300 bg-green-100 px-4 py-2 text-sm font-medium text-green-700 transition-colors hover:bg-green-200 dark:border-green-500/30 dark:bg-green-600/20 dark:text-green-300 dark:hover:bg-green-600/30"
                     >
                         <Check className="h-4 w-4" />
                         Accept
@@ -200,7 +200,7 @@ export default function RequestCard({
             {isAdmin && (request.status === 'APPROVED' || request.status === 'BORROWED') && (
                 <button
                     onClick={() => onMarkReturned?.(request.id)}
-                    className="mt-4 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-gray-200 px-4 py-2 text-sm font-medium text-gray-900 transition-colors hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                    className="mt-4 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-gray-200 px-4 py-2 text-sm font-medium text-gray-900 transition-colors hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
                 >
                     <RotateCcw className="h-4 w-4" />
                     Mark as Returned

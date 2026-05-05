@@ -253,7 +253,7 @@ export function ModalProvider({ children }: ModalProviderProps) {
                                         <button
                                             key={option.value}
                                             onClick={() => modal.onChoose?.(option.value)}
-                                            className={`w-full rounded-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${toneClass}`}
+                                            className={`w-full rounded-xl px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${toneClass}`}
                                         >
                                             {option.label}
                                         </button>
@@ -261,7 +261,7 @@ export function ModalProvider({ children }: ModalProviderProps) {
                                 })}
                                 <button
                                     onClick={() => modal.onChoose?.(null)}
-                                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
                                 >
                                     Cancel
                                 </button>
@@ -271,14 +271,14 @@ export function ModalProvider({ children }: ModalProviderProps) {
                                 {modal.type === 'confirm' && modal.onCancel && (
                                     <button
                                         onClick={modal.onCancel}
-                                        className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                                        className="flex-1 rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
                                     >
                                         {modal.cancelText}
                                     </button>
                                 )}
                                 <button
                                     onClick={modal.onConfirm}
-                                    className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${buttonClass}`}
+                                    className={`flex-1 rounded-xl px-4 py-2 text-sm font-medium text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${buttonClass}`}
                                 >
                                     {modal.confirmText}
                                 </button>

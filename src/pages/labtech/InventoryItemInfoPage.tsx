@@ -312,7 +312,7 @@ export default function InventoryItemInfoPage() {
                 type="button"
                 onClick={cancelEdit}
                 disabled={saving}
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"
               >
                 <X className="h-4 w-4" />
                 Cancel
@@ -321,7 +321,7 @@ export default function InventoryItemInfoPage() {
                 type="button"
                 onClick={() => void saveItem()}
                 disabled={saving}
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-3 text-sm font-bold text-white hover:bg-indigo-500 disabled:opacity-60"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white hover:bg-indigo-500 disabled:opacity-60"
               >
                 <Save className="h-4 w-4" />
                 {saving ? "Saving..." : "Save"}
@@ -370,7 +370,7 @@ export default function InventoryItemInfoPage() {
             <button
               type="button"
               onClick={beginEdit}
-              className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-500"
+              className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-500"
             >
               <Edit3 className="h-4 w-4" />
               Edit
@@ -387,7 +387,7 @@ export default function InventoryItemInfoPage() {
         <button
           type="button"
           onClick={handleBack}
-            className="mb-5 inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            className="mb-5 inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
         >
           <ArrowLeft className="h-4 w-4" />
           Back

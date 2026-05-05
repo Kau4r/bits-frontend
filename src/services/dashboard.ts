@@ -5,6 +5,7 @@ export interface DashboardMetrics {
     counts: {
         pendingTickets?: number;
         completedTickets?: number;
+        inProgressTickets?: number;
         unassignedTickets?: number;
         activeBookings?: number;
         pendingBookings?: number;

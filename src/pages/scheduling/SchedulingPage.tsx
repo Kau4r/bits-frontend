@@ -994,7 +994,7 @@ export default function Scheduling({ showRejectedMyBookings = false }: Schedulin
           <div className="flex flex-1 items-center gap-4 min-w-0">
             <button
               onClick={goToToday}
-              className="rounded-lg border border-slate-200 bg-white px-4 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-[#4a5563] dark:bg-transparent dark:text-gray-300 dark:hover:bg-[#2b3440]"
+              className="rounded-xl border border-slate-200 bg-white px-4 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-[#4a5563] dark:bg-transparent dark:text-gray-300 dark:hover:bg-[#2b3440]"
             >
               Today
             </button>

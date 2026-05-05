@@ -365,7 +365,7 @@ function DraftEditor({
                         type="button"
                         onClick={() => addType(typeInput)}
                         disabled={!typeInput.trim()}
-                        className="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-sm font-medium"
+                        className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-sm font-medium"
                     >
                         Add
                     </button>
@@ -377,7 +377,7 @@ function DraftEditor({
                     type="button"
                     onClick={onCancel}
                     disabled={isSaving}
-                    className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                    className="px-3 py-1.5 rounded-xl border border-gray-300 dark:border-gray-600 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
                 >
                     Cancel
                 </button>
@@ -385,7 +385,7 @@ function DraftEditor({
                     type="button"
                     onClick={onSave}
                     disabled={isSaving || !draft.name.trim() || draft.itemTypes.length === 0}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-sm font-medium text-white"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-sm font-medium text-white"
                 >
                     <Save className="w-4 h-4" />
                     {isSaving ? 'Saving…' : 'Save'}

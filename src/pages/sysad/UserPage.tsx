@@ -160,7 +160,7 @@ export default function SysAdDash() {
           </h3>
           <button
             onClick={loadUsers}
-            className="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            className="mt-4 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
           >
             Try Again
           </button>
@@ -203,21 +203,21 @@ export default function SysAdDash() {
         </div>
 
         {/* Status Toggle */}
-        <div className="flex rounded-lg border border-gray-300 bg-white shadow-sm dark:border-gray-600 dark:bg-gray-800">
+        <div className="flex rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-0.5 gap-0.5">
           <button
             onClick={() => setShowInactive(false)}
-            className={`rounded-l-lg px-4 py-2 text-sm font-medium transition-colors ${!showInactive
-              ? 'bg-green-600 text-white'
-              : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+            className={`px-3 py-1.5 text-sm font-medium rounded-[10px] transition-colors whitespace-nowrap ${!showInactive
+              ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
               }`}
           >
             Active
           </button>
           <button
             onClick={() => setShowInactive(true)}
-            className={`rounded-r-lg px-4 py-2 text-sm font-medium transition-colors ${showInactive
-              ? 'bg-gray-600 text-white dark:bg-gray-600'
-              : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+            className={`px-3 py-1.5 text-sm font-medium rounded-[10px] transition-colors whitespace-nowrap ${showInactive
+              ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
               }`}
           >
             Inactive
@@ -255,7 +255,7 @@ export default function SysAdDash() {
               {hasActiveFilters ? (
                 <button
                   onClick={clearFilters}
-                  className="mt-4 inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
+                  className="mt-4 inline-flex items-center rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
                 >
                   Clear Filters
                 </button>

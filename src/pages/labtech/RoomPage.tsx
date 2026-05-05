@@ -592,12 +592,12 @@ export default function Room() {
                 </div>
 
                 {/* Tabs Toggle - Styled like UserPage Status Toggle */}
-                <div className="flex rounded-lg border border-gray-300 bg-white shadow-sm dark:border-gray-600 dark:bg-gray-800">
+                <div className="flex rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-0.5 gap-0.5">
                     <button
                         onClick={() => setActiveTab('rooms')}
-                        className={`inline-flex items-center gap-2 rounded-l-lg px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'rooms'
-                            ? 'bg-blue-600 text-white'
-                            : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-[10px] transition-colors whitespace-nowrap ${activeTab === 'rooms'
+                            ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                             }`}
                     >
                         <Building2 className="h-4 w-4" />
@@ -605,9 +605,9 @@ export default function Room() {
                     </button>
                     <button
                         onClick={() => setActiveTab('queue')}
-                        className={`inline-flex items-center gap-2 rounded-r-lg px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'queue'
-                            ? 'bg-blue-600 text-white'
-                            : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-[10px] transition-colors whitespace-nowrap ${activeTab === 'queue'
+                            ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                             }`}
                     >
                         <CalendarDays className="h-4 w-4" />

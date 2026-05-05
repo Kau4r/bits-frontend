@@ -130,7 +130,7 @@ export default function Reports() {
         </div>
         <button
           onClick={handleOpenNew}
-          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700"
+          className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700"
         >
           <Plus className="h-4 w-4" />
           New Report

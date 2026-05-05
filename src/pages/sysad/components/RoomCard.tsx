@@ -22,7 +22,7 @@ export default function RoomCard({ room, onView }: Props) {
       <p className="text-sm text-gray-600 dark:text-gray-300">{room.Room_Type}</p>
 
       {/* Action Button */}
-      <button className="mt-auto w-full rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-600" onClick={() => onView(room)} >
+      <button className="mt-auto w-full rounded-xl bg-blue-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-600" onClick={() => onView(room)} >
         View Details
       </button>
     </div>

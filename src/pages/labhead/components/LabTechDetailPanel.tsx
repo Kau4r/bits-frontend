@@ -264,7 +264,7 @@ export default function LabTechDetailPanel({ labTech, onTicketReassigned }: Prop
               <button
                 type="button"
                 onClick={() => downloadWeeklyReportsCsv({ userId: labTech.dbId })}
-                className="rounded-lg border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+                className="rounded-xl border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
               >
                 Export CSV
               </button>
@@ -342,7 +342,7 @@ export default function LabTechDetailPanel({ labTech, onTicketReassigned }: Prop
                         <button
                           type="button"
                           onClick={() => setViewingReport(report)}
-                          className="px-4 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 border border-indigo-300 dark:border-indigo-700 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+                          className="px-4 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 border border-indigo-300 dark:border-indigo-700 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
                         >
                           View Full Report
                         </button>
@@ -351,7 +351,7 @@ export default function LabTechDetailPanel({ labTech, onTicketReassigned }: Prop
                             type="button"
                             onClick={() => handleReview(report.Report_ID)}
                             disabled={reviewingId === report.Report_ID}
-                            className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50"
+                            className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-xl transition-colors disabled:opacity-50"
                           >
                             {reviewingId === report.Report_ID ? 'Marking...' : 'Mark as Reviewed'}
                           </button>

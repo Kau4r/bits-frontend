@@ -568,7 +568,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                         <button
                             type="button"
                             onClick={() => window.open(`/labtech/room/${room.Room_ID}/print-qr?kind=items`, '_blank', 'noopener')}
-                            className="inline-flex items-center gap-2 rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700 shadow-sm transition-colors hover:bg-indigo-100 dark:border-indigo-800/60 dark:bg-indigo-900/20 dark:text-indigo-300"
+                            className="inline-flex items-center gap-2 rounded-xl border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700 shadow-sm transition-colors hover:bg-indigo-100 dark:border-indigo-800/60 dark:bg-indigo-900/20 dark:text-indigo-300"
                             title="Open a printable QR sheet for this room's items"
                         >
                             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -579,7 +579,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                         <button
                             type="button"
                             onClick={() => window.open(`/labtech/room/${room.Room_ID}/print-qr?kind=pcs`, '_blank', 'noopener')}
-                            className="inline-flex items-center gap-2 rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700 shadow-sm transition-colors hover:bg-indigo-100 dark:border-indigo-800/60 dark:bg-indigo-900/20 dark:text-indigo-300"
+                            className="inline-flex items-center gap-2 rounded-xl border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700 shadow-sm transition-colors hover:bg-indigo-100 dark:border-indigo-800/60 dark:bg-indigo-900/20 dark:text-indigo-300"
                             title="Open a printable QR sheet for this room's PCs"
                         >
                             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -639,7 +639,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                 <div className="flex flex-wrap justify-end gap-2">
                                     <button
                                         onClick={openAddComputerDialog}
-                                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-colors"
                                     >
                                         + Add Computer
                                     </button>
@@ -779,7 +779,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                     <button
                                         type="button"
                                         onClick={handleExportRoomAssets}
-                                        className="px-4 py-2 border border-gray-300 text-gray-700 dark:border-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg text-sm font-medium transition-colors"
+                                        className="px-4 py-2 border border-gray-300 text-gray-700 dark:border-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl text-sm font-medium transition-colors"
                                     >
                                         Export This Room CSV
                                     </button>
@@ -1032,14 +1032,14 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                         <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
                             <button
                                 onClick={() => setShowAddDialog(false)}
-                                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleAddComputer}
                                 disabled={isSubmitting || !newComputerName.trim()}
-                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-xl transition-colors"
                             >
                                 {isSubmitting ? 'Adding...' : 'Add Computer'}
                             </button>
@@ -1098,7 +1098,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                 <button
                                     type="button"
                                     onClick={() => handleDownloadComputerQr(editingComputer)}
-                                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700"
+                                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700"
                                 >
                                     <Download className="h-4 w-4" />
                                     Download
@@ -1106,7 +1106,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                 <button
                                     type="button"
                                     onClick={() => handlePrintComputerQr(editingComputer)}
-                                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
                                 >
                                     <Printer className="h-4 w-4" />
                                     Print
@@ -1205,14 +1205,14 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                 <button
                                     type="button"
                                     onClick={() => handleDeleteComputer(editingComputer.Computer_ID)}
-                                    className="mr-auto px-4 py-2 border border-red-300 text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                    className="mr-auto px-4 py-2 border border-red-300 text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/20 rounded-xl transition-colors"
                                 >
                                     Delete PC
                                 </button>
                             )}
                             <button
                                 onClick={() => setEditingComputer(null)}
-                                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                             >
                                 Cancel
                             </button>
@@ -1220,7 +1220,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                 <button
                                     onClick={handleUpdateComputer}
                                     disabled={isSubmitting || !editName.trim()}
-                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-xl transition-colors"
                                 >
                                     {isSubmitting ? 'Saving...' : 'Save Changes'}
                                 </button>
@@ -1228,7 +1228,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                 <button
                                     type="button"
                                     onClick={() => setComputerModalMode('edit')}
-                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors"
                                 >
                                     Edit
                                 </button>

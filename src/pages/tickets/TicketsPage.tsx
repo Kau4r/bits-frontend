@@ -10,6 +10,7 @@ import { Plus, Eye, Inbox, Archive } from "lucide-react";
 import { FloatingSelect } from "@/ui/FloatingSelect";
 import { Badge, LoadingSkeleton } from "@/ui";
 import { TICKET_STATUS_VARIANT, VARIANT_DOT_CLASS } from "@/lib/constants";
+import { useAuth } from "@/context/AuthContext";
 
 const isActiveTicket = (ticket: Ticket) => !ticket.Archived && ticket.Status !== 'RESOLVED';
 
@@ -37,8 +38,10 @@ const getTicketResolvedAt = (ticket: Ticket) => {
 };
 
 export default function Tickets() {
+    const { user } = useAuth();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedStatus, setSelectedStatus] = useState('All');
+    const [selectedView, setSelectedView] = useState<'all' | 'mine' | 'assigned'>('all');
     const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [showArchived, setShowArchived] = useState(false);
@@ -74,16 +77,27 @@ export default function Tickets() {
             : tickets.filter(ticket => isBrowsingResolved ? !ticket.Archived && ticket.Status === 'RESOLVED' : isActiveTicket(ticket));
     }, [tickets, showArchived, selectedStatus]);
 
+    const canSeeAssigned = ['LAB_TECH', 'LAB_HEAD'].includes(user?.User_Role ?? '');
+    const viewOptions = [
+        { value: 'all' as const, label: 'All' },
+        { value: 'mine' as const, label: 'My Reports' },
+        ...(canSeeAssigned ? [{ value: 'assigned' as const, label: 'Assigned to Me' }] : []),
+    ];
+
     const filteredTickets = useMemo(() => {
         return displayedTickets.filter(ticket => {
+            const matchesView =
+                selectedView === 'all' ||
+                (selectedView === 'mine' && ticket.Reported_By_ID === user?.User_ID) ||
+                (selectedView === 'assigned' && ticket.Technician_ID === user?.User_ID);
             const matchesSearch = Object.values(ticket).some(value =>
                 value?.toString().toLowerCase().includes(searchTerm.toLowerCase())
             );
             const matchesStatus =
                 selectedStatus === 'All' || ticket.Status === selectedStatus;
-            return matchesSearch && matchesStatus;
+            return matchesView && matchesSearch && matchesStatus;
         });
-    }, [displayedTickets, searchTerm, selectedStatus]);
+    }, [displayedTickets, searchTerm, selectedStatus, selectedView, user?.User_ID]);
 
     const statuses: string[] = ["All", "PENDING", "IN_PROGRESS", "RESOLVED"];
     const listLabel = showArchived ? 'archived' : selectedStatus === 'RESOLVED' ? 'resolved' : 'active';
@@ -139,19 +153,19 @@ export default function Tickets() {
     const clearFilters = () => {
         setSearchTerm('');
         setSelectedStatus('All');
+        setSelectedView('all');
     };
 
-    const hasActiveFilters = searchTerm || selectedStatus !== 'All';
+    const hasActiveFilters = searchTerm || selectedStatus !== 'All' || selectedView !== 'all';
 
     const tableHeaders = useMemo(() => {
         const headers: Array<{ label: string; key?: string; align?: 'left' | 'center' | 'right' }> = [
             { label: 'Reported By', key: 'reported_by', align: 'left' },
             { label: 'Description', key: 'title', align: 'left' },
             { label: 'Location', key: 'location', align: 'left' },
-            { label: 'Category', key: 'category' },
-            { label: 'Status', key: 'status' },
-            { label: 'Assignee', key: 'assignee' },
-            { label: 'Date', key: 'date' },
+            { label: 'Category', key: 'category', align: 'left' },
+            { label: 'Status', key: 'status', align: 'left' },
+            { label: 'Date', key: 'date', align: 'left' },
         ];
 
         if (showArchived) {
@@ -162,8 +176,8 @@ export default function Tickets() {
     }, [showArchived]);
 
     const ticketColumnWidths = showArchived
-        ? 'repeat(7, 1fr) 1.2fr 0.8fr'
-        : 'repeat(7, 1fr) 0.8fr';
+        ? '1fr 1fr 1fr 0.7fr 1.1fr 1.3fr 1.3fr 0.5fr'
+        : '1fr 1fr 1fr 0.7fr 1.1fr 1.3fr 0.5fr';
 
     if (loading) {
         return (
@@ -184,12 +198,12 @@ export default function Tickets() {
 
                 <div className="flex items-center gap-4">
                     {/* Status Toggle */}
-                    <div className="flex rounded-lg border border-gray-300 bg-white shadow-sm dark:border-gray-600 dark:bg-gray-800">
+                    <div className="flex rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-0.5 gap-0.5">
                         <button
                             onClick={() => setShowArchived(false)}
-                            className={`inline-flex items-center gap-2 rounded-l-lg px-4 py-2 text-sm font-medium transition-colors ${!showArchived
-                                ? 'bg-indigo-600 text-white'
-                                : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-[10px] transition-colors whitespace-nowrap ${!showArchived
+                                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                                 }`}
                         >
                             <Inbox className="h-4 w-4" />
@@ -197,9 +211,9 @@ export default function Tickets() {
                         </button>
                         <button
                             onClick={() => setShowArchived(true)}
-                            className={`inline-flex items-center gap-2 rounded-r-lg px-4 py-2 text-sm font-medium transition-colors ${showArchived
-                                ? 'bg-indigo-600 text-white'
-                                : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-[10px] transition-colors whitespace-nowrap ${showArchived
+                                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                                 }`}
                         >
                             <Archive className="h-4 w-4" />
@@ -212,7 +226,7 @@ export default function Tickets() {
                             setSelectedTicket(null);
                             setIsModalOpen(true);
                         }}
-                        className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-500 hover:shadow-md focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none active:bg-indigo-700"
+                        className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-500 hover:shadow-md focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none active:bg-indigo-700"
                     >
                         <Plus className="h-5 w-5" />
                         Report Issue
@@ -222,6 +236,23 @@ export default function Tickets() {
 
             {/* Filters Bar */}
             <div className="mb-6 flex flex-wrap items-center gap-3">
+                {/* View Filter */}
+                <div className="flex rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-0.5 gap-0.5">
+                    {viewOptions.map(option => (
+                        <button
+                            key={option.value}
+                            onClick={() => setSelectedView(option.value)}
+                            className={`px-3 py-1.5 text-sm font-medium rounded-[10px] transition-colors whitespace-nowrap ${
+                                selectedView === option.value
+                                    ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                            }`}
+                        >
+                            {option.label}
+                        </button>
+                    ))}
+                </div>
+
                 {/* Search */}
                 <div className="min-w-[280px] flex-1">
                     <Search
@@ -277,7 +308,7 @@ export default function Tickets() {
                             {hasActiveFilters && (
                                 <button
                                     onClick={clearFilters}
-                                    className="mt-6 inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
+                                    className="mt-6 inline-flex items-center rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
                                 >
                                     Clear Filters
                                 </button>
@@ -340,11 +371,6 @@ export default function Tickets() {
                                             </Badge>
                                         );
                                     })()}
-                                </div>
-                                <div className="text-sm text-gray-600 dark:text-gray-300">
-                                    {ticket.Technician?.User_ID
-                                        ? `${ticket.Technician.First_Name} ${ticket.Technician.Last_Name}`
-                                        : 'Unassigned'}
                                 </div>
                                 <div className="text-sm text-gray-600 dark:text-gray-300">
                                     {formatTicketDateTime(ticket.Created_At)}

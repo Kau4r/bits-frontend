@@ -23,6 +23,7 @@ interface ReportIssueModalProps {
   pcNumber: string;
   rooms?: RoomOption[];
   defaultRoomId?: number | null;
+  restrictWhenNoRoom?: boolean;
 }
 
 const showPcNumberFor = (issueType: string) => issueType === 'hardware' || issueType === 'software';
@@ -46,6 +47,19 @@ const resolveRoomChoice = (query: string, rooms: RoomOption[]) => {
   return containsMatches.length === 1 ? containsMatches[0] : null;
 };
 
+const NO_ROOM_SENTINEL = '__no_room__';
+
+const ALL_ISSUE_OPTIONS = [
+  { value: 'hardware', label: 'Hardware' },
+  { value: 'software', label: 'Software' },
+  { value: 'network', label: 'Network' },
+  { value: 'other', label: 'Other' },
+];
+
+const RESTRICTED_ISSUE_OPTIONS = ALL_ISSUE_OPTIONS.filter(
+  (o) => o.value !== 'hardware' && o.value !== 'software',
+);
+
 export default function ReportIssueModal({
   isOpen,
   onClose,
@@ -54,6 +68,7 @@ export default function ReportIssueModal({
   pcNumber,
   rooms = [],
   defaultRoomId,
+  restrictWhenNoRoom = false,
 }: ReportIssueModalProps) {
   const [description, setDescription] = useState('');
   const [issueType, setIssueType] = useState('hardware');
@@ -75,12 +90,25 @@ export default function ReportIssueModal({
     return isGeneralRoomPlaceholder(room) ? '' : room;
   }, [defaultRoomId, room, rooms]);
 
+  const issueOptions = restrictWhenNoRoom && noRoom ? RESTRICTED_ISSUE_OPTIONS : ALL_ISSUE_OPTIONS;
+
+  useEffect(() => {
+    if (restrictWhenNoRoom && noRoom && (issueType === 'hardware' || issueType === 'software')) {
+      setIssueType('other');
+    }
+  }, [restrictWhenNoRoom, noRoom, issueType]);
+
   const hasRoomList = rooms.length > 0;
   const needsEquipment = showEquipmentFor(issueType);
   const needsPcNumber = showPcNumberFor(issueType);
   const roomOptions = useMemo(
     () => rooms.map((roomOption) => ({ value: roomOption.Name, label: roomOption.Name })),
     [rooms],
+  );
+
+  const noRoomPinnedOption = useMemo(
+    () => [{ value: NO_ROOM_SENTINEL, label: 'Not tied to a specific room' }],
+    [],
   );
 
   useEffect(() => {
@@ -159,58 +187,46 @@ export default function ReportIssueModal({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="mb-4">
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Room
-              </label>
-              <label className="inline-flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={noRoom}
-                  onChange={(e) => {
-                    setNoRoom(e.target.checked);
-                    setRoomError('');
-                    if (!e.target.checked && !roomQuery) {
-                      setRoomQuery(initialRoomQuery);
-                    }
-                  }}
-                  disabled={isSubmitting}
-                  className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700"
-                />
-                Not tied to a specific room
-              </label>
-            </div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Room
+            </label>
             {hasRoomList ? (
               <>
                 <FloatingCombobox
                   id="report-issue-room"
-                  value={noRoom ? 'No room selected' : roomQuery}
+                  value={noRoom ? 'Not tied to a specific room' : roomQuery}
                   placeholder="Type or select a room"
                   options={roomOptions}
+                  pinnedOptions={noRoomPinnedOption}
                   onChange={(value) => {
-                    setRoomQuery(value);
-                    setRoomError('');
+                    if (value === NO_ROOM_SENTINEL) {
+                      setNoRoom(true);
+                      setRoomError('');
+                    } else {
+                      setNoRoom(false);
+                      setRoomQuery(value);
+                      setRoomError('');
+                    }
                   }}
-                  disabled={isSubmitting || noRoom}
+                  disabled={isSubmitting}
                   required={!noRoom}
-                  inputClassName={
-                    noRoom
-                      ? 'cursor-not-allowed bg-gray-200 italic text-gray-500 dark:bg-[#0f172a] dark:text-gray-500'
-                      : ''
-                  }
                 />
                 {roomError && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{roomError}</p>}
               </>
             ) : (
-              <input
-                type="text"
-                value={noRoom ? 'No room selected' : room}
-                readOnly
-                className={`w-full px-3 py-2 border border-gray-300 dark:border-[#334155] rounded-md shadow-sm dark:text-gray-300 cursor-not-allowed ${
-                  noRoom
-                    ? 'bg-gray-200 italic text-gray-500 dark:bg-[#0f172a] dark:text-gray-500'
-                    : 'bg-gray-100 dark:bg-[#1e2939]'
-                }`}
+              <FloatingSelect
+                id="report-issue-room-static"
+                value={noRoom ? NO_ROOM_SENTINEL : room}
+                placeholder="Select room"
+                options={[
+                  { value: NO_ROOM_SENTINEL, label: 'Not tied to a specific room' },
+                  { value: room, label: room },
+                ]}
+                onChange={(value) => {
+                  setNoRoom(value === NO_ROOM_SENTINEL);
+                  setRoomError('');
+                }}
+                disabled={isSubmitting}
               />
             )}
           </div>
@@ -222,12 +238,7 @@ export default function ReportIssueModal({
               id="report-issue-type"
               value={issueType}
               placeholder="Select issue"
-              options={[
-                { value: 'hardware', label: 'Hardware' },
-                { value: 'software', label: 'Software' },
-                { value: 'network', label: 'Network' },
-                { value: 'other', label: 'Other' },
-              ]}
+              options={issueOptions}
               onChange={setIssueType}
             />
           </div>
@@ -288,14 +299,14 @@ export default function ReportIssueModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:bg-slate-900 dark:text-white dark:hover:bg-gray-800 disabled:opacity-50"
+              className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:bg-slate-900 dark:text-white dark:hover:bg-gray-800 disabled:opacity-50"
               disabled={isSubmitting}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex items-center justify-center w-full rounded-lg border border-transparent bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center justify-center w-full rounded-xl border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isSubmitting || !description || (needsEquipment && !equipment)}
             >
               {isSubmitting ? 'Submitting...' : 'Submit'}

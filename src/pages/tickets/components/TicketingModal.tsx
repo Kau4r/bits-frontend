@@ -67,9 +67,9 @@ export default function TicketingModal({
   const canEditExistingTicket = !isCreating && isEditingExisting && canManageTicketDetails && hasAssignedLabTech;
   const canModifyTicketFields = isCreating || canEditExistingTicket;
   const showTicketManagementFields = canManageTicketDetails || (!isCreating && (Boolean(category) || Boolean(priority)));
-  const editButtonClassName = "px-4 py-2 text-white rounded-lg transition-colors text-sm font-medium shadow-sm bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed";
-  const activeEditButtonClassName = "px-4 py-2 text-white rounded-lg transition-colors text-sm font-medium shadow-sm bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2";
-  const saveButtonClassName = "px-4 py-2 text-white rounded-lg transition-colors text-sm font-medium shadow-sm bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed";
+  const editButtonClassName = "px-4 py-2 text-white rounded-xl transition-colors text-sm font-medium shadow-sm bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed";
+  const activeEditButtonClassName = "px-4 py-2 text-white rounded-xl transition-colors text-sm font-medium shadow-sm bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2";
+  const saveButtonClassName = "px-4 py-2 text-white rounded-xl transition-colors text-sm font-medium shadow-sm bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed";
   const readOnlyFieldClass = "w-full px-4 py-3 bg-gray-50 dark:bg-[#1e2939] border border-gray-200 dark:border-[#334155] rounded-lg text-gray-900 dark:text-white";
   const categoryLabels: Record<string, string> = { HARDWARE: 'Hardware', SOFTWARE: 'Software', FACILITY: 'Facility', OTHER: 'Other' };
   const priorityLabels: Record<string, string> = { HIGH: 'High', MEDIUM: 'Medium', LOW: 'Low' };
@@ -441,64 +441,84 @@ export default function TicketingModal({
           )}
 
           <form id="ticket-form" onSubmit={handleSubmit} className="space-y-5" noValidate>
-            {/* Category - First Position */}
-            {showTicketManagementFields && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Category</label>
-                <div>
-                  {canModifyTicketFields ? (
-                    <FloatingSelect
-                      id="ticket-category"
-                      value={category}
-                      placeholder="Select Category"
-                      options={[
-                        { value: 'HARDWARE', label: 'Hardware' },
-                        { value: 'SOFTWARE', label: 'Software' },
-                        { value: 'FACILITY', label: 'Facility' },
-                        { value: 'OTHER', label: 'Other' },
-                      ]}
-                      onChange={(value) => {
-                        setCategory(value as TicketCategory);
-                        setFieldErrors(prev => ({ ...prev, location: '' }));
-                      }}
-                    />
-                  ) : (
-                    <div className={readOnlyFieldClass}>{category ? categoryLabels[category] : 'None'}</div>
-                  )}
-                </div>
+            {/* Row 1: Status | Category */}
+            {(!isCreating || showTicketManagementFields) && (
+              <div className="grid grid-cols-2 gap-4">
+                {!isCreating && (
+                  <div className={!showTicketManagementFields ? 'col-span-2' : ''}>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Status</label>
+                    {canModifyTicketFields ? (
+                      <FloatingSelect
+                        id="ticket-status"
+                        value={status}
+                        placeholder="Select status"
+                        options={[
+                          { value: 'PENDING', label: 'Pending' },
+                          { value: 'IN_PROGRESS', label: 'In Progress' },
+                          { value: 'RESOLVED', label: 'Resolved' },
+                        ]}
+                        onChange={(value) => setStatus(value as TicketStatus)}
+                      />
+                    ) : (
+                      <div className={readOnlyFieldClass}>{statusLabels[status] || status}</div>
+                    )}
+                  </div>
+                )}
+                {showTicketManagementFields && (
+                  <div className={isCreating ? 'col-span-2' : ''}>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Category</label>
+                    {canModifyTicketFields ? (
+                      <FloatingSelect
+                        id="ticket-category"
+                        value={category}
+                        placeholder="Select Category"
+                        options={[
+                          { value: 'HARDWARE', label: 'Hardware' },
+                          { value: 'SOFTWARE', label: 'Software' },
+                          { value: 'FACILITY', label: 'Facility' },
+                          { value: 'OTHER', label: 'Other' },
+                        ]}
+                        onChange={(value) => {
+                          setCategory(value as TicketCategory);
+                          setFieldErrors(prev => ({ ...prev, location: '' }));
+                        }}
+                      />
+                    ) : (
+                      <div className={readOnlyFieldClass}>{category ? categoryLabels[category] : 'None'}</div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Location with Room Suggestions - Shows for all, required for HARDWARE */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                Location {category === 'HARDWARE' && <span className="text-red-500">*</span>}
-              </label>
-              {canModifyTicketFields ? (
-                <FloatingCombobox
-                  id="ticket-location"
-                  value={formData.location}
-                  placeholder="Select a room or type location..."
-                  options={rooms.map((room) => ({ value: room.Name, label: room.Name }))}
-                  onChange={(value) => {
-                    setFormData({ ...formData, location: value, itemId: undefined });
-                    setFieldErrors(prev => ({ ...prev, location: '' }));
-                  }}
-                  required={category === 'HARDWARE'}
-                />
-              ) : (
-                <div className={readOnlyFieldClass}>{formData.location || 'None'}</div>
-              )}
-              {fieldErrors.location && (
-                <p className="mt-1.5 text-xs font-medium text-red-600 dark:text-red-400">{fieldErrors.location}</p>
-              )}
-            </div>
-
-            {/* Priority - Third Position */}
-            {showTicketManagementFields && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Priority</label>
+            {/* Row 2: Location | Priority */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className={!showTicketManagementFields ? 'col-span-2' : ''}>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Location {category === 'HARDWARE' && <span className="text-red-500">*</span>}
+                </label>
+                {canModifyTicketFields ? (
+                  <FloatingCombobox
+                    id="ticket-location"
+                    value={formData.location}
+                    placeholder="Select a room or type location..."
+                    options={rooms.map((room) => ({ value: room.Name, label: room.Name }))}
+                    onChange={(value) => {
+                      setFormData({ ...formData, location: value, itemId: undefined });
+                      setFieldErrors(prev => ({ ...prev, location: '' }));
+                    }}
+                    required={category === 'HARDWARE'}
+                  />
+                ) : (
+                  <div className={readOnlyFieldClass}>{formData.location || 'None'}</div>
+                )}
+                {fieldErrors.location && (
+                  <p className="mt-1.5 text-xs font-medium text-red-600 dark:text-red-400">{fieldErrors.location}</p>
+                )}
+              </div>
+              {showTicketManagementFields && (
                 <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Priority</label>
                   {canModifyTicketFields ? (
                     <FloatingSelect
                       id="ticket-priority"
@@ -515,8 +535,8 @@ export default function TicketingModal({
                     <div className={readOnlyFieldClass}>{priority ? priorityLabels[priority] : 'Not set'}</div>
                   )}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* PC Number - only relevant for hardware/software issues */}
             {(category === 'HARDWARE' || category === 'SOFTWARE') && (
@@ -539,7 +559,7 @@ export default function TicketingModal({
               </div>
             )}
 
-            {/* Report Description - Fourth Position */}
+            {/* Report Description */}
             <div>
               <div className="mb-1.5 flex items-center gap-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -574,29 +594,6 @@ export default function TicketingModal({
               )}
             </div>
 
-            {/* Status (Only for existing tickets) */}
-            {!isCreating && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Status</label>
-                <div>
-                  {canModifyTicketFields ? (
-                    <FloatingSelect
-                      id="ticket-status"
-                      value={status}
-                      placeholder="Select status"
-                      options={[
-                        { value: 'PENDING', label: 'Pending' },
-                        { value: 'IN_PROGRESS', label: 'In Progress' },
-                        { value: 'RESOLVED', label: 'Resolved' },
-                      ]}
-                      onChange={(value) => setStatus(value as TicketStatus)}
-                    />
-                  ) : (
-                    <div className={readOnlyFieldClass}>{statusLabels[status] || status}</div>
-                  )}
-                </div>
-              </div>
-            )}
           </form>
         </div>
 
@@ -605,7 +602,7 @@ export default function TicketingModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm font-medium"
+            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm font-medium"
           >
             Cancel
           </button>

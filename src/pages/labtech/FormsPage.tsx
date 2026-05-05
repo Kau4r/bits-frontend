@@ -709,12 +709,12 @@ export default function Forms() {
 
         <div className="flex items-center gap-4">
           {/* Status Toggle */}
-          <div className="flex rounded-lg border border-gray-300 bg-white shadow-sm dark:border-gray-600 dark:bg-gray-800">
+          <div className="flex rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-0.5 gap-0.5">
             <button
               onClick={() => setShowArchived(false)}
-              className={`inline-flex items-center gap-2 rounded-l-lg px-4 py-2 text-sm font-medium transition-colors ${!showArchived
-                ? 'bg-indigo-600 text-white'
-                : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-[10px] transition-colors whitespace-nowrap ${!showArchived
+                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                 }`}
             >
               <Inbox className="h-4 w-4" />
@@ -722,9 +722,9 @@ export default function Forms() {
             </button>
             <button
               onClick={() => setShowArchived(true)}
-              className={`inline-flex items-center gap-2 rounded-r-lg px-4 py-2 text-sm font-medium transition-colors ${showArchived
-                ? 'bg-indigo-600 text-white'
-                : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-[10px] transition-colors whitespace-nowrap ${showArchived
+                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                 }`}
             >
               <Archive className="h-4 w-4" />
@@ -743,7 +743,7 @@ export default function Forms() {
 
             <button
               onClick={() => setIsAddDialogOpen(true)}
-              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-500 hover:shadow-md focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none active:bg-indigo-700"
+              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-500 hover:shadow-md focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none active:bg-indigo-700"
             >
               <Plus className="h-5 w-5" />
               Add Form
@@ -835,7 +835,7 @@ export default function Forms() {
                 {hasActiveFilters && (
                   <button
                     onClick={clearFilters}
-                    className="mt-6 inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
+                    className="mt-6 inline-flex items-center rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
                   >
                     Clear Filters
                   </button>
@@ -1092,7 +1092,7 @@ export default function Forms() {
                                     />
                                     {isPriorToCompletion && !formHasCurrentStepAttachment(f) && (
                                       <div className="mt-2 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300">
-                                        <Info className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+                                        <Info className="mt-0.5 h-4 w-4 flex-shrink-0" />
                                         <span>Attach the {getCurrentStepLabel(f)} document to mark this form as Completed.</span>
                                       </div>
                                     )}
@@ -1134,7 +1134,7 @@ export default function Forms() {
                               onClick={() => fileInputRefs.current[f.id]?.click()}
                               className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-emerald-500 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-500/70 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/15"
                             >
-                              <Plus className="h-3.5 w-3.5" />
+                              <Plus className="h-4 w-4" />
                               {uploadingAttachmentIds.has(f.id) ? 'Uploading...' : 'Add file'}
                             </button>
                           </div>

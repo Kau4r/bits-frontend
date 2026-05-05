@@ -148,12 +148,12 @@ export default function NotificationPage() {
         </div>
 
         {/* View Tabs Toggle */}
-        <div className="flex rounded-lg border border-gray-300 bg-white shadow-sm dark:border-gray-600 dark:bg-gray-800">
+        <div className="flex rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-0.5 gap-0.5">
           <button
             onClick={() => setActiveView('all')}
-            className={`inline-flex items-center gap-2 rounded-l-lg px-4 py-2 text-sm font-medium transition-colors ${activeView === 'all'
-              ? 'bg-indigo-600 text-white'
-              : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-[10px] transition-colors whitespace-nowrap ${activeView === 'all'
+              ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
               }`}
           >
             <Inbox className="h-4 w-4" />
@@ -161,9 +161,9 @@ export default function NotificationPage() {
           </button>
           <button
             onClick={() => setActiveView('read')}
-            className={`inline-flex items-center gap-2 border-x border-gray-300 px-4 py-2 text-sm font-medium transition-colors dark:border-gray-600 ${activeView === 'read'
-              ? 'bg-indigo-600 text-white'
-              : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-[10px] transition-colors whitespace-nowrap ${activeView === 'read'
+              ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
               }`}
           >
             <CheckCircle className="h-4 w-4" />
@@ -171,9 +171,9 @@ export default function NotificationPage() {
           </button>
           <button
             onClick={() => setActiveView('archived')}
-            className={`inline-flex items-center gap-2 rounded-r-lg px-4 py-2 text-sm font-medium transition-colors ${activeView === 'archived'
-              ? 'bg-indigo-600 text-white'
-              : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-[10px] transition-colors whitespace-nowrap ${activeView === 'archived'
+              ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
               }`}
           >
             <Archive className="h-4 w-4" />
@@ -229,7 +229,7 @@ export default function NotificationPage() {
                   type="button"
                   onClick={loadMore}
                   disabled={loadingMore}
-                  className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                  className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
                 >
                   {loadingMore ? 'Loading...' : 'Load older notifications'}
                 </button>
@@ -254,7 +254,7 @@ export default function NotificationPage() {
             {hasActiveFilters && (
               <button
                 onClick={clearFilters}
-                className="mt-4 inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
+                className="mt-4 inline-flex items-center rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
               >
                 Clear Filters
               </button>

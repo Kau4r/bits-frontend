@@ -236,7 +236,7 @@ const FacultySchedulingInner = () => {
             <div className="flex items-center space-x-6">
               <button
                 onClick={() => setShowReportIssueModal(true)}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors"
+                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors"
                 title="Report an Issue"
               >
                 <AlertTriangle className="h-4 w-4" />
@@ -246,7 +246,7 @@ const FacultySchedulingInner = () => {
               {/* Test Borrow Button */}
               <button
                 onClick={() => setIsBorrowModalOpen(true)}
-                className="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md text-sm transition-colors"
+                className="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-xl text-sm transition-colors"
                 title="Test Borrow Item"
               >
                 <PlusCircle className="h-4 w-4" />
@@ -552,7 +552,7 @@ const FacultySchedulingInner = () => {
                   <button
                     type="submit"
                     disabled={isLoadingItems}
-                    className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-600/20 transition hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus:ring-offset-slate-900"
+                    className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-600/20 transition hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus:ring-offset-slate-900"
                   >
                     <PlusCircle className="h-4 w-4" />
                     Submit Request
@@ -566,6 +566,7 @@ const FacultySchedulingInner = () => {
       <ReportIssueModal
         isOpen={showReportIssueModal}
         onClose={() => setShowReportIssueModal(false)}
+        restrictWhenNoRoom
         onSubmit={async (description, issueType, equipment, pcNumber, noRoom, chosenRoomId) => {
           if (!user?.User_ID) return;
 

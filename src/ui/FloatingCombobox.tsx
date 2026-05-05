@@ -18,6 +18,7 @@ interface FloatingComboboxProps {
   menuClassName?: string;
   disabled?: boolean;
   required?: boolean;
+  pinnedOptions?: FloatingComboboxOption[];
 }
 
 const normalizeSearchText = (text: string) =>
@@ -34,6 +35,7 @@ export function FloatingCombobox({
   menuClassName = '',
   disabled = false,
   required = false,
+  pinnedOptions = [],
 }: FloatingComboboxProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -43,17 +45,25 @@ export function FloatingCombobox({
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [menuRect, setMenuRect] = useState({ left: 0, top: 0, width: 0 });
 
+  const pinnedValues = useMemo(() => new Set(pinnedOptions.map(o => o.value)), [pinnedOptions]);
+
   const filteredOptions = useMemo(() => {
     const query = value.trim().toLowerCase();
     const normalizedQuery = normalizeSearchText(value.trim());
-    if (!query) return options;
-    return options.filter(option =>
+    const unpinned = options.filter(o => !pinnedValues.has(o.value));
+    if (!query) return unpinned;
+    return unpinned.filter(option =>
       option.label.toLowerCase().includes(query) ||
       option.value.toLowerCase().includes(query) ||
       normalizeSearchText(option.label).includes(normalizedQuery) ||
       normalizeSearchText(option.value).includes(normalizedQuery)
     );
-  }, [options, value]);
+  }, [options, pinnedValues, value]);
+
+  const allDisplayOptions = useMemo(
+    () => [...pinnedOptions, ...filteredOptions],
+    [pinnedOptions, filteredOptions],
+  );
 
   const updateMenuRect = () => {
     const rect = inputRef.current?.getBoundingClientRect();
@@ -99,8 +109,8 @@ export function FloatingCombobox({
   };
 
   const moveActive = (nextIndex: number) => {
-    if (filteredOptions.length === 0) return;
-    const wrapped = (nextIndex + filteredOptions.length) % filteredOptions.length;
+    if (allDisplayOptions.length === 0) return;
+    const wrapped = (nextIndex + allDisplayOptions.length) % allDisplayOptions.length;
     setActiveIndex(wrapped);
   };
 
@@ -139,9 +149,9 @@ export function FloatingCombobox({
             } else if (event.key === 'End' && isOpen) {
               event.preventDefault();
               setActiveIndex(Math.max(filteredOptions.length - 1, 0));
-            } else if (event.key === 'Enter' && isOpen && filteredOptions[activeIndex]) {
+            } else if (event.key === 'Enter' && isOpen && allDisplayOptions[activeIndex]) {
               event.preventDefault();
-              chooseOption(filteredOptions[activeIndex]);
+              chooseOption(allDisplayOptions[activeIndex]);
             } else if (event.key === 'Escape') {
               setIsOpen(false);
             }
@@ -171,30 +181,34 @@ export function FloatingCombobox({
           onMouseDown={(event) => event.stopPropagation()}
           onClick={(event) => event.stopPropagation()}
         >
-          {filteredOptions.length > 0 ? filteredOptions.map((option, index) => {
-            const selected = option.value === value;
+          {allDisplayOptions.length > 0 ? allDisplayOptions.map((option, index) => {
+            const selected = option.value === value || option.label === value;
             const active = index === activeIndex;
+            const isPinned = pinnedValues.has(option.value);
+            const isLastPinned = isPinned && index === pinnedOptions.length - 1 && filteredOptions.length > 0;
 
             return (
-              <button
-                ref={(node) => {
-                  optionRefs.current[index] = node;
-                }}
-                id={`${id}-option-${index}`}
-                key={`${option.value}-${index}`}
-                type="button"
-                onMouseEnter={() => setActiveIndex(index)}
-                onClick={() => chooseOption(option)}
-                className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition ${active
-                  ? 'bg-slate-100 text-slate-950 dark:bg-white/10 dark:text-white'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/[0.07] dark:hover:text-white'
-                  } ${selected ? 'font-semibold' : ''}`}
-                role="option"
-                aria-selected={selected}
-              >
-                <span className="truncate">{option.label}</span>
-                {selected && <Check className="h-4 w-4 shrink-0 text-indigo-500 dark:text-cyan-300" />}
-              </button>
+              <div key={`${option.value}-${index}`}>
+                <button
+                  ref={(node) => {
+                    optionRefs.current[index] = node;
+                  }}
+                  id={`${id}-option-${index}`}
+                  type="button"
+                  onMouseEnter={() => setActiveIndex(index)}
+                  onClick={() => chooseOption(option)}
+                  className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition ${active
+                    ? 'bg-slate-100 text-slate-950 dark:bg-white/10 dark:text-white'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/[0.07] dark:hover:text-white'
+                    } ${selected ? 'font-semibold' : ''}`}
+                  role="option"
+                  aria-selected={selected}
+                >
+                  <span className="truncate">{option.label}</span>
+                  {selected && <Check className="h-4 w-4 shrink-0 text-indigo-500 dark:text-cyan-300" />}
+                </button>
+                {isLastPinned && <div className="my-1 border-t border-slate-100 dark:border-slate-700" />}
+              </div>
             );
           }) : (
             <div className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">No suggestions</div>

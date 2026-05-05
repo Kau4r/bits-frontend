@@ -487,7 +487,7 @@ export default function RecurrenceModal({
                                     type="button"
                                     onClick={addExcludedDate}
                                     disabled={!excludeDraft}
-                                    className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white/[0.06] dark:text-slate-200 dark:hover:bg-white/[0.1]"
+                                    className="inline-flex items-center gap-1 rounded-xl bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white/[0.06] dark:text-slate-200 dark:hover:bg-white/[0.1]"
                                 >
                                     <Plus className="h-4 w-4" />
                                     Add

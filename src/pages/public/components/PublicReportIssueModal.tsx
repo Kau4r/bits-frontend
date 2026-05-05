@@ -326,14 +326,14 @@ export default function PublicReportIssueModal({ isOpen, onClose }: PublicReport
                                 type="button"
                                 onClick={handleClose}
                                 disabled={isSubmitting}
-                                className="flex-1 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm font-medium text-gray-800 dark:text-white hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
+                                className="flex-1 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-medium text-gray-800 dark:text-white hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
                             >
                                 Cancel
                             </button>
                             <button
                                 type="submit"
                                 disabled={isSubmitting || isLoadingRooms}
-                                className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-red-600 hover:bg-red-700 px-4 py-2.5 text-sm font-medium text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 px-4 py-2 text-sm font-medium text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                             >
                                 {isSubmitting ? (
                                     <>

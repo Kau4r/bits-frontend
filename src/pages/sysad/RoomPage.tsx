@@ -161,7 +161,7 @@ export default function RoomPage() {
           </h3>
           <button
             onClick={loadRooms}
-            className="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            className="mt-4 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
           >
             Try Again
           </button>
@@ -177,7 +177,7 @@ export default function RoomPage() {
       description="Manage rooms, capacity, availability, and lab room setup."
       action={(
         <button
-          className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-500 hover:shadow-md focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none active:bg-indigo-700"
+          className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-500 hover:shadow-md focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none active:bg-indigo-700"
           onClick={() => {
             setSelectedRoom(null);
             setModalMode("add");
@@ -241,7 +241,7 @@ export default function RoomPage() {
                 setSearchTerm('');
                 setStatusFilter('ALL');
               }}
-              className="mt-4 inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
+              className="mt-4 inline-flex items-center rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
             >
               Clear Filters
             </button>
@@ -252,7 +252,7 @@ export default function RoomPage() {
                 setModalMode("add");
                 setIsModalOpen(true);
               }}
-              className="mt-4 inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+              className="mt-4 inline-flex items-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
             >
               <Plus className="mr-2 h-4 w-4" />
               Add Room
