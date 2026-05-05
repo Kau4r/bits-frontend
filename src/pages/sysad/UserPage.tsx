@@ -9,6 +9,7 @@ import { ROLES, type User_Role } from "@/types/user"
 import { FloatingSelect } from '@/ui/FloatingSelect'
 import { LoadingSkeleton } from '@/ui'
 import { SysAdEyebrow, SysAdPageShell } from '@/pages/sysad/components/SysAdPageShell'
+import { useUserEvents } from '@/hooks/useUserEvents'
 
 
 export function formatRole(role?: string | null) {
@@ -56,6 +57,10 @@ export default function SysAdDash() {
   useEffect(() => {
     loadUsers()
   }, [])
+
+  useUserEvents(() => {
+    void loadUsers()
+  })
 
   const handleSort = (key: string) => {
     setSortConfig(prev => {

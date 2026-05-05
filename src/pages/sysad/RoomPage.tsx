@@ -12,6 +12,7 @@ import { sortRoomsForDisplay } from "@/utils/roomSort";
 import { FloatingSelect } from "@/ui/FloatingSelect";
 import { Skeleton } from "@/ui";
 import { SysAdEyebrow, SysAdPageShell } from "@/pages/sysad/components/SysAdPageShell";
+import { useRoomEvents } from "@/hooks/useRoomEvents";
 
 export default function RoomPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -28,6 +29,10 @@ export default function RoomPage() {
   useEffect(() => {
     loadRooms();
   }, []);
+
+  useRoomEvents(() => {
+    void loadRooms();
+  });
 
   const loadRooms = async () => {
     setLoading(true);

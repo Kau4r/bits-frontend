@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, FileSpreadsheet, RefreshCw, Upload, XCircle } from "lucide-react";
 import { useModal } from "@/context/ModalContext";
 import { SysAdEyebrow, SysAdPageShell } from "@/pages/sysad/components/SysAdPageShell";
+import { useScheduleImportEvents } from "@/hooks/useScheduleImportEvents";
 import {
   importOfferedCourseSchedules,
   previewOfferedCourseImport,
@@ -113,6 +114,12 @@ export default function ScheduleImportPage() {
       setIsPreviewing(false);
     }
   };
+
+  // Re-run preview when schedule data changes server-side (only if a file is
+  // already chosen — there's no on-mount data to refresh otherwise).
+  useScheduleImportEvents(() => {
+    if (file) void handlePreview();
+  });
 
   const handleImport = async () => {
     if (!file || !result) return;

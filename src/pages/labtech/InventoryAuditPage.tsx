@@ -26,6 +26,7 @@ import type { Item } from '@/types/inventory';
 import type { Semester, RoomAuditStatus } from '@/types/semester';
 import { parseInventoryQrValue } from '@/utils/inventoryQr';
 import { formatItemType, resolveItemType, formatBrand } from '@/lib/utils';
+import { useInventoryEvents } from '@/hooks/useInventoryEvents';
 
 interface ItemWithComputers extends Item {
   Computers?: Array<{
@@ -118,6 +119,11 @@ export default function InventoryAuditPage() {
     }
     refreshRoomAudit(Number(selectedRoomId));
   }, [selectedRoomId, refreshRoomAudit]);
+
+  useInventoryEvents(() => {
+    if (selectedRoomId === '') return;
+    refreshRoomAudit(Number(selectedRoomId));
+  });
 
   const markItemChecked = useCallback(
     async (item: Item, opts: { silent?: boolean } = {}) => {

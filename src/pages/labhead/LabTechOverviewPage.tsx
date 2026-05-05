@@ -8,6 +8,8 @@ import type { Ticket } from '@/types/tickets';
 import TicketingModal from '@/pages/tickets/components/TicketingModal';
 import Table from '@/components/Table';
 import { LoadingSkeleton } from '@/ui';
+import { useTicketEvents } from '@/hooks/useTicketEvents';
+import { useUserEvents } from '@/hooks/useUserEvents';
 
 const isActiveTicket = (ticket: Ticket) => !ticket.Archived && ticket.Status !== 'RESOLVED';
 
@@ -50,6 +52,11 @@ export default function LabTechOverview() {
     loadUnassigned();
     setRefreshKey(prev => prev + 1);
   };
+
+  // Realtime: ticket events refresh unassigned + lab-tech counters; user
+  // events bump the lab-tech list so role/status changes propagate live.
+  useTicketEvents(handleTicketChange);
+  useUserEvents(() => setRefreshKey(prev => prev + 1));
 
   // After editing a ticket from the modal: keep the row in the unassigned list
   // only if the updated ticket still belongs there; otherwise remove it.

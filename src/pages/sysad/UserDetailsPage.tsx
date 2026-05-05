@@ -1,10 +1,11 @@
 import { useNavigate, useLocation } from 'react-router-dom'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { updateUser, fetchUserActivity } from '@/services/user'
 import { type User, type User_Role, ROLES, type ActivityLog, LOG_TYPES } from '@/types/user'
 import { formatRole } from '@/pages/sysad/UserPage'
 import { useModal } from '@/context/ModalContext'
 import { useAuth } from '@/context/AuthContext'
+import { useUserEvents } from '@/hooks/useUserEvents'
 import { Clock, ArrowUpDown } from 'lucide-react'
 import { FloatingSelect } from '@/ui/FloatingSelect'
 import { SysAdEyebrow, SysAdPageShell } from '@/pages/sysad/components/SysAdPageShell'
@@ -42,24 +43,26 @@ export default function UserDetails() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [hasChanges])
 
-  // Fetch user activity logs
-  useEffect(() => {
+  const loadActivities = useCallback(async () => {
     if (!user?.User_ID) return
-
-    const loadActivities = async () => {
-      try {
-        setActivitiesLoading(true)
-        const data = await fetchUserActivity(user.User_ID)
-        setActivities(data)
-      } catch (err) {
-        console.error('Failed to fetch activity logs:', err)
-      } finally {
-        setActivitiesLoading(false)
-      }
+    try {
+      setActivitiesLoading(true)
+      const data = await fetchUserActivity(user.User_ID)
+      setActivities(data)
+    } catch (err) {
+      console.error('Failed to fetch activity logs:', err)
+    } finally {
+      setActivitiesLoading(false)
     }
-
-    loadActivities()
   }, [user?.User_ID])
+
+  useEffect(() => {
+    void loadActivities()
+  }, [loadActivities])
+
+  useUserEvents(() => {
+    void loadActivities()
+  })
 
   const filteredActivities = useMemo(() => {
     let filtered = activities

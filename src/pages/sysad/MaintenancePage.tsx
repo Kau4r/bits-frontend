@@ -12,6 +12,7 @@ import {
 } from '@/services/maintenance';
 import { SysAdEyebrow, SysAdPageShell } from '@/pages/sysad/components/SysAdPageShell';
 import { getApiBaseUrl } from '@/utils/apiBaseUrl';
+import { useMaintenanceEvents } from '@/hooks/useMaintenanceEvents';
 
 const formatLabel = (value: string) => value
   .replace(/([a-z])([A-Z])/g, '$1 $2')
@@ -85,6 +86,10 @@ export default function MaintenancePage() {
     void loadPreview();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useMaintenanceEvents(() => {
+    void loadPreview();
+  });
 
   const handleArchivePreview = async (clearLastArchive = true) => {
     setArchiveLoading(true);

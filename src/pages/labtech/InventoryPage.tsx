@@ -17,6 +17,7 @@ import { useAuth } from '@/context/AuthContext'
 import InventoryMobilePage from '@/pages/labtech/InventoryMobile'
 import InventoryDashboard from '@/pages/labtech/components/InventoryDashboard'
 import { formatItemType, resolveItemType, formatBrand } from '@/lib/utils'
+import { useInventoryEvents } from '@/hooks/useInventoryEvents'
 
 type InventoryView = 'list' | 'information'
 
@@ -196,11 +197,6 @@ const InventoryPage = () => {
   // Pagination removed — show all filtered results
   const paginatedInventory = filteredAndSortedInventory
 
-  // If mobile, render the mobile view immediately
-  if (isMobile) {
-    return <InventoryMobilePage />;
-  }
-
   // Refetch the currently-active room's inventory after any mutation that
   // could move items in/out of the active room (add, bulk-add, edit, bulk
   // room change). Inline status changes don't move items, so they keep
@@ -211,6 +207,14 @@ const InventoryPage = () => {
     if (Number.isNaN(roomId)) return;
     void loadInventory(roomId);
   }, [selectedRoomFilter, loadInventory]);
+
+  // Real-time refresh: backend item events repopulate the active-room view.
+  useInventoryEvents(refetchActiveRoom);
+
+  // If mobile, render the mobile view immediately
+  if (isMobile) {
+    return <InventoryMobilePage />;
+  }
 
   const handleSaveItem = async (
     payload: Partial<Item> | Partial<Item>[] | { id: number; data: Partial<Item> }

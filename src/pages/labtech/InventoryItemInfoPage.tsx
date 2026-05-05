@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, Box, CalendarClock, Edit3, Loader2, MapPin, Save, ShieldCheck, WifiOff, X } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -11,6 +11,7 @@ import { useAuth } from "@/context/AuthContext";
 import { FloatingSelect } from "@/ui/FloatingSelect";
 import { isLabStaffRole } from "@/types/user";
 import { formatItemType, formatBrand } from "@/lib/utils";
+import { useInventoryEvents } from "@/hooks/useInventoryEvents";
 
 type LoadState = "loading" | "loaded" | "not-found" | "error";
 
@@ -80,43 +81,33 @@ export default function InventoryItemInfoPage() {
   const decodedItemCode = itemCode ? decodeParam(itemCode) : "";
   const canEdit = isLabStaffRole(userRole);
 
-  useEffect(() => {
+  const loadItem = useCallback(async () => {
     if (!decodedItemCode) {
       setLoadState("not-found");
       return;
     }
-
-    let isMounted = true;
-
-    const loadItem = async () => {
-      setLoadState("loading");
-      try {
-        const result = await getInventoryByCode(decodedItemCode);
-
-        if (!isItem(result)) {
-          if (!isMounted) return;
-          setLoadState("not-found");
-          return;
-        }
-
-        if (isMounted) {
-          setItem(result);
-          setLoadState("loaded");
-        }
-      } catch (error) {
-        const status = (error as { response?: { status?: number } }).response?.status;
-        if (isMounted) {
-          setLoadState(status === 404 ? "not-found" : "error");
-        }
+    setLoadState("loading");
+    try {
+      const result = await getInventoryByCode(decodedItemCode);
+      if (!isItem(result)) {
+        setLoadState("not-found");
+        return;
       }
-    };
-
-    loadItem();
-
-    return () => {
-      isMounted = false;
-    };
+      setItem(result);
+      setLoadState("loaded");
+    } catch (error) {
+      const status = (error as { response?: { status?: number } }).response?.status;
+      setLoadState(status === 404 ? "not-found" : "error");
+    }
   }, [decodedItemCode]);
+
+  useEffect(() => {
+    void loadItem();
+  }, [loadItem]);
+
+  useInventoryEvents(() => {
+    void loadItem();
+  });
 
   useEffect(() => {
     let isMounted = true;

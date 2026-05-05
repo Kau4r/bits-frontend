@@ -2,7 +2,12 @@ import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react'
 import NotificationsCard from '@/components/NotificationsCard';
 import { getDashboardMetrics, type DashboardMetrics } from '@/services/dashboard';
 import { BarChart3, ClipboardCheck, FileText, PackageCheck } from 'lucide-react';
-import { useNotifications } from '@/context/NotificationContext';
+import { useTicketEvents } from '@/hooks/useTicketEvents';
+import { useFormEvents } from '@/hooks/useFormEvents';
+import { useBookingEvents } from '@/hooks/useBookingEvents';
+import { useInventoryEvents } from '@/hooks/useInventoryEvents';
+import { useRoomEvents } from '@/hooks/useRoomEvents';
+import { useReportEvents } from '@/hooks/useReportEvents';
 import { inventoryStatuses } from '@/types/inventory';
 
 const chartColors = ['#2563eb', '#16a34a', '#f59e0b', '#dc2626', '#7c3aed', '#0891b2', '#64748b', '#db2777'];
@@ -184,7 +189,6 @@ const InventoryStatistics = ({ metrics }: { metrics: DashboardMetrics | null }) 
 
 export default function LabtechDashboard() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
-  const { notifications } = useNotifications();
   const notificationsRef = useRef<HTMLDivElement | null>(null);
   const [notificationsHeight, setNotificationsHeight] = useState<number | null>(null);
   const [isFitMode, setIsFitMode] = useState(() =>
@@ -235,17 +239,14 @@ export default function LabtechDashboard() {
     fetchMetrics();
   }, [fetchMetrics]);
 
-  useEffect(() => {
-    if (notifications.length > 0) {
-      const latest = notifications[0];
-      const isRelevant = /ticket|form|booking|schedule|inventory|item|room|report/i.test(latest.title + latest.message);
-
-      if (isRelevant) {
-        console.log('[Dashboard] Real-time update detected, refreshing metrics...');
-        fetchMetrics();
-      }
-    }
-  }, [notifications, fetchMetrics]);
+  // fetchMetrics is idempotent — multiple typed hooks all routing into the
+  // same callback is fine and keeps the dashboard in sync across modules.
+  useTicketEvents(fetchMetrics);
+  useFormEvents(fetchMetrics);
+  useBookingEvents(fetchMetrics);
+  useInventoryEvents(fetchMetrics);
+  useRoomEvents(fetchMetrics);
+  useReportEvents(fetchMetrics);
 
   return (
     <div className="flex w-full flex-col bg-white p-6 sm:px-8 lg:px-10 dark:bg-gray-900 [@media(min-height:800px)]:h-full [@media(min-height:800px)]:overflow-hidden">

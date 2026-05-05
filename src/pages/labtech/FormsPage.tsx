@@ -21,7 +21,7 @@ import {
 import { getForms, createForm, updateForm as updateFormAPI, transferForm, uploadFile, addFormAttachment, deleteFormAttachment, resolveFormFileUrl, archiveForm, unarchiveForm, deleteForm } from '@/services/forms';
 import { useAuth } from '@/context/AuthContext';
 import { useModal } from '@/context/ModalContext';
-import { useNotifications } from '@/context/NotificationContext';
+import { useFormEvents } from '@/hooks/useFormEvents';
 import { Check, X, Plus, Archive, Inbox, RefreshCw, Lock, CornerUpLeft, Info, Eye, Download, Pencil, Trash2, FileText, Image as ImageIcon, File } from 'lucide-react';
 import type { Form } from '@/types/formtypes';
 import { FloatingSelect } from '@/ui/FloatingSelect';
@@ -44,7 +44,6 @@ const normalizeAttachmentType = (name?: string): 'pdf' | 'image' | 'doc' | 'docx
 export default function Forms() {
   const { user } = useAuth();
   const modal = useModal();
-  const { notifications } = useNotifications(); // Listen for real-time updates
   const [forms, setForms] = useState<FormRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -207,30 +206,8 @@ export default function Forms() {
     loadForms();
   }, [loadForms]);
 
-  // Track processed notifications to prevent duplicate refreshes
-  const lastNotificationIdRef = useRef<number | null>(null);
-
-  // Real-time updates: listen for form-related notifications
-  useEffect(() => {
-    if (notifications.length > 0) {
-      const latest = notifications[0];
-
-      // Skip if we already processed this notification
-      if (lastNotificationIdRef.current === latest.id) return;
-
-      const isFormRelated =
-        latest.title.toLowerCase().includes('form') ||
-        latest.message.toLowerCase().includes('form') ||
-        // Fallback for generic updates if title is missing "Form" but context implies it
-        (latest.type === 'info' && latest.message.includes('Status updated'));
-
-      if (isFormRelated) {
-        console.log('[Forms] Real-time update detected:', latest.title, latest.id);
-        lastNotificationIdRef.current = latest.id;
-        loadForms(true); // Silent refresh
-      }
-    }
-  }, [notifications, loadForms]);
+  // Real-time updates: silent refresh when a form-related notification arrives.
+  useFormEvents(() => loadForms(true));
 
 
   const filtered = useMemo(() => {

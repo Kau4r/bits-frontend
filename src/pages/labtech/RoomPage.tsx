@@ -17,6 +17,7 @@ import Search from '@/components/Search'
 import { CalendarDays, Building2 } from 'lucide-react'
 import { FloatingSelect } from '@/ui/FloatingSelect'
 import { Skeleton } from '@/ui'
+import { useRoomEvents } from '@/hooks/useRoomEvents'
 
 
 type TabType = 'rooms' | 'queue';
@@ -127,7 +128,11 @@ export default function Room() {
             }
         };
         loadRooms();
-    }, []);
+    }, [refreshTrigger]);
+
+    // Real-time refresh: backend room events bump refreshTrigger so the rooms
+    // list, today's sessions, and the weekly grid all reload together.
+    useRoomEvents(() => setRefreshTrigger(prev => prev + 1));
 
     // Get only LAB rooms for the queue tab
     const labRooms = rooms.filter(r => r.Room_Type === 'LAB');

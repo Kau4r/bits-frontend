@@ -47,6 +47,25 @@ Pagination: `nextCursor` is returned in `x-meta` response header as JSON `{ next
 
 **Available to:** All authenticated roles (LAB_TECH, LAB_HEAD, STUDENT — notifications dropdown in `Layout.tsx`; dedicated page route `/notification` restricted to LAB_TECH and LAB_HEAD via `ProtectedRoute`).
 
+### Realtime data refresh hooks
+
+Pages call typed hooks that subscribe to `NotificationContext` and fire a callback when a relevant event arrives. Each hook is a thin wrapper around the generic primitive `hooks/useRealtimeRefresh.ts` (subscribes to `notifications[0]`, dedupes by id, holds the callback in a ref so inline arrows don't resubscribe). Predicates match against `details.eventType` (set in `NotificationContext` from `rawData.type`); booking events match by `category === 'BORROWING_UPDATE'`.
+
+| Hook | Matches | Consumed by |
+|---|---|---|
+| `useBookingEvents` | `BOOKING_*` | `pages/scheduling/SchedulingPage.tsx`, `pages/labtech/DashboardPage.tsx`, `pages/labhead/DashboardPage.tsx`, `pages/student/RoomViewPage.tsx` |
+| `useBorrowingEvents` | `category === 'BORROWING_UPDATE'` | `pages/labtech/BorrowingPage.tsx` |
+| `useTicketEvents` | `TICKET_*` (title-string fallback) | `pages/tickets/TicketsPage.tsx`, `pages/labtech/DashboardPage.tsx`, `pages/labhead/DashboardPage.tsx`, `pages/labhead/LabTechOverviewPage.tsx` |
+| `useFormEvents` | `FORM_*` (title/message fallback) | `pages/labtech/FormsPage.tsx`, `pages/labtech/DashboardPage.tsx`, `pages/labhead/DashboardPage.tsx` |
+| `useInventoryEvents` | `INVENTORY_*`, `ITEM_*` | `pages/labtech/InventoryPage.tsx`, `pages/labtech/InventoryAuditPage.tsx`, `pages/labtech/InventoryItemInfoPage.tsx`, `pages/labtech/DashboardPage.tsx`, `pages/labhead/DashboardPage.tsx` |
+| `useUserEvents` | `USER_*` | `pages/sysad/UserPage.tsx`, `pages/sysad/UserDetailsPage.tsx`, `pages/labhead/LabTechOverviewPage.tsx` |
+| `useRoomEvents` | `ROOM_*` | `pages/labtech/RoomPage.tsx`, `pages/sysad/RoomPage.tsx`, `pages/student/RoomViewPage.tsx`, `pages/labtech/DashboardPage.tsx`, `pages/labhead/DashboardPage.tsx` |
+| `useMaintenanceEvents` | `MAINTENANCE_*` | `pages/sysad/MaintenancePage.tsx` |
+| `useScheduleImportEvents` | `SCHEDULE_*` (excluding booking events) | `pages/sysad/ScheduleImportPage.tsx` |
+| `useReportEvents` | `REPORT_*` | `pages/labtech/ReportsPage.tsx`, `pages/labtech/DashboardPage.tsx`, `pages/labhead/DashboardPage.tsx` |
+
+Pattern: each consumer page calls the typed hook with a callback that re-runs its existing data loader. Multiple hooks can fan into the same callback (the dashboards do this for `fetchMetrics`).
+
 ---
 
 ## Tickets

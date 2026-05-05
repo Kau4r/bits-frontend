@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import Table from "@/components/Table"
 import Search from "@/components/Search"
 import TicketingModal from "@/pages/tickets/components/TicketingModal"
 import { fetchTickets, archiveTicket, restoreTicket } from "@/services/tickets";
 import { formatTicketLocationDisplay, parseTicketDescriptionTag } from "@/lib/ticketLocation";
 import type { Ticket } from "@/types/tickets";
-import { useNotifications } from "@/context/NotificationContext";
+import { useTicketEvents } from "@/hooks/useTicketEvents";
 import { Plus, Eye, Inbox, Archive } from "lucide-react";
 import { FloatingSelect } from "@/ui/FloatingSelect";
 import { Badge, LoadingSkeleton } from "@/ui";
@@ -37,7 +37,6 @@ const getTicketResolvedAt = (ticket: Ticket) => {
 };
 
 export default function Tickets() {
-    const { notifications } = useNotifications();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedStatus, setSelectedStatus] = useState('All');
     const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
@@ -46,7 +45,6 @@ export default function Tickets() {
     const [tickets, setTickets] = useState<Ticket[]>([]);
 
     const [loading, setLoading] = useState(true);
-    const lastTicketNotificationRef = useRef<string | null>(null);
 
     const loadTickets = useCallback(async (showSkeleton = false) => {
         if (showSkeleton) {
@@ -67,31 +65,7 @@ export default function Tickets() {
         loadTickets(true);
     }, [loadTickets]);
 
-    const latestTicketNotificationKey = useMemo(() => {
-        const ticketNotification = notifications.find(notification => {
-            const detailsEvent = notification.details?.eventType;
-            const searchable = `${notification.title} ${notification.message} ${String(detailsEvent ?? '')}`.toUpperCase();
-            return searchable.includes('TICKET');
-        });
-
-        return ticketNotification
-            ? `${ticketNotification.id}-${ticketNotification.timestamp}-${ticketNotification.title}`
-            : null;
-    }, [notifications]);
-
-    useEffect(() => {
-        if (!latestTicketNotificationKey) return;
-
-        if (lastTicketNotificationRef.current === null) {
-            lastTicketNotificationRef.current = latestTicketNotificationKey;
-            return;
-        }
-
-        if (lastTicketNotificationRef.current === latestTicketNotificationKey) return;
-
-        lastTicketNotificationRef.current = latestTicketNotificationKey;
-        loadTickets(false);
-    }, [latestTicketNotificationKey, loadTickets]);
+    useTicketEvents(() => loadTickets(false));
 
     const displayedTickets = useMemo(() => {
         const isBrowsingResolved = !showArchived && selectedStatus === 'RESOLVED';

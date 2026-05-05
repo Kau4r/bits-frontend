@@ -2,10 +2,12 @@ import SessionBar from "@/pages/student/components/SessionBar"
 import { useNavigate } from "react-router-dom"
 import OpenedLabCard from "@/pages/student/components/OpenedLabCard"
 import LectureCard from "@/pages/student/components/LectureCard"
-import { useState, useEffect } from "react"
+import { useCallback, useState, useEffect } from "react"
 import api from "@/services/api"
 import type { Room as RoomType } from "@/types/room"
 import { getOpenedLabs, type OpenedLabRoom } from "@/services/room"
+import { useRoomEvents } from "@/hooks/useRoomEvents"
+import { useBookingEvents } from "@/hooks/useBookingEvents"
 
 export default function StudentRoomView() {
     const navigate = useNavigate()
@@ -14,48 +16,52 @@ export default function StudentRoomView() {
     const [isLoadingLabs, setIsLoadingLabs] = useState(true)
     const [isLoadingLectures, setIsLoadingLectures] = useState(true)
 
-    // Fetch opened lab rooms
-    useEffect(() => {
-        let isMounted = true
-
-        const fetchOpenedLabs = async (showLoading = false) => {
-            try {
-                if (showLoading) setIsLoadingLabs(true)
-                const labs = await getOpenedLabs()
-                if (isMounted) setOpenedLabs(labs)
-            } catch (error) {
-                console.error('Failed to fetch opened labs:', error)
-            } finally {
-                if (isMounted && showLoading) setIsLoadingLabs(false)
-            }
-        }
-
-        fetchOpenedLabs(true)
-        const refreshInterval = window.setInterval(() => fetchOpenedLabs(false), 60000)
-
-        return () => {
-            isMounted = false
-            window.clearInterval(refreshInterval)
+    const fetchOpenedLabs = useCallback(async (showLoading = false) => {
+        try {
+            if (showLoading) setIsLoadingLabs(true)
+            const labs = await getOpenedLabs()
+            setOpenedLabs(labs)
+        } catch (error) {
+            console.error('Failed to fetch opened labs:', error)
+        } finally {
+            if (showLoading) setIsLoadingLabs(false)
         }
     }, [])
+
+    const fetchLectureRooms = useCallback(async () => {
+        try {
+            setIsLoadingLectures(true)
+            const response = await api.get('/rooms')
+            const lectures = (response.data as RoomType[]).filter((room: RoomType) => room.Room_Type === 'LECTURE')
+            setLectureRooms(lectures)
+        } catch (error) {
+            console.error('Failed to fetch lecture rooms:', error)
+        } finally {
+            setIsLoadingLectures(false)
+        }
+    }, [])
+
+    // Fetch opened lab rooms (1-min poll preserved as a safety net).
+    useEffect(() => {
+        void fetchOpenedLabs(true)
+        const refreshInterval = window.setInterval(() => void fetchOpenedLabs(false), 60000)
+        return () => window.clearInterval(refreshInterval)
+    }, [fetchOpenedLabs])
 
     // Fetch lecture rooms
     useEffect(() => {
-        const fetchLectureRooms = async () => {
-            try {
-                setIsLoadingLectures(true)
-                const response = await api.get('/rooms')
-                // Filter for lecture rooms only
-                const lectures = (response.data as RoomType[]).filter((room: RoomType) => room.Room_Type === 'LECTURE')
-                setLectureRooms(lectures)
-            } catch (error) {
-                console.error('Failed to fetch lecture rooms:', error)
-            } finally {
-                setIsLoadingLectures(false)
-            }
-        }
-        fetchLectureRooms()
-    }, [])
+        void fetchLectureRooms()
+    }, [fetchLectureRooms])
+
+    // Realtime: room events and booking events both affect availability —
+    // refresh both data sources so the student room view stays current.
+    useRoomEvents(() => {
+        void fetchOpenedLabs(false)
+        void fetchLectureRooms()
+    })
+    useBookingEvents(() => {
+        void fetchOpenedLabs(false)
+    })
 
     // Convert backend room data to frontend format for OpenedLabCard
     const convertToLabRoom = (lab: OpenedLabRoom) => {

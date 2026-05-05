@@ -14,6 +14,7 @@ import { ReportViewerModal } from '@/pages/labtech/components/ReportViewerModal'
 import { FileText, Plus } from 'lucide-react';
 import Table from '@/components/Table';
 import { LoadingSkeleton, EmptyState } from '@/ui';
+import { useReportEvents } from '@/hooks/useReportEvents';
 
 const formatDate = (s: string) =>
   new Date(s).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
@@ -51,6 +52,10 @@ export default function Reports() {
   useEffect(() => {
     loadReports();
   }, []);
+
+  useReportEvents(() => {
+    void loadReports();
+  });
 
   const headers = useMemo(
     () => [
