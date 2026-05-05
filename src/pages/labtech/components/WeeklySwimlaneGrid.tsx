@@ -136,7 +136,7 @@ const computeAvailableNow = (
     }).length;
 };
 
-// A single day strip with time ruler, "+ Add Room" button, and absolute bars.
+// A single day strip with time ruler and absolute bars.
 interface DayStripProps {
     day: Date;
     labType: LabType;
@@ -146,7 +146,6 @@ interface DayStripProps {
     currentTime: Date;
     onSlotClick: (labType: LabType, startISO: string, endISO: string) => void;
     onBlockerClick: (blocker: RoomSession, room: RoomType | undefined) => void;
-    onAddRoom: (labType: LabType, day: Date) => void;
 }
 
 const DayStrip = ({
@@ -158,7 +157,6 @@ const DayStrip = ({
     currentTime,
     onSlotClick,
     onBlockerClick,
-    onAddRoom,
 }: DayStripProps) => {
     const bars = useMemo(() => {
         const all: Bar[] = [];
@@ -234,14 +232,6 @@ const DayStrip = ({
                         </span>
                     )}
                 </div>
-                <button
-                    type="button"
-                    onClick={() => onAddRoom(labType, day)}
-                    className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2 py-1 text-xs font-medium text-white hover:bg-indigo-700"
-                >
-                    <Plus className="h-3 w-3" />
-                    Add Room
-                </button>
             </div>
 
             {/* Hour ruler */}
@@ -398,16 +388,35 @@ const LabSection = ({
     );
     const todayKey = dayjs(currentTime).format('YYYY-MM-DD');
 
+    // Default day to seed the Add Room modal: today if it's within the visible
+    // week, otherwise the first day of the week (Monday).
+    const defaultAddRoomDay = useMemo(() => {
+        const match = weekDays.find(d => dayjs(d).format('YYYY-MM-DD') === todayKey);
+        return match ?? weekDays[0];
+    }, [weekDays, todayKey]);
+
     return (
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <p className="text-[11px] text-gray-500 dark:text-gray-400">
                     {rooms.length} {rooms.length === 1 ? 'room' : 'rooms'} shown
                 </p>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-300">
-                    <span className="h-2 w-2 rounded-full bg-green-500" />
-                    {availableNow} room{availableNow === 1 ? '' : 's'} available now
-                </span>
+                <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                        <span className="h-2 w-2 rounded-full bg-green-500" />
+                        {availableNow} room{availableNow === 1 ? '' : 's'} available now
+                    </span>
+                    {rooms.length > 0 && defaultAddRoomDay && (
+                        <button
+                            type="button"
+                            onClick={() => onAddRoom(labType, defaultAddRoomDay)}
+                            className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700"
+                        >
+                            <Plus className="h-3.5 w-3.5" />
+                            Add Room
+                        </button>
+                    )}
+                </div>
             </div>
 
             {rooms.length === 0 ? (
@@ -427,7 +436,6 @@ const LabSection = ({
                             currentTime={currentTime}
                             onSlotClick={onSlotClick}
                             onBlockerClick={onBlockerClick}
-                            onAddRoom={onAddRoom}
                         />
                     ))}
                 </div>
