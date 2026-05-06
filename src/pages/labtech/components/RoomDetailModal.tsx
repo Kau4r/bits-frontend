@@ -1082,7 +1082,7 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                             <div className="flex shrink-0 justify-center rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700">
                                 <ReactQRCode
                                     id="pcQrCode"
-                                    value={editingComputer.Name}
+                                    value={String(editingComputer.Computer_ID)}
                                     size={118}
                                     level="H"
                                     bgColor="#fff"

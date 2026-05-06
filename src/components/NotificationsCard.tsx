@@ -92,7 +92,7 @@ function getNotificationStyle(title: string) {
 }
 
 export default function NotificationsCard() {
-  const { notifications, loading, markAsRead } = useNotifications();
+  const { notifications, loading, markAsRead, markAllAsRead } = useNotifications();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollDown, setCanScrollDown] = useState(false);
 
@@ -152,12 +152,23 @@ export default function NotificationsCard() {
       className="h-full"
       headerRight={
         activeNotifications.length > 0 ? (
-          <Link
-            to="/notification"
-            className="text-sm font-medium text-green-600 hover:text-green-500 dark:text-green-400 dark:hover:text-green-300"
-          >
-            View All
-          </Link>
+          <div className="flex items-center gap-3">
+            {unreadNotifications.length > 0 && (
+              <button
+                type="button"
+                onClick={() => void markAllAsRead()}
+                className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
+              >
+                Read All
+              </button>
+            )}
+            <Link
+              to="/notification"
+              className="text-sm font-medium text-green-600 hover:text-green-500 dark:text-green-400 dark:hover:text-green-300"
+            >
+              View All
+            </Link>
+          </div>
         ) : undefined
       }
     >

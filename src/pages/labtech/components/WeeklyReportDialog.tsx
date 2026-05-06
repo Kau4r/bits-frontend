@@ -119,12 +119,13 @@ const sectionMeta: Record<SectionKey, { label: string; headingClass: string; emp
 };
 
 export const WeeklyReportDialog: FC<Props> = ({ open, onClose, onSave, existing }) => {
-  const monday = getMonday(new Date());
-  const sunday = new Date(monday);
-  sunday.setDate(sunday.getDate() + 6);
+  // Reports always cover the *previous* week — compute last Mon/Sun.
+  const lastMonday = (() => { const m = getMonday(new Date()); m.setDate(m.getDate() - 7); return m; })();
+  const lastSunday = new Date(lastMonday);
+  lastSunday.setDate(lastSunday.getDate() + 6);
 
-  const [weekStart, setWeekStart] = useState(toDateInput(monday));
-  const [weekEnd, setWeekEnd] = useState(toDateInput(sunday));
+  const [weekStart, setWeekStart] = useState(toDateInput(lastMonday));
+  const [weekEnd, setWeekEnd] = useState(toDateInput(lastSunday));
   const [notes, setNotes] = useState('');
   const [tasks, setTasks] = useState<ReportTasks>({
     completed: [],
@@ -156,8 +157,8 @@ export const WeeklyReportDialog: FC<Props> = ({ open, onClose, onSave, existing 
       baseTasks = existing.Tasks as ReportTasks;
       baseNotes = existing.Notes ?? '';
     } else {
-      ws = toDateInput(monday);
-      we = toDateInput(sunday);
+      ws = toDateInput(lastMonday);
+      we = toDateInput(lastSunday);
       baseTasks = { completed: [], pending: [], inProgress: [] };
       baseNotes = '';
     }
@@ -202,8 +203,8 @@ export const WeeklyReportDialog: FC<Props> = ({ open, onClose, onSave, existing 
       weekEnd === existing.Week_End.slice(0, 10);
     const isFromDefault =
       !existing &&
-      weekStart === toDateInput(monday) &&
-      weekEnd === toDateInput(sunday);
+      weekStart === toDateInput(lastMonday) &&
+      weekEnd === toDateInput(lastSunday);
     if (isFromExisting || isFromDefault) return;
 
     let cancelled = false;
@@ -534,32 +535,44 @@ export const WeeklyReportDialog: FC<Props> = ({ open, onClose, onSave, existing 
 
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Week range */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Week Start
-              </label>
-              <input
-                type="date"
-                value={weekStart}
-                onChange={e => setWeekStart(e.target.value)}
-                required
-                className="w-full rounded-md border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white p-2 text-sm"
-              />
+          {existing ? (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Week Start
+                </label>
+                <input
+                  type="date"
+                  value={weekStart}
+                  onChange={e => setWeekStart(e.target.value)}
+                  required
+                  className="w-full rounded-md border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white p-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Week End
+                </label>
+                <input
+                  type="date"
+                  value={weekEnd}
+                  onChange={e => setWeekEnd(e.target.value)}
+                  required
+                  className="w-full rounded-md border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white p-2 text-sm"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Week End
-              </label>
-              <input
-                type="date"
-                value={weekEnd}
-                onChange={e => setWeekEnd(e.target.value)}
-                required
-                className="w-full rounded-md border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white p-2 text-sm"
-              />
+          ) : (
+            <div className="rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-2.5 text-sm">
+              <span className="font-medium text-gray-700 dark:text-gray-300">Reporting week: </span>
+              <span className="text-gray-900 dark:text-white">
+                {new Date(weekStart + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                {' – '}
+                {new Date(weekEnd + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </span>
+              <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">(previous week, locked)</span>
             </div>
-          </div>
+          )}
 
           {/* Tasks header */}
           <div>
@@ -598,6 +611,11 @@ export const WeeklyReportDialog: FC<Props> = ({ open, onClose, onSave, existing 
             </div>
 
             <div className="max-h-[22rem] overflow-y-auto pr-1">
+              {totalCount === 0 && !isAutoPopulating && (
+                <div className="mb-3 rounded-md border border-dashed border-amber-300 bg-amber-50 px-3 py-2.5 text-xs text-amber-800 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-300">
+                  No activity was automatically captured for this period. Use <strong>Add Task</strong> to manually record your work before submitting.
+                </div>
+              )}
               {renderSection('completed')}
               {renderSection('inProgress')}
               {renderSection('pending')}

@@ -15,7 +15,7 @@ import { useFocusTrap } from "@/hooks/useFocusTrap";
 // Valid item types from Prisma schema
 const ITEM_TYPES: ItemType[] = [
   "HDMI", "VGA", "ADAPTER", "PROJECTOR", "EXTENSION",
-  "MOUSE", "KEYBOARD", "MONITOR", "MINI_PC", "OTHER"
+  "MOUSE", "KEYBOARD", "MONITOR", "MINI_PC"
 ];
 
 const normalizeItemTypeOption = (value?: string | null) => {
@@ -595,7 +595,7 @@ export default function ItemModal({
                 )}
                 {!readOnly && (
                   <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    Choose OTHER when the item does not match a listed type.
+                    Type a custom name if the item type is not listed.
                   </p>
                 )}
                 {fieldErrors.itemType && (
@@ -622,6 +622,11 @@ export default function ItemModal({
                     placeholder="Enter brand name..."
                     options={existingBrands.map((brand) => ({ value: brand, label: brand }))}
                   />
+                )}
+                {!readOnly && (
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Type a custom name if the brand is not listed.
+                  </p>
                 )}
                 {fieldErrors.brand && (
                   <p className="mt-1 text-xs font-medium text-red-600 dark:text-red-400">{fieldErrors.brand}</p>

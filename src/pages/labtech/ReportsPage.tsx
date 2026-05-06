@@ -68,7 +68,32 @@ export default function Reports() {
     [],
   );
 
+  const lastWeekStartDate = useMemo(() => {
+    const d = new Date();
+    const day = d.getDay();
+    d.setDate(d.getDate() - day + (day === 0 ? -6 : 1) - 7);
+    d.setHours(0, 0, 0, 0);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }, []);
+
+  const lastWeekReport = useMemo(
+    () => reports.find(r => r.Week_Start.slice(0, 10) === lastWeekStartDate),
+    [reports, lastWeekStartDate],
+  );
+
   const handleOpenNew = () => {
+    if (lastWeekReport) {
+      if (lastWeekReport.Status === 'DRAFT') {
+        setEditingReport(lastWeekReport);
+        setDialogOpen(true);
+      } else {
+        void modal.showAlert(
+          `A report for last week has already been ${reportStatusLabels[lastWeekReport.Status].toLowerCase()}. You can view it in the list below.`,
+          'Report Already Exists',
+        );
+      }
+      return;
+    }
     setEditingReport(null);
     setDialogOpen(true);
   };
@@ -130,10 +155,11 @@ export default function Reports() {
         </div>
         <button
           onClick={handleOpenNew}
-          className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700"
+          disabled={!!lastWeekReport && lastWeekReport.Status !== 'DRAFT'}
+          className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Plus className="h-4 w-4" />
-          New Report
+          {lastWeekReport?.Status === 'DRAFT' ? 'Continue Draft' : lastWeekReport ? 'Report Submitted' : 'New Report'}
         </button>
       </div>
 

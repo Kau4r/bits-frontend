@@ -10,7 +10,7 @@ import { Bell, DoorOpen } from "lucide-react";
 const Layout = () => {
   const [collapsed, setCollapsed] = useState(false);
   const { userRole, user, logout } = useAuth();
-  const { notifications, unreadCount, markAsRead } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const [isMobile, setIsMobile] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
@@ -147,8 +147,17 @@ const Layout = () => {
 
                 {notificationOpen && (
                   <div className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
-                    <div className="border-b border-gray-200 px-4 py-3 dark:border-gray-700">
+                    <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-700">
                       <p className="text-sm font-semibold text-gray-900 dark:text-white">Notifications</p>
+                      {unreadCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => void markAllAsRead()}
+                          className="text-xs font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
+                        >
+                          Read All
+                        </button>
+                      )}
                     </div>
                     <div className="max-h-80 overflow-y-auto py-1">
                       {notifications.length > 0 ? (
