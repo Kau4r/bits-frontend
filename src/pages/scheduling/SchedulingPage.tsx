@@ -503,7 +503,8 @@ export default function Scheduling({ showRejectedMyBookings = false }: Schedulin
         const statusText = conflict?.status === 'PENDING' ? 'pending approval' : 'already booked';
         await modal.showError(`This slot is ${statusText} by ${bookedBy}.\n\nPlease choose a different time.`, 'Time Conflict');
       } else {
-        await modal.showError('Failed to create booking. Please try again.', 'Error');
+        const detail = error.response?.data?.details || error.response?.data?.error || error.message;
+        await modal.showError(detail || 'Failed to create booking. Please try again.', 'Error');
       }
     } finally {
       setIsSubmitting(false);
