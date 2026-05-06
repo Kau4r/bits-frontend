@@ -801,6 +801,19 @@ export default function Scheduling({ showRejectedMyBookings = false }: Schedulin
         return;
       }
 
+      // Frontend pre-check: block edits onto an already-approved slot without
+      // needing a round-trip to the API.
+      const newStart = new Date(startDateTime);
+      const newEnd = new Date(endDateTime);
+      const preConflict = checkOverlap(newStart, newEnd, data.roomId, id);
+      if (preConflict && !preConflict.isOwnPending) {
+        await modal.showError(
+          `This time slot is already booked by ${preConflict.event.extendedProps.createdBy || 'someone else'}. Please choose a different time.`,
+          'Time Slot Unavailable'
+        );
+        return;
+      }
+
       await updateBooking(parseInt(id), {
         Room_ID: data.roomId,
         Start_Time: startDateTime,
@@ -1128,6 +1141,7 @@ export default function Scheduling({ showRejectedMyBookings = false }: Schedulin
               });
 
               if (view.type.startsWith('list')) {
+                const createdBy = event.extendedProps.createdBy as string | undefined;
                 return (
                   <span className="inline-flex flex-wrap items-center gap-2">
                     <span
@@ -1137,6 +1151,9 @@ export default function Scheduling({ showRejectedMyBookings = false }: Schedulin
                     <span className="font-semibold">{event.title}</span>
                     {roomName && (
                       <span className="text-slate-500 dark:text-slate-400">— {roomName}</span>
+                    )}
+                    {!isScheduleEvent && createdBy && (
+                      <span className="text-slate-400 dark:text-slate-500">by {createdBy}</span>
                     )}
                     {isScheduleEvent && (
                       <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-700 dark:bg-rose-300/30 dark:text-rose-200">

@@ -366,6 +366,10 @@ export default function BookingPopover({
 
     const popoverRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+    // Tracks which conflict set we last auto-opened the recurrence modal for,
+    // so that clicking Done (which updates recurrenceConfig) doesn't re-trigger
+    // the effect and immediately reopen the modal.
+    const autoOpenedForConflictsRef = useRef<string | null>(null);
     useFocusTrap(popoverRef, isOpen);
 
     useEffect(() => {
@@ -401,10 +405,19 @@ export default function BookingPopover({
     }, [isOpen, isViewMode]);
 
     // When the parent reports series-creation conflicts, auto-open the
-    // recurrence modal so the user can resolve them inline.
+    // recurrence modal so the user can resolve them inline. The ref guard
+    // prevents reopening when recurrenceConfig changes after Done is clicked.
     useEffect(() => {
-        if (isOpen && recurrenceConflicts && recurrenceConflicts.length > 0 && recurrenceConfig) {
-            setIsRecurrenceModalOpen(true);
+        if (!recurrenceConflicts || recurrenceConflicts.length === 0) {
+            autoOpenedForConflictsRef.current = null;
+            return;
+        }
+        if (isOpen && recurrenceConfig) {
+            const key = JSON.stringify(recurrenceConflicts);
+            if (autoOpenedForConflictsRef.current !== key) {
+                autoOpenedForConflictsRef.current = key;
+                setIsRecurrenceModalOpen(true);
+            }
         }
     }, [isOpen, recurrenceConflicts, recurrenceConfig]);
 

@@ -58,6 +58,7 @@ const FacultySchedulingInner = () => {
 
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement | null>(null);
+  const notificationRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!profileOpen) return;
@@ -69,6 +70,17 @@ const FacultySchedulingInner = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [profileOpen]);
+
+  useEffect(() => {
+    if (!isNotificationOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setIsNotificationOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isNotificationOpen]);
 
   // Report Issue Modal State
   const [showReportIssueModal, setShowReportIssueModal] = useState(false);
@@ -267,7 +279,7 @@ const FacultySchedulingInner = () => {
                 <span>Borrow</span>
               </button>
 
-              <div className="relative">
+              <div className="relative" ref={notificationRef}>
                 <button
                   onClick={() => setIsNotificationOpen(!isNotificationOpen)}
                   className="relative p-1 rounded-full text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors focus:outline-none"
@@ -281,7 +293,7 @@ const FacultySchedulingInner = () => {
                   )}
                 </button>
                 {isNotificationOpen && (
-                  <div className="origin-top-right absolute right-0 mt-2 w-72 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
+                  <div className="origin-top-right absolute right-0 mt-2 w-72 rounded-xl shadow-[0_0_16px_0_rgba(0,0,0,0.12)] border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 focus:outline-none z-50">
                     <div className="py-1">
                       <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
                         <p className="text-sm font-medium text-gray-900 dark:text-white">Notifications</p>
@@ -294,12 +306,19 @@ const FacultySchedulingInner = () => {
                             key={notification.id}
                             type="button"
                             onClick={() => handleNotificationClick(notification)}
-                            className={`block w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700 ${!notification.read ? 'border-l-2 border-indigo-500' : ''}`}
+                            className="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700"
                             title={notification.read ? 'Notification already read' : 'Mark notification as read'}
                           >
-                            <p className="text-sm font-medium text-gray-900 dark:text-white">{notification.title}</p>
-                            <p className="text-sm text-gray-800 dark:text-gray-300">{notification.message || 'No details'}</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{formatTime(notification.timestamp)}</p>
+                            <span className="mt-1.5 flex h-2 w-2 shrink-0 items-center justify-center">
+                              {!notification.read && (
+                                <span className="block h-2 w-2 rounded-full bg-green-500" />
+                              )}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">{notification.title}</p>
+                              <p className="text-sm text-gray-800 dark:text-gray-300">{notification.message || 'No details'}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{formatTime(notification.timestamp)}</p>
+                            </span>
                           </button>
                         ))
                       ) : (

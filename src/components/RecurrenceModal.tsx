@@ -230,6 +230,21 @@ export default function RecurrenceModal({
         }
     }, [isOpen, anchorStart]);
 
+    // Auto-skip conflicting dates as soon as conflicts are provided so the
+    // user can click Done immediately without manually hitting every Skip button.
+    useEffect(() => {
+        if (!isOpen || !conflicts || conflicts.length === 0) return;
+        const conflictDates = conflicts.map(c => toYmd(new Date(c.when)));
+        setConfig(prev => {
+            const merged = Array.from(new Set([...prev.excludedDates, ...conflictDates])).sort();
+            if (
+                merged.length === prev.excludedDates.length &&
+                merged.every((d, i) => d === prev.excludedDates[i])
+            ) return prev;
+            return { ...prev, excludedDates: merged };
+        });
+    }, [isOpen, conflicts]);
+
     const rrule = useMemo(() => buildRrule(config), [config]);
     const preview = useMemo(() => expandRecurrence(config, anchorStart, 8), [config, anchorStart]);
 
@@ -607,10 +622,23 @@ export default function RecurrenceModal({
                                                             : ''
                                                     }`}
                                                 >
-                                                    <div className="font-medium">{formatPreview(d)}</div>
-                                                    {reason && (
-                                                        <div className="mt-0.5 text-[10px] opacity-90">{reason}</div>
-                                                    )}
+                                                    <div className="flex items-start justify-between gap-1">
+                                                        <div>
+                                                            <div className="font-medium">{formatPreview(d)}</div>
+                                                            {reason && (
+                                                                <div className="mt-0.5 text-[10px] opacity-90">{reason}</div>
+                                                            )}
+                                                        </div>
+                                                        {reason && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => update({ excludedDates: [...config.excludedDates, toYmd(d)].sort() })}
+                                                                className="shrink-0 rounded border border-red-300 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-700 transition hover:bg-red-100 dark:border-red-500/40 dark:text-red-300 dark:hover:bg-red-500/20"
+                                                            >
+                                                                Skip
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </li>
                                             ))}
                                         </ol>
