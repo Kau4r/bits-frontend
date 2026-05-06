@@ -28,3 +28,6 @@ dist-ssr
 playwright-report/
 test-results/
 e2e/.auth/
+
+# OMC tooling state (local session data, not project code)
+.omc/
