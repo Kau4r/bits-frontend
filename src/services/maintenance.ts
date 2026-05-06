@@ -42,6 +42,55 @@ export interface SchoolYearArchiveResult {
   };
 }
 
+export interface April25DemoTargetForm {
+  formCode: string;
+  expectedTitle: string;
+  found: boolean;
+  formId: number | null;
+  title: string | null;
+  status: string | null;
+  department: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface April25DemoLog {
+  Log_ID: number;
+  Timestamp?: string;
+  Action?: string;
+  Log_Type?: string;
+  Is_Notification?: boolean;
+  Details?: string | null;
+}
+
+export interface April25DemoCleanupPreview {
+  confirmationText: string;
+  label: string;
+  dateRange: {
+    start: string;
+    endExclusive: string;
+  };
+  targetForms: April25DemoTargetForm[];
+  missingFormCodes: string[];
+  notificationLogs: April25DemoLog[];
+  auditLogs: April25DemoLog[];
+  willDelete: Record<string, number>;
+  willPreserve: Record<string, number>;
+  excludedFromCleanup: Record<string, number>;
+  masterDataCreatedInRange: Record<string, number>;
+  safetyWarnings: string[];
+  canRun: boolean;
+}
+
+export interface April25DemoCleanupResult {
+  message: string;
+  before: April25DemoCleanupPreview;
+  result: {
+    deleted: Record<string, number>;
+    reset: Record<string, number>;
+  };
+}
+
 export interface ArchiveFile {
   fileName: string;
   sizeBytes: number;
@@ -74,6 +123,11 @@ export const getSchoolYearArchivePreview = async (schoolYear: string): Promise<S
   return data;
 };
 
+export const getApril25DemoCleanupPreview = async (): Promise<April25DemoCleanupPreview> => {
+  const { data } = await api.get<April25DemoCleanupPreview>('/maintenance/april-25-demo-preview');
+  return data;
+};
+
 export const getArchiveFiles = async (): Promise<ArchiveFile[]> => {
   const { data } = await api.get<ArchiveFile[]>('/maintenance/archives');
   return data;
@@ -99,5 +153,13 @@ export const runSchoolYearArchiveCleanup = async (
     confirmation,
   });
   toast.success('School year archived and cleanup completed');
+  return data;
+};
+
+export const runApril25DemoCleanup = async (confirmation: string): Promise<April25DemoCleanupResult> => {
+  const { data } = await api.post<April25DemoCleanupResult>('/maintenance/april-25-demo-cleanup', {
+    confirmation,
+  });
+  toast.success('April 25 demo cleanup completed');
   return data;
 };

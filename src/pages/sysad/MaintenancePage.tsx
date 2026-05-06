@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AlertTriangle, Archive, Database, Download, RefreshCw, ShieldCheck, Trash2 } from 'lucide-react';
 import { useModal } from '@/context/ModalContext';
 import {
   getCleanupPreview,
+  getApril25DemoCleanupPreview,
   getSchoolYearArchivePreview,
   runCleanup,
+  runApril25DemoCleanup,
   runSchoolYearArchiveCleanup,
+  type April25DemoCleanupPreview,
   type CleanupPreview,
   type SchoolYearArchivePreview,
   type SchoolYearArchiveResult
@@ -36,27 +39,37 @@ const CountGrid = ({ title, counts, tone, description }: { title: string; counts
   </section>
 );
 
+type PreviewMode = 'schoolYear' | 'april25' | 'operational' | null;
+
 export default function MaintenancePage() {
   const modal = useModal();
   const [preview, setPreview] = useState<CleanupPreview | null>(null);
   const [archivePreview, setArchivePreview] = useState<SchoolYearArchivePreview | null>(null);
+  const [previewMode, setPreviewMode] = useState<PreviewMode>(null);
   const [schoolYear, setSchoolYear] = useState(() => {
     const now = new Date();
     const startYear = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
     return `${startYear}-${startYear + 1}`;
   });
+  const [april25Date, setApril25Date] = useState('2026-04-25');
   const [confirmation, setConfirmation] = useState('');
   const [archiveConfirmation, setArchiveConfirmation] = useState('');
+  const [april25Preview, setApril25Preview] = useState<April25DemoCleanupPreview | null>(null);
+  const [april25Confirmation, setApril25Confirmation] = useState('');
   const [lastArchive, setLastArchive] = useState<SchoolYearArchiveResult | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [archiveLoading, setArchiveLoading] = useState(false);
+  const [april25Loading, setApril25Loading] = useState(false);
   const [running, setRunning] = useState(false);
   const [archiveRunning, setArchiveRunning] = useState(false);
+  const [april25Running, setApril25Running] = useState(false);
 
   const requiredText = preview?.confirmationText || 'RESET OPERATIONAL DATA';
   const archiveRequiredText = archivePreview?.confirmationText || 'ARCHIVE AND RESET SCHOOL YEAR';
+  const april25RequiredText = april25Preview?.confirmationText || 'REMOVE APRIL 25 DEMO DATA';
   const canRun = confirmation === requiredText && !running;
   const canRunArchive = archiveConfirmation === archiveRequiredText && !archiveRunning && !!archivePreview;
+  const canRunApril25 = !!april25Preview && april25Preview.canRun && april25Confirmation === april25RequiredText && !april25Running;
 
   const deleteTotal = useMemo(() => (
     preview ? Object.values(preview.willDelete).reduce((sum, value) => sum + (value || 0), 0) : 0
@@ -65,16 +78,23 @@ export default function MaintenancePage() {
   const archiveTotal = useMemo(() => (
     archivePreview ? Object.values(archivePreview.willArchive).reduce((sum, value) => sum + (value || 0), 0) : 0
   ), [archivePreview]);
+  const april25DeleteTotal = useMemo(() => (
+    april25Preview ? Object.values(april25Preview.willDelete).reduce((sum, value) => sum + (value || 0), 0) : 0
+  ), [april25Preview]);
   const hasExcludedArchiveRows = archivePreview ? Object.keys(archivePreview.excludedFromArchive).length > 0 : false;
+  const showArchivePreview = previewMode === 'schoolYear' && !!archivePreview;
+  const showApril25Preview = previewMode === 'april25' && !!april25Preview;
+  const showOperationalPreview = previewMode === 'operational' && !!preview;
 
   const archiveDownloadHref = lastArchive?.downloadUrl
     ? `${getApiBaseUrl().replace(/\/+$/, '')}${lastArchive.downloadUrl}`
     : '';
 
-  const loadPreview = async () => {
+  const loadPreview = async (activate = true) => {
     setLoading(true);
     try {
       setPreview(await getCleanupPreview());
+      if (activate) setPreviewMode('operational');
     } catch (error) {
       await modal.showError(error instanceof Error ? error.message : 'Failed to load cleanup preview.', 'Preview Failed');
     } finally {
@@ -82,13 +102,8 @@ export default function MaintenancePage() {
     }
   };
 
-  useEffect(() => {
-    void loadPreview();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   useMaintenanceEvents(() => {
-    void loadPreview();
+    if (previewMode === 'operational') void loadPreview(false);
   });
 
   const handleArchivePreview = async (clearLastArchive = true) => {
@@ -97,6 +112,7 @@ export default function MaintenancePage() {
     try {
       setArchivePreview(await getSchoolYearArchivePreview(schoolYear));
       setArchiveConfirmation('');
+      setPreviewMode('schoolYear');
     } catch (error) {
       setArchivePreview(null);
       await modal.showError(error instanceof Error ? error.message : 'Failed to load archive preview.', 'Archive Preview Failed');
@@ -125,11 +141,66 @@ export default function MaintenancePage() {
       setLastArchive(result);
       await modal.showSuccess(result.message || 'School year archive cleanup completed.', 'Archive Complete');
       setArchiveConfirmation('');
-      await Promise.all([loadPreview(), handleArchivePreview(false)]);
+      await Promise.all([loadPreview(false), handleArchivePreview(false)]);
     } catch (error) {
       await modal.showError(error instanceof Error ? error.message : 'Archive cleanup failed.', 'Archive Cleanup Failed');
     } finally {
       setArchiveRunning(false);
+    }
+  };
+
+  const handleApril25Preview = async () => {
+    if (april25Date !== '2026-04-25') {
+      await modal.showError('This demo cleanup is fixed to April 25, 2026.', 'April 25 Only');
+      return;
+    }
+
+    setApril25Loading(true);
+    try {
+      setApril25Preview(await getApril25DemoCleanupPreview());
+      setApril25Confirmation('');
+      setPreviewMode('april25');
+    } catch (error) {
+      setApril25Preview(null);
+      await modal.showError(error instanceof Error ? error.message : 'Failed to load April 25 demo cleanup preview.', 'Demo Preview Failed');
+    } finally {
+      setApril25Loading(false);
+    }
+  };
+
+  const handleApril25Cleanup = async () => {
+    if (!april25Preview) return;
+
+    if (!april25Preview.canRun) {
+      await modal.showError(
+        april25Preview.safetyWarnings.join(' ') || 'April 25 demo cleanup is blocked by the current preview.',
+        'Cleanup Blocked'
+      );
+      return;
+    }
+
+    if (april25Confirmation !== april25RequiredText) {
+      await modal.showError(`Type ${april25RequiredText} exactly before removing April 25 demo data.`, 'Confirmation Required');
+      return;
+    }
+
+    const confirmed = await modal.showConfirm(
+      `This will remove ${april25DeleteTotal} row(s) for only WRF-123456, WRF-456789, and WRF-987456, including their histories and related form notifications. Continue?`,
+      'Remove April 25 Demo Data'
+    );
+    if (!confirmed) return;
+
+    setApril25Running(true);
+    try {
+      const result = await runApril25DemoCleanup(april25Confirmation);
+      await modal.showSuccess(result.message || 'April 25 demo data cleanup completed.', 'Demo Cleanup Complete');
+      setApril25Confirmation('');
+      await loadPreview(false);
+      await handleApril25Preview();
+    } catch (error) {
+      await modal.showError(error instanceof Error ? error.message : 'April 25 demo cleanup failed.', 'Demo Cleanup Failed');
+    } finally {
+      setApril25Running(false);
     }
   };
 
@@ -209,27 +280,47 @@ export default function MaintenancePage() {
               </div>
             </div>
             <div className="rounded-2xl border border-blue-100 bg-blue-50 p-3.5 dark:border-blue-500/20 dark:bg-blue-500/10">
-              <label className="text-xs font-bold uppercase tracking-[0.18em] text-blue-900 dark:text-blue-100">School Year</label>
-              <input
-                value={schoolYear}
-                onChange={(event) => setSchoolYear(event.target.value)}
-                placeholder="2025-2026"
-                className="mt-2.5 w-full rounded-xl border border-blue-200 bg-white px-4 py-3 font-mono text-sm text-slate-950 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 dark:border-blue-700 dark:bg-[#1e2939] dark:text-white"
-              />
-              <button
-                type="button"
-                onClick={() => void handleArchivePreview()}
-                disabled={archiveLoading || archiveRunning}
-                className="mt-2.5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-700 disabled:opacity-50"
-              >
-                <RefreshCw className={`h-4 w-4 ${archiveLoading ? 'animate-spin' : ''}`} />
-                Preview School Year
-              </button>
+              <div>
+                <label className="text-xs font-bold uppercase tracking-[0.18em] text-blue-900 dark:text-blue-100">School Year</label>
+                <input
+                  value={schoolYear}
+                  onChange={(event) => setSchoolYear(event.target.value)}
+                  placeholder="2025-2026"
+                  className="mt-2.5 w-full rounded-xl border border-blue-200 bg-white px-4 py-3 font-mono text-sm text-slate-950 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 dark:border-blue-700 dark:bg-[#1e2939] dark:text-white"
+                />
+                <button
+                  type="button"
+                  onClick={() => void handleArchivePreview()}
+                  disabled={archiveLoading || archiveRunning}
+                  className="mt-2.5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-700 disabled:opacity-50"
+                >
+                  <RefreshCw className={`h-4 w-4 ${archiveLoading ? 'animate-spin' : ''}`} />
+                  Preview School Year
+                </button>
+              </div>
+              <div className="mt-3 border-t border-blue-200 pt-3 dark:border-blue-500/20">
+                <label className="text-xs font-bold uppercase tracking-[0.18em] text-amber-800 dark:text-amber-100">April 25 Reset</label>
+                <input
+                  type="date"
+                  value={april25Date}
+                  onChange={(event) => setApril25Date(event.target.value)}
+                  className="mt-2.5 w-full rounded-xl border border-amber-200 bg-white px-4 py-3 font-mono text-sm text-slate-950 outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/30 dark:border-amber-700 dark:bg-[#1e2939] dark:text-white"
+                />
+                <button
+                  type="button"
+                  onClick={() => void handleApril25Preview()}
+                  disabled={april25Loading || april25Running}
+                  className="mt-2.5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-amber-700 disabled:opacity-50"
+                >
+                  <RefreshCw className={`h-4 w-4 ${april25Loading ? 'animate-spin' : ''}`} />
+                  Preview April 25
+                </button>
+              </div>
             </div>
           </div>
         </section>
 
-        {archivePreview && (
+        {showArchivePreview && archivePreview ? (
           <section className={`grid shrink-0 gap-4 ${hasExcludedArchiveRows ? 'xl:grid-cols-[1fr_1fr_1fr_1.05fr]' : 'xl:grid-cols-[1fr_1fr_1.05fr]'}`}>
             <CountGrid
               title="Archive"
@@ -285,7 +376,50 @@ export default function MaintenancePage() {
               )}
             </div>
           </section>
-        )}
+        ) : showApril25Preview && april25Preview ? (
+          <section className="grid shrink-0 gap-4 xl:grid-cols-[1fr_1fr_1.05fr]">
+            <CountGrid
+              title="Archive"
+              description="Setup data kept in place for this demo reset."
+              counts={april25Preview.willPreserve}
+              tone="border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-100"
+            />
+            <CountGrid
+              title="Cleanup"
+              description="April 25 demo form data removed by this reset."
+              counts={april25Preview.willDelete}
+              tone="border-red-200 bg-red-50 text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200"
+            />
+            <div className="rounded-2xl border border-blue-200 bg-white p-5 text-slate-900 shadow-sm dark:border-blue-500/30 dark:bg-slate-800 dark:text-white">
+              <h2 className="text-lg font-bold">Confirm and run</h2>
+              {april25Preview.safetyWarnings.length > 0 && (
+                <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200">
+                  {april25Preview.safetyWarnings.map((warning) => (
+                    <p key={warning}>{warning}</p>
+                  ))}
+                </div>
+              )}
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                Required text: <span className="font-mono font-bold text-blue-700 dark:text-blue-300">{april25RequiredText}</span>
+              </p>
+              <input
+                value={april25Confirmation}
+                onChange={(event) => setApril25Confirmation(event.target.value)}
+                placeholder={april25RequiredText}
+                className="mt-4 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 font-mono text-sm text-slate-950 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 dark:border-[#334155] dark:bg-[#1e2939] dark:text-white"
+              />
+              <button
+                type="button"
+                onClick={() => void handleApril25Cleanup()}
+                disabled={!canRunApril25}
+                className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Trash2 className="h-4 w-4" />
+                {april25Running ? 'Running April 25 Reset...' : 'Run April 25 Reset'}
+              </button>
+            </div>
+          </section>
+        ) : null}
 
         <div className="shrink-0 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200">
           <div className="flex gap-3">
@@ -299,11 +433,11 @@ export default function MaintenancePage() {
           </div>
         </div>
 
-        {loading ? (
+        {loading && previewMode === 'operational' && !preview ? (
           <div className="rounded-2xl border border-slate-200 p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
             Loading cleanup preview...
           </div>
-        ) : preview ? (
+        ) : showOperationalPreview && preview ? (
           <div className="grid min-h-0 shrink-0 gap-4 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(340px,1.05fr)]">
             <div className="grid min-h-0 gap-4 xl:grid-cols-2 2xl:col-span-3">
               <CountGrid title="Will Delete" counts={preview.willDelete} tone="border-red-200 bg-red-50 text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200" />
