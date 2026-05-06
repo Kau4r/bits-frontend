@@ -150,7 +150,7 @@ export const transferForm = async (
 
 // Add proof/supporting attachment to a form
 export const addFormAttachment = async (id: number, input: FormAttachmentInput): Promise<Form> => {
-    const { data } = await api.post<Form>(`/forms/${id}/attachments`, input);
+    const { data } = await api.post<Form>(`/forms/${id}/attachments`, { attachments: [input] });
     toast.success('Attachment uploaded');
     return data;
 };

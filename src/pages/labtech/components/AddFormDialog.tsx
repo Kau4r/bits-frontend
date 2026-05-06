@@ -68,7 +68,10 @@ export const AddFormDialog: FC<{
       return;
     }
 
-    if (!formNumber.trim()) {
+    const formNumberWithoutPrefix = formNumber.trim().replace(/^(RIS|WRF)[-\s]*/i, '').trim();
+    const finalFormNumber = formNumberWithoutPrefix ? `${formNumberPrefix}-${formNumberWithoutPrefix}` : '';
+
+    if (!finalFormNumber) {
       setSubmitError('Please enter a form number before tracking the form.');
       return;
     }
@@ -81,11 +84,8 @@ export const AddFormDialog: FC<{
     setIsSubmitting(true);
 
     try {
-      const formNumberValue = formNumber.trim();
-      const formNumberWithoutPrefix = formNumberValue.replace(/^(RIS|WRF)[-\s]*/i, '');
-
       await onCreate({
-        formNumber: formNumberWithoutPrefix ? `${formNumberPrefix}-${formNumberWithoutPrefix}` : '',
+        formNumber: finalFormNumber,
         title: title.trim(),
         type,
         // New forms always start as PENDING. Status can be changed only after creation.

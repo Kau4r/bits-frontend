@@ -1,4 +1,5 @@
 import type { Item, Computer } from "@/types/inventory";
+import type { Room } from "@/types/room";
 
 // Borrowing status
 export type BorrowingStatus = "PENDING" | "APPROVED" | "REJECTED" | "BORROWED" | "RETURNED" | "OVERDUE";
@@ -26,6 +27,8 @@ export interface Borrowing {
     Borrow_Date: string;
     Return_Date?: string;
     Status: BorrowingStatus;
+    Room_ID?: number | null;
+    Room?: Room | null;
     Borrower?: {
         User_ID: number;
         First_Name: string;

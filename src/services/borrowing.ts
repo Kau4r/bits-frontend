@@ -69,6 +69,13 @@ export const returnBorrowing = async (id: number, options?: {
     toast.success("Item returned");
 };
 
+// Update room on a pending borrowing (borrower only)
+export const updateBorrowingRoom = async (id: number, roomId: number | null): Promise<Borrowing> => {
+    const { data } = await api.patch<{ borrowing: Borrowing }>(`${API_BASE}/${id}/room`, { roomId });
+    toast.success("Room updated");
+    return data.borrowing;
+};
+
 // Delete a borrowing record (if needed)
 export const deleteBorrowing = async (id: number): Promise<void> => {
     await api.delete(`${API_BASE}/${id}`);

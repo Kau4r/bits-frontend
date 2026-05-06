@@ -9,6 +9,7 @@ import type { Item } from '@/types/inventory';
 import type { RoomAuditStatus } from '@/types/semester';
 import { formatItemType, resolveItemType, formatBrand } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
+import { useInventoryEvents } from '@/hooks/useInventoryEvents';
 
 interface Props {
   room: Room;
@@ -46,6 +47,8 @@ export default function RoomExportButton({ room, className = '' }: Props) {
   useEffect(() => {
     refreshStatus();
   }, [refreshStatus]);
+
+  useInventoryEvents(refreshStatus);
 
   const handleExport = async () => {
     if (!status?.allChecked) return;

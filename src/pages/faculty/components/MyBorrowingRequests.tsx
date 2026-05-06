@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
-import { getBorrowings } from '@/services/borrowing';
+import { getBorrowings, updateBorrowingRoom } from '@/services/borrowing';
+import { getRooms } from '@/services/room';
 import type { Borrowing } from '@/types/borrowing';
+import type { Room } from '@/types/room';
 import { formatItemType, formatBrand } from '@/lib/utils';
+import { Pencil, Check, X } from 'lucide-react';
 
 interface CountdownProps {
     returnDate: string;
@@ -36,7 +39,7 @@ const Countdown = ({ returnDate }: CountdownProps) => {
         };
 
         calculateTimeLeft();
-        const interval = setInterval(calculateTimeLeft, 60000); // Update every minute
+        const interval = setInterval(calculateTimeLeft, 60000);
 
         return () => clearInterval(interval);
     }, [returnDate]);
@@ -51,24 +54,117 @@ const Countdown = ({ returnDate }: CountdownProps) => {
     );
 };
 
+interface RoomEditorProps {
+    borrowId: number;
+    currentRoomId: number | null | undefined;
+    rooms: Room[];
+    onSaved: (borrowId: number, roomId: number | null) => void;
+}
+
+const RoomEditor = ({ borrowId, currentRoomId, rooms, onSaved }: RoomEditorProps) => {
+    const [editing, setEditing] = useState(false);
+    const [selected, setSelected] = useState<number | ''>(currentRoomId ?? '');
+    const [saving, setSaving] = useState(false);
+
+    const currentRoom = rooms.find(r => r.Room_ID === currentRoomId);
+
+    const handleSave = async () => {
+        setSaving(true);
+        try {
+            await updateBorrowingRoom(borrowId, selected === '' ? null : selected);
+            onSaved(borrowId, selected === '' ? null : selected);
+            setEditing(false);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleCancel = () => {
+        setSelected(currentRoomId ?? '');
+        setEditing(false);
+    };
+
+    if (!editing) {
+        return (
+            <div className="flex items-center gap-1.5 mt-1">
+                <span className="text-gray-500 dark:text-gray-400 text-xs">
+                    Room: {currentRoom ? currentRoom.Name : <span className="italic">None</span>}
+                </span>
+                <button
+                    onClick={() => setEditing(true)}
+                    className="text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors"
+                    title="Change room"
+                >
+                    <Pencil className="h-3 w-3" />
+                </button>
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex items-center gap-1.5 mt-1.5">
+            <select
+                value={selected === '' ? '' : String(selected)}
+                onChange={e => setSelected(e.target.value === '' ? '' : parseInt(e.target.value, 10))}
+                className="text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                disabled={saving}
+            >
+                <option value="">No room</option>
+                {rooms.map(r => (
+                    <option key={r.Room_ID} value={String(r.Room_ID)}>{r.Name}</option>
+                ))}
+            </select>
+            <button
+                onClick={handleSave}
+                disabled={saving}
+                className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 disabled:opacity-50 transition-colors"
+                title="Save"
+            >
+                <Check className="h-3.5 w-3.5" />
+            </button>
+            <button
+                onClick={handleCancel}
+                disabled={saving}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50 transition-colors"
+                title="Cancel"
+            >
+                <X className="h-3.5 w-3.5" />
+            </button>
+        </div>
+    );
+};
+
 export default function MyBorrowingRequests() {
     const [requests, setRequests] = useState<Borrowing[]>([]);
+    const [rooms, setRooms] = useState<Room[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        loadRequests();
+        loadData();
     }, []);
 
-    const loadRequests = async () => {
+    const loadData = async () => {
         try {
             setIsLoading(true);
-            const data = await getBorrowings({ role: 'borrower' });
+            const [data, roomList] = await Promise.all([
+                getBorrowings({ role: 'borrower' }),
+                getRooms()
+            ]);
             setRequests(data);
+            setRooms(roomList);
         } catch (error) {
             console.error('Failed to load borrowing requests:', error);
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleRoomSaved = (borrowId: number, roomId: number | null) => {
+        setRequests(prev => prev.map(r =>
+            r.Borrow_Item_ID === borrowId
+                ? { ...r, Room_ID: roomId, Room: roomId ? rooms.find(rm => rm.Room_ID === roomId) ?? null : null }
+                : r
+        ));
     };
 
     const pendingRequests = requests.filter(r => r.Status === 'PENDING');
@@ -105,7 +201,7 @@ export default function MyBorrowingRequests() {
                     <div className="space-y-2">
                         {pendingRequests.map((req) => (
                             <div key={req.Borrow_Item_ID} className="bg-gray-100 dark:bg-gray-700/50 rounded-lg p-3 border border-yellow-500/30">
-                                <div className="flex justify-between items-center">
+                                <div className="flex justify-between items-start">
                                     <div>
                                         <p className="text-gray-900 dark:text-white font-medium text-sm">
                                             {formatItemType(req.Item?.Item_Type || req.Requested_Item_Type) || 'Unknown Item'}
@@ -113,8 +209,14 @@ export default function MyBorrowingRequests() {
                                         <p className="text-gray-600 dark:text-gray-400 text-xs">
                                             {req.Item ? `${formatBrand(req.Item.Brand)} • ${req.Item.Item_Code}` : 'Specific Item Pending Assignment'}
                                         </p>
+                                        <RoomEditor
+                                            borrowId={req.Borrow_Item_ID}
+                                            currentRoomId={req.Room_ID}
+                                            rooms={rooms}
+                                            onSaved={handleRoomSaved}
+                                        />
                                     </div>
-                                    <span className="text-xs font-medium px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400">
+                                    <span className="text-xs font-medium px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400 shrink-0">
                                         Pending
                                     </span>
                                 </div>
@@ -141,6 +243,11 @@ export default function MyBorrowingRequests() {
                                         <p className="text-gray-600 dark:text-gray-400 text-xs">
                                             {req.Item ? `${formatBrand(req.Item.Brand)} • ${req.Item.Item_Code}` : 'Item Info Unavailable'}
                                         </p>
+                                        {req.Room && (
+                                            <p className="text-gray-500 dark:text-gray-400 text-xs mt-0.5">
+                                                Room: {req.Room.Name}
+                                            </p>
+                                        )}
                                     </div>
                                     {req.Return_Date && <Countdown returnDate={req.Return_Date} />}
                                 </div>

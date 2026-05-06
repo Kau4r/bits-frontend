@@ -14,21 +14,18 @@ const modalTheme = {
         dot: 'bg-amber-500',
         icon: 'text-amber-600 dark:text-amber-300',
         panel: 'bg-amber-50 text-amber-900 dark:bg-amber-500/10 dark:text-amber-100',
-        button: 'bg-amber-600 hover:bg-amber-500 focus:ring-amber-500',
     },
     error: {
         Icon: XCircle,
         dot: 'bg-rose-500',
         icon: 'text-rose-600 dark:text-rose-300',
         panel: 'bg-rose-50 text-rose-900 dark:bg-rose-500/10 dark:text-rose-100',
-        button: 'bg-rose-600 hover:bg-rose-500 focus:ring-rose-500',
     },
     info: {
         Icon: Info,
         dot: 'bg-indigo-500',
         icon: 'text-indigo-600 dark:text-cyan-300',
         panel: 'bg-indigo-50 text-indigo-900 dark:bg-cyan-400/10 dark:text-cyan-100',
-        button: 'bg-indigo-600 hover:bg-indigo-500 focus:ring-indigo-500 dark:bg-cyan-400 dark:text-slate-950 dark:hover:bg-cyan-300 dark:focus:ring-cyan-300',
     },
 };
 
@@ -83,7 +80,7 @@ export default function WarningModal({
                     <button
                         type="button"
                         onClick={onClose}
-                        className={`rounded-full px-5 py-2 text-sm font-semibold text-white shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-[#111827] ${theme.button}`}
+                        className="rounded-full bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-600/20 transition hover:bg-indigo-500 dark:bg-cyan-400 dark:text-slate-950 dark:shadow-cyan-400/20 dark:hover:bg-cyan-300"
                     >
                         Got it
                     </button>

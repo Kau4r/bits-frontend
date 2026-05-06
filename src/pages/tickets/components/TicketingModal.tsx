@@ -67,9 +67,9 @@ export default function TicketingModal({
   const canEditExistingTicket = !isCreating && isEditingExisting && canManageTicketDetails && hasAssignedLabTech;
   const canModifyTicketFields = isCreating || canEditExistingTicket;
   const showTicketManagementFields = canManageTicketDetails || (!isCreating && (Boolean(category) || Boolean(priority)));
-  const editButtonClassName = "px-4 py-2 text-white rounded-xl transition-colors text-sm font-medium shadow-sm bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed";
-  const activeEditButtonClassName = "px-4 py-2 text-white rounded-xl transition-colors text-sm font-medium shadow-sm bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2";
-  const saveButtonClassName = "px-4 py-2 text-white rounded-xl transition-colors text-sm font-medium shadow-sm bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed";
+  const editButtonClassName = "rounded-full bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-600/20 transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-cyan-400 dark:text-slate-950 dark:shadow-cyan-400/20 dark:hover:bg-cyan-300";
+  const activeEditButtonClassName = "rounded-full px-5 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-200 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white";
+  const saveButtonClassName = "rounded-full bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-600/20 transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-cyan-400 dark:text-slate-950 dark:shadow-cyan-400/20 dark:hover:bg-cyan-300";
   const readOnlyFieldClass = "w-full px-4 py-3 bg-gray-50 dark:bg-[#1e2939] border border-gray-200 dark:border-[#334155] rounded-lg text-gray-900 dark:text-white";
   const categoryLabels: Record<string, string> = { HARDWARE: 'Hardware', SOFTWARE: 'Software', FACILITY: 'Facility', OTHER: 'Other' };
   const priorityLabels: Record<string, string> = { HIGH: 'High', MEDIUM: 'Medium', LOW: 'Low' };
@@ -602,7 +602,7 @@ export default function TicketingModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm font-medium"
+            className="rounded-full px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-200 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
           >
             Cancel
           </button>

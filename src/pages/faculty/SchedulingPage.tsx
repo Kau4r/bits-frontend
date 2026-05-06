@@ -1,5 +1,5 @@
 import Scheduling from '@/pages/scheduling/SchedulingPage';
-import { Bell, LogOut, PlusCircle, AlertTriangle, X, Package, Calendar, Clock, MapPin, FileText, Lock } from 'lucide-react';
+import { Bell, LogOut, PlusCircle, AlertTriangle, X, Package, Calendar, Clock, MapPin, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -86,19 +86,19 @@ const FacultySchedulingInner = () => {
   const [showReportIssueModal, setShowReportIssueModal] = useState(false);
   const [currentRoom, setCurrentRoom] = useState<string>('General Facility');
 
-  // Borrow Modal State — note: the room field is no longer user-selectable.
-  // It tracks `activeRoomId` from the schedule header context.
   const [isBorrowModalOpen, setIsBorrowModalOpen] = useState(false);
   const [inventoryItems, setInventoryItems] = useState<Item[]>([]);
   const [selectedType, setSelectedType] = useState<string>('');
+  const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
   const [isLoadingItems, setIsLoadingItems] = useState(false);
   const [borrowSchedule, setBorrowSchedule] = useState(getBorrowDefaults);
 
-  // Fetch items when modal opens.
+  // Fetch items when modal opens; seed room from active room context.
   useEffect(() => {
     if (isBorrowModalOpen) {
       loadItems();
-      setSelectedType(''); // Reset type
+      setSelectedType('');
+      setSelectedRoomId(activeRoomId ?? null);
       setBorrowSchedule(getBorrowDefaults());
     }
   }, [isBorrowModalOpen]);
@@ -421,14 +421,12 @@ const FacultySchedulingInner = () => {
               const returnTime = formData.get('returnTime') as string;
               const purpose = formData.get('purpose') as string;
 
-              // Validation - only need item type now, not specific item.
-              // Room comes from the active room context, not a form input.
               if (!selectedType || !borrowDate || !borrowTime || !returnDate || !returnTime || !purpose.trim()) {
                 modal.showError('Please fill in all required fields.', 'Validation Error');
                 return;
               }
-              if (activeRoomId == null) {
-                modal.showError('Pick a room from the header before requesting a borrow.', 'No active room');
+              if (selectedRoomId == null) {
+                modal.showError('Please select a room.', 'No room selected');
                 return;
               }
 
@@ -457,7 +455,7 @@ const FacultySchedulingInner = () => {
                   purpose,
                   borrowDate: borrowDateTime.toISOString(),
                   expectedReturnDate: returnDateTime.toISOString(),
-                  roomId: activeRoomId,
+                  roomId: selectedRoomId,
                 });
 
                 modal.showSuccess('Borrowing request submitted! A Lab Tech will assign a specific item.', 'Success');
@@ -504,21 +502,13 @@ const FacultySchedulingInner = () => {
                         <MapPin className="h-3.5 w-3.5 text-slate-400" />
                         Room <span className="text-rose-500">*</span>
                       </label>
-                      {/* Room is locked to the active room context — change
-                          rooms via the header combo box on the schedule. */}
-                      <div
+                      <FloatingSelect
                         id="faculty-borrow-room"
-                        aria-readonly="true"
-                        className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-100 px-3 py-2.5 text-sm font-medium text-slate-700 dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-200"
-                      >
-                        <span className="truncate">
-                          {activeRoom ? activeRoom.Name : 'No active room — select one in the schedule header'}
-                        </span>
-                        <Lock className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-label="Room locked to active room context" />
-                      </div>
-                      <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
-                        Set in the schedule header.
-                      </p>
+                        value={selectedRoomId != null ? String(selectedRoomId) : ''}
+                        placeholder="Select a room"
+                        options={rooms.map(r => ({ value: String(r.Room_ID), label: r.Name }))}
+                        onChange={val => setSelectedRoomId(val ? parseInt(val, 10) : null)}
+                      />
                     </div>
                   </div>
                 </section>
@@ -592,7 +582,7 @@ const FacultySchedulingInner = () => {
                 <section>
                   <h3 className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
                     <FileText className="h-3.5 w-3.5" />
-                    Purpose
+                    Purpose <span className="text-rose-500 normal-case">*</span>
                   </h3>
                   <textarea
                     name="purpose"
@@ -605,25 +595,21 @@ const FacultySchedulingInner = () => {
               </div>
 
               {/* Footer */}
-              <div className="flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4 dark:border-white/10 dark:bg-white/[0.03]">
-                <p className="hidden text-xs text-slate-500 dark:text-slate-400 sm:block">
-                  <span className="text-rose-500">*</span> required
-                </p>
-                <div className="flex flex-1 items-center justify-end gap-3">
+              <div className="flex items-center justify-end gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4 dark:border-white/10 dark:bg-white/[0.03]">
+                <div className="flex items-center gap-3">
                   <button
                     type="button"
                     onClick={() => setIsBorrowModalOpen(false)}
-                    className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-200 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
+                    className="rounded-full px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-200 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isLoadingItems}
-                    className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-600/20 transition hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus:ring-offset-slate-900"
+                    className="rounded-full bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-600/20 transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-cyan-400 dark:text-slate-950 dark:shadow-cyan-400/20 dark:hover:bg-cyan-300"
                   >
-                    <PlusCircle className="h-4 w-4" />
-                    Submit Request
+                    Submit
                   </button>
                 </div>
               </div>
