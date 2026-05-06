@@ -3,7 +3,6 @@ import ReactQRCode from 'react-qr-code';
 import { Download, Printer, X, Settings } from 'lucide-react';
 import type { Room, RoomSession } from '@/types/room';
 import { fetchComputers, createComputer, updateComputer, deleteComputer, type Computer, type CreateComputerPayload, type UpdateComputerPayload } from '@/services/computers';
-import { downloadInventoryReportCsv } from '@/services/reports';
 import { getInventoryItemTypes } from '@/services/inventory';
 import { fetchSuggestions, type ComputerSuggestion } from '@/services/computerSuggestions';
 import api from '@/services/api';
@@ -454,10 +453,6 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
         }
     };
 
-    const handleExportRoomAssets = () => {
-        downloadInventoryReportCsv({ roomId: room.Room_ID });
-    };
-
     const buildComputerLabelCanvas = async (computer: Computer) => {
         const svgEl = document.getElementById('pcQrCode');
         if (!svgEl || !(svgEl instanceof SVGSVGElement)) return null;
@@ -768,22 +763,11 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
 
                     {activeTab === 'Assets' && (
                         <div className="flex-1 flex flex-col min-h-0 p-6">
-                            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                <div>
-                                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Room Assets</h3>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                                        Export the inventory items currently assigned to this room.
-                                    </p>
-                                </div>
-                                <div className="flex flex-wrap justify-end gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={handleExportRoomAssets}
-                                        className="px-4 py-2 border border-gray-300 text-gray-700 dark:border-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl text-sm font-medium transition-colors"
-                                    >
-                                        Export This Room CSV
-                                    </button>
-                                </div>
+                            <div className="mb-4">
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Room Assets</h3>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    Inventory items currently assigned to this room.
+                                </p>
                             </div>
 
                             {error && (
