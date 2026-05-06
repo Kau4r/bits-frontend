@@ -47,25 +47,29 @@ export default function StudentPublicLanding() {
         };
     }, []);
 
-    // Fetch lecture rooms once.
+    // Fetch lecture rooms initially, then poll every 60s so the live
+    // "Class" / "Booked" / "Available" badge stays accurate as classes
+    // start and end without requiring a page reload.
     useEffect(() => {
         let isMounted = true;
 
-        const fetchLectures = async () => {
+        const fetchLectures = async (showLoading = false) => {
             try {
-                setIsLoadingLectures(true);
+                if (showLoading) setIsLoadingLectures(true);
                 const rooms = await getPublicLectureRooms();
                 if (isMounted) setLectureRooms(rooms);
             } catch (err) {
                 console.error('Failed to fetch lecture rooms:', err);
             } finally {
-                if (isMounted) setIsLoadingLectures(false);
+                if (isMounted && showLoading) setIsLoadingLectures(false);
             }
         };
 
-        fetchLectures();
+        fetchLectures(true);
+        const interval = window.setInterval(() => fetchLectures(false), 60000);
         return () => {
             isMounted = false;
+            window.clearInterval(interval);
         };
     }, []);
 

@@ -6,8 +6,36 @@ interface MobileLectureCardProps {
     onClick: () => void;
 }
 
+type BadgeStyle = { label: string; className: string };
+
+const AVAILABLE_BADGE: BadgeStyle = {
+    label: 'Available',
+    className: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
+};
+const IN_USE_BADGE: BadgeStyle = {
+    label: 'In Use',
+    className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+};
+const CLASS_BADGE: BadgeStyle = {
+    label: 'Class',
+    className: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
+};
+const BOOKED_BADGE: BadgeStyle = {
+    label: 'Booked',
+    className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+};
+
+const resolveBadge = (room: PublicLectureRoom): BadgeStyle => {
+    // Persistent room flags (MAINTENANCE / CLOSED / RESERVED / IN_USE) take
+    // precedence over live activity — preserves prior behavior.
+    if (room.Status !== 'AVAILABLE') return IN_USE_BADGE;
+    if (room.Current_Activity === 'CLASS') return CLASS_BADGE;
+    if (room.Current_Activity === 'BOOKED') return BOOKED_BADGE;
+    return AVAILABLE_BADGE;
+};
+
 export default function MobileLectureCard({ room, onClick }: MobileLectureCardProps) {
-    const isAvailable = room.Status === 'AVAILABLE';
+    const badge = resolveBadge(room);
 
     return (
         <button
@@ -29,13 +57,9 @@ export default function MobileLectureCard({ room, onClick }: MobileLectureCardPr
                             <p className="text-xs text-gray-500 dark:text-gray-400">Lecture Room</p>
                         </div>
                         <span
-                            className={`shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-                                isAvailable
-                                    ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
-                                    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
-                            }`}
+                            className={`shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold ${badge.className}`}
                         >
-                            {isAvailable ? 'Available' : 'In Use'}
+                            {badge.label}
                         </span>
                     </div>
 

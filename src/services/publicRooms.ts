@@ -10,6 +10,10 @@ export interface PublicLectureRoom {
     Capacity: number;
     Status: string;
     Current_Use_Type?: string | null;
+    // What's happening in the room "right now" — derived server-side from
+    // the live schedule + approved bookings. Falls back to 'NONE' for older
+    // backends that don't include this field.
+    Current_Activity?: 'CLASS' | 'BOOKED' | 'NONE';
 }
 
 export type PublicScheduleSlotSource = {
