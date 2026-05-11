@@ -23,6 +23,7 @@ export interface Booking {
     Status: BookingStatus;
     Purpose?: string;
     Notes?: string;
+    Rejection_Reason?: string | null;
     Created_At: string;
     Updated_At: string;
 

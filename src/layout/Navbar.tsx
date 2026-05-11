@@ -5,12 +5,17 @@ import type { ReactNode } from 'react';
 import { useNotifications } from '@/context/NotificationContext';
 import { useTheme } from '@/hooks/useTheme';
 
-type NavChild = { label: string; path: string };
+type NavChild = { label: string; path: string; iconKey?: string };
 type NavItem = { label: string; path: string; children?: NavChild[] };
 
 const INVENTORY_CHILDREN: NavChild[] = [
-  { label: 'Information', path: '/inventory?view=information' },
-  { label: 'Inventory List', path: '/inventory?view=list' },
+  { label: 'Information', path: '/inventory?view=information', iconKey: 'Information' },
+  { label: 'Inventory List', path: '/inventory?view=list', iconKey: 'List' },
+];
+
+const LABTECH_VIEW_CHILDREN: NavChild[] = [
+  { label: 'Technicians', path: '/labtechview', iconKey: 'Technicians' },
+  { label: 'Leaderboard', path: '/leaderboard', iconKey: 'Trophy' },
 ];
 
 const roleRoutes: Record<string, readonly NavItem[]> = {
@@ -39,7 +44,7 @@ const roleRoutes: Record<string, readonly NavItem[]> = {
     { label: 'Inventory', path: '/inventory', children: INVENTORY_CHILDREN },
     { label: 'Borrowing', path: '/labtech/borrowing' },
     { label: 'Forms', path: '/forms' },
-    { label: 'Lab Tech View', path: '/labtechview' },
+    { label: 'Lab Tech View', path: '/labtechview', children: LABTECH_VIEW_CHILDREN },
   ],
 };
 
@@ -132,9 +137,39 @@ const navIcons: Record<string, ReactNode> = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
     </svg>
   ),
+  Leaderboard: (
+    <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0V4zM17 4h3v3a3 3 0 01-3 3M7 4H4v3a3 3 0 003 3" />
+    </svg>
+  ),
   Reports: (
     <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
+    </svg>
+  ),
+};
+
+// Smaller (w-4 h-4) icons used inline in submenu links. Same Heroicons outline
+// style as the top-level navIcons, just sized to match nested labels.
+const childIcons: Record<string, ReactNode> = {
+  Information: (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
+  List: (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+    </svg>
+  ),
+  Technicians: (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+    </svg>
+  ),
+  Trophy: (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0V4zM17 4h3v3a3 3 0 01-3 3M7 4H4v3a3 3 0 003 3" />
     </svg>
   ),
 };
@@ -268,18 +303,27 @@ const Navbar = ({ collapsed, setCollapsed, isMobile }: { collapsed: boolean; set
                       <ul className="mt-1 space-y-1 pl-10">
                         {item.children!.map(child => {
                           const active = isChildActive(child.path, location);
+                          const icon = child.iconKey ? childIcons[child.iconKey] : null;
                           return (
                             <li key={child.path}>
                               <Link
                                 to={child.path}
                                 onClick={() => isMobile && setMobileOpen(false)}
-                                className={`block rounded-md px-3 py-1.5 text-sm transition-colors ${
+                                className={`flex items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors ${
                                   active
                                     ? 'bg-indigo-100 font-semibold text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-200'
                                     : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
                                 }`}
                               >
-                                {child.label}
+                                {icon && (
+                                  <span
+                                    className={active ? 'text-indigo-600 dark:text-indigo-300' : 'text-indigo-500/80 dark:text-indigo-400/80'}
+                                    aria-hidden="true"
+                                  >
+                                    {icon}
+                                  </span>
+                                )}
+                                <span>{child.label}</span>
                               </Link>
                             </li>
                           );

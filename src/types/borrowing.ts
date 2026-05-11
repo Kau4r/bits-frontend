@@ -27,6 +27,7 @@ export interface Borrowing {
     Borrow_Date: string;
     Return_Date?: string;
     Status: BorrowingStatus;
+    Rejection_Reason?: string | null;
     Room_ID?: number | null;
     Room?: Room | null;
     Borrower?: {

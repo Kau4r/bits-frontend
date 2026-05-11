@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import ReactQRCode from 'react-qr-code';
-import { Download, Printer, X, Settings } from 'lucide-react';
+import { Download, Printer, X, Settings, History as HistoryIcon } from 'lucide-react';
+import PCHistoryModal from '@/pages/labtech/components/PCHistoryModal';
 import type { Room, RoomSession } from '@/types/room';
 import { fetchComputers, createComputer, updateComputer, deleteComputer, type Computer, type CreateComputerPayload, type UpdateComputerPayload } from '@/services/computers';
 import { getInventoryItemTypes } from '@/services/inventory';
@@ -89,6 +90,8 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
 
     // Edit Computer Dialog State
     const [editingComputer, setEditingComputer] = useState<Computer | null>(null);
+    // Holds the Computer whose history is currently open in a layered modal.
+    const [pcHistoryFor, setPcHistoryFor] = useState<Computer | null>(null);
     const [computerModalMode, setComputerModalMode] = useState<'view' | 'edit'>('view');
     const [editName, setEditName] = useState('');
     const [editStatus, setEditStatus] = useState<Computer['Status']>('AVAILABLE');
@@ -1194,6 +1197,16 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                                     Delete PC
                                 </button>
                             )}
+                            {editingComputer && (
+                                <button
+                                    type="button"
+                                    onClick={() => setPcHistoryFor(editingComputer)}
+                                    className="inline-flex items-center gap-2 px-4 py-2 border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors"
+                                >
+                                    <HistoryIcon className="h-4 w-4" />
+                                    View History
+                                </button>
+                            )}
                             <button
                                 onClick={() => setEditingComputer(null)}
                                 className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
@@ -1228,6 +1241,16 @@ export default function RoomDetailModal({ isOpen, onClose, room, sessions = [] }
                 availableItemTypes={itemTypePool}
                 onSuggestionsChanged={setSuggestions}
             />
+
+            {pcHistoryFor && (
+                <PCHistoryModal
+                    isOpen={!!pcHistoryFor}
+                    onClose={() => setPcHistoryFor(null)}
+                    computerId={pcHistoryFor.Computer_ID}
+                    pcName={pcHistoryFor.Name}
+                    roomName={room.Name}
+                />
+            )}
         </div>
     );
 }

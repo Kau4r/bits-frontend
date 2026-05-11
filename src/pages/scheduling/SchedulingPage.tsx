@@ -14,6 +14,7 @@ import { useModal } from '@/context/ModalContext';
 import { useActiveRoom } from '@/context/ActiveRoomContext';
 import CalendarSidebar from '@/components/CalendarSidebar';
 import BookingPopover from '@/components/BookingPopover';
+import BookingRejectModal from '@/components/BookingRejectModal';
 import RoomCombobox from '@/pages/scheduling/components/RoomCombobox';
 import WarningModal from '@/pages/scheduling/components/WarningModal';
 import ConfirmModal from '@/pages/scheduling/components/ConfirmModal';
@@ -52,6 +53,15 @@ export default function Scheduling({ showRejectedMyBookings = false }: Schedulin
 
   // Popover state
   const [showPopover, setShowPopover] = useState(false);
+  // Pending rejection awaiting a typed reason. We open BookingRejectModal
+  // and only fire the actual reject API once the user submits a reason.
+  const [pendingReject, setPendingReject] = useState<{
+    id: string;
+    applyToSeries?: boolean;
+    seriesId?: number | null;
+    originalStart?: string | null;
+    label: string;
+  } | null>(null);
   // Holds the per-occurrence conflicts the backend returns when a recurring
   // series clashes with existing schedules/bookings. Surfaced in the
   // recurrence modal's right pane so the user can resolve them inline.
@@ -1286,34 +1296,20 @@ export default function Scheduling({ showRejectedMyBookings = false }: Schedulin
             setIsSubmitting(false);
           }
         }}
-        onReject={async (id, applyToSeries) => {
-          setIsSubmitting(true);
-          try {
-            if (viewingBooking?.seriesId && viewingBooking.originalStart) {
-              await decideSeriesStatus(viewingBooking.seriesId, {
-                status: 'REJECTED',
-                applyToSeries: !!applyToSeries,
-                Original_Start: viewingBooking.originalStart,
-              });
-              await loadBookings();
-              setShowPopover(false);
-              setViewingBooking(null);
-              return;
-            }
-
-            await updateBookingStatus(parseInt(id), { status: 'REJECTED', approverId: currentUserId });
-            setEvents(prev => prev.map(e =>
-              e.id === id ? { ...e, extendedProps: { ...e.extendedProps, status: 'REJECTED' } } : e
-            ));
-            setShowPopover(false);
-            setViewingBooking(null);
-          } catch (error: any) {
-            console.error('Failed to reject booking:', error);
-            const detail = error.response?.data?.details || error.response?.data?.error;
-            await modal.showError(detail || 'Failed to reject booking', 'Error');
-          } finally {
-            setIsSubmitting(false);
-          }
+        onReject={(id, applyToSeries) => {
+          // Defer the actual reject API call until the user provides a reason
+          // in BookingRejectModal. Store the booking context for the handler.
+          const label = viewingBooking
+            ? `${viewingBooking.roomName} — ${viewingBooking.date} ${viewingBooking.startTime}–${viewingBooking.endTime}`
+            : `Booking #${id}`;
+          setPendingReject({
+            id,
+            applyToSeries,
+            seriesId: viewingBooking?.seriesId ?? null,
+            originalStart: viewingBooking?.originalStart ?? null,
+            label,
+          });
+          setShowPopover(false);
         }}
         onRemove={async (id, applyToSeries) => {
           setIsSubmitting(true);
@@ -1364,6 +1360,49 @@ export default function Scheduling({ showRejectedMyBookings = false }: Schedulin
           }
           return userRole === 'LAB_HEAD' || userRole === 'LAB_TECH';
         })()}
+      />
+
+      <BookingRejectModal
+        isOpen={!!pendingReject}
+        onClose={() => setPendingReject(null)}
+        bookingLabel={pendingReject?.label}
+        isRecurring={!!pendingReject?.seriesId}
+        applyToSeries={!!pendingReject?.applyToSeries}
+        isLoading={isSubmitting}
+        onConfirm={async (reason) => {
+          if (!pendingReject) return;
+          setIsSubmitting(true);
+          try {
+            if (pendingReject.seriesId && pendingReject.originalStart) {
+              await decideSeriesStatus(pendingReject.seriesId, {
+                status: 'REJECTED',
+                applyToSeries: !!pendingReject.applyToSeries,
+                Original_Start: pendingReject.originalStart,
+                notes: reason,
+              });
+              await loadBookings();
+            } else {
+              await updateBookingStatus(parseInt(pendingReject.id), {
+                status: 'REJECTED',
+                approverId: currentUserId,
+                notes: reason,
+              });
+              setEvents(prev => prev.map(e =>
+                e.id === pendingReject.id
+                  ? { ...e, extendedProps: { ...e.extendedProps, status: 'REJECTED' } }
+                  : e
+              ));
+            }
+            setPendingReject(null);
+            setViewingBooking(null);
+          } catch (error: any) {
+            console.error('Failed to reject booking:', error);
+            const detail = error.response?.data?.details || error.response?.data?.error;
+            await modal.showError(detail || 'Failed to reject booking', 'Error');
+          } finally {
+            setIsSubmitting(false);
+          }
+        }}
       />
 
       <ReportIssueModal

@@ -26,6 +26,7 @@ import StudentSession from '@/pages/student/SessionPage';
 import StudentPCView from '@/pages/student/PCViewPage';
 import StudentRoomView from '@/pages/student/RoomViewPage';
 import LabTechOverview from '@/pages/labhead/LabTechOverviewPage';
+import LeaderboardPage from '@/pages/labhead/LeaderboardPage';
 import LabheadScheduling from '@/pages/labhead/SchedulingPage';
 import type { JSX } from 'react';
 import { normalizeUserRole, ROLES } from '@/types/user';
@@ -145,6 +146,7 @@ function AppContent() {
         {/* LabHead only */}
         <Route path="/labhead-dashboard" element={<ProtectedRoute roles={[ROLES.LAB_HEAD]}><LabheadDashboard /></ProtectedRoute>} />
         <Route path="/labtechview" element={<ProtectedRoute roles={[ROLES.LAB_HEAD]}><LabTechOverview /></ProtectedRoute>} />
+        <Route path="/leaderboard" element={<ProtectedRoute roles={[ROLES.LAB_HEAD, ROLES.ADMIN]}><LeaderboardPage /></ProtectedRoute>} />
 
         {/* Student */}
         <Route path="/student-session" element={<ProtectedRoute roles={[ROLES.STUDENT]}><StudentSession /></ProtectedRoute>} />

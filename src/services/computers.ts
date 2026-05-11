@@ -117,3 +117,51 @@ export const importComputersCsv = async (file: File, roomId: number): Promise<Cs
     return response.data;
 };
 
+// --- PC (Computer) history ---
+export interface ComputerHistoryEntry {
+    Item_History_ID: number;
+    Item_ID: number;
+    Action: string;
+    Old_Value: Record<string, unknown> | null;
+    New_Value: Record<string, unknown> | null;
+    Performed_By_ID: number | null;
+    Reason: string | null;
+    Notes: string | null;
+    Parent_Computer_ID: number | null;
+    Created_At: string;
+    Item: {
+        Item_ID: number;
+        Item_Code: string;
+        Item_Type: string;
+        Brand: string | null;
+        Serial_Number: string | null;
+    } | null;
+    Performed_By: {
+        User_ID: number;
+        First_Name: string;
+        Last_Name: string;
+        User_Role: string;
+    } | null;
+}
+
+export interface ComputerHistoryResponse {
+    computer: {
+        Computer_ID: number;
+        Name: string;
+        Status: string;
+        Room?: { Name: string } | null;
+    };
+    history: ComputerHistoryEntry[];
+}
+
+export const getComputerHistory = async (
+    computerId: number,
+    limit?: number
+): Promise<ComputerHistoryResponse> => {
+    const { data } = await api.get<ComputerHistoryResponse>(
+        `/computers/${computerId}/history`,
+        { params: limit ? { limit } : undefined }
+    );
+    return data;
+};
+

@@ -1,59 +1,51 @@
 import { createPortal } from 'react-dom';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
-import { formatBrand } from '@/lib/utils';
 
-// Quick-pick presets. Selecting one prefills the textarea but leaves it
-// editable so the labtech can append context. 'Other' clears the field.
-const BORROWING_REJECTION_PRESETS = [
-    'Item is currently unavailable',
-    'Item is reserved for another request',
-    'Item is defective or under maintenance',
+// Quick-pick presets for booking rejections. Selecting one prefills the
+// textarea (still editable); 'Other' clears it.
+const BOOKING_REJECTION_PRESETS = [
+    'Room already booked for this time slot',
+    'Room is under maintenance',
+    'Conflicts with class schedule',
     'Insufficient details or justification',
 ];
 
-interface RejectionModalProps {
+interface BookingRejectModalProps {
     isOpen: boolean;
     onClose: () => void;
     onConfirm: (reason: string) => void;
-    request: {
-        id: number;
-        item: {
-            Item_Type: string;
-            Brand: string;
-        };
-        borrower: {
-            First_Name: string;
-            Last_Name: string;
-        };
-    } | null;
+    bookingLabel?: string;
+    isRecurring?: boolean;
+    applyToSeries?: boolean;
     isLoading?: boolean;
 }
 
-export default function RejectionModal({
+export default function BookingRejectModal({
     isOpen,
     onClose,
     onConfirm,
-    request,
+    bookingLabel,
+    isRecurring = false,
+    applyToSeries = false,
     isLoading = false,
-}: RejectionModalProps) {
+}: BookingRejectModalProps) {
     const [reasonError, setReasonError] = useState('');
     const [presetChoice, setPresetChoice] = useState('');
     const [reason, setReason] = useState('');
     const dialogRef = useRef<HTMLDivElement>(null);
     useFocusTrap(dialogRef, isOpen);
 
-    // Reset state when the modal closes so the next open starts fresh.
     useEffect(() => {
         if (!isOpen) {
+            setReasonError('');
             setPresetChoice('');
             setReason('');
-            setReasonError('');
         }
     }, [isOpen]);
 
-    if (!isOpen || !request) return null;
+    if (!isOpen) return null;
 
     const handlePresetChange = (value: string) => {
         setPresetChoice(value);
@@ -69,7 +61,7 @@ export default function RejectionModal({
         e.preventDefault();
         const trimmed = reason.trim();
         if (trimmed.length < 3) {
-            setReasonError('Reason is required (at least 3 characters).');
+            setReasonError('Please provide a reason (at least 3 characters).');
             return;
         }
         setReasonError('');
@@ -86,12 +78,13 @@ export default function RejectionModal({
                 className="w-full max-w-md rounded-xl bg-white dark:bg-gray-900 shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[90vh]"
                 onClick={e => e.stopPropagation()}
             >
-                {/* Header */}
                 <div className="px-6 py-4 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
                     <div>
-                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Reject Request</h2>
+                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Reject Booking</h2>
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                            Provide a reason for rejecting this request. The borrower will be notified.
+                            {isRecurring && applyToSeries
+                                ? 'Provide a reason. This rejection will apply to the entire series.'
+                                : 'Provide a reason for rejecting this booking. The requester will be notified.'}
                         </p>
                     </div>
                     <button
@@ -105,22 +98,15 @@ export default function RejectionModal({
                     </button>
                 </div>
 
-                {/* Body */}
                 <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
                     <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-                        {/* Request Details */}
-                        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-2 border border-gray-200 dark:border-gray-700">
-                            <div>
-                                <span className="text-xs text-gray-500 dark:text-gray-400">Borrower:</span>
-                                <div className="text-sm text-gray-900 dark:text-white font-medium">{request.borrower.First_Name} {request.borrower.Last_Name}</div>
+                        {bookingLabel && (
+                            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                                <span className="text-xs text-gray-500 dark:text-gray-400">Booking:</span>
+                                <div className="text-sm text-gray-900 dark:text-white font-medium">{bookingLabel}</div>
                             </div>
-                            <div>
-                                <span className="text-xs text-gray-500 dark:text-gray-400">Requested Item:</span>
-                                <div className="text-sm text-gray-900 dark:text-white font-medium">{request.item.Item_Type} - {formatBrand(request.item.Brand)}</div>
-                            </div>
-                        </div>
+                        )}
 
-                        {/* Quick-pick preset */}
                         <div className="flex flex-col">
                             <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
                                 Common reason (optional)
@@ -131,14 +117,13 @@ export default function RejectionModal({
                                 className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             >
                                 <option value="">Pick a preset or type your own below...</option>
-                                {BORROWING_REJECTION_PRESETS.map((p) => (
+                                {BOOKING_REJECTION_PRESETS.map((p) => (
                                     <option key={p} value={p}>{p}</option>
                                 ))}
                                 <option value="OTHER">Other (specify below)</option>
                             </select>
                         </div>
 
-                        {/* Rejection Reason */}
                         <div className="flex flex-col">
                             <label className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
                                 Reason for Rejection <span className="text-red-500">*</span>
@@ -149,19 +134,18 @@ export default function RejectionModal({
                                 onChange={(e) => { setReason(e.target.value); setReasonError(''); }}
                                 required
                                 rows={4}
-                                placeholder="Please provide a clear reason for rejecting this request..."
+                                placeholder="Please provide a clear reason for rejecting this booking..."
                                 className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-[#334155] bg-white dark:bg-[#1e2939] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
                             />
                             {reasonError && (
                                 <p className="mt-1 text-xs font-medium text-red-600 dark:text-red-400">{reasonError}</p>
                             )}
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                This reason will be sent to the faculty member. You can edit a preset before sending.
+                                The requester will see this reason in their notification. You can edit a preset before sending.
                             </p>
                         </div>
                     </div>
 
-                    {/* Footer */}
                     <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
                         <button
                             type="button"
@@ -176,14 +160,7 @@ export default function RejectionModal({
                             disabled={isLoading}
                             className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-xl hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
                         >
-                            {isLoading ? (
-                                <>
-                                    <span className="animate-spin">...</span>
-                                    Rejecting...
-                                </>
-                            ) : (
-                                'Reject Request'
-                            )}
+                            {isLoading ? 'Rejecting...' : 'Reject Booking'}
                         </button>
                     </div>
                 </form>

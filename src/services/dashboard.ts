@@ -58,3 +58,26 @@ export const getDashboardMetrics = async (): Promise<DashboardMetrics> => {
     const { data } = await api.get<DashboardMetrics>('/dashboard');
     return data;
 };
+
+export interface LeaderboardEntry {
+    User_ID: number;
+    Name: string;
+    User_Role: 'LAB_TECH' | 'LAB_HEAD';
+    borrowings: number;
+    bookings: number;
+    tickets: number;
+    total: number;
+}
+
+export interface LeaderboardResponse {
+    entries: LeaderboardEntry[];
+    range: { from: string | null; to: string | null };
+}
+
+export const getLabTechLeaderboard = async (params?: {
+    from?: string;
+    to?: string;
+}): Promise<LeaderboardResponse> => {
+    const { data } = await api.get<LeaderboardResponse>('/dashboard/leaderboard', { params });
+    return data;
+};

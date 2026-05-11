@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, type ReactNode } from 'react';
 import BookingCard from '@/components/BookingCard';
 import NotificationsCard from '@/components/NotificationsCard';
+import LeaderboardCard from '@/pages/labhead/components/LeaderboardCard';
 import { getDashboardMetrics, type DashboardMetrics } from '@/services/dashboard';
 import { BarChart3, ClipboardCheck, FileText } from 'lucide-react';
 import { useTicketEvents } from '@/hooks/useTicketEvents';
@@ -130,8 +131,11 @@ export default function LabheadDashboard() {
           </div>
         </div>
 
-        <div className="min-h-0 overflow-hidden">
-          <NotificationsCard />
+        <div className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-4 overflow-hidden">
+          <LeaderboardCard />
+          <div className="min-h-0 overflow-hidden">
+            <NotificationsCard />
+          </div>
         </div>
       </div>
     </div>

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { fetchTickets } from '@/services/tickets';
 import AssignTicketDropdown from '@/pages/labhead/components/AssignTicketDropdown';
 import { getReports, reviewReport, downloadWeeklyReportsCsv } from '@/services/reports';
+import { getLabTechLeaderboard, type LeaderboardEntry } from '@/services/dashboard';
 import type { Ticket } from '@/types/tickets';
 import type { WeeklyReport } from '@/types/report';
 import { reportStatusLabels, reportStatusColors } from '@/types/report';
@@ -11,6 +12,7 @@ import { TICKET_STATUS_VARIANT, VARIANT_DOT_CLASS } from '@/lib/constants';
 import Table from '@/components/Table';
 import TicketingModal from '@/pages/tickets/components/TicketingModal';
 import { LoadingSkeleton } from '@/ui';
+import { Trophy, HandCoins, CalendarCheck2, ClipboardCheck } from 'lucide-react';
 
 type LabTech = {
   dbId: number;
@@ -68,6 +70,14 @@ export default function LabTechDetailPanel({ labTech, onTicketReassigned }: Prop
   const [viewingReport, setViewingReport] = useState<WeeklyReport | null>(null);
   const [activeReportCategory, setActiveReportCategory] = useState<string>('all');
 
+  // Leaderboard / performance breakdown for this tech. Fetched once per tech
+  // change; we also derive their rank from the full leaderboard.
+  const [perfEntry, setPerfEntry] = useState<LeaderboardEntry | null>(null);
+  const [perfRank, setPerfRank] = useState<number | null>(null);
+  const [perfTotal, setPerfTotal] = useState<number>(0);
+  const [isLoadingPerf, setIsLoadingPerf] = useState(false);
+  const [perfError, setPerfError] = useState<string | null>(null);
+
   // Reset the category tab whenever the viewed report changes so we always land on "All".
   useEffect(() => {
     setActiveReportCategory('all');
@@ -107,6 +117,31 @@ export default function LabTechDetailPanel({ labTech, onTicketReassigned }: Prop
       }
     };
     loadReports();
+  }, [labTech.dbId]);
+
+  // Fetch leaderboard once per tech change so we can render the same rank +
+  // breakdown that appears in the Labhead Dashboard's leaderboard card.
+  useEffect(() => {
+    const loadPerf = async () => {
+      if (!labTech.dbId) return;
+      setIsLoadingPerf(true);
+      try {
+        const data = await getLabTechLeaderboard();
+        const entries = data.entries;
+        const idx = entries.findIndex(e => e.User_ID === labTech.dbId);
+        setPerfEntry(idx >= 0 ? entries[idx] : null);
+        setPerfRank(idx >= 0 ? idx + 1 : null);
+        setPerfTotal(entries.length);
+        setPerfError(null);
+      } catch (e: any) {
+        setPerfError(e?.response?.data?.error ?? 'Failed to load performance');
+        setPerfEntry(null);
+        setPerfRank(null);
+      } finally {
+        setIsLoadingPerf(false);
+      }
+    };
+    loadPerf();
   }, [labTech.dbId]);
 
   const activeTickets = tickets.filter(t => !t.Archived && t.Status !== 'RESOLVED');
@@ -182,6 +217,23 @@ export default function LabTechDetailPanel({ labTech, onTicketReassigned }: Prop
             {reports.length}
           </span>
           {activeTab === 'Reports' && (
+            <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-indigo-600 dark:bg-indigo-400" />
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab('Performance')}
+          className={`relative pb-3 text-sm font-medium outline-none transition-colors ${activeTab === 'Performance'
+            ? 'text-indigo-600 dark:text-indigo-400'
+            : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+            }`}
+        >
+          Performance
+          {perfEntry && (
+            <span className="ml-2 bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-200 px-2 py-0.5 rounded-full text-xs font-bold">
+              #{perfRank}
+            </span>
+          )}
+          {activeTab === 'Performance' && (
             <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-indigo-600 dark:bg-indigo-400" />
           )}
         </button>
@@ -365,6 +417,76 @@ export default function LabTechDetailPanel({ labTech, onTicketReassigned }: Prop
           )}
         </section>
       )}
+
+      {activeTab === 'Performance' && (
+        <section className="flex min-h-0 flex-1 animate-fade-in flex-col gap-4 overflow-y-auto">
+          {isLoadingPerf ? (
+            <LoadingSkeleton type="table-rows" columns={1} rows={4} className="flex-1" />
+          ) : perfError ? (
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">{perfError}</p>
+          ) : !perfEntry ? (
+            <p className="text-sm text-gray-500 dark:text-gray-400">No recorded activity for this lab tech yet.</p>
+          ) : (
+            <>
+              <header className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm dark:border-amber-500/30 dark:bg-gray-800">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-full bg-amber-100 p-2 dark:bg-amber-500/20">
+                    <Trophy className="h-5 w-5 text-amber-600 dark:text-amber-300" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-200">Leaderboard Rank</p>
+                    <p className="text-lg font-black text-gray-900 dark:text-white">
+                      #{perfRank}{perfTotal > 0 ? ` of ${perfTotal}` : ''}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Total Handled</p>
+                  <p className="text-3xl font-black text-indigo-600 dark:text-indigo-300">{perfEntry.total}</p>
+                </div>
+              </header>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                  <div className="rounded-full bg-purple-100 p-2 dark:bg-purple-500/20">
+                    <HandCoins className="h-5 w-5 text-purple-600 dark:text-purple-300" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Borrowings</p>
+                    <p className="text-2xl font-black text-gray-900 dark:text-white">{perfEntry.borrowings}</p>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400">Approved + rejected</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                  <div className="rounded-full bg-blue-100 p-2 dark:bg-blue-500/20">
+                    <CalendarCheck2 className="h-5 w-5 text-blue-600 dark:text-blue-300" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Bookings</p>
+                    <p className="text-2xl font-black text-gray-900 dark:text-white">{perfEntry.bookings}</p>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400">Approved + rejected</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                  <div className="rounded-full bg-emerald-100 p-2 dark:bg-emerald-500/20">
+                    <ClipboardCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-300" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Tickets</p>
+                    <p className="text-2xl font-black text-gray-900 dark:text-white">{perfEntry.tickets}</p>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400">Assigned + resolved</p>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Counts come from the audit log and reflect actions this technician personally performed. Updates live as work is processed.
+              </p>
+            </>
+          )}
+        </section>
+      )}
+
       {/* Full Report Modal */}
       {viewingReport && (
         <div

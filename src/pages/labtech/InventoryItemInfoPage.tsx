@@ -12,6 +12,7 @@ import { FloatingSelect } from "@/ui/FloatingSelect";
 import { isLabStaffRole } from "@/types/user";
 import { formatItemType, formatBrand } from "@/lib/utils";
 import { useInventoryEvents } from "@/hooks/useInventoryEvents";
+import ItemHistoryTimeline from "@/pages/labtech/components/ItemHistoryTimeline";
 
 type LoadState = "loading" | "loaded" | "not-found" | "error";
 
@@ -377,6 +378,8 @@ export default function InventoryItemInfoPage() {
             </button>
           )}
         </div>
+
+        {!isEditing && <ItemHistoryTimeline itemId={item.Item_ID} />}
       </div>
     );
   };

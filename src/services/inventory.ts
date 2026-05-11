@@ -175,3 +175,66 @@ export const importInventoryCsv = async (file: File, roomId?: number): Promise<C
 
 /** @deprecated Inventory CSV import should be launched from the Inventory page. */
 export const importRoomItemsCsv = importInventoryCsv;
+
+// --- Item history (audit trail) ---
+
+export type ItemHistoryAction =
+    | 'CREATED'
+    | 'UPDATED'
+    | 'STATUS_CHANGED'
+    | 'MOVED_ROOM'
+    | 'BORROWED'
+    | 'RETURNED'
+    | 'MARKED_DEFECTIVE'
+    | 'REPLACED'
+    | 'DISPOSED'
+    | 'AUDITED'
+    | 'UNAUDITED'
+    | 'ATTACHED_TO_PARENT'
+    | 'DETACHED_FROM_PARENT';
+
+export interface ItemHistoryEntry {
+    Item_History_ID: number;
+    Item_ID: number;
+    Action: ItemHistoryAction | string;
+    Old_Value: Record<string, unknown> | null;
+    New_Value: Record<string, unknown> | null;
+    Performed_By_ID: number | null;
+    Reason: string | null;
+    Notes: string | null;
+    Parent_Item_ID: number | null;
+    Created_At: string;
+    Performed_By: {
+        User_ID: number;
+        First_Name: string;
+        Last_Name: string;
+        User_Role: string;
+    } | null;
+    Parent_Item: {
+        Item_ID: number;
+        Item_Code: string;
+        Item_Type: string;
+    } | null;
+}
+
+export interface ItemHistoryResponse {
+    item: {
+        Item_ID: number;
+        Item_Code: string;
+        Item_Type: string;
+        Brand: string | null;
+        Serial_Number: string | null;
+    };
+    history: ItemHistoryEntry[];
+}
+
+export const getItemHistory = async (
+    itemId: number,
+    limit?: number
+): Promise<ItemHistoryResponse> => {
+    const { data } = await api.get<ItemHistoryResponse>(
+        `/inventory/${itemId}/history`,
+        { params: limit ? { limit } : undefined }
+    );
+    return data;
+};

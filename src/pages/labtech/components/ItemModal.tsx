@@ -1,7 +1,8 @@
-import { Download, Printer, ChevronUp, ChevronDown } from "lucide-react";
+import { Download, Printer, ChevronUp, ChevronDown, History as HistoryIcon } from "lucide-react";
 import ReactQRCode from "react-qr-code";
 import { createPortal } from "react-dom";
 import { useState, useEffect, useRef } from "react";
+import ItemHistoryModal from "@/pages/labtech/components/ItemHistoryModal";
 import type { FormEvent } from "react";
 import type { Item, ItemType } from "@/types/inventory";
 import type { Room } from "@/types/room";
@@ -82,6 +83,7 @@ export default function ItemModal({
   const labelRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef, isOpen);
 
+  const [showHistory, setShowHistory] = useState(false);
   const [mode, setMode] = useState(initMode);
   const [quantity, setQuantity] = useState(1);
   const [serials, setSerials] = useState<string[]>([""]);
@@ -457,7 +459,8 @@ export default function ItemModal({
   const selectedRoomName = rooms.find(r => r.Room_ID === formData.roomId)?.Name || "—";
   const statusDisplay = formData.status ? formData.status.charAt(0) + formData.status.slice(1).toLowerCase() : "—";
 
-  return createPortal(
+  return (<>
+    {createPortal(
     <div
       className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
       onClick={onClose}
@@ -838,6 +841,16 @@ export default function ItemModal({
             >
               Cancel
             </button>
+            {mode === "view" && item?.Item_ID && (
+              <button
+                type="button"
+                onClick={() => setShowHistory(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/30 rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-500/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                <HistoryIcon className="h-4 w-4" />
+                View History
+              </button>
+            )}
             {mode === "view" && (
               <button
                 type="button"
@@ -874,5 +887,17 @@ export default function ItemModal({
       </div>
     </div>,
     document.body
-  );
+  )}
+    {showHistory && item?.Item_ID && (
+      <ItemHistoryModal
+        isOpen={showHistory}
+        onClose={() => setShowHistory(false)}
+        itemId={item.Item_ID}
+        itemCode={item.Item_Code}
+        itemType={item.Item_Type}
+        brand={item.Brand}
+        serialNumber={item.Serial_Number}
+      />
+    )}
+  </>);
 }
