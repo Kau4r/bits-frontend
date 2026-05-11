@@ -379,7 +379,7 @@ export default function InventoryItemInfoPage() {
           )}
         </div>
 
-        {!isEditing && <ItemHistoryTimeline itemId={item.Item_ID} />}
+        {!isEditing && item.Item_ID != null && <ItemHistoryTimeline itemId={item.Item_ID} />}
       </div>
     );
   };
